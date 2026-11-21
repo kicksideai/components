@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import { settingsTab } from '../../test/settings-navigation'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
@@ -34,18 +35,19 @@ it('keeps the declaration unchanged while every settings section opens and close
   })
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } })
   await flushPromises()
+  await settingsTab(w, 'Fields')
   const draft = w.getComponent(BuilderFields).props('draft')
   const before = JSON.stringify(draft)
-  for (const tab of w.findAll('[role=tab]')) {
-    await tab.trigger('click'); await flushPromises()
+  for (const tab of ['Overview', 'Families', 'Fields', 'Form layout', 'Dimensions', 'Vocabularies', 'Channels', 'Sources', 'Access', 'Plugins']) {
+    await settingsTab(w, tab)
     for (const toggle of w.findAll('[aria-expanded=false]')) {
       await toggle.trigger('click'); await flushPromises()
       await toggle.trigger('click')
     }
-    expect(w.text(), tab.text()).not.toContain('Unsaved changes')
-    expect(JSON.stringify(draft), tab.text()).toBe(before)
+    expect(w.text(), tab).not.toContain('Unsaved changes')
+    expect(JSON.stringify(draft), tab).toBe(before)
     const review = w.findAll('button').find(b => b.text() === 'Review changes')
-    if (review) expect(review.attributes('disabled'), tab.text()).toBeDefined()
+    if (review) expect(review.attributes('disabled'), tab).toBeDefined()
   }
   w.unmount()
 })
@@ -77,10 +79,10 @@ it('shows effective inherited policy without adding an override until editing', 
 it('shows plugin and scope titles with one state label and an accessible switch', () => {
   const w = mount(BuilderPlugins, { props: { draft: {}, schema: createSchema(), options: { ...options, plugins: [{ ...pluginFixture('kickside.pim.inventory:plugin'), title: 'Inventory' }], scopes: [{ id: 'kickside.pim.inventory:stock', title: 'Stock', access: 'read', filters: {} }] } } })
   expect(w.text()).not.toMatch(/kickside\.[\w.]+:[\w-]+/)
-  expect(w.text().match(/Inactive/g)).toHaveLength(1)
-  expect(w.text().match(/Not adopted/g)).toHaveLength(1)
+  expect(w.text().match(/Disabled/g)).toHaveLength(1)
+  expect(w.text().match(/Available/g)).toHaveLength(1)
   expect(w.find('[role=switch][aria-label="Enable Inventory"]').exists()).toBe(true)
-  expect(w.find('[role=switch][aria-label="Adopt Stock"]').exists()).toBe(true)
+  expect(w.find('[role=switch][aria-label="Use Stock"]').exists()).toBe(true)
   expect(w.find('em').exists()).toBe(false)
   w.unmount()
 })
@@ -96,7 +98,7 @@ it('uses readable fallbacks when registry declarations have no human title', asy
   try {
     await fields.get('.field-toggle').trigger('click')
     for (const wrapper of [plugins, fields]) expect(wrapper.text()).not.toContain(id)
-    expect(plugins.findAll('.pim-row-title').map(row => row.text())).toEqual(['Plugin', 'Scope'])
+    expect(plugins.findAll('.pim-row-title').map(row => row.text())).toEqual(['Plugin', 'Filter set'])
     expect(fields.get('[data-column=kind]').text()).toBe('Field type')
     expect(plugins.get('[role=switch]').attributes('aria-label')).toBe('Enable Plugin')
   } finally { plugins.unmount(); fields.unmount() }
@@ -108,9 +110,10 @@ it('does not repeat the plugin state in the expanded configuration', async () =>
     options: { ...options, plugins: [{ ...pluginFixture('stock'), title: 'Inventory' }] },
   } })
   try {
-    await w.get('.pim-definition-toggle').trigger('click')
-    expect(w.text().match(/Active/g)).toHaveLength(1)
-    expect(w.get('[role=alert]').text()).toContain('Configuration needs attention.')
+    expect(w.text().match(/Configuration needed/g)).toHaveLength(1)
+    expect(w.text()).not.toContain('Enabled')
+    expect(w.get('[role=alert]').text()).toContain('The saved settings don’t meet the plugin’s requirements.')
+    expect(w.get('.kx-disclosure').text()).toContain('Configuration needs attention.')
     await w.setProps({ schema: { ...schema, plugins: [{ ...pluginFixture('stock'), active: true }] } })
     expect(w.text()).not.toContain('chosen by this catalog')
   } finally { w.unmount() }
@@ -124,15 +127,15 @@ it('groups catalog choices first and opens advanced limits without changing the 
   expect(w.get('[data-policy-group=retention]').text()).toContain('Audit trail')
   expect(w.get('[data-policy-group=proposals]').text()).toContain('Proposal retention')
   expect(w.get('[data-policy-group=proposals]').text()).toContain('Proposal quota')
-  expect(w.find('#pol-command_deadline_ms').exists()).toBe(false)
+  expect(w.get('[data-policy-group=advanced] [data-pc-name=accordioncontent]').attributes('data-p-active')).toBe('false')
   expect(w.text()).toContain('0 uses the 365-day default. History always expires.')
   expect(w.findAllComponents(InputNumber).find(c => c.props('inputId') === 'pol-audit_days')?.props('max')).toBe(106751)
   const before = JSON.stringify(draft)
-  const toggle = w.get('button[aria-controls=policy-advanced]')
+  const toggle = w.get('[data-policy-group=advanced] .kx-disclosure-toggle')
   expect(toggle.attributes('aria-expanded')).toBe('false')
   await toggle.trigger('click')
   expect(toggle.attributes('aria-expanded')).toBe('true')
-  const advanced = w.get('#policy-advanced')
+  const advanced = w.get('[data-policy-group=advanced]')
   for (const key of ['command_deadline_ms', 'maintenance_rows', 'maintenance_catalogs', 'rebuild_rows', 'job_batches', 'import_rows', 'proposal_bytes', 'pending_creation_days']) expect(advanced.find('#pol-' + key).exists(), key).toBe(true)
   expect(advanced.text()).not.toMatch(/callback|transaction/)
   for (const key of ['maintenance_rows', 'maintenance_catalogs', 'pending_creation_days']) {

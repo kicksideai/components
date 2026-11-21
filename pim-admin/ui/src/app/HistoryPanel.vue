@@ -28,9 +28,9 @@ const rows = computed(() => entries.value.map(e => ({
   at: e.at,
   date: when(e.at),
   actor: people.value[e.actor] ?? humanLabel(e.actor, 'Person'),
-  source: e.source,
+  source: e.source ? humanLabel(humanize(e.source), 'Data source') : '',
   product: subject(e),
-  context: e.ctx,
+  context: e.ctx ? humanLabel(e.ctx, 'Product context') : '',
   change: change(e),
 })))
 
@@ -75,7 +75,7 @@ function change(e: HistoryEntry): string {
     return attributeChange(humanize(e.attribute), e.before, e.after)
   }
   switch (e.kind) {
-    case 'schema': return 'Schema generation ' + String((e.after as { generation?: number } | undefined)?.generation ?? '')
+    case 'schema': return 'Catalog settings applied'
     case 'term': {
       const t = (e.after ?? {}) as Term
       const label = t.labels?.en ?? Object.values(t.labels ?? {})[0]

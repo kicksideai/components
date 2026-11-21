@@ -1,21 +1,42 @@
 /* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
 /* Catalog settings and embedded System surface. */
-.pim-system { display: grid; grid-template-columns: 232px minmax(0, 1fr); height: 100%; min-height: 0; }
-.pim-rail { padding: 16px 12px; border-right: 1px solid var(--p-content-border-color); overflow-y: auto; }
-.pim-railhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; }
-.pim-railhead h2 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
-.pim-rail-search { width: 100%; margin-bottom: 12px; }
-.pim-rail-error { overflow-wrap: anywhere; }
-.pim-rail-list { display: grid; gap: 4px; }
-.pim-rail .pim-rail-row { display: flex; flex-direction: column; align-items: start; gap: 4px; width: 100%; padding: 8px 10px; border-radius: 8px; text-align: left; color: var(--p-text-color); font-size: 13px; font-weight: 500; }
-.pim-rail .pim-rail-row.active { background: color-mix(in srgb, var(--p-primary-color) 14%, transparent); color: var(--p-primary-color); }
-.pim-system-main { min-width: 0; min-height: 0; overflow-y: auto; }
-.pim-detail-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 18px var(--kickside-system-surface-gutter, 24px); }
-.pim-detail-head h2 { min-width: 0; max-width: 100%; margin: 0; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
-.pim-detail-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.pim-settings-pane { padding: 18px var(--kickside-system-surface-gutter, 24px) 28px; }
-.pim-readable { max-width: 960px; }
-.pim-section-tabs { padding-inline: var(--kickside-system-surface-gutter, 24px); }
+.pim-system { height: 100%; }
+.pim-system.pim-catalog-selected { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.pim-system-main { min-width: 0; min-height: 0; overflow: hidden; }
+.pim-system-main > .kx-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+/* System directory rows follow the Security roles list. ListRail supplies the shared shell and header. */
+.picker-search { flex: none; padding: 8px 10px; }
+.picker-search-input { width: 100%; }
+.picker-search-input::-webkit-search-cancel-button { display: none; }
+.picker-search-clear { position: absolute; right: 0; top: 0; height: 100%; }
+.picker-search:has(.picker-search-clear) .picker-search-input { padding-inline-end: 34px; }
+.pim-catalog-picker .kx-rail-body { padding: 0 8px 10px; }
+.picker-group {
+  margin: 0; padding: 10px 6px 4px;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--p-text-muted-color);
+}
+.picker-list { margin: 0; padding: 0; list-style: none; }
+.picker-row {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px; border: none; border-radius: var(--kx-radius-8);
+  background: transparent; color: var(--p-text-color); cursor: pointer;
+  text-align: left; transition: background .12s; font: inherit;
+}
+.picker-row:hover:where(:not(:disabled)) { background: var(--kx-overlay-hover); }
+.picker-row[aria-current="true"] { background: color-mix(in srgb, var(--p-primary-color) 14%, transparent); }
+.picker-row:disabled { color: var(--p-text-muted-color); cursor: default; }
+.picker-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-message { color: var(--p-text-muted-color); font-size: 11.5px; line-height: 1.3; padding: 7px 10px; }
+.picker-row-description { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+:is(.picker-row, .kx-settings-rail-item):focus:not(:focus-visible) { outline: none; box-shadow: none; }
+:is(.picker-row, .kx-settings-rail-item):focus-visible {
+  outline: var(--p-focus-ring-width, 2px) var(--p-focus-ring-style, solid) var(--p-focus-ring-color, currentColor);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
 .pim-responsive-table { container: pim-responsive-table / inline-size; }
 .pim-responsive-table > .pim-grid { overflow-wrap: anywhere; }
 .pim-stacked-list { display: none; margin: 0; padding: 0; list-style: none; }
@@ -71,7 +92,7 @@
 .pim-policy-copy label { font-size: 14px; font-weight: 600; }
 .pim-policy-copy p { margin: 4px 0 0; font-size: 12px; color: var(--p-text-muted-color); }
 .pim-policy-control { flex: 0 1 360px; width: min(100%, 360px); }
-@media (max-width: 720px) { .pim-system { grid-template-columns: 180px minmax(0, 1fr); } .pim-policy-row { flex-wrap: wrap; } .pim-definition-body .pim-fields { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) { .pim-policy-row { flex-wrap: wrap; } .pim-definition-body .pim-fields { grid-template-columns: minmax(0, 1fr); } }
 
 
 .pim-definition-list > .pim-add-row { border-top: 1px solid var(--p-content-border-color); }
@@ -80,22 +101,82 @@
 
 .pim-policy-intro { margin: 0; padding: 14px 16px 0; }
 .pim-policy-group { min-width: 0; }
-.pim-policy-advanced { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%; padding: 16px; background: var(--p-content-background); color: var(--p-text-color); border: 1px solid var(--p-content-border-color); border-radius: 8px; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
-.pim-policy-advanced:focus-visible { outline: 2px solid var(--p-primary-color); outline-offset: 2px; }
-.pim-policy-advanced .small { font-weight: 400; }
-.pim-policy-advanced svg { flex-shrink: 0; }
 
-@media (max-width: 540px) {
-  .pim-system { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  .pim-rail { border-right: 0; border-bottom: 1px solid var(--p-content-border-color); padding: 8px 12px; }
-  .pim-railhead { min-height: 32px; }
-  .pim-rail-search { margin-bottom: 8px; }
-  .pim-rail-list { display: flex; overflow-x: auto; }
-  .pim-rail .pim-rail-row { flex: 0 0 auto; width: auto; max-width: 220px; }
-  .pim-rail-row > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pim-detail-head { padding: 14px 16px; }
-  .pim-detail-actions { flex-wrap: wrap; margin-left: 0; width: 100%; }
-  .pim-settings-pane { padding: 16px; }
-  .pim-section-tabs { padding-inline: 16px; }
+/* Catalog directory and embedded settings surface. */
+.pim-builder { container: pim-builder / inline-size; overflow: hidden; }
+.pim-ia-content { display: grid; gap: 14px; min-width: 0; }
+.pim-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pim-overview-card { cursor: default; }
+.pim-overview-action { align-self: flex-start; margin-top: auto; }
+.pim-overview-action::after { content: ""; position: absolute; inset: 0; }
+.pim-ia-action h3 { font-size: 14px; font-weight: 600; }
+.pim-ia-action { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pim-plugin-recovery > button { justify-self: start; }
+.pim-ia-action > div:first-child { flex: 1 0 min(220px, 100%); min-width: 0; }
+.pim-ia-action > .pim-add-row { padding: 0; }
+.pim-ia-inline-add[class] { padding: 0; }
+.pim-advanced-actions { display: grid; gap: 12px; }
+.pim-advanced-actions > .pim-ia-action + .pim-ia-action { border-top: 1px solid var(--p-content-border-color); padding-top: 12px; }
+.pim-family-fields { align-items: end; }
+/* The family Select mounts its menu inside the component shadow root. */
+.pim-family-filter.form { overflow: visible; }
+.pim-field-advanced { margin-top: 14px; }
+.pim-group-settings { padding: 4px 16px 12px; }
+.pim-definition-meta > .pim-definition-details > span + span { margin-left: 6px; }
+.pim-ia-dialog { width: min(620px, 84vw); padding: 20px; display: grid; gap: 16px; }
+.pim-ia-dialog-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.pim-ia-dialog h2 { margin: 0; font-size: 21px; line-height: 1.2; }
+.pim-ia-dialog h3 { margin: 0; font-size: 15px; }
+.pim-ia-dialog p { margin: 4px 0 0; }
+.pim-ia-dialog-head p, .pim-ia-review-impact p { color: var(--p-text-muted-color); }
+.pim-ia-review-impact { padding: 12px 14px; border: 1px solid var(--p-content-border-color); border-radius: var(--kx-radius-14); }
+.pim-ia-dialog-actions { padding-top: 12px; border-top: 1px solid var(--p-content-border-color); flex-wrap: wrap; }
+.pim-plan-list { max-height: 38dvh; overflow-y: auto; overflow-wrap: anywhere; }
+.pim-policy-value { color: var(--p-text-color); margin: 0; }
+.pim-definition-toggle[aria-expanded="true"] .pim-definition-chevron { transform: rotate(90deg); }
+.pim-definition-head:hover, .pim-definition-head:focus-within { background: var(--kx-overlay-hover); }
+.pim-definition-head:active { background: var(--kx-surface-1); }
+.pim-definition-toggle:focus-visible {
+  outline: var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color);
+  outline-offset: var(--p-focus-ring-offset);
 }
-.pim-list-error { margin: 12px; }
+.pim-access-roles { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 14px 20px; }
+.pim-access-roles dt { font-weight: 600; }
+.pim-access-roles dd { margin: 4px 0 0; color: var(--p-text-muted-color); }
+@media (prefers-reduced-motion: no-preference) {
+  .pim-definition-head { transition: background-color .14s; }
+  .pim-definition-chevron { transition: transform .15s ease; }
+  .pim-expand-enter-active, .pim-expand-leave-active { transition: opacity .15s ease; }
+  .pim-expand-enter-from, .pim-expand-leave-to { opacity: 0; }
+  .pim-ia-content { animation: pim-section-enter .15s ease; }
+  @keyframes pim-section-enter { from { opacity: 0; } to { opacity: 1; } }
+}
+
+@container pim-builder (max-width: 600px) {
+  .pim-ia-dialog { padding: 14px; }
+  .pim-overview-grid { grid-template-columns: minmax(0, 1fr); }
+}
+.pim-review-confirm { margin-top: 10px; }
+
+.pim-section-layout { flex: 1; min-height: 0; display: flex; align-items: stretch; }
+.pim-section-layout > .kx-main { flex: 1; }
+.pim-section-layout .kx-settings-rail-group { overflow-wrap: anywhere; }
+.pim-section-layout .kx-main-scroll { overflow-x: hidden; padding: 18px var(--kickside-system-surface-gutter, 24px) 28px; }
+.pim-section-layout .system-section-head { margin-bottom: 4px; }
+
+@media (max-width: 640px) {
+  .pim-section-layout { flex-direction: column; }
+  .pim-section-layout .kx-main-scroll { padding: 14px 16px 28px; }
+}
+.pim-section-facts { margin: 0 0 16px; }
+@media (prefers-reduced-motion: reduce) {
+  .pim-overview-card { transition: none; }
+  .pim-overview-card:hover { transform: none; }
+}
+
+/* System Settings pane header. Actions share the header and wrap on narrow screens. */
+.system-section-head { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0; }
+.system-section-head-text { flex: 1 1 180px; min-width: 0; }
+.system-section-head-text h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.2px; color: var(--p-text-color); }
+.system-section-head-text p { margin: 2px 0 0; font-size: 13px; color: var(--p-text-muted-color); }
+.system-section-head .kx-head-actions { justify-content: flex-end; }

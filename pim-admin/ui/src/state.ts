@@ -87,6 +87,9 @@ export function clone<T>(value: T): T {
 
 
 export const CODE = /^[a-z][a-z0-9_]*$/
+export function keyFromName(name: string): string {
+  return name.trim().normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+}
 
 export function setList<K extends string>(target: { [P in K]?: string[] }, key: K, list: string[]) {
   if (list.length) target[key] = list

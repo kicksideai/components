@@ -26,7 +26,7 @@ for (const [name, component] of [
         expect(row.get('.pim-definition-toggle').classes()).not.toContain('p-button')
       }
       if (name === 'fields') {
-        expect(columns).toEqual(['lead', 'name', 'code', 'kind', 'details', 'usage', 'actions'])
+        expect(columns).toEqual(['lead', 'name', 'kind', 'details', 'usage', 'actions'])
         expect(rows[0].get('[data-column=usage]').text()).toBe('4 families')
       }
     }

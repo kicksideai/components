@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import { settingsTab } from '../test/settings-navigation'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import SchemaBuilder from './builder/SchemaBuilder.vue'
@@ -16,7 +17,7 @@ beforeEach(() => {
 it('layout displays titles without opaque identifiers, including missing catalog titles', async () => {
   for (const title of ['Apparel', '']) {
     const w = mount(SchemaBuilder, { props: { catalogId: id, title } }); wrappers.push(w); await flushPromises()
-    await w.findAll('[role=tab]').find(b => b.text() === 'Form layout')!.trigger('click')
+    await settingsTab(w, 'Form layout')
     expect(w.text()).not.toMatch(opaque)
   }
 })

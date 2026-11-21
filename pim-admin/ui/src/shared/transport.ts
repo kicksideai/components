@@ -20,6 +20,7 @@ export const SCHEMA_CONFLICT = 'schema_generation_conflict'
 const errorMessages: Readonly<Record<string, string>> = {
   [SCHEMA_CONFLICT]: 'This catalog’s settings changed while you were editing.',
   catalog_access_denied: 'You don’t have access to this catalog.',
+  plugin_cleanup_unavailable: 'Restore the plugin package before removing it. The catalog needs the package to clean up the plugin’s data.',
 }
 
 export function presentError(error: unknown, fallback: string): AdminError {
@@ -46,4 +47,7 @@ export async function get<T>(path: string, what: string, params?: Record<string,
 }
 export async function post<T>(path: string, body: unknown, what: string): Promise<T> {
   try { return unwrap<T>((await api.post(path, body)).data, what) } catch (e) { throw failure(e, what) }
+}
+export async function put<T>(path: string, body: unknown, what: string): Promise<T> {
+  try { return unwrap<T>((await api.put(path, body)).data, what) } catch (e) { throw failure(e, what) }
 }

@@ -23,12 +23,13 @@ async function create() {
 }
 </script>
 <template>
-  <NativeDialog :visible="visible" label="New catalog" :busy="busy" @close="emit('close')">
+  <NativeDialog :visible="visible" label="Create catalog" :busy="busy" @close="emit('close')">
     <form class="dialog-box" @submit.prevent="create">
-      <h2>New catalog</h2>
-      <label class="pim-stack"><span class="small muted">Title</span><InputText v-model="title" autofocus placeholder="Catalog title" /></label>
+      <h2>Create catalog</h2>
+      <p class="muted">After creating it, set up the product families and fields it needs.</p>
+      <label class="pim-stack"><span class="small muted">Catalog name</span><InputText v-model="title" autofocus placeholder="For example, Outdoor equipment" /></label>
       <AdminError v-if="error" :error="error" />
-      <div class="dialog-actions"><Button severity="secondary" outlined :disabled="busy" @click="emit('close')"><Icon icon="tabler:x" aria-hidden="true" /> Cancel</Button><Button type="submit" :disabled="busy || !title.trim()" :loading="busy">Create</Button></div>
+      <div class="dialog-actions"><Button severity="secondary" outlined :disabled="busy" @click="emit('close')"><Icon icon="tabler:x" aria-hidden="true" /> Cancel</Button><Button type="submit" :disabled="busy || !title.trim()" :loading="busy">Create catalog</Button></div>
     </form>
   </NativeDialog>
 </template>

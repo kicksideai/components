@@ -6,11 +6,11 @@ import { computed, onMounted, ref } from 'vue'
 import Button from 'primevue/button'
 import AdminError from '../../shared/AdminError.vue'
 import { presentError } from '../../shared/transport'
-import { Icon } from '@iconify/vue'
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { readPolicyDefaults, OPERATING_CONTROLS } from '../../policy'
 import type { Declaration, PolicyDefaults } from '../../types'
 
-const props = defineProps<{ draft: Declaration; catalogId?: string; defaults?: PolicyDefaults; disabled?: boolean }>()
+const props = defineProps<{ draft: Declaration; catalogId?: string; defaults?: PolicyDefaults; disabled?: boolean; defaultsOnly?: boolean }>()
 const loaded = ref<PolicyDefaults>()
 const defaults = computed(() => props.defaults ?? loaded.value)
 const error = ref<ReturnType<typeof presentError>>()
@@ -25,7 +25,6 @@ async function load() {
 }
 onMounted(load)
 const policy = computed(() => props.draft.policy ?? {})
-const advancedOpen = ref(false)
 type PolicyKey = { key: keyof PolicyDefaults; title: string; hint: string; kind: 'enum' | 'int'; min?: number; max?: number; global?: boolean }
 const retention: PolicyKey[] = [
   { key: 'audit', title: 'Audit trail', hint: 'Fields records each value change. Off records only lifecycle, schema and release history.', kind: 'enum' },
@@ -72,22 +71,24 @@ function set<K extends keyof PolicyDefaults>(key: K, value: PolicyDefaults[K] | 
 
 <template>
   <section class="form">
-    <p class="muted small pim-policy-intro">Empty fields inherit the deployment settings.</p>
+    <p v-if="!defaultsOnly" class="muted small pim-policy-intro">Empty fields inherit the deployment settings.</p>
     <p v-if="pending" class="muted small pim-policy-status" role="status">Loading deployment defaults…</p>
     <AdminError v-if="error" :error="error"><Button severity="secondary" outlined size="small" @click="load">Retry</Button></AdminError>
     <template v-for="group in groups" :key="group.id">
-      <section v-if="group.id !== 'advanced' || advancedOpen" :id="group.id === 'advanced' ? 'policy-advanced' : undefined" :data-policy-group="group.id" class="pim-policy-group" :aria-label="group.title || 'Advanced'">
+      <component :is="group.id === 'advanced' ? Disclosure : 'section'"
+        v-bind="group.id === 'advanced' ? { label: 'Advanced processing settings' } : { 'aria-label': group.title }"
+        :data-policy-group="group.id" class="pim-policy-group">
         <header v-if="group.title" class="pim-bsection-head"><h3>{{ group.title }}</h3></header>
         <div v-for="k in group.keys" :key="k.key" class="pim-policy-row">
           <div class="pim-policy-copy"><label :for="'pol-' + k.key">{{ k.title }}</label><p :id="'pol-help-' + k.key">{{ k.hint }}<span v-if="k.global"> Managed in deployment settings.</span></p></div>
-          <Select v-if="k.kind === 'enum'" :disabled="disabled" :input-id="'pol-' + k.key" :aria-describedby="'pol-help-' + k.key" class="pim-policy-control" :model-value="typeof policy[k.key] === 'string' ? policy[k.key] : 'inherited'" :options="auditOptions" option-label="label" option-value="value" appendTo="self" @update:model-value="set(k.key, $event)" />
+          <p v-if="defaultsOnly" class="pim-policy-value">
+            {{ defaults?.[k.key] === 'fields' ? 'Record field changes' : defaults?.[k.key] === 'off' ? 'Lifecycle and release history' : defaults?.[k.key] ?? 'Unavailable' }}
+            <span v-if="policy[k.key] !== undefined && policy[k.key] !== false" class="muted small"> · Catalog override applies</span>
+          </p>
+          <Select v-else-if="k.kind === 'enum'" :disabled="disabled" :input-id="'pol-' + k.key" :aria-describedby="'pol-help-' + k.key" class="pim-policy-control" :model-value="typeof policy[k.key] === 'string' ? policy[k.key] : 'inherited'" :options="auditOptions" option-label="label" option-value="value" appendTo="self" @update:model-value="set(k.key, $event)" />
           <InputNumber v-else :disabled="disabled || k.global" :input-id="'pol-' + k.key" :aria-describedby="'pol-help-' + k.key" class="pim-policy-control" :model-value="k.global ? Number(defaults?.[k.key] ?? 0) || null : typeof policy[k.key] === 'number' ? Number(policy[k.key]) : null" :min="k.min ?? (k.key === 'audit_days' ? 0 : 1)" :max="k.max" :step="1" :placeholder="defaults ? 'Default: ' + defaults[k.key] : 'Deployment default'" @update:model-value="set(k.key, $event)" />
         </div>
-      </section>
-      <button v-if="group.id === 'proposals'" type="button" class="pim-policy-advanced" :aria-expanded="advancedOpen" aria-controls="policy-advanced" @click="advancedOpen = !advancedOpen">
-        <Icon :icon="advancedOpen ? 'tabler:chevron-down' : 'tabler:chevron-right'" aria-hidden="true" />
-        <span>Advanced</span><span class="muted small">Processing limits and deployment settings</span>
-      </button>
+      </component>
     </template>
   </section>
 </template>

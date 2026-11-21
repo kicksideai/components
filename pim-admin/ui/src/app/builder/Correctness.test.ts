@@ -81,7 +81,7 @@ async function vocabulary(write = true) {
 
 it.each(['XL', '42', 'blue-green', 'A.b_9-', 'x'.repeat(128)])('submits backend-valid term code %s unchanged', async code => {
   const w = await vocabulary()
-  const input = w.findAllComponents(InputText).find(i => i.attributes('placeholder') === 'code')!
+  const input = w.findAllComponents(InputText).find(i => i.attributes('aria-label') === 'Short term name')!
   await input.setValue(code)
   const add = w.findAll('button').find(b => b.text() === 'Add term')!
   expect(add.attributes('disabled')).toBeUndefined()
@@ -92,7 +92,7 @@ it.each(['XL', '42', 'blue-green', 'A.b_9-', 'x'.repeat(128)])('submits backend-
 
 it.each(['', '-bad', '_bad', '.bad', 'blue green', 'é', 'x'.repeat(129), 'XL\n'])('rejects backend-invalid term code %j', async code => {
   const w = await vocabulary()
-  const input = w.findAllComponents(InputText).find(i => i.attributes('placeholder') === 'code')!
+  const input = w.findAllComponents(InputText).find(i => i.attributes('aria-label') === 'Short term name')!
   await input.setValue(code)
   expect(w.findAll('button').find(b => b.text() === 'Add term')!.attributes('disabled')).toBeDefined()
   expect(pim.apply).not.toHaveBeenCalled()
@@ -101,22 +101,22 @@ it.each(['', '-bad', '_bad', '.bad', 'blue green', 'é', 'x'.repeat(129), 'XL\n'
 
 it('requires WRITE independently of ADMIN for adding, retiring and restoring terms', async () => {
   const w = await vocabulary(false)
-  await w.get('input[placeholder=code]').setValue('valid')
+  await w.get('input[aria-label="Short term name"]').setValue('valid')
   for (const title of ['Add term', 'Retire', 'Restore']) {
     const button = w.findAll('button').find(b => b.text() === title)!
     expect(button.attributes('disabled'), title).toBeDefined()
     await button.trigger('click')
   }
   expect(pim.apply).not.toHaveBeenCalled()
-  expect(w.get('input[placeholder=code]').attributes('disabled')).toBeDefined()
-  expect(w.get('input[placeholder="Label (en)"]').attributes('disabled')).toBeDefined()
+  expect(w.get('input[aria-label="Short term name"]').attributes('disabled')).toBeDefined()
+  expect(w.get('input[aria-label="Term name in English"]').attributes('disabled')).toBeDefined()
   expect(w.getComponent(Select).props('disabled')).toBe(true)
-  await w.get('input[placeholder="Vocabulary code"]').setValue('valid')
+  await w.get('input[placeholder="Vocabulary name"]').setValue('valid')
   expect(w.findAll('button').find(b => b.text() === 'Add vocabulary')!.attributes('disabled')).toBeUndefined()
   w.unmount()
 })
 
-it('allows writers to retire and restore terms while declaration codes stay restricted', async () => {
+it('allows writers to retire and restore terms while declaration names must produce valid keys', async () => {
   const w = await vocabulary()
   vi.mocked(pim.apply).mockResolvedValue({ applied: true, outcomes: [{ outcome: 'updated' }] })
   for (const [title, retired, code] of [['Retire', true, 'red'], ['Restore', false, 'old']] as const) {
@@ -125,7 +125,7 @@ it('allows writers to retire and restore terms while declaration codes stay rest
     await button.trigger('click'); await flushPromises()
     expect(pim.apply).toHaveBeenLastCalledWith('cat', [{ term: { vocabulary: 'colors', code }, retired }])
   }
-  await w.get('input[placeholder="Vocabulary code"]').setValue('XL')
+  await w.get('input[placeholder="Vocabulary name"]').setValue('42')
   expect(w.findAll('button').find(b => b.text() === 'Add vocabulary')!.attributes('disabled')).toBeDefined()
   w.unmount()
 })

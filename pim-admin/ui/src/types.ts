@@ -58,12 +58,22 @@ export interface Declaration {
 export interface TypeOption { id: string; title?: string; form: string; indexes: string[]; target?: string; config_schema?: Record<string, unknown> }
 export interface ScopeOption { id: string; title?: string; access: string; filters: Record<string, { type: string; ops: string[] }> }
 export type PluginConfigs = Record<string, Record<string, unknown>>
+export interface PluginIssue {
+  code?: string; message: string; field?: string; projection?: string; start_seq?: number; max_pruned_seq?: number
+}
+export interface PluginProjection {
+  cursor_id?: string; last_seq: number; parked: boolean; bootstrapping: boolean; status?: string; error?: string
+}
+export interface PluginReferences {
+  fields: string[]; scopes: string[]; shell_bindings: string[]; checks?: string[]; plugins?: string[]
+}
 export interface PluginView {
   plugin: string; title?: string; description?: string; icon?: string; installed: boolean; active: boolean
   attachment_id?: string; config?: Record<string, unknown>; requires: string[]; tools: string[]
-  lifecycle: { state: 'pending' | 'ready' | 'failed'; error?: { kind: string; code?: string; message: string } }
-  projections: Record<string, { last_seq: number; parked: boolean; bootstrapping: boolean; error?: string }>
-  problem?: { code: string; message: string; field?: string }
+  lifecycle: { state: 'pending' | 'ready' | 'failed'; error?: PluginIssue & { kind: string } }
+  projections: Record<string, PluginProjection>
+  problem?: PluginIssue
+  references?: PluginReferences
 }
 export interface PluginOption extends PluginView { config_schema: Record<string, unknown> }
 export interface LinkKindOption { kind: string; binding: string; title?: string }
@@ -119,3 +129,9 @@ export interface HistoryEntry {
   at: string
 }
 export interface HistoryResult { entries: HistoryEntry[]; next?: string; as_of: number }
+
+export interface CatalogSettingsEvents {
+  navigate: { route: string }
+  'dirty-changed': { dirty: boolean }
+  'open-catalog-picker': Record<string, never>
+}

@@ -1,204 +1,319 @@
-import { e as na, c as fa, u as Ze, _ as Ee, r as ze, p as oe, a as Se, b as ba, g as ya, S as ga, d as ha, f as ka, W as _a, s as $a, P as wa } from "./styles-DXPC0Ax5.js";
-import { defineComponent as le, ref as J, openBlock as e, createElementBlock as i, Fragment as F, createVNode as g, unref as s, withCtx as h, createTextVNode as z, createCommentVNode as w, createBlock as R, toDisplayString as V, computed as M, renderList as Q, createElementVNode as a, withModifiers as be, normalizeStyle as We, normalizeClass as ke, useId as Ae, watch as ce, onUnmounted as De, resolveDynamicComponent as xa, renderSlot as de, withKeys as Qe, provide as Ca, inject as Va, useModel as Ua, mergeModels as la, createSlots as ue, toRaw as Sa, onMounted as oa, nextTick as Je } from "vue";
-import Z from "primevue/button";
-import $e from "primevue/message";
-import { Icon as X } from "@iconify/vue";
-import ie from "primevue/tag";
-import Aa from "primevue/tabs";
-import Oa from "primevue/tablist";
-import Ia from "primevue/tab";
-import Xe from "primevue/selectbutton";
-import { on as da, host as ua, loadByTagName as Ra, define as ja } from "@wippy-fe/proxy";
-import Re from "primevue/inputtext";
-import Ta from "primevue/multiselect";
-import qe from "primevue/toggleswitch";
-import ve from "primevue/select";
-import qa from "primevue/inputnumber";
-import Da from "primevue/textarea";
-const Na = ["config"], Pa = /* @__PURE__ */ le({
+import { u as da, r as Ke, e as Na, c as ul, a as ra, p as me, b as Le, d as Ue, _ as ya, g as cl, S as ml, f as pl, h as vl, W as fl, s as bl, P as yl } from "./styles-DISnY5tL.js";
+import { defineComponent as de, computed as D, openBlock as e, createElementBlock as i, Fragment as E, renderList as ee, normalizeClass as je, toDisplayString as U, createCommentVNode as v, createBlock as T, unref as s, createElementVNode as a, ref as J, watch as pe, onUnmounted as Ye, withCtx as w, createVNode as y, createStaticVNode as gl, createTextVNode as H, withModifiers as Ae, normalizeStyle as ga, useId as qe, withKeys as wa, renderSlot as Ve, provide as hl, inject as kl, useModel as za, Transition as _l, mergeModels as na, createSlots as Re, toRaw as wl, onMounted as Fa, resolveDynamicComponent as $l, mergeProps as Cl, nextTick as ba } from "vue";
+import { Icon as le } from "@iconify/vue";
+import ye from "primevue/tag";
+import G from "primevue/button";
+import xl from "primevue/checkbox";
+import we from "primevue/message";
+import { api as Vl, on as Ba, host as Je, loadByTagName as Ul, define as Al } from "@wippy-fe/proxy";
+import $a from "primevue/selectbutton";
+import Ge from "primevue/inputtext";
+import jl from "primevue/multiselect";
+import la from "primevue/toggleswitch";
+import he from "primevue/select";
+import Sl from "primevue/inputnumber";
+import Rl from "primevue/textarea";
+const Ol = ["aria-label"], Il = {
+  key: 0,
+  class: "kx-settings-rail-group"
+}, Tl = ["aria-current", "onClick"], Pl = { class: "kx-settings-rail-label" }, ql = /* @__PURE__ */ de({
+  __name: "SettingsRail",
+  props: {
+    label: {},
+    value: {},
+    groups: {},
+    leadingItem: {}
+  },
+  emits: ["update:value"],
+  setup(l) {
+    const $ = l, t = D(() => $.leadingItem ? [{ items: [$.leadingItem] }, ...$.groups] : $.groups);
+    function d(u) {
+      const m = [...u.currentTarget.querySelectorAll(".kx-settings-rail-item")], f = m.indexOf(u.target);
+      if (f < 0) return;
+      let c;
+      switch (u.key) {
+        case "ArrowDown":
+        case "ArrowRight":
+          c = (f + 1) % m.length;
+          break;
+        case "ArrowUp":
+        case "ArrowLeft":
+          c = (f + m.length - 1) % m.length;
+          break;
+        case "Home":
+          c = 0;
+          break;
+        case "End":
+          c = m.length - 1;
+          break;
+        default:
+          return;
+      }
+      u.preventDefault(), m[c]?.focus();
+    }
+    return (u, m) => (e(), i("nav", {
+      class: "kx-settings-rail",
+      "aria-label": l.label,
+      onKeydown: d
+    }, [
+      (e(!0), i(E, null, ee(t.value, (f, c) => (e(), i("div", {
+        key: f.items[0]?.value ?? c,
+        class: je(["kx-settings-rail-section", { "kx-settings-rail-leading": l.leadingItem && c === 0 }])
+      }, [
+        f.heading ? (e(), i("div", Il, U(f.heading), 1)) : v("", !0),
+        (e(!0), i(E, null, ee(f.items, (C) => (e(), i("button", {
+          key: C.value,
+          type: "button",
+          class: "kx-settings-rail-item",
+          "aria-current": C.value === l.value ? "true" : void 0,
+          onClick: (A) => u.$emit("update:value", C.value)
+        }, [
+          C.icon ? (e(), T(s(le), {
+            key: 0,
+            class: "kx-settings-rail-icon",
+            icon: C.icon,
+            "aria-hidden": "true"
+          }, null, 8, ["icon"])) : v("", !0),
+          a("span", Pl, U(C.label), 1)
+        ], 8, Tl))), 128))
+      ], 2))), 128))
+    ], 40, Ol));
+  }
+}), Dl = { class: "pim-stack" }, Nl = { class: "form pim-card-body pad pim-ia-action" }, zl = { key: 0 }, Fl = ["config"], Bl = /* @__PURE__ */ de({
   __name: "CatalogShare",
   props: {
     catalogId: {},
-    title: {}
+    title: {},
+    access: {}
   },
-  setup(l) {
-    const k = l, t = J(!1), u = J(!1), r = J("");
-    async function v() {
-      u.value = !0, r.value = "", await na("kickside-share") ? t.value = !0 : r.value = "Could not open sharing. Try Share again.", u.value = !1;
+  emits: ["summary"],
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = J(!1), m = J(!1), f = J(""), c = J(), C = J(!1), A = Ke(), N = D(() => "/api/v1/component-access/grants/" + encodeURIComponent(t.catalogId)), X = D(() => JSON.stringify({
+      resource_id: t.catalogId,
+      title: t.title,
+      access_url: N.value,
+      share_url: "/api/v1/component-access/share/" + encodeURIComponent(t.catalogId)
+    })), P = D(() => {
+      if (!t.access.admin) return "Only catalog administrators can manage sharing.";
+      if (!c.value) return C.value ? "Member counts are unavailable." : "Loading members…";
+      const { people: x, groups: o } = c.value;
+      return x + (x === 1 ? " person" : " people") + " and " + o + (o === 1 ? " group" : " groups") + " with direct access";
+    });
+    pe(P, (x) => d("summary", x), { immediate: !0 });
+    async function z() {
+      if (!t.access.admin) return;
+      const x = A.begin();
+      C.value = !1;
+      try {
+        const { data: o } = await Vl.get(N.value);
+        if (!A.current(x)) return;
+        if (!o?.success || !Array.isArray(o.access)) throw new Error("Grants unavailable");
+        const j = o.access.filter((I) => I.subject_type === "group").length;
+        c.value = { people: o.access.length - j, groups: j };
+      } catch {
+        A.current(x) && (c.value = void 0, C.value = !0);
+      }
     }
-    return (n, p) => (e(), i(F, null, [
-      g(s(Z), {
-        type: "button",
-        severity: "secondary",
-        outlined: "",
-        size: "small",
-        disabled: u.value,
-        onClick: v
-      }, {
-        default: h(() => [...p[1] || (p[1] = [
-          z("Share", -1)
-        ])]),
-        _: 1
-      }, 8, ["disabled"]),
-      t.value ? (e(), i("kickside-share", {
+    da(z), Ye(() => {
+      A.begin();
+    });
+    async function k() {
+      m.value = !0, f.value = "", await Na("kickside-share") ? u.value = !0 : f.value = "Could not open sharing. Try again.", m.value = !1;
+    }
+    return (x, o) => (e(), i("div", Dl, [
+      a("section", Nl, [
+        a("div", null, [
+          o[1] || (o[1] = a("h3", null, "Members and sharing", -1)),
+          l.access.admin ? (e(), i("p", zl, "Invite people or groups and choose what they can do in this catalog.")) : v("", !0)
+        ]),
+        l.access.admin ? (e(), T(s(G), {
+          key: 0,
+          type: "button",
+          label: "Share catalog",
+          loading: m.value,
+          onClick: k
+        }, {
+          icon: w(() => [
+            y(s(le), {
+              icon: "tabler:share",
+              "aria-hidden": "true"
+            })
+          ]),
+          _: 1
+        }, 8, ["loading"])) : v("", !0),
+        C.value ? (e(), T(s(G), {
+          key: 1,
+          type: "button",
+          label: "Reload member counts",
+          severity: "secondary",
+          text: "",
+          onClick: z
+        })) : v("", !0)
+      ]),
+      o[2] || (o[2] = gl('<section class="form pim-card-body pad pim-stack" aria-labelledby="pim-access-roles-heading"><h3 id="pim-access-roles-heading">What members can do</h3><dl class="pim-access-roles"><div><dt>Read</dt><dd>View products and their details.</dd></div><div><dt>Write</dt><dd>Create products and update their values.</dd></div><div><dt>Delete</dt><dd>Move products to trash.</dd></div><div><dt>Admin</dt><dd>Manage catalog settings and who has access.</dd></div></dl></section>', 1)),
+      u.value ? (e(), i("kickside-share", {
         key: 0,
-        config: JSON.stringify({ resource_id: k.catalogId, title: k.title, access_url: `/api/v1/component-access/grants/${encodeURIComponent(k.catalogId)}`, share_url: `/api/v1/component-access/share/${encodeURIComponent(k.catalogId)}` }),
-        onClose: p[0] || (p[0] = (m) => t.value = !1)
-      }, null, 40, Na)) : w("", !0),
-      r.value ? (e(), R(s($e), {
+        config: X.value,
+        onClose: o[0] || (o[0] = (j) => u.value = !1),
+        onChanged: z
+      }, null, 40, Fl)) : v("", !0),
+      f.value ? (e(), T(s(we), {
         key: 1,
         severity: "error",
         role: "alert"
       }, {
-        default: h(() => [
-          z(V(r.value), 1)
+        default: w(() => [
+          H(U(f.value), 1)
         ]),
         _: 1
-      })) : w("", !0)
-    ], 64));
+      })) : v("", !0)
+    ]));
   }
 });
-function La(l, k, t = {}) {
-  const u = JSON.stringify(l), r = JSON.stringify(t);
+function Ll(l, $, t = {}) {
+  const d = JSON.stringify(l), u = JSON.stringify(t);
   return {
-    declaration: JSON.parse(u),
-    generation: k,
-    pluginConfigs: JSON.parse(r),
-    matches: (v, n, p = {}) => k === n && u === JSON.stringify(v) && r === JSON.stringify(p)
+    declaration: JSON.parse(d),
+    generation: $,
+    pluginConfigs: JSON.parse(u),
+    matches: (m, f, c = {}) => $ === f && d === JSON.stringify(m) && u === JSON.stringify(c)
   };
 }
-function ta(l, k) {
+function Pa(l, $) {
   const t = {};
-  for (const [u, r] of Object.entries(k)) {
-    const v = r.filter((n) => u === "plugins" ? !l.plugins?.some((p) => p.use === n) : u === "scopes" ? !l.scopes?.includes(n) : u === "attributes" ? !l.aspects?.some((p) => p.attributes?.some((m) => p.namespace + "." + m.code === n)) : u === "aspects" ? !l.aspects?.some((p) => p.namespace === n) : u === "dimensions" ? !l.dimensions?.some((p) => p.name === n) : u === "vocabularies" || u === "families" ? !l[u]?.some((p) => p.code === n) : !l[u]?.some((p) => p.id === n));
-    v.length && (t[u] = v);
+  for (const [d, u] of Object.entries($)) {
+    const m = u.filter((f) => d === "plugins" ? !l.plugins?.some((c) => c.use === f) : d === "scopes" ? !l.scopes?.includes(f) : d === "attributes" ? !l.aspects?.some((c) => c.attributes?.some((C) => c.namespace + "." + C.code === f)) : d === "aspects" ? !l.aspects?.some((c) => c.namespace === f) : d === "dimensions" ? !l.dimensions?.some((c) => c.name === f) : d === "vocabularies" || d === "families" ? !l[d]?.some((c) => c.code === f) : !l[d]?.some((c) => c.id === f));
+    m.length && (t[d] = m);
   }
   return t;
 }
-const sa = (l) => !!l && typeof l == "object" && !Array.isArray(l), ae = ["string"], ra = { "*": "string" }, za = { id: "number", code: "string!", type: "string!", scope: ae, cardinality: "string", index: "string", index_contexts: [ra], unique: "boolean", vocabulary: "string", default: "json", config: "object", width: "string" }, Ba = {
-  dimensions: [{ name: "string!", members: ae, fallback: { "*": ae } }],
+const qa = (l) => !!l && typeof l == "object" && !Array.isArray(l), ie = ["string"], La = { "*": "string" }, El = { id: "number", code: "string!", type: "string!", scope: ie, cardinality: "string", index: "string", index_contexts: [La], unique: "boolean", vocabulary: "string", default: "json", config: "object", width: "string" }, Ml = {
+  dimensions: [{ name: "string!", members: ie, fallback: { "*": ie } }],
   vocabularies: [{ code: "string!", hierarchical: "boolean" }],
-  aspects: [{ namespace: "string!", write: { sources: ae }, attributes: [za] }],
-  families: [{ code: "string!", aspects: ae, variation: [{ axes: ae, own: ae }], requirements: [{ id: "string!", context: ra, require: ae, authored: ae }], checks: [{ check: "string!", reads: ae, cost: "string", config: "object", enforce: "string" }] }],
-  sources: [{ id: "string!", ordering: "string", writes: ae, principals: ae, audit: "boolean" }],
-  channels: [{ id: "string!", requirements: ae, families: ae }],
+  aspects: [{ namespace: "string!", write: { sources: ie }, attributes: [El] }],
+  families: [{ code: "string!", aspects: ie, variation: [{ axes: ie, own: ie }], requirements: [{ id: "string!", context: La, require: ie, authored: ie }], checks: [{ check: "string!", reads: ie, cost: "string", config: "object", enforce: "string" }] }],
+  sources: [{ id: "string!", ordering: "string", writes: ie, principals: ie, audit: "boolean" }],
+  channels: [{ id: "string!", requirements: ie, families: ie }],
   plugins: [{ use: "string!", schema: "json" }],
-  scopes: ae,
+  scopes: ie,
   policy: { "*": "policy" },
-  remove: { dimensions: ae, vocabularies: ae, aspects: ae, families: ae, sources: ae, channels: ae, attributes: ae, scopes: ae, plugins: ae }
+  remove: { dimensions: ie, vocabularies: ie, aspects: ie, families: ie, sources: ie, channels: ie, attributes: ie, scopes: ie, plugins: ie }
 };
-function Ke(l, k, t) {
-  if (typeof k == "string") {
-    const u = k.replace("!", "");
-    if (!(u === "json" || (u === "object" ? sa(l) : u === "policy" ? l === !1 || typeof l == "string" || typeof l == "number" : typeof l === u)) || k.endsWith("!") && (typeof l != "string" || !l.trim())) throw new Error(`${t} has an invalid ${u} value.`);
-  } else if (Array.isArray(k)) {
+function ha(l, $, t) {
+  if (typeof $ == "string") {
+    const d = $.replace("!", "");
+    if (!(d === "json" || (d === "object" ? qa(l) : d === "policy" ? l === !1 || typeof l == "string" || typeof l == "number" : typeof l === d)) || $.endsWith("!") && (typeof l != "string" || !l.trim())) throw new Error(`${t} has an invalid ${d} value.`);
+  } else if (Array.isArray($)) {
     if (!Array.isArray(l)) throw new Error(`${t} must be an array.`);
-    l.forEach((u, r) => Ke(u, k[0], `${t}[${r}]`));
+    l.forEach((d, u) => ha(d, $[0], `${t}[${u}]`));
   } else {
-    if (!sa(l)) throw new Error(`${t} must be an object.`);
-    for (const [u, r] of Object.entries(k)) if (typeof r == "string" && r.endsWith("!") && l[u] === void 0) throw new Error(`${t}.${u} is required.`);
-    for (const [u, r] of Object.entries(l)) {
-      const v = k[u] ?? k["*"];
-      if (!v) throw new Error(`${t}.${u} is not an editor field.`);
-      Ke(r, v, `${t}.${u}`);
+    if (!qa(l)) throw new Error(`${t} must be an object.`);
+    for (const [d, u] of Object.entries($)) if (typeof u == "string" && u.endsWith("!") && l[d] === void 0) throw new Error(`${t}.${d} is required.`);
+    for (const [d, u] of Object.entries(l)) {
+      const m = $[d] ?? $["*"];
+      if (!m) throw new Error(`${t}.${d} is not an editor field.`);
+      ha(u, m, `${t}.${d}`);
     }
   }
 }
-function Ea(l) {
-  const k = JSON.parse(l);
-  Ke(k, Ba, "Declaration");
-  const t = k;
-  for (const u of t.dimensions ?? []) u.members ??= [];
+function Wl(l) {
+  const $ = JSON.parse(l);
+  ha($, Ml, "Declaration");
+  const t = $;
+  for (const d of t.dimensions ?? []) d.members ??= [];
   return t;
 }
-function Pe(l) {
+function ea(l) {
   return JSON.parse(JSON.stringify(l));
 }
-const Ma = /^[a-z][a-z0-9_]*$/;
-function Ve(l, k, t) {
-  t.length ? l[k] = t : delete l[k];
+const Da = /^[a-z][a-z0-9_]*$/;
+function Hl(l) {
+  return l.trim().normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
-function Ue(l, k, t) {
-  if (t < 0 || t >= l.length || k === t) return;
-  const [u] = l.splice(k, 1);
-  l.splice(t, 0, u);
+function Fe(l, $, t) {
+  t.length ? l[$] = t : delete l[$];
 }
-function me(l, k) {
-  return !l || /[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}|\b[\w.]+:[\w.-]+/i.test(l) ? k : l;
+function Be(l, $, t) {
+  if (t < 0 || t >= l.length || $ === t) return;
+  const [d] = l.splice($, 1);
+  l.splice(t, 0, d);
 }
-function Te(l) {
-  return l ? me(l.title, "Field type") : "Unknown type";
+function ne(l, $) {
+  return !l || /[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}|\b[\w.]+:[\w.-]+/i.test(l) ? $ : l;
 }
-async function ca(l, k) {
-  const t = [...new Set(k)].map((r) => ({ type: "user", id: r }));
+function aa(l) {
+  return l ? ne(l.title, "Field type") : "Unknown type";
+}
+async function Ea(l, $) {
+  const t = [...new Set($)].map((u) => ({ type: "user", id: u }));
   if (!t.length) return {};
-  const u = await fa(`/api/v1/pim-admin/catalogs/${encodeURIComponent(l)}/principal_labels`, { refs: t }, "People");
-  return Object.fromEntries((u.principals ?? []).map((r) => [r.id, me(r.label, "Person")]));
+  const d = await ul(`/api/v1/pim-admin/catalogs/${encodeURIComponent(l)}/principal_labels`, { refs: t }, "People");
+  return Object.fromEntries((d.principals ?? []).map((u) => [u.id, ne(u.label, "Person")]));
 }
-const Le = [
+const ia = [
   { value: "quarter", label: "¼", span: 3 },
   { value: "third", label: "⅓", span: 4 },
   { value: "half", label: "½", span: 6 },
   { value: "full", label: "1", span: 12 }
 ];
-function Ge(l, k, t) {
-  return t.width ?? l.attributes[k + "." + t.code]?.width ?? "half";
+function ka(l, $, t) {
+  return t.width ?? l.attributes[$ + "." + t.code]?.width ?? "half";
 }
-const Fa = (l) => new Date(l).toLocaleString();
-function Ye(l) {
-  const k = Math.abs(l.m).toString(), t = l.m < 0 ? "-" : "";
-  if (l.e >= 0) return t + k + "0".repeat(l.e);
-  const u = -l.e, r = k.padStart(u + 1, "0");
-  return t + r.slice(0, r.length - u) + "." + r.slice(r.length - u);
+const Jl = (l) => new Date(l).toLocaleString();
+function _a(l) {
+  const $ = Math.abs(l.m).toString(), t = l.m < 0 ? "-" : "";
+  if (l.e >= 0) return t + $ + "0".repeat(l.e);
+  const d = -l.e, u = $.padStart(d + 1, "0");
+  return t + u.slice(0, u.length - d) + "." + u.slice(u.length - d);
 }
-function G(l) {
+function B(l) {
   const t = (l.includes(".") ? l.slice(l.indexOf(".") + 1) : l).replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").trim();
   return t ? t[0].toUpperCase() + t.slice(1) : l;
 }
-function je(l) {
+function ze(l) {
   return l.labels.en ?? Object.values(l.labels)[0] ?? l.code;
 }
-function Be(l, k) {
+function oa(l, $) {
   if (l == null) return "";
-  const t = (u) => {
-    if (u == null) return "";
-    if (typeof u == "object" && "ref" in u) {
-      const r = u;
-      if (r.ref[0] === "term") {
-        const v = r.ref[1].slice(r.ref[1].indexOf(":") + 1), n = r.ref[1].slice(0, r.ref[1].indexOf(":")), p = k?.[n]?.find((m) => m.code === v);
-        return p ? je(p) : v;
+  const t = (d) => {
+    if (d == null) return "";
+    if (typeof d == "object" && "ref" in d) {
+      const u = d;
+      if (u.ref[0] === "term") {
+        const m = u.ref[1].slice(u.ref[1].indexOf(":") + 1), f = u.ref[1].slice(0, u.ref[1].indexOf(":")), c = $?.[f]?.find((C) => C.code === m);
+        return c ? ze(c) : m;
       }
-      return "Linked " + G(r.ref[0]).toLocaleLowerCase();
+      return "Linked " + B(u.ref[0]).toLocaleLowerCase();
     }
-    if (typeof u == "object" && "v" in u) {
-      const r = u;
-      return Ye(r.v) + " " + r.u;
+    if (typeof d == "object" && "v" in d) {
+      const u = d;
+      return _a(u.v) + " " + u.u;
     }
-    return typeof u == "object" && "m" in u ? Ye(u) : typeof u == "boolean" ? u ? "Yes" : "No" : typeof u == "object" ? JSON.stringify(u) : me(String(u), "Linked record");
+    return typeof d == "object" && "m" in d ? _a(d) : typeof d == "boolean" ? d ? "Yes" : "No" : typeof d == "object" ? JSON.stringify(d) : ne(String(d), "Linked record");
   };
   return Array.isArray(l) ? l.map(t).join(", ") : t(l);
 }
-function Ha(l, k, t) {
-  const u = Be(k), r = Be(t);
-  return !r && u ? `${l} cleared (was ${u})` : u ? `${l}: ${u} → ${r}` : `${l} set to ${r}`;
+function Kl(l, $, t) {
+  const d = oa($), u = oa(t);
+  return !u && d ? `${l} cleared (was ${d})` : d ? `${l}: ${d} → ${u}` : `${l} set to ${u}`;
 }
-const Ja = { class: "pim-table form pim-layout" }, Wa = {
+const Gl = { class: "pim-table form pim-layout" }, Yl = {
   key: 0,
   class: "pim-layout-help muted"
-}, Ka = {
+}, Zl = {
   key: 1,
   class: "kx-empty"
-}, Ga = { class: "pim-aspect-head" }, Ya = {
+}, Ql = { class: "pim-aspect-head" }, Xl = {
   key: 0,
   class: "muted small"
-}, Za = ["draggable", "onDragstart", "onDragover", "onDrop"], Qa = { class: "pim-lcard-top" }, Xa = {
+}, et = ["draggable", "onDragstart", "onDragover", "onDrop"], at = { class: "pim-lcard-top" }, lt = {
   key: 0,
   class: "pim-grip",
   "aria-hidden": "true"
-}, el = { class: "pim-lcard-name" }, al = { class: "pim-lcard-type" }, ll = {
+}, tt = { class: "pim-lcard-name" }, st = { class: "pim-lcard-type" }, it = {
   key: 1,
   class: "pim-lcard-move"
-}, tl = { class: "pim-aspect-head" }, sl = { class: "pim-canvas" }, il = { class: "pim-lcard-top" }, nl = { class: "pim-lcard-name" }, ol = { class: "pim-lcard-type" }, dl = /* @__PURE__ */ le({
+}, nt = { class: "pim-aspect-head" }, ot = { class: "pim-canvas" }, dt = { class: "pim-lcard-top" }, rt = { class: "pim-lcard-name" }, ut = { class: "pim-lcard-type" }, ct = /* @__PURE__ */ de({
   __name: "LayoutEditor",
   props: {
     draft: {},
@@ -206,574 +321,530 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
     types: {}
   },
   setup(l) {
-    const k = l, t = M(() => k.schema.access.admin), u = M(() => k.draft?.aspects ?? []), r = M(() => new Map(k.types.map((I) => [I.id, Te(I)]))), v = M(() => {
-      if (!k.schema) return [];
-      const I = new Set((k.draft?.aspects ?? []).map((f) => f.namespace)), b = /* @__PURE__ */ new Map();
-      for (const [f, d] of Object.entries(k.schema.attributes)) {
-        const c = f.split(".")[0];
-        I.has(c) || !d.plugin || (b.has(c) || b.set(c, { aspect: c, plugin: d.plugin, codes: [] }), b.get(c).codes.push(f));
+    const $ = l, t = D(() => $.schema.access.admin), d = D(() => $.draft?.aspects ?? []), u = D(() => new Map($.types.map((z) => [z.id, aa(z)]))), m = D(() => {
+      if (!$.schema) return [];
+      const z = new Set(($.draft?.aspects ?? []).map((x) => x.namespace)), k = /* @__PURE__ */ new Map();
+      for (const [x, o] of Object.entries($.schema.attributes)) {
+        const j = x.split(".")[0];
+        z.has(j) || !o.plugin || (k.has(j) || k.set(j, { aspect: j, plugin: o.plugin, codes: [] }), k.get(j).codes.push(x));
       }
-      return [...b.values()];
+      return [...k.values()];
     });
-    function n(I, b) {
-      return Le.find((f) => f.value === Ge(k.schema, I, b))?.span ?? 6;
+    function f(z, k) {
+      return ia.find((x) => x.value === ka($.schema, z, k))?.span ?? 6;
     }
-    const p = J(null), m = J(null);
-    function C(I, b, f) {
-      t.value && (p.value = { ns: I, index: b }, f.dataTransfer?.setData("text/plain", I + ":" + b), f.dataTransfer && (f.dataTransfer.effectAllowed = "move"));
+    const c = J(null), C = J(null);
+    function A(z, k, x) {
+      t.value && (c.value = { ns: z, index: k }, x.dataTransfer?.setData("text/plain", z + ":" + k), x.dataTransfer && (x.dataTransfer.effectAllowed = "move"));
     }
-    function j(I, b, f) {
-      !p.value || p.value.ns !== I || (f.preventDefault(), m.value = { ns: I, index: b });
+    function N(z, k, x) {
+      !c.value || c.value.ns !== z || (x.preventDefault(), C.value = { ns: z, index: k });
     }
-    function K(I, b) {
-      t.value && p.value?.ns === I.namespace && Ue(I.attributes ?? [], p.value.index, b), p.value = null, m.value = null;
+    function X(z, k) {
+      t.value && c.value?.ns === z.namespace && Be(z.attributes ?? [], c.value.index, k), c.value = null, C.value = null;
     }
-    function x() {
-      p.value = null, m.value = null;
+    function P() {
+      c.value = null, C.value = null;
     }
-    return (I, b) => (e(), i("div", Ja, [
-      t.value ? (e(), i("p", Wa, "Arrange fields within each group and choose their widths. Review changes before applying the layout.")) : w("", !0),
-      u.value.length === 0 ? (e(), i("div", Ka, [
-        b[1] || (b[1] = z("This catalog has no field groups yet.", -1)),
-        t.value ? (e(), i(F, { key: 0 }, [
-          z(" Add a field group in Fields.")
-        ], 64)) : w("", !0)
-      ])) : w("", !0),
-      (e(!0), i(F, null, Q(u.value, (f) => (e(), i("section", {
-        key: f.namespace,
+    return (z, k) => (e(), i("div", Gl, [
+      t.value ? (e(), i("p", Yl, "Arrange fields within each group and choose their widths. Review changes before applying the layout.")) : v("", !0),
+      d.value.length === 0 ? (e(), i("div", Zl, [
+        k[1] || (k[1] = H("This catalog has no field groups yet.", -1)),
+        t.value ? (e(), i(E, { key: 0 }, [
+          H(" Add a field group in Fields.")
+        ], 64)) : v("", !0)
+      ])) : v("", !0),
+      (e(!0), i(E, null, ee(d.value, (x) => (e(), i("section", {
+        key: x.namespace,
         class: "pim-aspect"
       }, [
-        a("header", Ga, [
-          a("h3", null, V(s(G)(f.namespace)), 1),
-          t.value ? (e(), i("span", Ya, "drag a field, or use its arrows")) : w("", !0)
+        a("header", Ql, [
+          a("h3", null, U(s(B)(x.namespace)), 1),
+          t.value ? (e(), i("span", Xl, "drag a field, or use its arrows")) : v("", !0)
         ]),
         a("div", {
           class: "pim-canvas",
-          onDragover: b[0] || (b[0] = be(() => {
+          onDragover: k[0] || (k[0] = Ae(() => {
           }, ["prevent"]))
         }, [
-          (e(!0), i(F, null, Q(f.attributes ?? [], (d, c) => (e(), i("div", {
-            key: d.code,
-            class: ke(["pim-lcard", { dragging: p.value?.ns === f.namespace && p.value?.index === c, over: m.value?.ns === f.namespace && m.value?.index === c }]),
-            style: We({ gridColumn: "span " + n(f.namespace, d) }),
+          (e(!0), i(E, null, ee(x.attributes ?? [], (o, j) => (e(), i("div", {
+            key: o.code,
+            class: je(["pim-lcard", { dragging: c.value?.ns === x.namespace && c.value?.index === j, over: C.value?.ns === x.namespace && C.value?.index === j }]),
+            style: ga({ gridColumn: "span " + f(x.namespace, o) }),
             draggable: t.value,
-            onDragstart: (o) => C(f.namespace, c, o),
-            onDragover: (o) => j(f.namespace, c, o),
-            onDrop: be((o) => K(f, c), ["prevent"]),
-            onDragend: x
+            onDragstart: (I) => A(x.namespace, j, I),
+            onDragover: (I) => N(x.namespace, j, I),
+            onDrop: Ae((I) => X(x, j), ["prevent"]),
+            onDragend: P
           }, [
-            a("div", Qa, [
-              t.value ? (e(), i("span", Xa, [
-                g(s(X), { icon: "tabler:grip-vertical" })
-              ])) : w("", !0),
-              a("span", el, V(s(G)(d.code)), 1),
-              a("span", al, V(r.value.get(d.type) ?? s(Te)(void 0)), 1),
-              t.value ? (e(), i("span", ll, [
-                g(s(Z), {
+            a("div", at, [
+              t.value ? (e(), i("span", lt, [
+                y(s(le), { icon: "tabler:grip-vertical" })
+              ])) : v("", !0),
+              a("span", tt, U(s(B)(o.code)), 1),
+              a("span", st, U(u.value.get(o.type) ?? s(aa)(void 0)), 1),
+              t.value ? (e(), i("span", it, [
+                y(s(G), {
                   type: "button",
-                  disabled: c === 0,
-                  "aria-label": "Move " + s(G)(d.code) + " earlier",
-                  onClick: (o) => s(Ue)(f.attributes ?? [], c, c - 1),
+                  disabled: j === 0,
+                  "aria-label": "Move " + s(B)(o.code) + " earlier",
+                  onClick: (I) => s(Be)(x.attributes ?? [], j, j - 1),
                   class: "arrow",
                   text: "",
                   severity: "secondary",
                   size: "small"
                 }, {
-                  default: h(() => [
-                    g(s(X), { icon: "tabler:arrow-left" })
+                  default: w(() => [
+                    y(s(le), { icon: "tabler:arrow-left" })
                   ]),
                   _: 1
                 }, 8, ["disabled", "aria-label", "onClick"]),
-                g(s(Z), {
+                y(s(G), {
                   type: "button",
-                  disabled: c === (f.attributes ?? []).length - 1,
-                  "aria-label": "Move " + s(G)(d.code) + " later",
-                  onClick: (o) => s(Ue)(f.attributes ?? [], c, c + 1),
+                  disabled: j === (x.attributes ?? []).length - 1,
+                  "aria-label": "Move " + s(B)(o.code) + " later",
+                  onClick: (I) => s(Be)(x.attributes ?? [], j, j + 1),
                   class: "arrow",
                   text: "",
                   severity: "secondary",
                   size: "small"
                 }, {
-                  default: h(() => [
-                    g(s(X), { icon: "tabler:arrow-right" })
+                  default: w(() => [
+                    y(s(le), { icon: "tabler:arrow-right" })
                   ]),
                   _: 1
                 }, 8, ["disabled", "aria-label", "onClick"])
-              ])) : w("", !0)
+              ])) : v("", !0)
             ]),
-            g(s(Xe), {
+            y(s($a), {
               disabled: !t.value,
-              "model-value": s(Ge)(l.schema, f.namespace, d),
-              options: s(Le),
+              "model-value": s(ka)(l.schema, x.namespace, o),
+              options: s(ia),
               "option-label": "label",
               "option-value": "value",
               "allow-empty": !1,
-              "aria-label": "Width of " + s(G)(d.code),
-              "onUpdate:modelValue": (o) => d.width = o
+              "aria-label": "Width of " + s(B)(o.code),
+              "onUpdate:modelValue": (I) => o.width = I
             }, null, 8, ["disabled", "model-value", "options", "aria-label", "onUpdate:modelValue"])
-          ], 46, Za))), 128))
+          ], 46, et))), 128))
         ], 32)
       ]))), 128)),
-      (e(!0), i(F, null, Q(v.value, (f) => (e(), i("section", {
-        key: f.aspect,
+      (e(!0), i(E, null, ee(m.value, (x) => (e(), i("section", {
+        key: x.aspect,
         class: "pim-aspect"
       }, [
-        a("header", tl, [
-          a("h3", null, V(s(G)(f.aspect)), 1),
-          b[2] || (b[2] = a("span", { class: "muted small" }, "Provided by a plugin", -1))
+        a("header", nt, [
+          a("h3", null, U(s(B)(x.aspect)), 1),
+          k[2] || (k[2] = a("span", { class: "muted small" }, "Provided by a plugin", -1))
         ]),
-        a("div", sl, [
-          (e(!0), i(F, null, Q(f.codes, (d) => (e(), i("div", {
-            key: d,
+        a("div", ot, [
+          (e(!0), i(E, null, ee(x.codes, (o) => (e(), i("div", {
+            key: o,
             class: "pim-lcard fixed",
-            style: We({ gridColumn: "span " + (s(Le).find((c) => c.value === l.schema.attributes[d].width)?.span ?? 6) })
+            style: ga({ gridColumn: "span " + (s(ia).find((j) => j.value === l.schema.attributes[o].width)?.span ?? 6) })
           }, [
-            a("div", il, [
-              a("span", nl, V(s(G)(d)), 1),
-              a("span", ol, V(r.value.get(l.schema.attributes[d].type) ?? s(Te)(void 0)), 1)
+            a("div", dt, [
+              a("span", rt, U(s(B)(o)), 1),
+              a("span", ut, U(u.value.get(l.schema.attributes[o].type) ?? s(aa)(void 0)), 1)
             ])
           ], 4))), 128))
         ])
       ]))), 128))
     ]));
   }
-}), ul = {
+}), mt = {
   class: "pim-history",
   "aria-label": "Catalog history"
-}, rl = {
+}, pt = {
   key: 1,
   class: "kx-loading",
   role: "status"
-}, cl = { class: "pim-table pim-responsive-table" }, ml = ["id"], pl = ["aria-labelledby"], vl = {
+}, vt = { class: "pim-table pim-responsive-table" }, ft = ["id"], bt = ["aria-labelledby"], yt = {
   key: 0,
   scope: "col"
-}, fl = { class: "muted small" }, bl = ["datetime"], yl = {
+}, gt = { class: "muted small" }, ht = ["datetime"], kt = {
   key: 0,
   class: "small"
-}, gl = {
+}, _t = {
   key: 0,
   class: "muted"
-}, hl = { class: "mono small" }, kl = {
+}, wt = { class: "mono small" }, $t = {
   key: 0,
   class: "muted"
-}, _l = {
+}, Ct = {
   key: 0,
   class: "muted small"
-}, $l = ["aria-labelledby"], wl = { class: "pim-stacked-meta muted small" }, xl = { key: 0 }, Cl = { key: 1 }, Vl = ["datetime"], Ul = {
+}, xt = ["aria-labelledby"], Vt = { class: "pim-stacked-meta muted small" }, Ut = { key: 0 }, At = { key: 1 }, jt = ["datetime"], St = {
   key: 1,
   class: "kx-empty"
-}, Sl = { class: "pim-table-foot" }, Al = /* @__PURE__ */ le({
+}, Rt = { class: "pim-table-foot" }, Ot = /* @__PURE__ */ de({
   __name: "HistoryPanel",
   props: {
     catalogId: {},
     canResolveActors: { type: Boolean }
   },
   setup(l) {
-    const k = l, t = J([]), u = J({}), r = J(), v = J(!1), n = J(), p = ze(), m = Ae(), C = M(() => t.value.map((b) => ({
-      key: `${b.seq}:${b.n}`,
-      at: b.at,
-      date: Fa(b.at),
-      actor: u.value[b.actor] ?? me(b.actor, "Person"),
-      source: b.source,
-      product: K(b),
-      context: b.ctx,
-      change: x(b)
+    const $ = l, t = J([]), d = J({}), u = J(), m = J(!1), f = J(), c = Ke(), C = qe(), A = D(() => t.value.map((k) => ({
+      key: `${k.seq}:${k.n}`,
+      at: k.at,
+      date: Jl(k.at),
+      actor: d.value[k.actor] ?? ne(k.actor, "Person"),
+      source: k.source ? ne(B(k.source), "Data source") : "",
+      product: X(k),
+      context: k.ctx ? ne(k.ctx, "Product context") : "",
+      change: P(k)
     })));
-    async function j(b = !1) {
-      const f = p.begin();
-      v.value = !0, n.value = void 0;
+    async function N(k = !1) {
+      const x = c.begin();
+      m.value = !0, f.value = void 0;
       try {
-        const d = await oe.history(k.catalogId, { limit: 50, before: b ? r.value : void 0 });
-        if (!p.current(f)) return;
-        if (t.value = b ? [...t.value, ...d.entries] : d.entries, r.value = d.next, k.canResolveActors)
+        const o = await me.history($.catalogId, { limit: 50, before: k ? u.value : void 0 });
+        if (!c.current(x)) return;
+        if (t.value = k ? [...t.value, ...o.entries] : o.entries, u.value = o.next, $.canResolveActors)
           try {
-            const c = await ca(k.catalogId, d.entries.map((o) => o.actor));
-            p.current(f) && (u.value = { ...u.value, ...c });
+            const j = await Ea($.catalogId, o.entries.map((I) => I.actor));
+            c.current(x) && (d.value = { ...d.value, ...j });
           } catch {
           }
-      } catch (d) {
-        if (!p.current(f)) return;
-        n.value = Se(d, "Could not load the history.");
+      } catch (o) {
+        if (!c.current(x)) return;
+        f.value = Le(o, "Could not load the history.");
       } finally {
-        p.current(f) && (v.value = !1);
+        c.current(x) && (m.value = !1);
       }
     }
-    function K(b) {
-      return b.sku ? b.sku : b.subject.startsWith("p:") ? "purged product" : b.subject.startsWith("t:") ? b.subject.slice(2) : b.subject.startsWith("r:") ? "Release" : me(b.subject, "Catalog");
+    function X(k) {
+      return k.sku ? k.sku : k.subject.startsWith("p:") ? "purged product" : k.subject.startsWith("t:") ? k.subject.slice(2) : k.subject.startsWith("r:") ? "Release" : ne(k.subject, "Catalog");
     }
-    function x(b) {
-      if (b.attribute)
-        return Ha(G(b.attribute), b.before, b.after);
-      switch (b.kind) {
+    function P(k) {
+      if (k.attribute)
+        return Kl(B(k.attribute), k.before, k.after);
+      switch (k.kind) {
         case "schema":
-          return "Schema generation " + String(b.after?.generation ?? "");
+          return "Catalog settings applied";
         case "term": {
-          const f = b.after ?? {}, d = f.labels?.en ?? Object.values(f.labels ?? {})[0];
-          return f.retired ? "Term retired" : d ? `Term labelled "${d}"` + (f.parent ? ` under ${f.parent}` : "") : "Term changed";
+          const x = k.after ?? {}, o = x.labels?.en ?? Object.values(x.labels ?? {})[0];
+          return x.retired ? "Term retired" : o ? `Term labelled "${o}"` + (x.parent ? ` under ${x.parent}` : "") : "Term changed";
         }
         case "created": {
-          const f = b.after ?? {};
-          return `Created as ${G(f.family ?? "product")}` + (f.level ? ` at level ${f.level}` : "");
+          const x = k.after ?? {};
+          return `Created as ${B(x.family ?? "product")}` + (x.level ? ` at level ${x.level}` : "");
         }
         case "released": {
-          const f = b.after ?? {};
-          return `Released v${f.version ?? ""} to ${(f.channels ?? []).join(", ")}`;
+          const x = k.after ?? {};
+          return `Released v${x.version ?? ""} to ${(x.channels ?? []).join(", ")}`;
         }
         case "withdrawn":
-          return `Withdrawn from ${((b.after ?? {}).channels ?? []).join(", ")}`;
+          return `Withdrawn from ${((k.after ?? {}).channels ?? []).join(", ")}`;
         case "status":
-          return `Status ${String(b.before ?? "")} → ${String(b.after ?? "")}`;
+          return `Status ${String(k.before ?? "")} → ${String(k.after ?? "")}`;
         case "moved":
           return "Moved under another parent";
         default:
-          return G(b.kind);
+          return B(k.kind);
       }
     }
-    let I = () => {
+    let z = () => {
     };
-    return ce(() => k.catalogId, () => {
-      I(), p.begin(), t.value = [], u.value = {}, r.value = void 0, n.value = void 0, I = da(`component.${k.catalogId}`, () => {
-        j();
+    return pe(() => $.catalogId, () => {
+      z(), c.begin(), t.value = [], d.value = {}, u.value = void 0, f.value = void 0, z = Ba(`component.${$.catalogId}`, () => {
+        N();
       });
-    }, { immediate: !0 }), ce(() => k.catalogId, () => {
-      j();
-    }), Ze(() => j()), De(() => {
-      I(), p.begin();
-    }), (b, f) => (e(), i("section", ul, [
-      n.value ? (e(), R(Ee, {
+    }, { immediate: !0 }), pe(() => $.catalogId, () => {
+      N();
+    }), da(() => N()), Ye(() => {
+      z(), c.begin();
+    }), (k, x) => (e(), i("section", mt, [
+      f.value ? (e(), T(ra, {
         key: 0,
-        error: n.value
+        error: f.value
       }, {
-        default: h(() => [
-          g(s(Z), {
+        default: w(() => [
+          y(s(G), {
             severity: "secondary",
             outlined: "",
             size: "small",
-            onClick: f[0] || (f[0] = (d) => j())
+            onClick: x[0] || (x[0] = (o) => N())
           }, {
-            default: h(() => [...f[2] || (f[2] = [
-              z("Retry", -1)
+            default: w(() => [...x[2] || (x[2] = [
+              H("Retry", -1)
             ])]),
             _: 1
           })
         ]),
         _: 1
-      }, 8, ["error"])) : w("", !0),
-      v.value ? (e(), i("div", rl, "Loading history…")) : w("", !0),
-      a("div", cl, [
+      }, 8, ["error"])) : v("", !0),
+      m.value ? (e(), i("div", pt, "Loading history…")) : v("", !0),
+      a("div", vt, [
         a("p", {
-          id: s(m),
+          id: s(C),
           class: "pim-history-caption muted small"
-        }, "Catalog changes, newest first", 8, ml),
-        C.value.length ? (e(), i(F, { key: 0 }, [
+        }, "Catalog changes, newest first", 8, ft),
+        A.value.length ? (e(), i(E, { key: 0 }, [
           a("table", {
             class: "pim-grid",
-            "aria-labelledby": s(m)
+            "aria-labelledby": s(C)
           }, [
             a("thead", null, [
               a("tr", null, [
-                f[3] || (f[3] = a("th", { scope: "col" }, "When", -1)),
-                l.canResolveActors ? (e(), i("th", vl, "Who")) : w("", !0),
-                f[4] || (f[4] = a("th", { scope: "col" }, "What", -1)),
-                f[5] || (f[5] = a("th", { scope: "col" }, "Change", -1))
+                x[3] || (x[3] = a("th", { scope: "col" }, "When", -1)),
+                l.canResolveActors ? (e(), i("th", yt, "Who")) : v("", !0),
+                x[4] || (x[4] = a("th", { scope: "col" }, "What", -1)),
+                x[5] || (x[5] = a("th", { scope: "col" }, "Change", -1))
               ])
             ]),
             a("tbody", null, [
-              (e(!0), i(F, null, Q(C.value, (d) => (e(), i("tr", {
-                key: d.key
+              (e(!0), i(E, null, ee(A.value, (o) => (e(), i("tr", {
+                key: o.key
               }, [
-                a("td", fl, [
+                a("td", gt, [
                   a("time", {
-                    datetime: d.at
-                  }, V(d.date), 9, bl)
+                    datetime: o.at
+                  }, U(o.date), 9, ht)
                 ]),
-                l.canResolveActors ? (e(), i("td", yl, [
-                  z(V(d.actor), 1),
-                  d.source ? (e(), i("span", gl, " via " + V(d.source), 1)) : w("", !0)
-                ])) : w("", !0),
-                a("td", hl, [
-                  z(V(d.product), 1),
-                  d.context ? (e(), i("span", kl, " · " + V(d.context), 1)) : w("", !0)
+                l.canResolveActors ? (e(), i("td", kt, [
+                  H(U(o.actor), 1),
+                  o.source ? (e(), i("span", _t, " via " + U(o.source), 1)) : v("", !0)
+                ])) : v("", !0),
+                a("td", wt, [
+                  H(U(o.product), 1),
+                  o.context ? (e(), i("span", $t, " · " + U(o.context), 1)) : v("", !0)
                 ]),
                 a("td", null, [
-                  z(V(d.change), 1),
-                  !l.canResolveActors && d.source ? (e(), i("span", _l, " via " + V(d.source), 1)) : w("", !0)
+                  H(U(o.change), 1),
+                  !l.canResolveActors && o.source ? (e(), i("span", Ct, " via " + U(o.source), 1)) : v("", !0)
                 ])
               ]))), 128))
             ])
-          ], 8, pl),
+          ], 8, bt),
           a("ol", {
             role: "list",
             class: "pim-stacked-list",
-            "aria-labelledby": s(m)
+            "aria-labelledby": s(C)
           }, [
-            (e(!0), i(F, null, Q(C.value, (d) => (e(), i("li", {
-              key: d.key,
+            (e(!0), i(E, null, ee(A.value, (o) => (e(), i("li", {
+              key: o.key,
               class: "pim-stacked-row"
             }, [
-              a("div", null, V(d.change), 1),
-              a("div", wl, [
-                l.canResolveActors ? (e(), i("span", xl, [
-                  a("span", null, V(d.actor), 1),
-                  d.source ? (e(), i(F, { key: 0 }, [
-                    z(" via " + V(d.source), 1)
-                  ], 64)) : w("", !0)
-                ])) : d.source ? (e(), i("span", Cl, "Via " + V(d.source), 1)) : w("", !0),
+              a("div", null, U(o.change), 1),
+              a("div", Vt, [
+                l.canResolveActors ? (e(), i("span", Ut, [
+                  a("span", null, U(o.actor), 1),
+                  o.source ? (e(), i(E, { key: 0 }, [
+                    H(" via " + U(o.source), 1)
+                  ], 64)) : v("", !0)
+                ])) : o.source ? (e(), i("span", At, "Via " + U(o.source), 1)) : v("", !0),
                 a("time", {
-                  datetime: d.at
-                }, V(d.date), 9, Vl),
+                  datetime: o.at
+                }, U(o.date), 9, jt),
                 a("span", null, [
-                  z(V(d.product), 1),
-                  d.context ? (e(), i(F, { key: 0 }, [
-                    z(" · " + V(d.context), 1)
-                  ], 64)) : w("", !0)
+                  H(U(o.product), 1),
+                  o.context ? (e(), i(E, { key: 0 }, [
+                    H(" · " + U(o.context), 1)
+                  ], 64)) : v("", !0)
                 ])
               ])
             ]))), 128))
-          ], 8, $l)
-        ], 64)) : !v.value && !n.value ? (e(), i("div", Ul, "Nothing recorded yet.")) : w("", !0),
-        a("div", Sl, [
-          a("span", null, V(C.value.length) + " change" + V(C.value.length === 1 ? "" : "s") + " shown", 1),
-          r.value ? (e(), R(s(Z), {
+          ], 8, xt)
+        ], 64)) : !m.value && !f.value ? (e(), i("div", St, "Nothing recorded yet.")) : v("", !0),
+        a("div", Rt, [
+          a("span", null, U(A.value.length) + " change" + U(A.value.length === 1 ? "" : "s") + " shown", 1),
+          u.value ? (e(), T(s(G), {
             key: 0,
             type: "button",
-            disabled: v.value,
-            onClick: f[1] || (f[1] = (d) => j(!0)),
+            disabled: m.value,
+            onClick: x[1] || (x[1] = (o) => N(!0)),
             severity: "secondary",
             outlined: "",
             size: "small"
           }, {
-            default: h(() => [
-              g(s(X), {
+            default: w(() => [
+              y(s(le), {
                 icon: "tabler:adjustments",
                 "aria-hidden": "true"
               }),
-              f[6] || (f[6] = z(" Load older", -1))
+              x[6] || (x[6] = H(" Load older", -1))
             ]),
             _: 1
-          }, 8, ["disabled"])) : w("", !0)
+          }, 8, ["disabled"])) : v("", !0)
         ])
       ])
     ]));
   }
-}), ia = /* @__PURE__ */ le({
+}), It = /* @__PURE__ */ de({
   __name: "SettingsActions",
   props: {
     access: {},
     dirty: { type: Boolean },
     busy: { type: Boolean },
-    valid: { type: Boolean },
-    reviewed: { type: Boolean }
+    valid: { type: Boolean }
   },
   emits: ["discard", "review"],
-  setup(l, { emit: k }) {
-    const t = k;
-    return (u, r) => l.access?.admin ? (e(), i(F, { key: 0 }, [
-      l.dirty ? (e(), R(s(ie), {
+  setup(l, { emit: $ }) {
+    const t = $;
+    return (d, u) => l.access?.admin ? (e(), i(E, { key: 0 }, [
+      l.dirty ? (e(), T(s(ye), {
         key: 0,
         severity: "warn",
         value: "Unsaved changes"
-      })) : w("", !0),
-      g(s(Z), {
+      })) : v("", !0),
+      l.dirty ? (e(), T(s(G), {
+        key: 1,
         severity: "secondary",
         outlined: "",
         disabled: !l.dirty || l.busy,
-        onClick: r[0] || (r[0] = (v) => t("discard"))
+        onClick: u[0] || (u[0] = (m) => t("discard"))
       }, {
-        default: h(() => [
-          g(s(X), {
+        default: w(() => [
+          y(s(le), {
             icon: "tabler:restore",
             "aria-hidden": "true"
           }),
-          r[2] || (r[2] = z(" Discard", -1))
+          u[2] || (u[2] = H(" Discard", -1))
         ]),
         _: 1
-      }, 8, ["disabled"]),
-      l.reviewed ? w("", !0) : (e(), R(s(Z), {
-        key: 1,
+      }, 8, ["disabled"])) : v("", !0),
+      y(s(G), {
         disabled: !l.dirty || l.busy || !l.valid,
         loading: l.busy,
-        onClick: r[1] || (r[1] = (v) => t("review"))
+        onClick: u[1] || (u[1] = (m) => t("review"))
       }, {
-        default: h(() => [...r[3] || (r[3] = [
-          z("Review changes", -1)
+        default: w(() => [...u[3] || (u[3] = [
+          H("Review changes", -1)
         ])]),
         _: 1
-      }, 8, ["disabled", "loading"]))
-    ], 64)) : w("", !0);
+      }, 8, ["disabled", "loading"])
+    ], 64)) : v("", !0);
   }
-}), Ol = { class: "kx-head-icon" }, Il = { class: "kx-head-text" }, Rl = { class: "pim-title-line" }, jl = ["title"], Tl = { class: "kx-head-actions" }, ql = /* @__PURE__ */ le({
-  __name: "PageHead",
-  props: {
-    title: {},
-    subtitle: {},
-    icon: {},
-    backLabel: {},
-    pane: { type: Boolean }
-  },
-  emits: ["back"],
-  setup(l, { emit: k }) {
-    const t = k;
-    return (u, r) => (e(), i("header", {
-      class: ke(["kx-head", { "pim-panel-head": l.pane }])
-    }, [
-      l.backLabel ? (e(), R(s(Z), {
-        key: 0,
-        type: "button",
-        "aria-label": l.backLabel,
-        onClick: r[0] || (r[0] = (v) => t("back")),
-        text: "",
-        severity: "secondary",
-        size: "small"
-      }, {
-        default: h(() => [
-          g(s(X), {
-            icon: "tabler:arrow-left",
-            "aria-hidden": "true"
-          })
-        ]),
-        _: 1
-      }, 8, ["aria-label"])) : w("", !0),
-      a("div", Ol, [
-        g(s(X), {
-          icon: l.icon,
-          "aria-hidden": "true"
-        }, null, 8, ["icon"])
-      ]),
-      a("div", Il, [
-        a("div", Rl, [
-          (e(), R(xa(l.pane ? "h2" : "h1"), { class: "kx-title" }, {
-            default: h(() => [
-              z(V(l.title), 1)
-            ]),
-            _: 1
-          })),
-          de(u.$slots, "meta")
-        ]),
-        a("p", {
-          class: "kx-head-sub",
-          title: l.subtitle
-        }, V(l.subtitle), 9, jl)
-      ]),
-      a("div", Tl, [
-        de(u.$slots, "default")
-      ])
-    ], 2));
-  }
-}), Dl = { class: "row pim-add-row" }, Nl = ["id"], we = /* @__PURE__ */ le({
+}), Tt = { class: "row pim-add-row" }, Pt = ["id"], Ie = /* @__PURE__ */ de({
   __name: "AddSchemaCode",
   props: {
     label: {},
     action: {},
-    existing: {}
+    existing: {},
+    fromName: { type: Boolean }
   },
   emits: ["add"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = J(""), v = Ae(), n = M(() => r.value.trim()), p = M(() => n.value ? t.existing?.includes(n.value) ? "This code is already in use." : Ma.test(n.value) ? "" : "Start with a lowercase letter and use only lowercase letters, numbers or underscores." : ""), m = M(() => !!n.value && !p.value);
-    function C() {
-      m.value && (u("add", n.value), r.value = "");
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = J(""), m = qe(), f = D(() => {
+      const N = u.value.trim();
+      return t.fromName ? Hl(N) : N;
+    }), c = D(() => u.value.trim() ? t.existing?.includes(f.value) ? t.fromName ? "This name is already in use." : "This code is already in use." : t.fromName && !Da.test(f.value) ? "Use a name that starts with a letter from A to Z." : Da.test(f.value) ? "" : "Start with a lowercase letter and use only lowercase letters, numbers or underscores." : ""), C = D(() => !!f.value && !c.value);
+    function A() {
+      C.value && (d("add", f.value), u.value = "");
     }
-    return (j, K) => (e(), i("div", Dl, [
-      g(s(Re), {
-        modelValue: r.value,
-        "onUpdate:modelValue": K[0] || (K[0] = (x) => r.value = x),
+    return (N, X) => (e(), i("div", Tt, [
+      y(s(Ge), {
+        modelValue: u.value,
+        "onUpdate:modelValue": X[0] || (X[0] = (P) => u.value = P),
         type: "text",
         placeholder: l.label,
         "aria-label": l.label,
-        invalid: !!p.value,
-        "aria-describedby": p.value ? s(v) : void 0,
-        class: "mono",
-        onKeydown: Qe(be(C, ["prevent"]), ["enter"])
-      }, null, 8, ["modelValue", "placeholder", "aria-label", "invalid", "aria-describedby", "onKeydown"]),
-      g(s(Z), {
+        invalid: !!c.value,
+        "aria-describedby": c.value ? s(m) : void 0,
+        class: je({ mono: !l.fromName }),
+        onKeydown: wa(Ae(A, ["prevent"]), ["enter"])
+      }, null, 8, ["modelValue", "placeholder", "aria-label", "invalid", "aria-describedby", "class", "onKeydown"]),
+      y(s(G), {
         type: "button",
-        disabled: !m.value,
+        disabled: !C.value,
         severity: "secondary",
         outlined: "",
         size: "small",
-        onClick: C
+        onClick: A
       }, {
-        default: h(() => [
-          g(s(X), {
+        default: w(() => [
+          y(s(le), {
             icon: "tabler:plus",
             "aria-hidden": "true"
           }),
-          z(" " + V(l.action), 1)
+          H(" " + U(l.action), 1)
         ]),
         _: 1
       }, 8, ["disabled"]),
-      de(j.$slots, "default"),
-      p.value ? (e(), i("p", {
+      Ve(N.$slots, "default"),
+      c.value ? (e(), i("p", {
         key: 0,
-        id: s(v),
+        id: s(m),
         role: "status",
         class: "pim-add-code-error small"
-      }, V(p.value), 9, Nl)) : w("", !0)
+      }, U(c.value), 9, Pt)) : v("", !0)
     ]));
   }
-}), ma = Symbol("definitionColumns"), Pl = { code: "Code", kind: "Kind", details: "Details", usage: "Used by" }, Ll = {
+}), Ma = Symbol("definitionColumns"), qt = { code: "Code", kind: "Kind", details: "Details", usage: "Used by" }, Dt = {
   code: "minmax(120px, 1fr)",
   kind: "140px",
   details: "minmax(120px, 1.2fr)",
   usage: "120px"
-}, zl = {
+}, Nt = {
   class: "pim-definition-scroll",
   tabindex: "0",
   "aria-label": "Definitions"
-}, Bl = { class: "pim-definition-grid" }, El = {
+}, zt = { class: "pim-definition-grid" }, Ft = {
   key: 0,
   class: "pim-definition-columns",
   "aria-hidden": "true"
-}, xe = /* @__PURE__ */ le({
+}, Te = /* @__PURE__ */ de({
   __name: "DefinitionList",
   props: {
     count: {},
     columns: { default: () => ["code"] }
   },
   setup(l) {
-    const k = l;
-    Ca(ma, M(() => k.columns));
-    const t = M(() => ["48px", "minmax(160px, 1.4fr)", ...k.columns.map((u) => Ll[u]), "80px"].join(" "));
-    return (u, r) => (e(), i("section", {
+    const $ = l;
+    hl(Ma, D(() => $.columns));
+    const t = D(() => ["48px", "minmax(160px, 1.4fr)", ...$.columns.map((d) => Dt[d]), "80px"].join(" "));
+    return (d, u) => (e(), i("section", {
       class: "form pim-definition-list",
-      style: We({ "--pim-definition-columns": t.value })
+      style: ga({ "--pim-definition-columns": t.value })
     }, [
-      de(u.$slots, "head"),
-      a("div", zl, [
-        a("div", Bl, [
-          l.count > 3 ? (e(), i("div", El, [
-            r[0] || (r[0] = a("span", null, null, -1)),
-            r[1] || (r[1] = a("span", null, "Name", -1)),
-            (e(!0), i(F, null, Q(l.columns, (v) => (e(), i("span", {
-              key: v,
-              class: ke("pim-definition-" + v)
-            }, V(s(Pl)[v]), 3))), 128)),
-            r[2] || (r[2] = a("span", null, null, -1))
-          ])) : w("", !0),
-          de(u.$slots, "default")
+      Ve(d.$slots, "head"),
+      a("div", Nt, [
+        a("div", zt, [
+          l.count > 3 ? (e(), i("div", Ft, [
+            u[0] || (u[0] = a("span", null, null, -1)),
+            u[1] || (u[1] = a("span", null, "Name", -1)),
+            (e(!0), i(E, null, ee(l.columns, (m) => (e(), i("span", {
+              key: m,
+              class: je("pim-definition-" + m)
+            }, U(s(qt)[m]), 3))), 128)),
+            u[2] || (u[2] = a("span", null, null, -1))
+          ])) : v("", !0),
+          Ve(d.$slots, "default")
         ])
       ]),
-      de(u.$slots, "add")
+      Ve(d.$slots, "add")
     ], 4));
   }
-}), Ml = { class: "pim-definition" }, Fl = {
+}), Bt = ["aria-label"], Lt = /* @__PURE__ */ de({
+  __name: "InteractiveSurface",
+  props: {
+    label: {}
+  },
+  setup(l) {
+    return ($, t) => (e(), i("button", {
+      type: "button",
+      class: "pim-interactive",
+      "aria-label": l.label
+    }, [
+      Ve($.$slots, "default")
+    ], 8, Bt));
+  }
+}), Et = { class: "pim-definition" }, Mt = {
   class: "pim-definition-lead",
   "data-column": "lead"
-}, Hl = {
+}, Wt = {
   class: "pim-row-title",
   "data-column": "name"
-}, Jl = { class: "pim-definition-meta" }, Wl = ["data-column"], Kl = {
+}, Ht = { class: "pim-definition-meta" }, Jt = ["data-column"], Kt = {
   key: 0,
   class: "mono"
-}, Gl = {
+}, Gt = {
   class: "pim-definition-actions",
   "data-column": "actions"
-}, Yl = {
-  key: 0,
-  class: "pim-definition-body"
-}, Ce = /* @__PURE__ */ le({
+}, Yt = ["id"], Pe = /* @__PURE__ */ de({
   __name: "DefinitionRow",
-  props: /* @__PURE__ */ la({
+  props: /* @__PURE__ */ na({
     title: {},
     code: {},
     kind: {},
@@ -784,64 +855,75 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
     open: { type: Boolean, default: !1 },
     openModifiers: {}
   }),
-  emits: /* @__PURE__ */ la(["head-keydown", "head-drop", "head-dragover"], ["update:open"]),
-  setup(l, { emit: k }) {
-    const t = l, u = Va(ma, M(() => [
+  emits: /* @__PURE__ */ na(["head-keydown", "head-drop", "head-dragover"], ["update:open"]),
+  setup(l, { emit: $ }) {
+    const t = l, d = kl(Ma, D(() => [
       ...t.code ? ["code"] : [],
       ...t.kind ? ["kind"] : []
-    ])), r = Ua(l, "open"), v = k;
-    return (n, p) => (e(), i("section", Ml, [
+    ])), u = za(l, "open"), m = qe(), f = $;
+    return (c, C) => (e(), i("section", Et, [
       a("header", {
-        class: ke(["pim-definition-head", l.headClass]),
-        onKeydown: p[1] || (p[1] = (m) => v("head-keydown", m)),
-        onDrop: p[2] || (p[2] = (m) => v("head-drop", m)),
-        onDragover: p[3] || (p[3] = (m) => v("head-dragover", m))
+        class: je(["pim-definition-head", l.headClass]),
+        onKeydown: C[1] || (C[1] = (A) => f("head-keydown", A)),
+        onDrop: C[2] || (C[2] = (A) => f("head-drop", A)),
+        onDragover: C[3] || (C[3] = (A) => f("head-dragover", A))
       }, [
-        g(ba, {
-          class: ke(["pim-definition-toggle", l.toggleClass]),
-          "aria-expanded": r.value,
-          onClick: p[0] || (p[0] = (m) => r.value = !r.value)
+        y(Lt, {
+          class: je(["pim-definition-toggle", l.toggleClass]),
+          "aria-expanded": u.value,
+          "aria-controls": u.value ? s(m) : void 0,
+          onClick: C[0] || (C[0] = (A) => u.value = !u.value)
         }, {
-          default: h(() => [
-            a("span", Fl, [
-              de(n.$slots, "handle"),
-              g(s(X), {
-                icon: r.value ? "tabler:chevron-down" : "tabler:chevron-right",
+          default: w(() => [
+            a("span", Mt, [
+              Ve(c.$slots, "handle"),
+              y(s(le), {
+                icon: "tabler:chevron-right",
+                class: "pim-definition-chevron",
                 "aria-hidden": "true"
-              }, null, 8, ["icon"])
+              })
             ]),
-            a("span", Hl, V(l.title), 1),
-            a("span", Jl, [
-              (e(!0), i(F, null, Q(s(u), (m) => (e(), i("span", {
-                key: m,
-                class: ke("pim-definition-" + m),
-                "data-column": m
+            a("span", Wt, U(l.title), 1),
+            a("span", Ht, [
+              (e(!0), i(E, null, ee(s(d), (A) => (e(), i("span", {
+                key: A,
+                class: je("pim-definition-" + A),
+                "data-column": A
               }, [
-                m === "code" && l.code ? (e(), i("code", Kl, V(l.code), 1)) : m === "kind" && l.kind ? (e(), R(s(ie), {
+                A === "code" && l.code ? (e(), i("code", Kt, U(l.code), 1)) : A === "kind" && l.kind ? (e(), T(s(ye), {
                   key: 1,
                   severity: "secondary",
                   value: l.kind
-                }, null, 8, ["value"])) : m === "details" ? de(n.$slots, "details", {}, void 0, void 0, 2) : m === "usage" ? de(n.$slots, "usage", {}, () => [
-                  z(V(l.usage), 1)
-                ], void 0, 3) : w("", !0)
-              ], 10, Wl))), 128))
+                }, null, 8, ["value"])) : A === "details" ? Ve(c.$slots, "details", {}, void 0, void 0, 2) : A === "usage" ? Ve(c.$slots, "usage", {}, () => [
+                  H(U(l.usage), 1)
+                ], void 0, 3) : v("", !0)
+              ], 10, Jt))), 128))
             ])
           ]),
           _: 3
-        }, 8, ["class", "aria-expanded"]),
-        a("div", Gl, [
-          de(n.$slots, "actions")
+        }, 8, ["class", "aria-expanded", "aria-controls"]),
+        a("div", Gt, [
+          Ve(c.$slots, "actions")
         ])
       ], 34),
-      r.value ? (e(), i("div", Yl, [
-        de(n.$slots, "default")
-      ])) : w("", !0)
+      y(_l, { name: "pim-expand" }, {
+        default: w(() => [
+          u.value ? (e(), i("div", {
+            key: 0,
+            id: s(m),
+            class: "pim-definition-body"
+          }, [
+            Ve(c.$slots, "default")
+          ], 8, Yt)) : v("", !0)
+        ]),
+        _: 3
+      })
     ]));
   }
-}), Zl = { class: "pim-chips pim-picker-chips" }, Ql = {
+}), Zt = { class: "pim-chips pim-picker-chips" }, Qt = {
   key: 0,
   class: "muted small"
-}, fe = /* @__PURE__ */ le({
+}, _e = /* @__PURE__ */ de({
   __name: "ChipPicker",
   props: {
     modelValue: {},
@@ -853,49 +935,49 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
     labelledby: {}
   },
   emits: ["update:modelValue"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = J("");
-    function v(j) {
-      return t.modelValue.includes(j);
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = J("");
+    function m(N) {
+      return t.modelValue.includes(N);
     }
-    function n(j) {
-      t.disabled || !j || u("update:modelValue", v(j) ? t.modelValue.filter((K) => K !== j) : [...t.modelValue, j]);
+    function f(N) {
+      t.disabled || !N || d("update:modelValue", m(N) ? t.modelValue.filter((X) => X !== N) : [...t.modelValue, N]);
     }
-    function p() {
-      const j = r.value.trim();
-      if (!j || v(j)) {
-        r.value = "";
+    function c() {
+      const N = u.value.trim();
+      if (!N || m(N)) {
+        u.value = "";
         return;
       }
-      u("update:modelValue", [...t.modelValue, j]), r.value = "";
+      d("update:modelValue", [...t.modelValue, N]), u.value = "";
     }
-    function m(j) {
-      u("update:modelValue", t.modelValue.filter((K) => K !== j));
+    function C(N) {
+      d("update:modelValue", t.modelValue.filter((X) => X !== N));
     }
-    function C(j) {
-      return t.options?.find((K) => K.value === j)?.label ?? j;
+    function A(N) {
+      return t.options?.find((X) => X.value === N)?.label ?? N;
     }
-    return (j, K) => (e(), i("div", Zl, [
-      l.disabled ? (e(), i(F, { key: 0 }, [
-        (e(!0), i(F, null, Q(l.modelValue, (x) => (e(), i("span", { key: x }, V(C(x)), 1))), 128)),
-        l.modelValue.length ? w("", !0) : (e(), i("span", Ql, "None"))
-      ], 64)) : l.options && (l.dropdown || l.options.length > 10) ? (e(), i(F, { key: 1 }, [
-        (e(!0), i(F, null, Q(l.modelValue, (x) => (e(), i("span", {
-          key: x,
+    return (N, X) => (e(), i("div", Zt, [
+      l.disabled ? (e(), i(E, { key: 0 }, [
+        (e(!0), i(E, null, ee(l.modelValue, (P) => (e(), i("span", { key: P }, U(A(P)), 1))), 128)),
+        l.modelValue.length ? v("", !0) : (e(), i("span", Qt, "None"))
+      ], 64)) : l.options && (l.dropdown || l.options.length > 10) ? (e(), i(E, { key: 1 }, [
+        (e(!0), i(E, null, ee(l.modelValue, (P) => (e(), i("span", {
+          key: P,
           class: "row"
         }, [
-          z(V(C(x)), 1),
-          l.disabled ? w("", !0) : (e(), R(s(Z), {
+          H(U(A(P)), 1),
+          l.disabled ? v("", !0) : (e(), T(s(G), {
             key: 0,
             type: "button",
-            "aria-label": "Remove " + C(x),
-            onClick: (I) => m(x),
+            "aria-label": "Remove " + A(P),
+            onClick: (z) => C(P),
             size: "small",
             text: "",
             severity: "secondary"
           }, {
-            default: h(() => [
-              g(s(X), {
+            default: w(() => [
+              y(s(le), {
                 icon: "tabler:x",
                 "aria-hidden": "true"
               })
@@ -903,175 +985,209 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
             _: 1
           }, 8, ["aria-label", "onClick"]))
         ]))), 128)),
-        l.disabled ? w("", !0) : (e(), R(s(ve), {
+        l.disabled ? v("", !0) : (e(), T(s(he), {
           key: 0,
           "model-value": null,
           placeholder: l.placeholder ?? "Add…",
           "aria-labelledby": l.labelledby,
           "aria-label": l.placeholder ?? "Add",
-          "onUpdate:modelValue": K[0] || (K[0] = (x) => n(x)),
+          "onUpdate:modelValue": X[0] || (X[0] = (P) => f(P)),
           class: "pim-chip-entry",
-          options: l.options.filter((x) => !v(x.value)).map((x) => ({ value: x.value, label: x.label ?? x.value })),
+          options: l.options.filter((P) => !m(P.value)).map((P) => ({ value: P.value, label: P.label ?? P.value })),
           "option-label": "label",
           "option-value": "value",
           appendTo: "self"
         }, null, 8, ["placeholder", "aria-labelledby", "aria-label", "options"]))
-      ], 64)) : l.options ? (e(), i(F, { key: 2 }, [
-        g(s(Xe), {
-          "model-value": l.modelValue.filter((x) => l.options.some((I) => I.value === x)),
-          options: l.options.map((x) => ({ value: x.value, label: x.label ?? x.value })),
+      ], 64)) : l.options ? (e(), i(E, { key: 2 }, [
+        y(s($a), {
+          "model-value": l.modelValue.filter((P) => l.options.some((z) => z.value === P)),
+          options: l.options.map((P) => ({ value: P.value, label: P.label ?? P.value })),
           "option-label": "label",
           "option-value": "value",
           multiple: "",
           disabled: l.disabled,
           "aria-labelledby": l.labelledby,
           "aria-label": l.placeholder ?? "Selected values",
-          "onUpdate:modelValue": K[1] || (K[1] = (x) => u("update:modelValue", [...x, ...l.modelValue.filter((I) => !l.options.some((b) => b.value === I))]))
+          "onUpdate:modelValue": X[1] || (X[1] = (P) => d("update:modelValue", [...P, ...l.modelValue.filter((z) => !l.options.some((k) => k.value === z))]))
         }, null, 8, ["model-value", "options", "disabled", "aria-labelledby", "aria-label"]),
-        (e(!0), i(F, null, Q(l.modelValue.filter((x) => !l.options.some((I) => I.value === x)), (x) => (e(), i("span", {
-          key: x,
+        (e(!0), i(E, null, ee(l.modelValue.filter((P) => !l.options.some((z) => z.value === P)), (P) => (e(), i("span", {
+          key: P,
           class: "row"
         }, [
-          z(V(C(x)), 1),
-          g(s(Z), {
+          H(U(A(P)), 1),
+          y(s(G), {
             type: "button",
-            "aria-label": "Remove " + x,
-            onClick: (I) => m(x),
+            "aria-label": "Remove " + P,
+            onClick: (z) => C(P),
             size: "small",
             text: "",
             severity: "secondary"
           }, {
-            default: h(() => [
-              g(s(X), { icon: "tabler:x" })
+            default: w(() => [
+              y(s(le), { icon: "tabler:x" })
             ]),
             _: 1
           }, 8, ["aria-label", "onClick"])
         ]))), 128))
-      ], 64)) : (e(!0), i(F, { key: 3 }, Q(l.modelValue, (x) => (e(), i("span", {
-        key: x,
+      ], 64)) : (e(!0), i(E, { key: 3 }, ee(l.modelValue, (P) => (e(), i("span", {
+        key: P,
         class: "row"
       }, [
-        z(V(x), 1),
-        g(s(Z), {
+        H(U(P), 1),
+        y(s(G), {
           type: "button",
-          "aria-label": "Remove " + x,
-          onClick: (I) => m(x),
+          "aria-label": "Remove " + P,
+          onClick: (z) => C(P),
           size: "small",
           text: "",
           severity: "secondary"
         }, {
-          default: h(() => [
-            g(s(X), { icon: "tabler:x" })
+          default: w(() => [
+            y(s(le), { icon: "tabler:x" })
           ]),
           _: 1
         }, 8, ["aria-label", "onClick"])
       ]))), 128)),
-      l.free && !l.disabled ? (e(), R(s(Re), {
+      l.free && !l.disabled ? (e(), T(s(Ge), {
         key: 4,
-        modelValue: r.value,
-        "onUpdate:modelValue": K[2] || (K[2] = (x) => r.value = x),
+        modelValue: u.value,
+        "onUpdate:modelValue": X[2] || (X[2] = (P) => u.value = P),
         type: "text",
         "aria-labelledby": l.labelledby,
         placeholder: l.placeholder ?? "Add…",
-        onKeydown: Qe(be(p, ["prevent"]), ["enter"]),
-        onBlur: p,
+        onKeydown: wa(Ae(c, ["prevent"]), ["enter"]),
+        onBlur: c,
         class: "pim-chip-entry"
-      }, null, 8, ["modelValue", "aria-labelledby", "placeholder", "onKeydown"])) : w("", !0)
+      }, null, 8, ["modelValue", "aria-labelledby", "placeholder", "onKeydown"])) : v("", !0)
     ]));
   }
-}), Xl = {
+}), Xt = { key: 0 }, es = {
   key: 0,
   class: "pim-config-overrides"
-}, et = {
+}, as = {
   key: 1,
   class: "muted small"
-}, at = { key: 1 }, lt = ["schema", "config"], tt = {
+}, ls = { key: 3 }, ts = ["schema", "config"], ss = {
   key: 1,
   class: "muted small",
   role: "status"
-}, ea = /* @__PURE__ */ le({
+}, Ca = /* @__PURE__ */ de({
   __name: "ConfigForm",
   props: {
     schema: {},
     modelValue: {},
-    disabled: { type: Boolean }
+    disabled: { type: Boolean },
+    problem: {},
+    problemLabel: {},
+    pluginId: {}
   },
   emits: ["update:modelValue"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = J("pending"), v = M(() => {
-      const m = t.schema.properties;
-      return Object.entries(t.modelValue).map(([C, j]) => ({
-        key: C,
-        label: m?.[C]?.title ?? G(C),
-        value: j !== null && typeof j == "object" ? JSON.stringify(j) : Be(j)
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = J("pending"), m = D(() => {
+      const C = t.schema.properties;
+      return Object.entries(t.modelValue).map(([A, N]) => ({
+        key: A,
+        label: C?.[A]?.title ?? B(A),
+        value: N !== null && typeof N == "object" ? JSON.stringify(N) : oa(N)
       }));
     });
-    async function n() {
-      r.value = "pending", r.value = await na("wc-schema-form") ? "ready" : "failed";
+    async function f() {
+      u.value = "pending", u.value = await Na("wc-schema-form") ? "ready" : "failed";
     }
-    ce(() => t.disabled, (m) => {
-      m || n();
+    pe(() => t.disabled, (C) => {
+      C || f();
     }, { immediate: !0 });
-    function p(m) {
-      const C = m.detail;
-      C && typeof C == "object" && !Array.isArray(C) && u("update:modelValue", C);
+    function c(C) {
+      const A = C.detail;
+      A && typeof A == "object" && !Array.isArray(A) && d("update:modelValue", A);
     }
-    return (m, C) => l.disabled ? (e(), i(F, { key: 0 }, [
-      v.value.length ? (e(), i("dl", Xl, [
-        (e(!0), i(F, null, Q(v.value, (j) => (e(), i(F, {
-          key: j.key
-        }, [
-          a("dt", null, V(j.label), 1),
-          a("dd", null, V(j.value), 1)
-        ], 64))), 128))
-      ])) : (e(), i("span", et, "No overrides"))
-    ], 64)) : (e(), i("div", at, [
-      r.value === "ready" ? (e(), i("wc-schema-form", {
+    return (C, A) => (e(), i(E, null, [
+      l.problem ? (e(), T(s(we), {
         key: 0,
-        schema: JSON.stringify(t.schema),
-        config: JSON.stringify(l.modelValue),
-        onConfigChanged: p
-      }, null, 40, lt)) : r.value === "pending" ? (e(), i("span", tt, "Configuration form is loading.")) : (e(), R(s($e), {
-        key: 2,
-        role: "alert",
-        severity: "error"
+        severity: "warn",
+        role: "alert"
       }, {
-        default: h(() => [
-          C[2] || (C[2] = z("Configuration form could not be loaded. ", -1)),
-          g(s(Z), {
-            type: "button",
-            onClick: n,
-            severity: "secondary",
-            outlined: "",
-            size: "small"
-          }, {
-            default: h(() => [...C[1] || (C[1] = [
-              z("Retry", -1)
-            ])]),
-            _: 1
-          })
+        default: w(() => [
+          l.problemLabel ? (e(), i(E, { key: 0 }, [
+            H(U(l.problemLabel) + " is required. Enter a value below.", 1)
+          ], 64)) : (e(), i(E, { key: 1 }, [
+            H("The saved settings don’t meet the plugin’s requirements. Update the configuration below.")
+          ], 64))
         ]),
         _: 1
-      })),
-      g(s(Z), {
-        type: "button",
-        onClick: C[0] || (C[0] = (j) => u("update:modelValue", {})),
-        severity: "secondary",
-        outlined: "",
-        size: "small"
+      })) : v("", !0),
+      l.problem ? (e(), T(Ue, {
+        key: 1,
+        class: "small pim-error-code pim-ia-disclosure",
+        label: "Technical details"
       }, {
-        default: h(() => [
-          g(s(X), {
-            icon: "tabler:restore",
-            "aria-hidden": "true"
-          }),
-          C[3] || (C[3] = z(" Reset overrides", -1))
+        default: w(() => [
+          l.pluginId ? (e(), i("p", Xt, [
+            A[1] || (A[1] = H("Plugin ", -1)),
+            a("code", null, U(l.pluginId), 1)
+          ])) : v("", !0),
+          a("p", null, U(l.problem.message), 1)
         ]),
         _: 1
-      })
-    ]));
+      })) : v("", !0),
+      l.disabled ? (e(), i(E, { key: 2 }, [
+        m.value.length ? (e(), i("dl", es, [
+          (e(!0), i(E, null, ee(m.value, (N) => (e(), i(E, {
+            key: N.key
+          }, [
+            a("dt", null, U(N.label), 1),
+            a("dd", null, U(N.value), 1)
+          ], 64))), 128))
+        ])) : (e(), i("span", as, "No overrides"))
+      ], 64)) : (e(), i("div", ls, [
+        u.value === "ready" ? (e(), i("wc-schema-form", {
+          key: 0,
+          schema: JSON.stringify(t.schema),
+          config: JSON.stringify(l.modelValue),
+          onConfigChanged: c
+        }, null, 40, ts)) : u.value === "pending" ? (e(), i("span", ss, "Configuration form is loading.")) : (e(), T(s(we), {
+          key: 2,
+          role: "alert",
+          severity: "error"
+        }, {
+          default: w(() => [
+            A[3] || (A[3] = H("Configuration form could not be loaded. ", -1)),
+            y(s(G), {
+              type: "button",
+              onClick: f,
+              severity: "secondary",
+              outlined: "",
+              size: "small"
+            }, {
+              default: w(() => [...A[2] || (A[2] = [
+                H("Retry", -1)
+              ])]),
+              _: 1
+            })
+          ]),
+          _: 1
+        })),
+        l.problem ? v("", !0) : (e(), T(s(G), {
+          key: 3,
+          type: "button",
+          onClick: A[0] || (A[0] = (N) => d("update:modelValue", {})),
+          severity: "secondary",
+          outlined: "",
+          size: "small"
+        }, {
+          default: w(() => [
+            y(s(le), {
+              icon: "tabler:restore",
+              "aria-hidden": "true"
+            }),
+            A[4] || (A[4] = H(" Reset overrides", -1))
+          ]),
+          _: 1
+        }))
+      ]))
+    ], 64));
   }
-}), st = { key: 0 }, it = /* @__PURE__ */ le({
+}), is = { key: 0 }, ns = /* @__PURE__ */ de({
   __name: "DefaultValue",
   props: {
     attribute: {},
@@ -1079,689 +1195,741 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
     disabled: { type: Boolean }
   },
   emits: ["change"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = M(() => {
-      const m = t.type?.form;
-      let C = { type: "string" };
-      return m === "bool" ? C = { type: "boolean" } : m === "int" ? C = { type: "integer" } : m === "dec" ? C = { type: "string", pattern: "^-?\\d+(\\.\\d+)?$", description: "Exact number, for example 12.50." } : m === "quantity" ? C = { type: "object", required: ["value", "unit"], properties: { value: { type: "string", title: "Amount" }, unit: { type: "string", title: "Unit", enum: Object.keys(t.attribute.config?.units ?? {}) } }, additionalProperties: !1 } : m === "record" ? C = { type: "object", additionalProperties: !0 } : m === "ref" && (C = { type: "object", required: ["ref"], properties: { ref: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2, description: `Reference kind (${t.type?.target ?? "link kind"}) and identity.` } }, additionalProperties: !1 }), (t.attribute.cardinality ?? "one") !== "one" && (C = { type: "array", items: C, uniqueItems: t.attribute.cardinality === "set" }), { type: "object", properties: { value: { ...C, title: "Default value" } } };
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = D(() => {
+      const C = t.type?.form;
+      let A = { type: "string" };
+      return C === "bool" ? A = { type: "boolean" } : C === "int" ? A = { type: "integer" } : C === "dec" ? A = { type: "string", pattern: "^-?\\d+(\\.\\d+)?$", description: "Exact number, for example 12.50." } : C === "quantity" ? A = { type: "object", required: ["value", "unit"], properties: { value: { type: "string", title: "Amount" }, unit: { type: "string", title: "Unit", enum: Object.keys(t.attribute.config?.units ?? {}) } }, additionalProperties: !1 } : C === "record" ? A = { type: "object", additionalProperties: !0 } : C === "ref" && (A = { type: "object", required: ["ref"], properties: { ref: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2, description: `Reference kind (${t.type?.target ?? "link kind"}) and identity.` } }, additionalProperties: !1 }), (t.attribute.cardinality ?? "one") !== "one" && (A = { type: "array", items: A, uniqueItems: t.attribute.cardinality === "set" }), { type: "object", properties: { value: { ...A, title: "Default value" } } };
     });
-    function v(m) {
-      return m && typeof m == "object" && "m" in m && "e" in m ? Ye(m) : m;
+    function m(C) {
+      return C && typeof C == "object" && "m" in C && "e" in C ? _a(C) : C;
     }
-    function n(m) {
-      return t.type?.form === "dec" ? v(m) : t.type?.form === "quantity" && m && typeof m == "object" && "v" in m && "u" in m ? { value: v(m.v), unit: m.u } : m;
+    function f(C) {
+      return t.type?.form === "dec" ? m(C) : t.type?.form === "quantity" && C && typeof C == "object" && "v" in C && "u" in C ? { value: m(C.v), unit: C.u } : C;
     }
-    const p = M(() => t.attribute.default === void 0 ? {} : { value: Array.isArray(t.attribute.default) ? t.attribute.default.map(n) : n(t.attribute.default) });
-    return (m, C) => l.disabled ? (e(), i("span", st, V(l.attribute.default == null ? "No default" : s(Be)(l.attribute.default)), 1)) : (e(), R(ea, {
+    const c = D(() => t.attribute.default === void 0 ? {} : { value: Array.isArray(t.attribute.default) ? t.attribute.default.map(f) : f(t.attribute.default) });
+    return (C, A) => l.disabled ? (e(), i("span", is, U(l.attribute.default == null ? "No default" : s(oa)(l.attribute.default)), 1)) : (e(), T(Ca, {
       key: 1,
-      schema: r.value,
-      "model-value": p.value,
-      "onUpdate:modelValue": C[0] || (C[0] = (j) => u("change", j.value))
+      schema: u.value,
+      "model-value": c.value,
+      "onUpdate:modelValue": A[0] || (A[0] = (N) => d("change", N.value))
     }, null, 8, ["schema", "model-value"]));
   }
-}), nt = { class: "pim-stack" }, ot = { class: "pim-bsection-head" }, dt = {
-  key: 0,
-  class: "mono muted small"
-}, ut = { class: "pim-source-permissions" }, rt = ["for"], ct = {
+}), os = { class: "pim-stack" }, ds = { class: "form pim-card-body pad pim-ia-action pim-family-filter" }, rs = {
+  key: 1,
+  class: "form pim-card-body pad muted"
+}, us = { class: "pim-bsection-head pim-ia-group-head" }, cs = { class: "small muted" }, ms = { class: "pim-source-permissions" }, ps = ["for"], vs = {
   key: 0,
   class: "small muted"
-}, mt = ["onDragstart"], pt = { class: "pim-fields" }, vt = { class: "pim-f pim-w-third" }, ft = { class: "pim-f-label" }, bt = ["for"], yt = {
+}, fs = ["onDragstart"], bs = { class: "pim-fields" }, ys = { class: "pim-f pim-w-third" }, gs = { class: "pim-f-label" }, hs = ["id"], ks = { class: "pim-f pim-w-third" }, _s = { class: "pim-f-label" }, ws = ["id"], $s = {
+  key: 0,
+  class: "pim-f pim-w-third"
+}, Cs = { class: "pim-f-label" }, xs = ["id"], Vs = {
+  key: 1,
+  class: "pim-f pim-w-full muted small"
+}, Us = {
+  key: 2,
+  class: "pim-f pim-w-full muted small"
+}, As = {
+  key: 3,
+  class: "pim-f pim-w-third"
+}, js = { class: "pim-f-label" }, Ss = ["id"], Rs = { class: "pim-f pim-w-third" }, Os = { class: "pim-f-label" }, Is = ["id"], Ts = { class: "pim-f pim-w-half" }, Ps = { class: "pim-f-label" }, qs = ["id"], Ds = ["aria-labelledby"], Ns = { class: "pim-f-label" }, zs = ["id"], Fs = ["aria-labelledby"], Bs = { class: "pim-f-label" }, Ls = ["id"], Es = { class: "pim-fields" }, Ms = { class: "pim-f pim-w-third" }, Ws = { class: "pim-f-label" }, Hs = ["for"], Js = {
   key: 0,
   class: "pim-f-note"
-}, gt = { class: "pim-f pim-w-third" }, ht = { class: "pim-f-label" }, kt = ["id"], _t = { class: "pim-f pim-w-third" }, $t = { class: "pim-f-label" }, wt = ["id"], xt = {
+}, Ks = { class: "pim-f pim-w-third" }, Gs = { class: "pim-f-label" }, Ys = ["id"], Zs = { class: "pim-f pim-w-half" }, Qs = { class: "pim-f-label" }, Xs = ["for"], ei = { class: "row" }, ai = {
   key: 0,
-  class: "pim-f pim-w-third"
-}, Ct = { class: "pim-f-label" }, Vt = ["id"], Ut = {
-  key: 1,
-  class: "pim-f pim-w-third"
-}, St = { class: "pim-f-label" }, At = ["id"], Ot = { class: "pim-f pim-w-third" }, It = { class: "pim-f-label" }, Rt = ["id"], jt = { class: "pim-f pim-w-third" }, Tt = { class: "pim-f-label" }, qt = ["id"], Dt = { class: "pim-f pim-w-half" }, Nt = { class: "pim-f-label" }, Pt = ["id"], Lt = { class: "pim-f pim-w-half" }, zt = { class: "pim-f-label" }, Bt = ["for"], Et = { class: "row" }, Mt = {
-  key: 2,
   class: "pim-f pim-w-full"
-}, Ft = { class: "pim-f-label" }, Ht = ["id"], Jt = ["aria-labelledby"], Wt = ["id"], Kt = ["aria-labelledby"], Gt = { class: "pim-f-label" }, Yt = ["id"], Zt = ["aria-labelledby"], Qt = { class: "pim-f-label" }, Xt = ["id"], es = {
+}, li = { class: "pim-f-label" }, ti = ["id"], si = ["aria-labelledby"], ii = ["id"], ni = {
   key: 0,
   class: "row end"
-}, as = {
-  key: 0,
-  class: "form"
-}, ls = /* @__PURE__ */ le({
+}, oi = /* @__PURE__ */ de({
   __name: "BuilderFields",
-  props: {
+  props: /* @__PURE__ */ na({
     draft: {},
     schema: {},
     options: {}
-  },
-  emits: ["remove"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = Le.map((U) => U.value), v = [{ value: "one", label: "Single value" }, { value: "list", label: "Ordered list" }, { value: "set", label: "Unique set" }], n = M(() => t.schema.access.admin), p = M(() => t.draft.aspects ?? []), m = M(() => (t.draft.dimensions ?? []).map((U) => ({ value: U.name, label: G(U.name) }))), C = M(() => (t.draft.vocabularies ?? []).map((U) => U.code)), j = M(() => (t.draft.sources ?? []).map((U) => ({ value: U.id, label: G(U.id) }))), K = M(() => [...t.options.types].sort((U, A) => U.form.localeCompare(A.form)).map((U) => ({ value: U.id, label: Te(U) })));
-    function x(U) {
-      return t.options.types.find((A) => A.id === U.type);
+  }, {
+    family: { default: "" },
+    familyModifiers: {}
+  }),
+  emits: /* @__PURE__ */ na(["remove"], ["update:family"]),
+  setup(l, { emit: $ }) {
+    const t = l, d = za(l, "family"), u = $, m = ia.map((V) => V.value), f = [{ value: "one", label: "Single value" }, { value: "list", label: "Ordered list" }, { value: "set", label: "Unique set" }], c = D(() => t.schema.access.admin), C = D(() => t.draft.aspects ?? []), A = D(() => (t.draft.families ?? []).filter((V) => V.code !== "generic"));
+    pe(A, (V) => {
+      d.value && !V.some((R) => R.code === d.value) && (d.value = "");
+    }, { immediate: !0 });
+    const N = D(() => [{ value: "", label: "All families" }, ...A.value.map((V) => ({ value: V.code, label: B(V.code) }))]), X = D(() => {
+      const V = A.value.find((R) => R.code === d.value);
+      return V ? C.value.filter((R) => V.aspects?.includes(R.namespace)) : C.value;
+    }), P = D(() => (t.draft.dimensions ?? []).map((V) => ({ value: V.name, label: B(V.name) }))), z = D(() => (t.draft.vocabularies ?? []).map((V) => V.code)), k = D(() => (t.draft.sources ?? []).map((V) => ({ value: V.id, label: B(V.id) }))), x = D(() => [...t.options.types].sort((V, R) => V.form.localeCompare(R.form)).map((V) => ({ value: V.id, label: aa(V) })));
+    function o(V) {
+      return t.options.types.find((R) => R.id === V.type);
     }
-    function I(U) {
-      return x(U)?.target === "term";
+    function j(V) {
+      return o(V)?.target === "term";
     }
-    function b(U) {
-      const A = x(U);
-      return !!A && A.form === "ref" && !A.target;
+    function I(V) {
+      return o(V)?.target === "asset";
     }
-    function f(U, A) {
-      return A.id !== void 0 && t.schema.attributes[U + "." + A.code] !== void 0;
+    function M(V) {
+      const R = o(V);
+      return !!R && R.form === "ref" && !R.target;
     }
-    function d(U) {
-      const A = (t.draft.families ?? []).filter((S) => S.aspects?.includes(U)).length;
-      return A + (A === 1 ? " family" : " families");
+    function se(V) {
+      return A.value.filter((R) => R.aspects?.includes(V)).map((R) => B(R.code));
     }
-    const c = J({}), o = Ae(), O = /* @__PURE__ */ new WeakMap();
-    let B = 0;
-    function te(U, A) {
-      if (A.id !== void 0) return U + "." + A.id;
-      const S = Sa(A);
-      let _ = O.get(S);
-      return _ === void 0 && (_ = ++B, O.set(S, _)), U + ".draft-" + _;
+    function fe(V) {
+      const R = se(V);
+      return R.length ? R.length === 1 ? R[0] : R.length + " families" : "Unused by families";
     }
-    function Y(U, A, S) {
-      return o + "-" + te(U, A) + "-" + S;
+    const ae = { none: "None", key: "Exact match", number: "Number range", text: "Text search" }, Z = J({}), W = qe(), S = /* @__PURE__ */ new WeakMap();
+    let K = 0;
+    function h(V, R) {
+      if (R.id !== void 0) return V + "." + R.id;
+      const q = wl(R);
+      let _ = S.get(q);
+      return _ === void 0 && (_ = ++K, S.set(q, _)), V + ".draft-" + _;
     }
-    function ne(U, A) {
-      U.type = A;
-      const S = x(U);
-      if (S && U.index && !S.indexes.includes(U.index) && delete U.index, I(U) || delete U.vocabulary, !b(U) && U.config && "target" in U.config) {
-        const { target: _, ...se } = U.config;
-        U.config = Object.keys(se).length ? se : void 0, U.config || delete U.config;
+    function n(V, R, q) {
+      return W + "-" + h(V, R) + "-" + q;
+    }
+    function b(V, R) {
+      V.type = R;
+      const q = o(V);
+      if (q && V.index && !q.indexes.includes(V.index) && delete V.index, j(V) || delete V.vocabulary, I(V) && delete V.default, !M(V) && V.config && "target" in V.config) {
+        const { target: _, ...oe } = V.config;
+        V.config = Object.keys(oe).length ? oe : void 0, V.config || delete V.config;
       }
     }
-    function P(U, A) {
-      Object.keys(A).length ? U.config = A : delete U.config;
+    function r(V, R) {
+      Object.keys(R).length ? V.config = R : delete V.config;
     }
-    function D(U, A) {
-      const S = { ...U.config ?? {} };
-      A ? S.target = A : delete S.target, P(U, S);
+    function L(V, R) {
+      const q = { ...V.config ?? {} };
+      R ? q.target = R : delete q.target, r(V, q);
     }
-    function N(U, A) {
-      A.length ? U.scope = A : delete U.scope, A.length || delete U.index_contexts;
+    function F(V, R) {
+      R.length ? V.scope = R : delete V.scope, R.length || delete V.index_contexts;
     }
-    function y(U, A, S) {
-      S === void 0 || S === "" || S === !1 && A !== "default" ? delete U[A] : U[A] = S;
+    function Q(V, R, q) {
+      q === void 0 || q === "" || q === !1 && R !== "default" ? delete V[R] : V[R] = q;
     }
-    function q(U) {
-      return U.index_contexts ?? [];
+    function ce(V) {
+      return V.index_contexts ?? [];
     }
-    function $(U) {
-      return (t.draft.dimensions ?? []).find((A) => A.name === U)?.members ?? [];
+    function re(V) {
+      return (t.draft.dimensions ?? []).find((R) => R.name === V)?.members ?? [];
     }
-    function T(U) {
-      const A = {};
-      for (const _ of U.scope ?? []) A[_] = $(_)[0] ?? "";
-      (U.index_contexts ?? (U.index_contexts = [])).push(A);
+    function Ee(V) {
+      const R = {};
+      for (const _ of V.scope ?? []) R[_] = re(_)[0] ?? "";
+      (V.index_contexts ?? (V.index_contexts = [])).push(R);
     }
-    const ee = J(null);
-    function Oe(U, A, S) {
-      if (!n.value || !U.altKey) return;
-      const _ = { ArrowUp: -1, ArrowDown: 1 }[U.key];
-      _ !== void 0 && (U.preventDefault(), Ue(A.attributes ?? [], S, S + _));
+    const $e = J(null);
+    function ta(V, R, q) {
+      if (!c.value || !V.altKey) return;
+      const _ = { ArrowUp: -1, ArrowDown: 1 }[V.key];
+      _ !== void 0 && (V.preventDefault(), Be(R.attributes ?? [], q, q + _));
     }
-    function Me(U, A) {
-      n.value && ee.value?.namespace === U.namespace && Ue(U.attributes ?? [], ee.value.index, A), ee.value = null;
+    function Me(V, R) {
+      c.value && $e.value?.namespace === V.namespace && Be(V.attributes ?? [], $e.value.index, R), $e.value = null;
     }
-    function re(U) {
-      (t.draft.aspects ??= []).push({ namespace: U, attributes: [] });
+    function ua(V) {
+      (t.draft.aspects ??= []).push({ namespace: V, attributes: [] });
     }
-    function Fe(U) {
-      const A = p.value.indexOf(U);
-      A >= 0 && p.value.splice(A, 1), t.schema.declaration.aspects?.some((S) => S.namespace === U.namespace) && u("remove", "aspects", U.namespace);
+    function ca(V) {
+      const R = C.value.indexOf(V);
+      R >= 0 && C.value.splice(R, 1), t.schema.declaration.aspects?.some((q) => q.namespace === V.namespace) && u("remove", "aspects", V.namespace);
     }
-    function Ie(U, A) {
-      const S = t.options.types.find((se) => se.id === "kickside.pim.types:text") ?? t.options.types[0], _ = { code: A, type: S?.id ?? "" };
-      (U.attributes ??= []).push(_), c.value[te(U.namespace, _)] = !0;
+    function Se(V, R) {
+      const q = t.options.types.find((oe) => oe.id === "kickside.pim.types:text") ?? t.options.types[0], _ = { code: R, type: q?.id ?? "" };
+      (V.attributes ??= []).push(_), Z.value[h(V.namespace, _)] = !0;
     }
-    function He(U, A) {
-      const S = U.attributes ?? [], _ = S.indexOf(A);
-      _ >= 0 && S.splice(_, 1), f(U.namespace, A) && u("remove", "attributes", U.namespace + "." + A.code);
+    function Ce(V, R) {
+      const q = V.attributes ?? [], _ = q.indexOf(R);
+      _ >= 0 && q.splice(_, 1);
+      const oe = R.id === void 0 ? void 0 : t.schema.declaration.aspects?.find((Y) => Y.namespace === V.namespace)?.attributes?.find((Y) => Y.id === R.id);
+      oe && u("remove", "attributes", V.namespace + "." + oe.code);
     }
-    return (U, A) => (e(), i("div", nt, [
-      (e(!0), i(F, null, Q(p.value, (S) => (e(), R(xe, {
-        key: S.namespace,
-        count: S.attributes?.length ?? 0,
-        columns: ["code", "kind", "details", "usage"]
-      }, ue({
-        head: h(() => [
-          a("header", ot, [
+    return (V, R) => (e(), i("div", os, [
+      a("div", ds, [
+        R[4] || (R[4] = a("div", null, [
+          a("h3", null, "Field groups"),
+          a("p", null, "Families share fields through groups. A change to a shared field applies to each family that uses it.")
+        ], -1)),
+        A.value.length ? (e(), T(s(he), {
+          key: 0,
+          modelValue: d.value,
+          "onUpdate:modelValue": R[0] || (R[0] = (q) => d.value = q),
+          "aria-label": "Show fields for a family",
+          placeholder: "All families",
+          options: N.value,
+          "option-label": "label",
+          "option-value": "value",
+          "append-to": "self"
+        }, null, 8, ["modelValue", "options"])) : v("", !0)
+      ]),
+      c.value && !d.value ? (e(), T(Ie, {
+        key: 0,
+        class: "pim-ia-inline-add",
+        label: "Field group name",
+        action: "Add field group",
+        "from-name": "",
+        existing: C.value.map((q) => q.namespace),
+        onAdd: ua
+      }, null, 8, ["existing"])) : v("", !0),
+      d.value && !X.value.length ? (e(), i("p", rs, "This family has no field groups yet. Open the family to choose which groups it uses.")) : v("", !0),
+      (e(!0), i(E, null, ee(X.value, (q) => (e(), T(Te, {
+        key: q.namespace,
+        count: q.attributes?.length ?? 0,
+        columns: ["kind", "details", "usage"]
+      }, {
+        head: w(() => [
+          a("header", us, [
             a("div", null, [
-              a("h3", null, [
-                z(V(s(G)(S.namespace)), 1),
-                s(G)(S.namespace).toLocaleLowerCase() !== S.namespace.toLocaleLowerCase() ? (e(), i("span", dt, V(S.namespace), 1)) : w("", !0)
-              ]),
-              a("div", ut, [
+              a("h3", null, U(s(B)(q.namespace)), 1),
+              a("p", cs, U(se(q.namespace).length ? "Used by " + se(q.namespace).join(", ") : "Unused by families"), 1)
+            ])
+          ]),
+          c.value ? (e(), T(Ie, {
+            key: 0,
+            label: "Field name",
+            action: "Add field",
+            "from-name": "",
+            existing: q.attributes?.map((_) => _.code),
+            onAdd: (_) => Se(q, _)
+          }, null, 8, ["existing", "onAdd"])) : v("", !0),
+          y(Ue, {
+            class: "pim-ia-disclosure pim-group-settings",
+            label: "Field group settings"
+          }, {
+            default: w(() => [
+              a("div", ms, [
                 a("label", {
-                  for: "writers-" + S.namespace
-                }, "Sources allowed to write", 8, rt),
-                g(s(Ta), {
-                  disabled: !n.value,
-                  "input-id": "writers-" + S.namespace,
+                  for: "writers-" + q.namespace
+                }, "Sources allowed to write", 8, ps),
+                y(s(jl), {
+                  disabled: !c.value,
+                  "input-id": "writers-" + q.namespace,
                   "aria-label": "Sources allowed to write",
-                  "model-value": S.write?.sources ?? [],
-                  options: j.value,
+                  "model-value": q.write?.sources ?? [],
+                  options: k.value,
                   "option-label": "label",
                   "option-value": "value",
                   placeholder: "Any source",
                   appendTo: "self",
-                  "onUpdate:modelValue": (_) => S.write = { sources: _ }
+                  "onUpdate:modelValue": (_) => q.write = { sources: _ }
                 }, null, 8, ["disabled", "input-id", "model-value", "options", "onUpdate:modelValue"]),
-                n.value ? (e(), i("span", ct, "Leave empty to allow any source to write this field group.")) : w("", !0)
-              ])
-            ]),
-            n.value ? (e(), R(s(Z), {
-              key: 0,
-              type: "button",
-              onClick: (_) => Fe(S),
-              text: "",
-              severity: "secondary",
-              size: "small"
-            }, {
-              default: h(() => [
-                g(s(X), { icon: "tabler:trash" }),
-                A[3] || (A[3] = z(" Remove field group", -1))
+                c.value ? (e(), i("span", vs, "Leave empty to allow any source to write this field group.")) : v("", !0)
               ]),
-              _: 1
-            }, 8, ["onClick"])) : w("", !0)
-          ])
+              c.value ? (e(), T(s(G), {
+                key: 0,
+                type: "button",
+                onClick: (_) => ca(q),
+                text: "",
+                severity: "secondary",
+                size: "small"
+              }, {
+                default: w(() => [
+                  y(s(le), {
+                    icon: "tabler:trash",
+                    "aria-hidden": "true"
+                  }),
+                  R[5] || (R[5] = H(" Remove field group", -1))
+                ]),
+                _: 1
+              }, 8, ["onClick"])) : v("", !0)
+            ]),
+            _: 2
+          }, 1024)
         ]),
-        default: h(() => [
-          (e(!0), i(F, null, Q(S.attributes ?? [], (_, se) => (e(), R(Ce, {
-            key: te(S.namespace, _),
-            open: c.value[te(S.namespace, _)],
-            "onUpdate:open": (H) => c.value[te(S.namespace, _)] = H,
-            title: s(G)(_.code),
-            code: S.namespace + "." + _.code,
-            kind: s(Te)(x(_)),
-            usage: d(S.namespace),
+        default: w(() => [
+          (e(!0), i(E, null, ee(q.attributes ?? [], (_, oe) => (e(), T(Pe, {
+            key: h(q.namespace, _),
+            open: Z.value[h(q.namespace, _)],
+            "onUpdate:open": (Y) => Z.value[h(q.namespace, _)] = Y,
+            title: s(B)(_.code),
+            kind: s(aa)(o(_)),
+            usage: fe(q.namespace),
             class: "pim-attr",
             "head-class": "pim-attr-row",
             "toggle-class": "field-toggle",
-            onHeadDragover: A[2] || (A[2] = be(() => {
+            onHeadDragover: R[3] || (R[3] = Ae(() => {
             }, ["prevent"])),
-            onHeadDrop: be((H) => Me(S, se), ["prevent"]),
-            onHeadKeydown: (H) => Oe(H, S, se)
-          }, ue({
-            handle: h(() => [
-              n.value ? (e(), i("span", {
+            onHeadDrop: Ae((Y) => Me(q, oe), ["prevent"]),
+            onHeadKeydown: (Y) => ta(Y, q, oe)
+          }, Re({
+            handle: w(() => [
+              c.value ? (e(), i("span", {
                 key: 0,
                 class: "pim-grip",
                 draggable: "true",
                 "aria-hidden": "true",
-                onClick: A[0] || (A[0] = be(() => {
+                onClick: R[1] || (R[1] = Ae(() => {
                 }, ["stop"])),
-                onDragstart: be((H) => ee.value = { namespace: S.namespace, index: se }, ["stop"]),
-                onDragend: A[1] || (A[1] = (H) => ee.value = null)
+                onDragstart: Ae((Y) => $e.value = { namespace: q.namespace, index: oe }, ["stop"]),
+                onDragend: R[2] || (R[2] = (Y) => $e.value = null)
               }, [
-                g(s(X), { icon: "tabler:grip-vertical" })
-              ], 40, mt)) : w("", !0)
+                y(s(le), { icon: "tabler:grip-vertical" })
+              ], 40, fs)) : v("", !0)
             ]),
-            details: h(() => [
-              _.cardinality && _.cardinality !== "one" ? (e(), R(s(ie), {
+            details: w(() => [
+              _.cardinality && _.cardinality !== "one" ? (e(), T(s(ye), {
                 key: 0,
                 class: "kx-tag-sm",
                 severity: "secondary"
               }, {
-                default: h(() => [
-                  z(V(v.find((H) => H.value === _.cardinality)?.label), 1)
+                default: w(() => [
+                  H(U(f.find((Y) => Y.value === _.cardinality)?.label), 1)
                 ]),
                 _: 2
-              }, 1024)) : w("", !0),
-              _.scope?.length ? (e(), R(s(ie), {
+              }, 1024)) : v("", !0),
+              _.scope?.length ? (e(), T(s(ye), {
                 key: 1,
                 class: "kx-tag-sm",
                 severity: "secondary"
               }, {
-                default: h(() => [
-                  z("per " + V(_.scope.join(", ")), 1)
+                default: w(() => [
+                  H("per " + U(_.scope.map(s(B)).join(", ")), 1)
                 ]),
                 _: 2
-              }, 1024)) : w("", !0),
-              _.index && _.index !== "none" ? (e(), R(s(ie), {
+              }, 1024)) : v("", !0),
+              _.index && _.index !== "none" ? (e(), T(s(ye), {
                 key: 2,
                 class: "kx-tag-sm",
                 severity: "secondary"
               }, {
-                default: h(() => [
-                  z(V(_.index) + " index", 1)
+                default: w(() => [
+                  H(U(ae[_.index] || "Filterable"), 1)
                 ]),
                 _: 2
-              }, 1024)) : w("", !0),
-              _.unique ? (e(), R(s(ie), {
+              }, 1024)) : v("", !0),
+              _.unique ? (e(), T(s(ye), {
                 key: 3,
                 class: "kx-tag-sm",
                 severity: "secondary"
               }, {
-                default: h(() => [...A[4] || (A[4] = [
-                  z("unique", -1)
+                default: w(() => [...R[6] || (R[6] = [
+                  H("unique", -1)
                 ])]),
                 _: 1
-              })) : w("", !0)
+              })) : v("", !0)
             ]),
-            default: h(() => [
-              a("div", pt, [
-                a("div", vt, [
-                  a("div", ft, [
+            default: w(() => [
+              a("div", bs, [
+                a("div", ys, [
+                  a("div", gs, [
                     a("label", {
-                      for: Y(S.namespace, _, "code")
-                    }, "Code", 8, bt),
-                    n.value && f(S.namespace, _) ? (e(), i("span", yt, "renames keep values")) : w("", !0)
+                      id: n(q.namespace, _, "type")
+                    }, "Type", 8, hs)
                   ]),
-                  g(s(Re), {
-                    disabled: !n.value,
-                    id: Y(S.namespace, _, "code"),
-                    type: "text",
-                    value: _.code,
-                    onInput: (H) => _.code = H.target.value,
-                    class: "mono"
-                  }, null, 8, ["disabled", "id", "value", "onInput"])
-                ]),
-                a("div", gt, [
-                  a("div", ht, [
-                    a("label", {
-                      id: Y(S.namespace, _, "type")
-                    }, "Type", 8, kt)
-                  ]),
-                  g(s(ve), {
-                    disabled: !n.value,
-                    "aria-labelledby": Y(S.namespace, _, "type"),
+                  y(s(he), {
+                    disabled: !c.value,
+                    "aria-labelledby": n(q.namespace, _, "type"),
                     "model-value": _.type,
-                    options: K.value,
+                    options: x.value,
                     "option-label": "label",
                     "option-value": "value",
                     appendTo: "self",
-                    "onUpdate:modelValue": (H) => ne(_, H)
+                    "onUpdate:modelValue": (Y) => b(_, Y)
                   }, null, 8, ["disabled", "aria-labelledby", "model-value", "options", "onUpdate:modelValue"])
                 ]),
-                a("div", _t, [
-                  a("div", $t, [
+                a("div", ks, [
+                  a("div", _s, [
                     a("label", {
-                      id: Y(S.namespace, _, "values")
-                    }, "Values", 8, wt)
+                      id: n(q.namespace, _, "values")
+                    }, "Values", 8, ws)
                   ]),
-                  g(s(ve), {
-                    disabled: !n.value,
-                    "aria-labelledby": Y(S.namespace, _, "values"),
+                  y(s(he), {
+                    disabled: !c.value,
+                    "aria-labelledby": n(q.namespace, _, "values"),
                     "model-value": _.cardinality ?? "one",
-                    options: v,
+                    options: f,
                     "option-label": "label",
                     "option-value": "value",
                     appendTo: "self",
-                    "onUpdate:modelValue": (H) => y(_, "cardinality", H === "one" ? void 0 : H)
+                    "onUpdate:modelValue": (Y) => Q(_, "cardinality", Y === "one" ? void 0 : Y)
                   }, null, 8, ["disabled", "aria-labelledby", "model-value", "onUpdate:modelValue"])
                 ]),
-                I(_) ? (e(), i("div", xt, [
-                  a("div", Ct, [
+                j(_) ? (e(), i("div", $s, [
+                  a("div", Cs, [
                     a("label", {
-                      id: Y(S.namespace, _, "vocabulary")
-                    }, "Vocabulary", 8, Vt)
+                      id: n(q.namespace, _, "vocabulary")
+                    }, "Vocabulary", 8, xs)
                   ]),
-                  g(s(ve), {
-                    disabled: !n.value,
-                    "aria-labelledby": Y(S.namespace, _, "vocabulary"),
+                  y(s(he), {
+                    disabled: !c.value,
+                    "aria-labelledby": n(q.namespace, _, "vocabulary"),
                     "model-value": _.vocabulary ?? "",
-                    "onUpdate:modelValue": (H) => y(_, "vocabulary", H),
-                    options: [{ value: "", label: "Choose…" }, ...C.value.map((H) => ({ value: H, label: String(H) }))],
+                    "onUpdate:modelValue": (Y) => Q(_, "vocabulary", Y),
+                    options: [{ value: "", label: "Choose…" }, ...z.value.map((Y) => ({ value: Y, label: s(B)(Y) }))],
                     "option-label": "label",
                     "option-value": "value",
                     appendTo: "self"
                   }, null, 8, ["disabled", "aria-labelledby", "model-value", "onUpdate:modelValue", "options"])
-                ])) : w("", !0),
-                b(_) ? (e(), i("div", Ut, [
-                  a("div", St, [
+                ])) : v("", !0),
+                I(_) ? (e(), i("p", Vs, "Choose the media types and file size this field accepts. Catalog readers can access attached files.")) : o(_)?.form === "ref" && !j(_) ? (e(), i("p", Us, U(M(_) ? "A link points to something managed by an installed plugin." : "A product reference points to another product in this catalog."), 1)) : v("", !0),
+                M(_) ? (e(), i("div", As, [
+                  a("div", js, [
                     a("label", {
-                      id: Y(S.namespace, _, "link")
-                    }, "Link kind", 8, At),
-                    A[5] || (A[5] = a("span", { class: "pim-f-note" }, "owned by a plugin", -1))
+                      id: n(q.namespace, _, "link")
+                    }, "Link destination", 8, Ss),
+                    R[7] || (R[7] = a("span", { class: "pim-f-note" }, "choose what the field can point to", -1))
                   ]),
-                  g(s(ve), {
-                    disabled: !n.value,
-                    "aria-labelledby": Y(S.namespace, _, "link"),
+                  y(s(he), {
+                    disabled: !c.value,
+                    "aria-labelledby": n(q.namespace, _, "link"),
                     "model-value": _.config?.target ?? "",
-                    "onUpdate:modelValue": (H) => D(_, H),
-                    options: [{ value: "", label: "Choose…" }, ...l.options.link_kinds.map((H) => ({ value: H.kind, label: s(me)(H.title, "Link kind") }))],
+                    "onUpdate:modelValue": (Y) => L(_, Y),
+                    options: [{ value: "", label: "Choose…" }, ...l.options.link_kinds.map((Y) => ({ value: Y.kind, label: s(ne)(Y.title, "Link kind") }))],
                     "option-label": "label",
                     "option-value": "value",
                     appendTo: "self"
                   }, null, 8, ["disabled", "aria-labelledby", "model-value", "onUpdate:modelValue", "options"])
-                ])) : w("", !0),
-                a("div", Ot, [
-                  a("div", It, [
+                ])) : v("", !0),
+                a("div", Rs, [
+                  a("div", Os, [
                     a("label", {
-                      id: Y(S.namespace, _, "index")
-                    }, "Index", 8, Rt),
-                    A[6] || (A[6] = a("span", { class: "pim-f-note" }, "for filters and keys", -1))
+                      id: n(q.namespace, _, "width")
+                    }, "Width", 8, Is),
+                    R[8] || (R[8] = a("span", { class: "pim-f-note" }, "of a form row", -1))
                   ]),
-                  g(s(ve), {
-                    disabled: !n.value,
-                    "aria-labelledby": Y(S.namespace, _, "index"),
-                    "model-value": _.index ?? "none",
-                    options: x(_)?.indexes ?? ["none"],
-                    appendTo: "self",
-                    "onUpdate:modelValue": (H) => y(_, "index", H === "none" ? void 0 : H)
-                  }, null, 8, ["disabled", "aria-labelledby", "model-value", "options", "onUpdate:modelValue"])
-                ]),
-                a("div", jt, [
-                  a("div", Tt, [
-                    a("label", {
-                      id: Y(S.namespace, _, "width")
-                    }, "Width", 8, qt),
-                    A[7] || (A[7] = a("span", { class: "pim-f-note" }, "of a form row", -1))
-                  ]),
-                  g(s(Xe), {
-                    disabled: !n.value,
-                    "aria-labelledby": Y(S.namespace, _, "width"),
-                    "model-value": s(Ge)(l.schema, S.namespace, _),
-                    options: s(r),
+                  y(s($a), {
+                    disabled: !c.value,
+                    "aria-labelledby": n(q.namespace, _, "width"),
+                    "model-value": s(ka)(l.schema, q.namespace, _),
+                    options: s(m),
                     "allow-empty": !1,
-                    "onUpdate:modelValue": (H) => _.width = H
+                    "onUpdate:modelValue": (Y) => _.width = Y
                   }, null, 8, ["disabled", "aria-labelledby", "model-value", "options", "onUpdate:modelValue"])
                 ]),
-                a("div", Dt, [
-                  a("div", Nt, [
+                a("div", Ts, [
+                  a("div", Ps, [
                     a("label", {
-                      id: Y(S.namespace, _, "scope")
-                    }, "Varies per", 8, Pt),
-                    A[8] || (A[8] = a("span", { class: "pim-f-note" }, "dimensions the value depends on", -1))
+                      id: n(q.namespace, _, "scope")
+                    }, "Varies per", 8, qs),
+                    R[9] || (R[9] = a("span", { class: "pim-f-note" }, "dimensions the value depends on", -1))
                   ]),
-                  g(fe, {
-                    disabled: !n.value,
-                    labelledby: Y(S.namespace, _, "scope"),
+                  y(_e, {
+                    disabled: !c.value,
+                    labelledby: n(q.namespace, _, "scope"),
                     "model-value": _.scope ?? [],
-                    options: m.value,
-                    "onUpdate:modelValue": (H) => N(_, H)
+                    options: P.value,
+                    "onUpdate:modelValue": (Y) => F(_, Y)
                   }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
                 ]),
-                a("div", Lt, [
-                  a("div", zt, [
-                    a("label", {
-                      for: Y(S.namespace, _, "unique")
-                    }, "Unique", 8, Bt),
-                    A[9] || (A[9] = a("span", { class: "pim-f-note" }, "one holder per value, catalog wide", -1))
-                  ]),
-                  a("div", Et, [
-                    g(s(qe), {
-                      "input-id": Y(S.namespace, _, "unique"),
-                      "model-value": _.unique === !0,
-                      disabled: !n.value || !!_.scope?.length || (_.cardinality ?? "one") !== "one",
-                      "onUpdate:modelValue": (H) => y(_, "unique", H)
-                    }, null, 8, ["input-id", "model-value", "disabled", "onUpdate:modelValue"]),
-                    a("span", null, V(_.unique ? "Yes" : "No"), 1)
-                  ])
-                ]),
-                (_.scope?.length ?? 0) > 0 && _.index && _.index !== "none" ? (e(), i("div", Mt, [
-                  a("div", Ft, [
-                    a("label", {
-                      id: Y(S.namespace, _, "contexts")
-                    }, "Indexed contexts", 8, Ht),
-                    A[10] || (A[10] = a("span", { class: "pim-f-note" }, "which combinations get an index", -1))
-                  ]),
-                  a("div", {
-                    class: "pim-contexts",
-                    role: "group",
-                    "aria-labelledby": Y(S.namespace, _, "contexts")
-                  }, [
-                    (e(!0), i(F, null, Q(q(_), (H, pe) => (e(), i("div", {
-                      key: pe,
-                      class: "pim-context-row"
-                    }, [
-                      (e(!0), i(F, null, Q(_.scope, (E) => (e(), i("div", {
-                        key: E,
-                        class: "pim-context-field"
-                      }, [
-                        a("span", {
-                          id: Y(S.namespace, _, "context-" + pe + "-" + E),
-                          class: "small muted"
-                        }, V(s(G)(E)), 9, Wt),
-                        g(s(ve), {
-                          disabled: !n.value,
-                          "aria-labelledby": Y(S.namespace, _, "context-" + pe + "-" + E),
-                          "model-value": H[E] ?? "",
-                          options: $(E),
-                          class: "narrow",
-                          appendTo: "self",
-                          "onUpdate:modelValue": (L) => H[E] = L
-                        }, null, 8, ["disabled", "aria-labelledby", "model-value", "options", "onUpdate:modelValue"])
-                      ]))), 128)),
-                      n.value ? (e(), R(s(Z), {
-                        key: 0,
-                        type: "button",
-                        "aria-label": "Remove context",
-                        onClick: (E) => q(_).splice(pe, 1),
-                        text: "",
-                        severity: "secondary",
-                        size: "small"
-                      }, {
-                        default: h(() => [
-                          g(s(X), { icon: "tabler:x" })
-                        ]),
-                        _: 1
-                      }, 8, ["onClick"])) : w("", !0)
-                    ]))), 128)),
-                    n.value ? (e(), R(s(Z), {
-                      key: 0,
-                      type: "button",
-                      onClick: (H) => T(_),
-                      severity: "secondary",
-                      outlined: "",
-                      size: "small"
-                    }, {
-                      default: h(() => [
-                        g(s(X), {
-                          icon: "tabler:plus",
-                          "aria-hidden": "true"
-                        }),
-                        A[11] || (A[11] = z(" Add context", -1))
-                      ]),
-                      _: 1
-                    }, 8, ["onClick"])) : w("", !0)
-                  ], 8, Jt)
-                ])) : w("", !0),
-                a("div", {
+                I(_) ? v("", !0) : (e(), i("div", {
+                  key: 4,
                   class: "pim-f pim-w-half",
                   role: "group",
-                  "aria-labelledby": Y(S.namespace, _, "default")
+                  "aria-labelledby": n(q.namespace, _, "default")
                 }, [
-                  a("div", Gt, [
+                  a("div", Ns, [
                     a("label", {
-                      id: Y(S.namespace, _, "default")
-                    }, "Default", 8, Yt),
-                    A[12] || (A[12] = a("span", { class: "pim-f-note" }, "when no value is set", -1))
+                      id: n(q.namespace, _, "default")
+                    }, "Default", 8, zs),
+                    R[10] || (R[10] = a("span", { class: "pim-f-note" }, "when no value is set", -1))
                   ]),
-                  g(it, {
-                    disabled: !n.value,
+                  y(ns, {
+                    disabled: !c.value,
                     attribute: _,
-                    type: x(_),
-                    onChange: (H) => y(_, "default", H)
+                    type: o(_),
+                    onChange: (Y) => Q(_, "default", Y)
                   }, null, 8, ["disabled", "attribute", "type", "onChange"])
-                ], 8, Kt),
-                x(_)?.config_schema ? (e(), i("div", {
-                  key: 3,
+                ], 8, Ds)),
+                o(_)?.config_schema ? (e(), i("div", {
+                  key: 5,
                   class: "pim-f pim-w-full",
                   role: "group",
-                  "aria-labelledby": Y(S.namespace, _, "config")
+                  "aria-labelledby": n(q.namespace, _, "config")
                 }, [
-                  a("div", Qt, [
+                  a("div", Bs, [
                     a("label", {
-                      id: Y(S.namespace, _, "config")
-                    }, "Type configuration", 8, Xt)
+                      id: n(q.namespace, _, "config")
+                    }, "Type configuration", 8, Ls)
                   ]),
-                  g(ea, {
-                    disabled: !n.value,
-                    schema: x(_).config_schema,
+                  y(Ca, {
+                    disabled: !c.value,
+                    schema: o(_).config_schema,
                     "model-value": _.config ?? {},
-                    "onUpdate:modelValue": (H) => P(_, H)
+                    "onUpdate:modelValue": (Y) => r(_, Y)
                   }, null, 8, ["disabled", "schema", "model-value", "onUpdate:modelValue"])
-                ], 8, Zt)) : w("", !0)
+                ], 8, Fs)) : v("", !0)
               ]),
-              n.value ? (e(), i("div", es, [
-                g(s(Z), {
+              y(Ue, {
+                class: "pim-field-advanced pim-ia-disclosure",
+                label: "Advanced"
+              }, {
+                default: w(() => [
+                  a("div", Es, [
+                    a("div", Ms, [
+                      a("div", Ws, [
+                        a("label", {
+                          for: n(q.namespace, _, "code")
+                        }, "Integration key", 8, Hs),
+                        _.id !== void 0 ? (e(), i("span", Js, "renaming keeps stored values")) : v("", !0)
+                      ]),
+                      y(s(Ge), {
+                        disabled: !c.value,
+                        id: n(q.namespace, _, "code"),
+                        type: "text",
+                        value: _.code,
+                        onInput: (Y) => _.code = Y.target.value,
+                        class: "mono"
+                      }, null, 8, ["disabled", "id", "value", "onInput"])
+                    ]),
+                    a("div", Ks, [
+                      a("div", Gs, [
+                        a("label", {
+                          id: n(q.namespace, _, "index")
+                        }, "Search and filters", 8, Ys),
+                        R[11] || (R[11] = a("span", { class: "pim-f-note" }, "choose how this field can be matched", -1))
+                      ]),
+                      y(s(he), {
+                        disabled: !c.value,
+                        "aria-labelledby": n(q.namespace, _, "index"),
+                        "model-value": _.index ?? "none",
+                        options: (o(_)?.indexes ?? ["none"]).map((Y) => ({ value: Y, label: ae[Y] || s(B)(Y) })),
+                        "option-label": "label",
+                        "option-value": "value",
+                        appendTo: "self",
+                        "onUpdate:modelValue": (Y) => Q(_, "index", Y === "none" ? void 0 : Y)
+                      }, null, 8, ["disabled", "aria-labelledby", "model-value", "options", "onUpdate:modelValue"])
+                    ]),
+                    a("div", Zs, [
+                      a("div", Qs, [
+                        a("label", {
+                          for: n(q.namespace, _, "unique")
+                        }, "Unique", 8, Xs),
+                        R[12] || (R[12] = a("span", { class: "pim-f-note" }, "one holder per value, catalog wide", -1))
+                      ]),
+                      a("div", ei, [
+                        y(s(la), {
+                          "input-id": n(q.namespace, _, "unique"),
+                          "model-value": _.unique === !0,
+                          disabled: !c.value || !!_.scope?.length || (_.cardinality ?? "one") !== "one",
+                          "onUpdate:modelValue": (Y) => Q(_, "unique", Y)
+                        }, null, 8, ["input-id", "model-value", "disabled", "onUpdate:modelValue"]),
+                        a("span", null, U(_.unique ? "Yes" : "No"), 1)
+                      ])
+                    ]),
+                    (_.scope?.length ?? 0) > 0 && _.index && _.index !== "none" ? (e(), i("div", ai, [
+                      a("div", li, [
+                        a("label", {
+                          id: n(q.namespace, _, "contexts")
+                        }, "Filterable combinations", 8, ti),
+                        R[13] || (R[13] = a("span", { class: "pim-f-note" }, "which combinations get an index", -1))
+                      ]),
+                      a("div", {
+                        class: "pim-contexts",
+                        role: "group",
+                        "aria-labelledby": n(q.namespace, _, "contexts")
+                      }, [
+                        (e(!0), i(E, null, ee(ce(_), (Y, Oe) => (e(), i("div", {
+                          key: Oe,
+                          class: "pim-context-row"
+                        }, [
+                          (e(!0), i(E, null, ee(_.scope, (ve) => (e(), i("div", {
+                            key: ve,
+                            class: "pim-context-field"
+                          }, [
+                            a("span", {
+                              id: n(q.namespace, _, "context-" + Oe + "-" + ve),
+                              class: "small muted"
+                            }, U(s(B)(ve)), 9, ii),
+                            y(s(he), {
+                              disabled: !c.value,
+                              "aria-labelledby": n(q.namespace, _, "context-" + Oe + "-" + ve),
+                              "model-value": Y[ve] ?? "",
+                              options: re(ve),
+                              class: "narrow",
+                              appendTo: "self",
+                              "onUpdate:modelValue": (Ze) => Y[ve] = Ze
+                            }, null, 8, ["disabled", "aria-labelledby", "model-value", "options", "onUpdate:modelValue"])
+                          ]))), 128)),
+                          c.value ? (e(), T(s(G), {
+                            key: 0,
+                            type: "button",
+                            "aria-label": "Remove context",
+                            onClick: (ve) => ce(_).splice(Oe, 1),
+                            text: "",
+                            severity: "secondary",
+                            size: "small"
+                          }, {
+                            default: w(() => [
+                              y(s(le), { icon: "tabler:x" })
+                            ]),
+                            _: 1
+                          }, 8, ["onClick"])) : v("", !0)
+                        ]))), 128)),
+                        c.value ? (e(), T(s(G), {
+                          key: 0,
+                          type: "button",
+                          onClick: (Y) => Ee(_),
+                          severity: "secondary",
+                          outlined: "",
+                          size: "small"
+                        }, {
+                          default: w(() => [
+                            y(s(le), {
+                              icon: "tabler:plus",
+                              "aria-hidden": "true"
+                            }),
+                            R[14] || (R[14] = H(" Add context", -1))
+                          ]),
+                          _: 1
+                        }, 8, ["onClick"])) : v("", !0)
+                      ], 8, si)
+                    ])) : v("", !0)
+                  ])
+                ]),
+                _: 2
+              }, 1024),
+              c.value ? (e(), i("div", ni, [
+                y(s(G), {
                   type: "button",
-                  onClick: (H) => He(S, _),
+                  onClick: (Y) => Ce(q, _),
                   text: "",
                   severity: "secondary",
                   size: "small"
                 }, {
-                  default: h(() => [
-                    g(s(X), { icon: "tabler:trash" }),
-                    A[13] || (A[13] = z(" Remove field", -1))
+                  default: w(() => [
+                    y(s(le), { icon: "tabler:trash" }),
+                    R[15] || (R[15] = H(" Remove field", -1))
                   ]),
                   _: 1
                 }, 8, ["onClick"])
-              ])) : w("", !0)
+              ])) : v("", !0)
             ]),
             _: 2
           }, [
-            n.value ? {
+            c.value ? {
               name: "actions",
-              fn: h(() => [
-                g(s(Z), {
+              fn: w(() => [
+                y(s(G), {
                   type: "button",
-                  disabled: se === 0,
-                  "aria-label": "Move " + _.code + " earlier",
-                  onClick: (H) => s(Ue)(S.attributes, se, se - 1),
+                  disabled: oe === 0,
+                  "aria-label": "Move " + s(B)(_.code) + " earlier",
+                  onClick: (Y) => s(Be)(q.attributes, oe, oe - 1),
                   text: "",
                   severity: "secondary",
                   size: "small"
                 }, {
-                  default: h(() => [
-                    g(s(X), { icon: "tabler:arrow-up" })
+                  default: w(() => [
+                    y(s(le), { icon: "tabler:arrow-up" })
                   ]),
                   _: 1
                 }, 8, ["disabled", "aria-label", "onClick"]),
-                g(s(Z), {
+                y(s(G), {
                   type: "button",
-                  disabled: se === (S.attributes?.length ?? 0) - 1,
-                  "aria-label": "Move " + _.code + " later",
-                  onClick: (H) => s(Ue)(S.attributes, se, se + 1),
+                  disabled: oe === (q.attributes?.length ?? 0) - 1,
+                  "aria-label": "Move " + s(B)(_.code) + " later",
+                  onClick: (Y) => s(Be)(q.attributes, oe, oe + 1),
                   text: "",
                   severity: "secondary",
                   size: "small"
                 }, {
-                  default: h(() => [
-                    g(s(X), { icon: "tabler:arrow-down" })
+                  default: w(() => [
+                    y(s(le), { icon: "tabler:arrow-down" })
                   ]),
                   _: 1
                 }, 8, ["disabled", "aria-label", "onClick"])
               ]),
               key: "0"
             } : void 0
-          ]), 1032, ["open", "onUpdate:open", "title", "code", "kind", "usage", "onHeadDrop", "onHeadKeydown"]))), 128))
+          ]), 1032, ["open", "onUpdate:open", "title", "kind", "usage", "onHeadDrop", "onHeadKeydown"]))), 128))
         ]),
         _: 2
-      }, [
-        n.value ? {
-          name: "add",
-          fn: h(() => [
-            g(we, {
-              label: "Field code",
-              action: "Add field",
-              existing: S.attributes?.map((_) => _.code),
-              onAdd: (_) => Ie(S, _)
-            }, null, 8, ["existing", "onAdd"])
-          ]),
-          key: "0"
-        } : void 0
-      ]), 1032, ["count"]))), 128)),
-      n.value ? (e(), i("section", as, [
-        g(we, {
-          class: "pim-aspect",
-          label: "Field group code",
-          action: "Add field group",
-          existing: p.value.map((S) => S.namespace),
-          onAdd: re
-        }, null, 8, ["existing"])
-      ])) : w("", !0)
+      }, 1032, ["count"]))), 128))
     ]));
   }
-}), ts = { class: "muted small" }, ss = { class: "pim-aspect" }, is = {
+}), di = { class: "muted small" }, ri = { class: "pim-aspect" }, ui = {
   key: 0,
   class: "small muted"
-}, ns = { class: "pim-fields" }, os = { class: "pim-f pim-w-full" }, ds = { class: "pim-f-label" }, us = ["id"], rs = { class: "pim-f-label" }, cs = ["id"], ms = /* @__PURE__ */ le({
+}, ci = { class: "pim-fields" }, mi = { class: "pim-f pim-w-full" }, pi = { class: "pim-f-label" }, vi = ["id"], fi = { class: "pim-f-label" }, bi = ["id"], yi = /* @__PURE__ */ de({
   __name: "BuilderDimensions",
   props: {
     draft: {},
     schema: {}
   },
   emits: ["remove"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = M(() => t.schema.access.admin), v = M(() => t.draft.dimensions ?? []), n = Ae();
-    function p(b, f) {
-      return n + "-" + b.name + "-" + f;
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = D(() => t.schema.access.admin), m = D(() => t.draft.dimensions ?? []), f = qe();
+    function c(k, x) {
+      return f + "-" + k.name + "-" + x;
     }
-    function m(b) {
-      (t.draft.dimensions ??= []).push({ name: b, members: [] });
+    function C(k) {
+      (t.draft.dimensions ??= []).push({ name: k, members: [] });
     }
-    function C(b) {
-      const f = [];
-      for (const d of t.draft.aspects ?? []) for (const c of d.attributes ?? []) c.scope?.includes(b.name) && f.push(d.namespace + "." + c.code);
-      for (const d of t.draft.families ?? []) for (const c of d.requirements ?? []) c.context && b.name in c.context && f.push(d.code + " requirement " + c.id);
-      return f;
+    function A(k) {
+      const x = [];
+      for (const o of t.draft.aspects ?? []) for (const j of o.attributes ?? []) j.scope?.includes(k.name) && x.push(`${B(j.code)} (${B(o.namespace)})`);
+      for (const o of t.draft.families ?? []) for (const j of o.requirements ?? []) j.context && k.name in j.context && x.push(`${B(j.id)} (${B(o.code)})`);
+      return x;
     }
-    function j(b) {
-      C(b).length || (v.value.splice(v.value.indexOf(b), 1), t.schema.declaration.dimensions?.some((f) => f.name === b.name) && u("remove", "dimensions", b.name));
+    function N(k) {
+      A(k).length || (m.value.splice(m.value.indexOf(k), 1), t.schema.declaration.dimensions?.some((x) => x.name === k.name) && d("remove", "dimensions", k.name));
     }
-    function K(b, f) {
-      if (b.members = f, b.fallback)
-        for (const d of Object.keys(b.fallback)) f.includes(d) || delete b.fallback[d];
+    function X(k, x) {
+      if (k.members = x, k.fallback)
+        for (const o of Object.keys(k.fallback)) x.includes(o) || delete k.fallback[o];
     }
-    function x(b, f) {
-      return b.fallback?.[f] ?? [];
+    function P(k, x) {
+      return k.fallback?.[x] ?? [];
     }
-    function I(b, f, d) {
-      const c = { ...b.fallback ?? {} };
-      d.length ? c[f] = d : delete c[f], Object.keys(c).length ? b.fallback = c : delete b.fallback;
+    function z(k, x, o) {
+      const j = { ...k.fallback ?? {} };
+      o.length ? j[x] = o : delete j[x], Object.keys(j).length ? k.fallback = j : delete k.fallback;
     }
-    return (b, f) => (e(), R(xe, {
-      count: v.value.length,
-      columns: ["code", "details", "usage"]
-    }, ue({
-      default: h(() => [
-        (e(!0), i(F, null, Q(v.value, (d) => (e(), R(Ce, {
-          title: s(G)(d.name),
-          code: d.name,
-          key: d.name,
-          usage: C(d).length + (C(d).length === 1 ? " dependency" : " dependencies")
-        }, ue({
-          details: h(() => [
-            a("span", ts, V(d.members.length) + " " + V(d.members.length === 1 ? "member" : "members"), 1)
+    return (k, x) => (e(), T(Te, {
+      count: m.value.length,
+      columns: ["details", "usage"]
+    }, Re({
+      default: w(() => [
+        (e(!0), i(E, null, ee(m.value, (o) => (e(), T(Pe, {
+          title: s(B)(o.name),
+          key: o.name,
+          usage: A(o).length ? "Used in " + A(o).length + " places" : "Unused"
+        }, Re({
+          details: w(() => [
+            a("span", di, U(o.members.map(s(B)).join(", ") || "No allowed values"), 1)
           ]),
-          default: h(() => [
-            a("div", ss, [
-              C(d).length ? (e(), i("p", is, "Used by " + V(C(d).join(", ")), 1)) : w("", !0),
-              a("div", ns, [
-                a("div", os, [
-                  a("div", ds, [
+          default: w(() => [
+            a("div", ri, [
+              A(o).length ? (e(), i("p", ui, "Used by " + U(A(o).join(", ")), 1)) : v("", !0),
+              a("div", ci, [
+                a("div", mi, [
+                  a("div", pi, [
                     a("label", {
-                      id: p(d, "members")
-                    }, "Members", 8, us),
-                    f[0] || (f[0] = a("span", { class: "pim-f-note" }, "the values this dimension takes", -1))
+                      id: c(o, "members")
+                    }, "Allowed values", 8, vi),
+                    x[0] || (x[0] = a("span", { class: "pim-f-note" }, "for example, English and French for Language", -1))
                   ]),
-                  g(fe, {
-                    disabled: !r.value,
-                    labelledby: p(d, "members"),
-                    "model-value": d.members,
+                  y(_e, {
+                    disabled: !u.value,
+                    labelledby: c(o, "members"),
+                    "model-value": o.members,
                     free: "",
                     placeholder: "add member",
-                    "onUpdate:modelValue": (c) => K(d, c)
+                    "onUpdate:modelValue": (j) => X(o, j)
                   }, null, 8, ["disabled", "labelledby", "model-value", "onUpdate:modelValue"])
                 ]),
-                (e(!0), i(F, null, Q(d.members, (c) => (e(), i("div", {
-                  key: c,
+                (e(!0), i(E, null, ee(o.members, (j) => (e(), i("div", {
+                  key: j,
                   class: "pim-f pim-w-half"
                 }, [
-                  a("div", rs, [
+                  a("div", fi, [
                     a("label", {
-                      id: p(d, "fallback-" + encodeURIComponent(c))
-                    }, V(c) + " falls back to", 9, cs),
-                    f[1] || (f[1] = a("span", { class: "pim-f-note" }, "in order, when it has no value", -1))
+                      id: c(o, "fallback-" + encodeURIComponent(j))
+                    }, U(j) + " falls back to", 9, bi),
+                    x[1] || (x[1] = a("span", { class: "pim-f-note" }, "in order, when it has no value", -1))
                   ]),
-                  g(fe, {
-                    disabled: !r.value,
-                    labelledby: p(d, "fallback-" + encodeURIComponent(c)),
-                    "model-value": x(d, c),
-                    options: d.members.filter((o) => o !== c).map((o) => ({ value: o })),
-                    "onUpdate:modelValue": (o) => I(d, c, o)
+                  y(_e, {
+                    disabled: !u.value,
+                    labelledby: c(o, "fallback-" + encodeURIComponent(j)),
+                    "model-value": P(o, j),
+                    options: o.members.filter((I) => I !== j).map((I) => ({ value: I })),
+                    "onUpdate:modelValue": (I) => z(o, j, I)
                   }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
                 ]))), 128))
               ])
@@ -1769,41 +1937,42 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
           ]),
           _: 2
         }, [
-          r.value ? {
+          u.value ? {
             name: "actions",
-            fn: h(() => [
-              g(s(Z), {
+            fn: w(() => [
+              y(s(G), {
                 type: "button",
-                disabled: C(d).length > 0,
-                "aria-label": "Remove " + s(G)(d.name),
-                title: C(d).length ? "Take the dimension off these first" : "",
-                onClick: (c) => j(d),
+                disabled: A(o).length > 0,
+                "aria-label": "Remove " + s(B)(o.name),
+                title: A(o).length ? "Take the dimension off these first" : "",
+                onClick: (j) => N(o),
                 text: "",
                 severity: "secondary",
                 size: "small"
               }, {
-                default: h(() => [
-                  g(s(X), { icon: "tabler:trash" })
+                default: w(() => [
+                  y(s(le), { icon: "tabler:trash" })
                 ]),
                 _: 1
               }, 8, ["disabled", "aria-label", "title", "onClick"])
             ]),
             key: "0"
           } : void 0
-        ]), 1032, ["title", "code", "usage"]))), 128))
+        ]), 1032, ["title", "usage"]))), 128))
       ]),
       _: 2
     }, [
-      r.value ? {
+      u.value ? {
         name: "add",
-        fn: h(() => [
-          g(we, {
-            label: "Dimension code",
+        fn: w(() => [
+          y(Ie, {
+            label: "Dimension name",
+            "from-name": "",
             action: "Add dimension",
-            existing: v.value.map((d) => d.name),
-            onAdd: m
+            existing: m.value.map((o) => o.name),
+            onAdd: C
           }, {
-            default: h(() => [...f[2] || (f[2] = [
+            default: w(() => [...x[2] || (x[2] = [
               a("span", { class: "muted small" }, "A dimension lets a value differ per member, with fallbacks between members.", -1)
             ])]),
             _: 1
@@ -1813,42 +1982,48 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
       } : void 0
     ]), 1032, ["count"]));
   }
-}), ps = { class: "muted small" }, vs = { class: "pim-aspect" }, fs = { class: "row small" }, bs = {
+}), gi = { class: "muted small" }, hi = { class: "pim-aspect" }, ki = { class: "row small" }, _i = {
   key: 1,
   class: "muted small"
-}, ys = {
+}, wi = {
   key: 2,
   class: "pim-stack tight pim-terms"
-}, gs = {
+}, $i = {
   key: 0,
   class: "muted small"
-}, hs = {
+}, Ci = {
   key: 1,
   class: "kx-loading",
   role: "status"
-}, ks = {
+}, xi = {
   key: 3,
   class: "pim-responsive-table"
-}, _s = {
+}, Vi = {
   class: "pim-grid compact",
   "aria-label": "Vocabulary terms"
-}, $s = { key: 0 }, ws = { key: 1 }, xs = { class: "mono" }, Cs = {
+}, Ui = { key: 0 }, Ai = { key: 1 }, ji = {
   key: 0,
-  class: "mono muted"
-}, Vs = {
+  class: "muted"
+}, Si = {
   key: 1,
   class: "num"
-}, Us = {
+}, Ri = {
   role: "list",
   class: "pim-stacked-list",
   "aria-label": "Vocabulary terms"
-}, Ss = { class: "pim-stacked-meta muted small" }, As = { class: "mono" }, Os = { key: 0 }, Is = {
+}, Oi = {
+  key: 0,
+  class: "pim-stacked-meta muted small"
+}, Ii = {
   key: 4,
   class: "muted small"
-}, Rs = { class: "row wrap" }, js = {
+}, Ti = { class: "row wrap" }, Pi = {
   key: 5,
   class: "row wrap pim-add-row"
-}, Ts = /* @__PURE__ */ le({
+}, qi = {
+  key: 0,
+  class: "pim-config-overrides"
+}, Di = /* @__PURE__ */ de({
   __name: "BuilderVocabularies",
   props: {
     catalogId: {},
@@ -1856,341 +2031,360 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
     schema: {}
   },
   emits: ["remove"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}(?![\s\S])/, v = M(() => t.schema.access.admin), n = M(() => v.value && t.schema.access.write), p = M(() => t.draft.vocabularies ?? []);
-    function m(y) {
-      (t.draft.vocabularies ??= []).push({ code: y });
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}(?![\s\S])/, m = D(() => t.schema.access.admin), f = D(() => m.value && t.schema.access.write), c = D(() => t.draft.vocabularies ?? []);
+    function C(n) {
+      (t.draft.vocabularies ??= []).push({ code: n });
     }
-    function C(y) {
-      p.value.splice(p.value.indexOf(y), 1), t.schema.declaration.vocabularies?.some((q) => q.code === y.code) && u("remove", "vocabularies", y.code);
+    function A(n) {
+      c.value.splice(c.value.indexOf(n), 1), t.schema.declaration.vocabularies?.some((b) => b.code === n.code) && d("remove", "vocabularies", n.code);
     }
-    function j(y) {
-      return !!t.schema.vocabularies[y];
+    function N(n) {
+      return !!t.schema.vocabularies[n];
     }
-    const K = J({}), x = J({}), I = J({}), b = J({}), f = J({}), d = J({}), c = J({}), o = J({});
-    function O(y) {
-      return !!(f.value[y] || d.value[y]);
+    const X = J({}), P = J({}), z = J({}), k = J({}), x = J({}), o = J({}), j = J({}), I = J({});
+    function M(n) {
+      return !!(x.value[n] || o.value[n]);
     }
-    async function B(y, q) {
-      f.value[y] = !0, delete c.value[y];
+    async function se(n, b) {
+      x.value[n] = !0, delete j.value[n];
       try {
-        const $ = await oe.termsPage(t.catalogId, y, q);
-        x.value[y] = $.terms, b.value[y] = q, I.value[y] = $.next;
-        const T = Y(y);
-        $.terms.some((ee) => ee.retired && ee.code === T.parent) && (T.parent = "");
-      } catch ($) {
-        c.value[y] = { errors: [Se($, "Could not load terms.")], read: { after: q } };
+        const r = await me.termsPage(t.catalogId, n, b);
+        P.value[n] = r.terms, k.value[n] = b, z.value[n] = r.next;
+        const L = ae(n);
+        r.terms.some((F) => F.retired && F.code === L.parent) && (L.parent = "");
+      } catch (r) {
+        j.value[n] = { errors: [Le(r, "Could not load terms.")], read: { after: b } };
       } finally {
-        f.value[y] = !1;
+        x.value[n] = !1;
       }
     }
-    function te(y) {
-      K.value[y] = !K.value[y], K.value[y] && !O(y) && !x.value[y] && !c.value[y] && B(y);
+    function fe(n) {
+      X.value[n] = !X.value[n], X.value[n] && !M(n) && !P.value[n] && !j.value[n] && se(n);
     }
-    function Y(y) {
-      return o.value[y] ?? (o.value[y] = { code: "", label: "", parent: "" });
+    function ae(n) {
+      return I.value[n] ?? (I.value[n] = { code: "", label: "", parent: "" });
     }
-    function ne(y) {
-      return [{ value: "", label: "No parent" }, ...(x.value[y] ?? []).filter((q) => !q.retired).map((q) => ({ value: q.code, label: je(q) }))];
+    function Z(n, b) {
+      const r = P.value[n]?.find((L) => L.code === b);
+      return r ? ze(r) : B(b);
     }
-    function P(y, q, $) {
-      c.value[y] = { errors: q?.findings?.length ? q.findings.map((T) => ({ message: T.message ?? $, code: T.code })) : [{ message: $ }] };
+    function W(n) {
+      return [{ value: "", label: "No parent" }, ...(P.value[n] ?? []).filter((b) => !b.retired).map((b) => ({ value: b.code, label: ze(b) }))];
     }
-    async function D(y) {
-      const q = Y(y.code);
-      if (!(!n.value || !r.test(q.code))) {
-        d.value[y.code] = !0, delete c.value[y.code];
+    function S(n, b, r) {
+      j.value[n] = { errors: b?.findings?.length ? b.findings.map((L) => ({ message: L.message ?? r, code: L.code })) : [{ message: r }] };
+    }
+    async function K(n) {
+      const b = ae(n.code);
+      if (!(!f.value || !u.test(b.code))) {
+        o.value[n.code] = !0, delete j.value[n.code];
         try {
-          const $ = { term: { vocabulary: y.code, code: q.code }, labels: { en: q.label || G(q.code) } };
-          y.hierarchical && q.parent && ($.parent = q.parent);
-          const ee = (await oe.apply(t.catalogId, [$])).outcomes[0];
-          if (ee?.outcome !== "created" && ee?.outcome !== "updated") {
-            P(y.code, ee, "The term was not accepted.");
+          const r = { term: { vocabulary: n.code, code: b.code }, labels: { en: b.label || B(b.code) } };
+          n.hierarchical && b.parent && (r.parent = b.parent);
+          const F = (await me.apply(t.catalogId, [r])).outcomes[0];
+          if (F?.outcome !== "created" && F?.outcome !== "updated") {
+            S(n.code, F, "The term was not accepted.");
             return;
           }
-          o.value[y.code] = { code: "", label: "", parent: "" }, oe.invalidateTerms(t.catalogId), await B(y.code, b.value[y.code]);
-        } catch ($) {
-          c.value[y.code] = { errors: [Se($, "Could not add the term.")] };
+          I.value[n.code] = { code: "", label: "", parent: "" }, me.invalidateTerms(t.catalogId), await se(n.code, k.value[n.code]);
+        } catch (r) {
+          j.value[n.code] = { errors: [Le(r, "Could not add the term.")] };
         } finally {
-          d.value[y.code] = !1;
+          o.value[n.code] = !1;
         }
       }
     }
-    async function N(y, q, $) {
-      if (n.value && !($ && !await ua.confirm({ header: "Retire term?", message: `Retire ${je(q)}? Term changes save immediately. You can restore this term later.`, acceptLabel: "Retire", rejectLabel: "Cancel" }))) {
-        d.value[y.code] = !0, delete c.value[y.code];
+    async function h(n, b, r) {
+      if (f.value && !(r && !await Je.confirm({ header: "Retire term?", message: `Retire ${ze(b)}? Term changes save immediately. You can restore this term later.`, acceptLabel: "Retire", rejectLabel: "Cancel" }))) {
+        o.value[n.code] = !0, delete j.value[n.code];
         try {
-          const ee = (await oe.apply(t.catalogId, [{ term: { vocabulary: y.code, code: q.code }, retired: $ }])).outcomes[0];
-          if (!ee || !["updated", "unchanged"].includes(ee.outcome)) {
-            P(y.code, ee, "The term change was not accepted.");
+          const F = (await me.apply(t.catalogId, [{ term: { vocabulary: n.code, code: b.code }, retired: r }])).outcomes[0];
+          if (!F || !["updated", "unchanged"].includes(F.outcome)) {
+            S(n.code, F, "The term change was not accepted.");
             return;
           }
-          $ && Y(y.code).parent === q.code && (Y(y.code).parent = ""), oe.invalidateTerms(t.catalogId), await B(y.code, b.value[y.code]);
-        } catch (T) {
-          c.value[y.code] = { errors: [Se(T, "Could not change the term.")] };
+          r && ae(n.code).parent === b.code && (ae(n.code).parent = ""), me.invalidateTerms(t.catalogId), await se(n.code, k.value[n.code]);
+        } catch (L) {
+          j.value[n.code] = { errors: [Le(L, "Could not change the term.")] };
         } finally {
-          d.value[y.code] = !1;
+          o.value[n.code] = !1;
         }
       }
     }
-    return (y, q) => (e(), R(xe, {
-      count: p.value.length,
-      columns: ["code", "details"]
-    }, ue({
-      default: h(() => [
-        (e(!0), i(F, null, Q(p.value, ($) => (e(), R(Ce, {
-          title: s(G)($.code),
-          code: $.code,
-          key: $.code
+    return (n, b) => (e(), T(Te, {
+      count: c.value.length,
+      columns: ["details"]
+    }, Re({
+      default: w(() => [
+        (e(!0), i(E, null, ee(c.value, (r) => (e(), T(Pe, {
+          title: s(B)(r.code),
+          key: r.code
         }, {
-          details: h(() => [
-            a("span", ps, V($.hierarchical ? "Hierarchical" : "Flat"), 1)
+          details: w(() => [
+            a("span", gi, U(r.hierarchical ? "Hierarchical" : "Flat"), 1)
           ]),
-          actions: h(() => [
-            v.value ? (e(), R(s(Z), {
+          actions: w(() => [
+            m.value ? (e(), T(s(G), {
               key: 0,
               type: "button",
-              "aria-label": "Remove " + s(G)($.code),
-              onClick: (T) => C($),
+              "aria-label": "Remove " + s(B)(r.code),
+              onClick: (L) => A(r),
               text: "",
               severity: "secondary",
               size: "small"
             }, {
-              default: h(() => [
-                g(s(X), { icon: "tabler:trash" })
+              default: w(() => [
+                y(s(le), { icon: "tabler:trash" })
               ]),
               _: 1
-            }, 8, ["aria-label", "onClick"])) : w("", !0)
+            }, 8, ["aria-label", "onClick"])) : v("", !0)
           ]),
-          default: h(() => [
-            a("div", vs, [
-              a("label", fs, [
-                g(s(qe), {
-                  disabled: !v.value,
-                  "aria-label": "Hierarchical " + $.code,
-                  "model-value": $.hierarchical === !0,
-                  "onUpdate:modelValue": (T) => T ? $.hierarchical = !0 : delete $.hierarchical
+          default: w(() => [
+            a("div", hi, [
+              a("label", ki, [
+                y(s(la), {
+                  disabled: !m.value,
+                  "aria-label": "Hierarchical " + s(B)(r.code),
+                  "model-value": r.hierarchical === !0,
+                  "onUpdate:modelValue": (L) => L ? r.hierarchical = !0 : delete r.hierarchical
                 }, null, 8, ["disabled", "aria-label", "model-value", "onUpdate:modelValue"]),
-                q[0] || (q[0] = a("span", null, "Hierarchical", -1))
+                b[0] || (b[0] = a("span", null, "Hierarchical", -1))
               ]),
-              j($.code) ? (e(), R(s(Z), {
+              N(r.code) ? (e(), T(s(G), {
                 key: 0,
                 type: "button",
-                onClick: (T) => te($.code),
+                onClick: (L) => fe(r.code),
                 severity: "secondary",
                 outlined: "",
                 size: "small"
               }, {
-                default: h(() => [
-                  g(s(X), {
+                default: w(() => [
+                  y(s(le), {
                     icon: "tabler:adjustments",
                     "aria-hidden": "true"
                   }),
-                  z(" " + V(K.value[$.code] ? "Hide terms" : "Terms"), 1)
+                  H(" " + U(X.value[r.code] ? "Hide terms" : "Terms"), 1)
                 ]),
                 _: 2
-              }, 1032, ["onClick"])) : v.value ? (e(), i("span", bs, "Apply the schema before adding terms.")) : w("", !0),
-              K.value[$.code] ? (e(), i("div", ys, [
-                n.value ? (e(), i("p", gs, "Term changes save immediately.")) : w("", !0),
-                f.value[$.code] ? (e(), i("div", hs, "Loading terms…")) : c.value[$.code] ? (e(!0), i(F, { key: 2 }, Q(c.value[$.code].errors, (T, ee) => (e(), R(Ee, {
-                  key: ee,
-                  error: T
+              }, 1032, ["onClick"])) : m.value ? (e(), i("span", _i, "Apply the schema before adding terms.")) : v("", !0),
+              X.value[r.code] ? (e(), i("div", wi, [
+                f.value ? (e(), i("p", $i, "Term changes save immediately.")) : v("", !0),
+                x.value[r.code] ? (e(), i("div", Ci, "Loading terms…")) : j.value[r.code] ? (e(!0), i(E, { key: 2 }, ee(j.value[r.code].errors, (L, F) => (e(), T(ra, {
+                  key: F,
+                  error: L
                 }, {
-                  default: h(() => [
-                    c.value[$.code].read ? (e(), R(s(Z), {
+                  default: w(() => [
+                    j.value[r.code].read ? (e(), T(s(G), {
                       key: 0,
                       type: "button",
-                      onClick: (Oe) => B($.code, c.value[$.code].read?.after),
+                      onClick: (Q) => se(r.code, j.value[r.code].read?.after),
                       severity: "secondary",
                       outlined: "",
                       size: "small"
                     }, {
-                      default: h(() => [...q[1] || (q[1] = [
-                        z("Retry", -1)
+                      default: w(() => [...b[1] || (b[1] = [
+                        H("Retry", -1)
                       ])]),
                       _: 1
-                    }, 8, ["onClick"])) : w("", !0)
+                    }, 8, ["onClick"])) : v("", !0)
                   ]),
                   _: 2
-                }, 1032, ["error"]))), 128)) : w("", !0),
-                (x.value[$.code] ?? []).length ? (e(), i("div", ks, [
-                  a("table", _s, [
+                }, 1032, ["error"]))), 128)) : v("", !0),
+                (P.value[r.code] ?? []).length ? (e(), i("div", xi, [
+                  a("table", Vi, [
                     a("thead", null, [
                       a("tr", null, [
-                        q[2] || (q[2] = a("th", null, "Code", -1)),
-                        q[3] || (q[3] = a("th", null, "Label", -1)),
-                        $.hierarchical ? (e(), i("th", $s, "Parent")) : w("", !0),
-                        v.value ? (e(), i("th", ws)) : w("", !0)
+                        b[2] || (b[2] = a("th", null, "Term", -1)),
+                        r.hierarchical ? (e(), i("th", Ui, "Parent")) : v("", !0),
+                        m.value ? (e(), i("th", Ai)) : v("", !0)
                       ])
                     ]),
                     a("tbody", null, [
-                      (e(!0), i(F, null, Q(x.value[$.code], (T) => (e(), i("tr", {
-                        key: T.code,
-                        class: ke({ muted: T.retired })
+                      (e(!0), i(E, null, ee(P.value[r.code], (L) => (e(), i("tr", {
+                        key: L.code,
+                        class: je({ muted: L.retired })
                       }, [
-                        a("td", xs, V(T.code), 1),
                         a("td", null, [
-                          z(V(s(je)(T)) + " ", 1),
-                          T.retired ? (e(), R(s(ie), {
+                          H(U(s(ze)(L)) + " ", 1),
+                          L.retired ? (e(), T(s(ye), {
                             key: 0,
                             severity: "secondary",
                             value: "Retired"
-                          })) : w("", !0)
+                          })) : v("", !0)
                         ]),
-                        $.hierarchical ? (e(), i("td", Cs, V(T.parent ?? ""), 1)) : w("", !0),
-                        v.value ? (e(), i("td", Vs, [
-                          g(s(Z), {
+                        r.hierarchical ? (e(), i("td", ji, U(L.parent ? Z(r.code, L.parent) : "—"), 1)) : v("", !0),
+                        m.value ? (e(), i("td", Si, [
+                          y(s(G), {
                             type: "button",
-                            disabled: !n.value || O($.code),
-                            onClick: (ee) => N($, T, !T.retired),
+                            disabled: !f.value || M(r.code),
+                            onClick: (F) => h(r, L, !L.retired),
                             text: "",
                             severity: "secondary",
                             size: "small"
                           }, {
-                            default: h(() => [
-                              z(V(T.retired ? "Restore" : "Retire"), 1)
+                            default: w(() => [
+                              H(U(L.retired ? "Restore" : "Retire"), 1)
                             ]),
                             _: 2
                           }, 1032, ["disabled", "onClick"])
-                        ])) : w("", !0)
+                        ])) : v("", !0)
                       ], 2))), 128))
                     ])
                   ]),
-                  a("ul", Us, [
-                    (e(!0), i(F, null, Q(x.value[$.code], (T) => (e(), i("li", {
-                      key: T.code,
-                      class: ke(["pim-stacked-row", { muted: T.retired }])
+                  a("ul", Ri, [
+                    (e(!0), i(E, null, ee(P.value[r.code], (L) => (e(), i("li", {
+                      key: L.code,
+                      class: je(["pim-stacked-row", { muted: L.retired }])
                     }, [
                       a("div", null, [
-                        z(V(s(je)(T)) + " ", 1),
-                        T.retired ? (e(), R(s(ie), {
+                        H(U(s(ze)(L)) + " ", 1),
+                        L.retired ? (e(), T(s(ye), {
                           key: 0,
                           severity: "secondary",
                           value: "Retired"
-                        })) : w("", !0)
+                        })) : v("", !0)
                       ]),
-                      a("div", Ss, [
-                        a("span", As, V(T.code), 1),
-                        $.hierarchical && T.parent ? (e(), i("span", Os, "Parent: " + V(T.parent), 1)) : w("", !0)
-                      ]),
-                      v.value ? (e(), R(s(Z), {
-                        key: 0,
+                      r.hierarchical && L.parent ? (e(), i("div", Oi, "Parent: " + U(Z(r.code, L.parent)), 1)) : v("", !0),
+                      m.value ? (e(), T(s(G), {
+                        key: 1,
                         type: "button",
-                        disabled: !n.value || O($.code),
-                        onClick: (ee) => N($, T, !T.retired),
+                        disabled: !f.value || M(r.code),
+                        onClick: (F) => h(r, L, !L.retired),
                         text: "",
                         severity: "secondary",
                         size: "small"
                       }, {
-                        default: h(() => [
-                          z(V(T.retired ? "Restore" : "Retire"), 1)
+                        default: w(() => [
+                          H(U(L.retired ? "Restore" : "Retire"), 1)
                         ]),
                         _: 2
-                      }, 1032, ["disabled", "onClick"])) : w("", !0)
+                      }, 1032, ["disabled", "onClick"])) : v("", !0)
                     ], 2))), 128))
                   ])
-                ])) : x.value[$.code] && !O($.code) && !c.value[$.code] ? (e(), i("p", Is, "No terms yet.")) : w("", !0),
-                a("div", Rs, [
-                  g(s(Z), {
+                ])) : P.value[r.code] && !M(r.code) && !j.value[r.code] ? (e(), i("p", Ii, "No terms yet.")) : v("", !0),
+                a("div", Ti, [
+                  y(s(G), {
                     type: "button",
-                    disabled: O($.code) || !b.value[$.code],
-                    onClick: (T) => B($.code),
+                    disabled: M(r.code) || !k.value[r.code],
+                    onClick: (L) => se(r.code),
                     severity: "secondary",
                     outlined: "",
                     size: "small"
                   }, {
-                    default: h(() => [
-                      g(s(X), {
+                    default: w(() => [
+                      y(s(le), {
                         icon: "tabler:chevrons-left",
                         "aria-hidden": "true"
                       }),
-                      q[4] || (q[4] = z(" First terms", -1))
+                      b[3] || (b[3] = H(" First terms", -1))
                     ]),
                     _: 1
                   }, 8, ["disabled", "onClick"]),
-                  g(s(Z), {
+                  y(s(G), {
                     type: "button",
-                    disabled: O($.code) || !I.value[$.code],
-                    onClick: (T) => B($.code, I.value[$.code]),
+                    disabled: M(r.code) || !z.value[r.code],
+                    onClick: (L) => se(r.code, z.value[r.code]),
                     severity: "secondary",
                     outlined: "",
                     size: "small"
                   }, {
-                    default: h(() => [
-                      g(s(X), {
+                    default: w(() => [
+                      y(s(le), {
                         icon: "tabler:chevron-right",
                         "aria-hidden": "true"
                       }),
-                      q[5] || (q[5] = z(" Next terms", -1))
+                      b[4] || (b[4] = H(" Next terms", -1))
                     ]),
                     _: 1
                   }, 8, ["disabled", "onClick"])
                 ]),
-                v.value ? (e(), i("div", js, [
-                  g(s(Re), {
-                    modelValue: Y($.code).code,
-                    "onUpdate:modelValue": (T) => Y($.code).code = T,
-                    disabled: !n.value || O($.code),
+                m.value ? (e(), i("div", Pi, [
+                  y(s(Ge), {
+                    modelValue: ae(r.code).label,
+                    "onUpdate:modelValue": (L) => ae(r.code).label = L,
+                    disabled: !f.value || M(r.code),
+                    "aria-label": "Term name in English",
                     type: "text",
-                    placeholder: "code",
-                    class: "mono narrow"
+                    placeholder: "Term name"
                   }, null, 8, ["modelValue", "onUpdate:modelValue", "disabled"]),
-                  g(s(Re), {
-                    modelValue: Y($.code).label,
-                    "onUpdate:modelValue": (T) => Y($.code).label = T,
-                    disabled: !n.value || O($.code),
+                  y(s(Ge), {
+                    modelValue: ae(r.code).code,
+                    "onUpdate:modelValue": (L) => ae(r.code).code = L,
+                    disabled: !f.value || M(r.code),
                     type: "text",
-                    placeholder: "Label (en)"
+                    "aria-label": "Short term name",
+                    placeholder: "Short name for imports",
+                    class: "narrow"
                   }, null, 8, ["modelValue", "onUpdate:modelValue", "disabled"]),
-                  $.hierarchical ? (e(), R(s(ve), {
+                  r.hierarchical ? (e(), T(s(he), {
                     key: 0,
-                    modelValue: Y($.code).parent,
-                    "onUpdate:modelValue": (T) => Y($.code).parent = T,
-                    disabled: !n.value || O($.code),
+                    modelValue: ae(r.code).parent,
+                    "onUpdate:modelValue": (L) => ae(r.code).parent = L,
+                    disabled: !f.value || M(r.code),
                     class: "narrow",
                     "aria-label": "Parent term",
                     placeholder: "No parent",
-                    options: ne($.code),
+                    options: W(r.code),
                     "option-label": "label",
                     "option-value": "value",
                     appendTo: "self"
-                  }, null, 8, ["modelValue", "onUpdate:modelValue", "disabled", "options"])) : w("", !0),
-                  g(s(Z), {
+                  }, null, 8, ["modelValue", "onUpdate:modelValue", "disabled", "options"])) : v("", !0),
+                  y(s(G), {
                     type: "button",
-                    disabled: !n.value || O($.code) || !r.test(Y($.code).code),
-                    onClick: (T) => D($),
+                    disabled: !f.value || M(r.code) || !u.test(ae(r.code).code),
+                    onClick: (L) => K(r),
                     severity: "secondary",
                     outlined: "",
                     size: "small"
                   }, {
-                    default: h(() => [
-                      g(s(X), {
+                    default: w(() => [
+                      y(s(le), {
                         icon: "tabler:plus",
                         "aria-hidden": "true"
                       }),
-                      q[6] || (q[6] = z(" Add term", -1))
+                      b[5] || (b[5] = H(" Add term", -1))
                     ]),
                     _: 1
                   }, 8, ["disabled", "onClick"])
-                ])) : w("", !0)
-              ])) : w("", !0)
+                ])) : v("", !0),
+                y(Ue, {
+                  class: "pim-ia-disclosure",
+                  label: "Integration keys"
+                }, {
+                  default: w(() => [
+                    (P.value[r.code] ?? []).length ? (e(), i("dl", qi, [
+                      (e(!0), i(E, null, ee(P.value[r.code], (L) => (e(), i(E, {
+                        key: L.code
+                      }, [
+                        a("dt", null, U(s(ze)(L)), 1),
+                        a("dd", null, [
+                          a("code", null, U(L.code), 1)
+                        ])
+                      ], 64))), 128))
+                    ])) : v("", !0)
+                  ]),
+                  _: 2
+                }, 1024)
+              ])) : v("", !0)
             ])
           ]),
           _: 2
-        }, 1032, ["title", "code"]))), 128))
+        }, 1032, ["title"]))), 128))
       ]),
       _: 2
     }, [
-      v.value ? {
+      m.value ? {
         name: "add",
-        fn: h(() => [
-          g(we, {
-            label: "Vocabulary code",
+        fn: w(() => [
+          y(Ie, {
+            label: "Vocabulary name",
+            "from-name": "",
             action: "Add vocabulary",
-            existing: p.value.map(($) => $.code),
-            onAdd: m
+            existing: c.value.map((r) => r.code),
+            onAdd: C
           }, {
-            default: h(() => [...q[7] || (q[7] = [
+            default: w(() => [...b[6] || (b[6] = [
               a("span", { class: "muted small" }, "Select fields pick their values from a vocabulary's terms.", -1)
             ])]),
             _: 1
@@ -2200,338 +2394,363 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
       } : void 0
     ]), 1032, ["count"]));
   }
-}), qs = { class: "muted small" }, Ds = { class: "pim-aspect" }, Ns = { class: "pim-fields" }, Ps = { class: "pim-f pim-w-full" }, Ls = { class: "pim-f-label" }, zs = ["id"], Bs = { class: "pim-aspect" }, Es = { class: "pim-stack tight" }, Ms = { class: "pim-level-head" }, Fs = { class: "pim-fields" }, Hs = { class: "pim-f pim-w-half" }, Js = { class: "pim-f-label" }, Ws = ["id"], Ks = { class: "pim-f pim-w-half" }, Gs = { class: "pim-f-label" }, Ys = ["id"], Zs = { class: "pim-aspect" }, Qs = { class: "pim-stack tight" }, Xs = { class: "pim-level-head" }, ei = { class: "mono" }, ai = { class: "pim-fields" }, li = { class: "pim-f-label" }, ti = ["id"], si = { class: "pim-f pim-w-half" }, ii = { class: "pim-f-label" }, ni = ["id"], oi = { class: "pim-f pim-w-half" }, di = { class: "pim-f-label" }, ui = ["id"], ri = /* @__PURE__ */ le({
+}), Ni = { class: "pim-stack" }, zi = { class: "form pim-card-body pad pim-ia-action" }, Fi = { class: "muted small" }, Bi = { class: "muted small" }, Li = { class: "pim-aspect" }, Ei = { class: "pim-ia-action pim-family-fields" }, Mi = { class: "pim-fields" }, Wi = { class: "pim-f pim-w-full" }, Hi = { class: "pim-f-label" }, Ji = ["id"], Ki = { class: "pim-aspect" }, Gi = { class: "pim-stack tight" }, Yi = { class: "pim-level-head" }, Zi = { class: "pim-fields" }, Qi = { class: "pim-f pim-w-half" }, Xi = { class: "pim-f-label" }, en = ["id"], an = { class: "pim-f pim-w-half" }, ln = { class: "pim-f-label" }, tn = ["id"], sn = { class: "pim-aspect" }, nn = { class: "pim-stack tight" }, on = { class: "pim-level-head" }, dn = { class: "muted small" }, rn = { class: "pim-fields" }, un = { class: "pim-f-label" }, cn = ["id"], mn = { class: "pim-f pim-w-half" }, pn = { class: "pim-f-label" }, vn = ["id"], fn = { class: "pim-f pim-w-half" }, bn = { class: "pim-f-label" }, yn = ["id"], gn = /* @__PURE__ */ de({
   __name: "BuilderFamilies",
   props: {
     draft: {},
     schema: {},
     options: {}
   },
-  emits: ["remove"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = Ae();
-    function v(P, D) {
-      return r + "-" + P.code + "-" + D;
+  emits: ["remove", "fields"],
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = qe();
+    function m(h, n) {
+      return u + "-" + h.code + "-" + n;
     }
-    const n = M(() => t.schema.access.admin), p = M(() => (t.draft.families ?? []).filter((P) => P.code !== "generic")), m = M(() => {
-      const P = new Set(t.draft.plugins?.map((D) => D.use));
-      return Object.entries(t.schema.attributes).filter(([, D]) => D.plugin && P.has(D.plugin));
-    }), C = M(() => {
-      const P = (t.draft.aspects ?? []).map((N) => N.namespace), D = [...new Set(m.value.map(([N]) => N.split(".")[0]))];
-      return [...P, ...D.filter((N) => !P.includes(N))].map((N) => ({ value: N, label: G(N) }));
-    }), j = M(() => new Map(t.options.types.map((P) => [P.id, P.form])));
-    function K(P) {
-      return `${G(P)} (${G(P.split(".")[0])})`;
+    const f = D(() => t.schema.access.admin), c = D(() => (t.draft.families ?? []).filter((h) => h.code !== "generic")), C = D(() => {
+      const h = new Set(t.draft.plugins?.map((n) => n.use));
+      return Object.entries(t.schema.attributes).filter(([, n]) => n.plugin && h.has(n.plugin));
+    }), A = D(() => {
+      const h = (t.draft.aspects ?? []).map((b) => b.namespace), n = [...new Set(C.value.map(([b]) => b.split(".")[0]))];
+      return [...h, ...n.filter((b) => !h.includes(b))].map((b) => ({ value: b, label: B(b) }));
+    }), N = D(() => new Map(t.options.types.map((h) => [h.id, h.form])));
+    function X(h) {
+      const [n, b] = h.split(".", 2);
+      return b ? `${B(b)} (${B(n)})` : B(n);
     }
-    const x = M(() => {
-      const P = /* @__PURE__ */ new Map();
-      function D(N, y, q = [], $ = "one") {
-        const T = !!y && y !== "text" && y !== "record" && q.length === 0 && $ === "one";
-        P.set(N, { value: N, label: K(N), canBeAxis: T });
+    const P = D(() => {
+      const h = /* @__PURE__ */ new Map();
+      function n(b, r, L = [], F = "one") {
+        const Q = !!r && r !== "text" && r !== "record" && L.length === 0 && F === "one";
+        h.set(b, { value: b, label: X(b), canBeAxis: Q });
       }
-      for (const N of t.draft.aspects ?? [])
-        for (const y of N.attributes ?? []) {
-          const q = N.namespace + "." + y.code;
-          D(q, j.value.get(y.type), y.scope, y.cardinality);
+      for (const b of t.draft.aspects ?? [])
+        for (const r of b.attributes ?? []) {
+          const L = b.namespace + "." + r.code;
+          n(L, N.value.get(r.type), r.scope, r.cardinality);
         }
-      for (const [N, y] of m.value) D(N, y.form, y.scope, y.cardinality);
-      return P;
+      for (const [b, r] of C.value) n(b, r.form, r.scope, r.cardinality);
+      return h;
     });
-    function I(P) {
-      return [...x.value.values()].filter((D) => P.aspects?.includes(D.value.split(".")[0]));
+    function z(h) {
+      return [...P.value.values()].filter((n) => h.aspects?.includes(n.value.split(".")[0]));
     }
-    function b(P, D, N) {
-      const y = D[N] ?? [], q = new Set(o(P).flatMap((T) => [...T.axes ?? [], ...T.own ?? []])), $ = I(P).filter((T) => y.includes(T.value) || !q.has(T.value) && (N === "own" || T.canBeAxis));
-      return [...$, ...y.filter((T) => !$.some((ee) => ee.value === T)).map((T) => ({ value: T, label: K(T) }))];
+    function k(h, n, b) {
+      const r = n[b] ?? [], L = new Set(fe(h).flatMap((Q) => [...Q.axes ?? [], ...Q.own ?? []])), F = z(h).filter((Q) => r.includes(Q.value) || !L.has(Q.value) && (b === "own" || Q.canBeAxis));
+      return [...F, ...r.filter((Q) => !F.some((ce) => ce.value === Q)).map((Q) => ({ value: Q, label: X(Q) }))];
     }
-    const f = M(() => t.draft.dimensions ?? []);
-    function d(P) {
-      (t.draft.families ??= []).push({ code: P, aspects: [] });
+    const x = D(() => t.draft.channels ?? []);
+    function o(h, n) {
+      return x.value.filter((b) => (!b.families?.length || b.families.includes(h.code)) && (!n || b.requirements?.includes(n))).map((b) => B(b.id));
     }
-    function c(P) {
-      t.draft.families.splice(t.draft.families.indexOf(P), 1), t.schema.declaration.families?.some((D) => D.code === P.code) && u("remove", "families", P.code);
+    const j = D(() => t.draft.dimensions ?? []), I = J({});
+    function M(h) {
+      (t.draft.families ??= []).push({ code: h, aspects: [] }), I.value[h] = !0;
     }
-    function o(P) {
-      return P.variation ?? [];
+    function se(h) {
+      t.draft.families.splice(t.draft.families.indexOf(h), 1), t.schema.declaration.families?.some((n) => n.code === h.code) && d("remove", "families", h.code);
     }
-    function O(P) {
-      (P.variation ??= []).push({ axes: [] });
+    function fe(h) {
+      return h.variation ?? [];
     }
-    function B(P) {
-      return P.requirements ?? [];
+    function ae(h) {
+      (h.variation ??= []).push({ axes: [] });
     }
-    function te(P, D) {
-      (P.requirements ??= []).push({ id: D, require: [] });
+    function Z(h) {
+      return h.requirements ?? [];
     }
-    function Y(P, D) {
-      return P.context?.[D] ?? "";
+    function W(h, n) {
+      (h.requirements ??= []).push({ id: n, require: [] });
     }
-    function ne(P, D, N) {
-      const y = { ...P.context ?? {} };
-      N ? y[D] = N : delete y[D], Object.keys(y).length ? P.context = y : delete P.context;
+    function S(h, n) {
+      return h.context?.[n] ?? "";
     }
-    return (P, D) => (e(), R(xe, {
-      count: p.value.length,
-      columns: ["code", "details"]
-    }, ue({
-      default: h(() => [
-        (e(!0), i(F, null, Q(p.value, (N) => (e(), R(Ce, {
-          title: s(G)(N.code),
-          code: N.code,
-          key: N.code
-        }, ue({
-          details: h(() => [
-            a("span", qs, V(N.aspects?.length ?? 0) + " " + V(N.aspects?.length === 1 ? "field group" : "field groups"), 1)
-          ]),
-          default: h(() => [
-            a("div", Ds, [
-              a("div", Ns, [
-                a("div", Ps, [
-                  a("div", Ls, [
-                    a("label", {
-                      id: v(N, "groups")
-                    }, "Field groups", 8, zs),
-                    D[0] || (D[0] = a("span", { class: "pim-f-note" }, "the fields this family's products carry", -1))
+    function K(h, n, b) {
+      const r = { ...h.context ?? {} };
+      b ? r[n] = b : delete r[n], Object.keys(r).length ? h.context = r : delete h.context;
+    }
+    return (h, n) => (e(), i("div", Ni, [
+      a("div", zi, [
+        n[0] || (n[0] = a("div", null, [
+          a("h3", null, "Product families"),
+          a("p", null, "Choose what to collect, what varies between versions, and what products need before release.")
+        ], -1)),
+        f.value ? (e(), T(Ie, {
+          key: 0,
+          label: "Family name",
+          action: "Add family",
+          "from-name": "",
+          existing: c.value.map((b) => b.code),
+          onAdd: M
+        }, null, 8, ["existing"])) : v("", !0)
+      ]),
+      y(Te, {
+        count: c.value.length,
+        columns: ["details"]
+      }, {
+        default: w(() => [
+          (e(!0), i(E, null, ee(c.value, (b) => (e(), T(Pe, {
+            key: b.code,
+            open: I.value[b.code],
+            "onUpdate:open": (r) => I.value[b.code] = r,
+            title: s(B)(b.code)
+          }, Re({
+            details: w(() => [
+              a("span", Fi, U(z(b).length) + " fields", 1),
+              fe(b).length ? (e(), T(s(ye), {
+                key: 0,
+                severity: "secondary",
+                value: fe(b).length + (fe(b).length === 1 ? " variant level" : " variant levels")
+              }, null, 8, ["value"])) : v("", !0),
+              a("span", Bi, U(o(b).join(", ") || "No release channels"), 1)
+            ]),
+            default: w(() => [
+              a("div", Li, [
+                a("div", Ei, [
+                  a("div", Mi, [
+                    a("div", Wi, [
+                      a("div", Hi, [
+                        a("label", {
+                          id: m(b, "groups")
+                        }, "Field groups", 8, Ji),
+                        n[1] || (n[1] = a("span", { class: "pim-f-note" }, "the fields this family's products carry", -1))
+                      ]),
+                      y(_e, {
+                        disabled: !f.value,
+                        labelledby: m(b, "groups"),
+                        "model-value": b.aspects ?? [],
+                        options: A.value,
+                        "onUpdate:modelValue": (r) => s(Fe)(b, "aspects", r)
+                      }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
+                    ])
                   ]),
-                  g(fe, {
-                    disabled: !n.value,
-                    labelledby: v(N, "groups"),
-                    "model-value": N.aspects ?? [],
-                    options: C.value,
-                    "onUpdate:modelValue": (y) => s(Ve)(N, "aspects", y)
-                  }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
+                  b.aspects?.length ? (e(), T(s(G), {
+                    key: 0,
+                    type: "button",
+                    label: "View family fields",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    onClick: (r) => d("fields", b.code)
+                  }, null, 8, ["onClick"])) : v("", !0)
+                ])
+              ]),
+              a("div", Ki, [
+                n[5] || (n[5] = a("header", { class: "pim-aspect-head" }, [
+                  a("h3", null, "Variants")
+                ], -1)),
+                n[6] || (n[6] = a("p", { class: "muted small pim-axis-help" }, "Choose what makes one variant different from another. Each field can be used once.", -1)),
+                a("div", Gi, [
+                  (e(!0), i(E, null, ee(fe(b), (r, L) => (e(), i("div", {
+                    key: L,
+                    class: "pim-level"
+                  }, [
+                    a("div", Yi, [
+                      a("strong", null, "Level " + U(L + 1), 1),
+                      f.value ? (e(), T(s(G), {
+                        key: 0,
+                        type: "button",
+                        "aria-label": "Remove level",
+                        onClick: (F) => fe(b).splice(L, 1),
+                        text: "",
+                        severity: "secondary",
+                        size: "small"
+                      }, {
+                        default: w(() => [
+                          y(s(le), { icon: "tabler:x" })
+                        ]),
+                        _: 1
+                      }, 8, ["onClick"])) : v("", !0)
+                    ]),
+                    a("div", Zi, [
+                      a("div", Qi, [
+                        a("div", Xi, [
+                          a("label", {
+                            id: m(b, L + "-axes")
+                          }, "Distinguish variants by", 8, en)
+                        ]),
+                        n[2] || (n[2] = a("p", { class: "muted small pim-axis-help" }, "Choose a single-value field with no dimensions. Text and record fields are excluded.", -1)),
+                        y(_e, {
+                          disabled: !f.value,
+                          dropdown: "",
+                          labelledby: m(b, L + "-axes"),
+                          "model-value": r.axes ?? [],
+                          options: k(b, r, "axes"),
+                          placeholder: "Add an axis",
+                          "onUpdate:modelValue": (F) => r.axes = F
+                        }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
+                      ]),
+                      a("div", an, [
+                        a("div", ln, [
+                          a("label", {
+                            id: m(b, L + "-owned")
+                          }, "Other fields edited here", 8, tn)
+                        ]),
+                        n[3] || (n[3] = a("p", { class: "muted small pim-axis-help" }, "Other fields you edit at this level.", -1)),
+                        y(_e, {
+                          disabled: !f.value,
+                          dropdown: "",
+                          labelledby: m(b, L + "-owned"),
+                          "model-value": r.own ?? [],
+                          options: k(b, r, "own"),
+                          placeholder: "Add a field",
+                          "onUpdate:modelValue": (F) => F.length ? r.own = F : delete r.own
+                        }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
+                      ])
+                    ])
+                  ]))), 128)),
+                  f.value ? (e(), T(s(G), {
+                    key: 0,
+                    type: "button",
+                    onClick: (r) => ae(b),
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small"
+                  }, {
+                    default: w(() => [
+                      y(s(le), {
+                        icon: "tabler:plus",
+                        "aria-hidden": "true"
+                      }),
+                      n[4] || (n[4] = H(" Add level", -1))
+                    ]),
+                    _: 1
+                  }, 8, ["onClick"])) : v("", !0)
+                ])
+              ]),
+              a("div", sn, [
+                n[10] || (n[10] = a("header", { class: "pim-aspect-head" }, [
+                  a("h3", null, "Release requirements"),
+                  a("span", { class: "muted small" }, "what a channel needs before a product is ready")
+                ], -1)),
+                a("div", nn, [
+                  (e(!0), i(E, null, ee(Z(b), (r, L) => (e(), i("div", {
+                    key: r.id,
+                    class: "pim-level"
+                  }, [
+                    a("div", on, [
+                      a("div", null, [
+                        a("strong", null, U(s(B)(r.id)), 1),
+                        a("p", dn, U(o(b, r.id).join(", ") || "Unused by channels"), 1)
+                      ]),
+                      f.value ? (e(), T(s(G), {
+                        key: 0,
+                        type: "button",
+                        "aria-label": "Remove requirement",
+                        onClick: (F) => Z(b).splice(L, 1),
+                        text: "",
+                        severity: "secondary",
+                        size: "small"
+                      }, {
+                        default: w(() => [
+                          y(s(le), { icon: "tabler:x" })
+                        ]),
+                        _: 1
+                      }, 8, ["onClick"])) : v("", !0)
+                    ]),
+                    a("div", rn, [
+                      (e(!0), i(E, null, ee(j.value, (F) => (e(), i("div", {
+                        key: F.name,
+                        class: "pim-f pim-w-third"
+                      }, [
+                        a("div", un, [
+                          a("label", {
+                            id: m(b, r.id + "-context-" + F.name)
+                          }, U(s(B)(F.name)), 9, cn),
+                          n[7] || (n[7] = a("span", { class: "pim-f-note" }, "context", -1))
+                        ]),
+                        y(s(he), {
+                          disabled: !f.value,
+                          "aria-labelledby": m(b, r.id + "-context-" + F.name),
+                          "model-value": S(r, F.name),
+                          "onUpdate:modelValue": (Q) => K(r, F.name, Q),
+                          options: [{ value: "", label: "not stated" }, { value: "all", label: "all members" }, ...F.members.map((Q) => ({ value: Q, label: String(Q) }))],
+                          "option-label": "label",
+                          "option-value": "value",
+                          appendTo: "self"
+                        }, null, 8, ["disabled", "aria-labelledby", "model-value", "onUpdate:modelValue", "options"])
+                      ]))), 128)),
+                      a("div", mn, [
+                        a("div", pn, [
+                          a("label", {
+                            id: m(b, r.id + "-required")
+                          }, "Required", 8, vn),
+                          n[8] || (n[8] = a("span", { class: "pim-f-note" }, "must hold a value", -1))
+                        ]),
+                        y(_e, {
+                          disabled: !f.value,
+                          dropdown: "",
+                          labelledby: m(b, r.id + "-required"),
+                          "model-value": r.require ?? [],
+                          placeholder: "Add a required field",
+                          options: z(b),
+                          "onUpdate:modelValue": (F) => s(Fe)(r, "require", F)
+                        }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
+                      ]),
+                      a("div", fn, [
+                        a("div", bn, [
+                          a("label", {
+                            id: m(b, r.id + "-authored")
+                          }, "Entered for this context", 8, yn),
+                          n[9] || (n[9] = a("span", { class: "pim-f-note" }, "must be set in the context itself, not by fallback", -1))
+                        ]),
+                        y(_e, {
+                          disabled: !f.value,
+                          dropdown: "",
+                          labelledby: m(b, r.id + "-authored"),
+                          "model-value": r.authored ?? [],
+                          placeholder: "Add a field to author",
+                          options: z(b),
+                          "onUpdate:modelValue": (F) => s(Fe)(r, "authored", F)
+                        }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
+                      ])
+                    ])
+                  ]))), 128)),
+                  f.value ? (e(), T(Ie, {
+                    key: 0,
+                    label: "Requirement name",
+                    action: "Add requirement",
+                    "from-name": "",
+                    existing: Z(b).map((r) => r.id),
+                    onAdd: (r) => W(b, r)
+                  }, null, 8, ["existing", "onAdd"])) : v("", !0)
                 ])
               ])
             ]),
-            a("div", Bs, [
-              D[4] || (D[4] = a("header", { class: "pim-aspect-head" }, [
-                a("h3", null, "Variation")
-              ], -1)),
-              D[5] || (D[5] = a("p", { class: "muted small pim-axis-help" }, "Choose the fields that distinguish variants at each level. Each field can be used once.", -1)),
-              a("div", Es, [
-                (e(!0), i(F, null, Q(o(N), (y, q) => (e(), i("div", {
-                  key: q,
-                  class: "pim-level"
-                }, [
-                  a("div", Ms, [
-                    a("strong", null, "Level " + V(q + 1), 1),
-                    n.value ? (e(), R(s(Z), {
-                      key: 0,
-                      type: "button",
-                      "aria-label": "Remove level",
-                      onClick: ($) => o(N).splice(q, 1),
-                      text: "",
-                      severity: "secondary",
-                      size: "small"
-                    }, {
-                      default: h(() => [
-                        g(s(X), { icon: "tabler:x" })
-                      ]),
-                      _: 1
-                    }, 8, ["onClick"])) : w("", !0)
-                  ]),
-                  a("div", Fs, [
-                    a("div", Hs, [
-                      a("div", Js, [
-                        a("label", {
-                          id: v(N, q + "-axes")
-                        }, "Axes", 8, Ws)
-                      ]),
-                      D[1] || (D[1] = a("p", { class: "muted small pim-axis-help" }, "Choose a single-value field with no dimensions. Text and record fields are excluded.", -1)),
-                      g(fe, {
-                        disabled: !n.value,
-                        dropdown: "",
-                        labelledby: v(N, q + "-axes"),
-                        "model-value": y.axes ?? [],
-                        options: b(N, y, "axes"),
-                        placeholder: "Add an axis",
-                        "onUpdate:modelValue": ($) => y.axes = $
-                      }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
-                    ]),
-                    a("div", Ks, [
-                      a("div", Gs, [
-                        a("label", {
-                          id: v(N, q + "-owned")
-                        }, "Also owned here", 8, Ys)
-                      ]),
-                      D[2] || (D[2] = a("p", { class: "muted small pim-axis-help" }, "Other fields you edit at this level.", -1)),
-                      g(fe, {
-                        disabled: !n.value,
-                        dropdown: "",
-                        labelledby: v(N, q + "-owned"),
-                        "model-value": y.own ?? [],
-                        options: b(N, y, "own"),
-                        placeholder: "Add a field",
-                        "onUpdate:modelValue": ($) => $.length ? y.own = $ : delete y.own
-                      }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
-                    ])
-                  ])
-                ]))), 128)),
-                n.value ? (e(), R(s(Z), {
-                  key: 0,
+            _: 2
+          }, [
+            f.value ? {
+              name: "actions",
+              fn: w(() => [
+                y(s(G), {
                   type: "button",
-                  onClick: (y) => O(N),
+                  onClick: (r) => se(b),
+                  "aria-label": "Remove " + s(B)(b.code),
+                  text: "",
                   severity: "secondary",
-                  outlined: "",
                   size: "small"
                 }, {
-                  default: h(() => [
-                    g(s(X), {
-                      icon: "tabler:plus",
-                      "aria-hidden": "true"
-                    }),
-                    D[3] || (D[3] = z(" Add level", -1))
+                  default: w(() => [
+                    y(s(le), { icon: "tabler:trash" })
                   ]),
                   _: 1
-                }, 8, ["onClick"])) : w("", !0)
-              ])
-            ]),
-            a("div", Zs, [
-              D[9] || (D[9] = a("header", { class: "pim-aspect-head" }, [
-                a("h3", null, "Requirements"),
-                a("span", { class: "muted small" }, "what a channel needs before a product is ready")
-              ], -1)),
-              a("div", Qs, [
-                (e(!0), i(F, null, Q(B(N), (y, q) => (e(), i("div", {
-                  key: y.id,
-                  class: "pim-level"
-                }, [
-                  a("div", Xs, [
-                    a("strong", ei, V(y.id), 1),
-                    n.value ? (e(), R(s(Z), {
-                      key: 0,
-                      type: "button",
-                      "aria-label": "Remove requirement",
-                      onClick: ($) => B(N).splice(q, 1),
-                      text: "",
-                      severity: "secondary",
-                      size: "small"
-                    }, {
-                      default: h(() => [
-                        g(s(X), { icon: "tabler:x" })
-                      ]),
-                      _: 1
-                    }, 8, ["onClick"])) : w("", !0)
-                  ]),
-                  a("div", ai, [
-                    (e(!0), i(F, null, Q(f.value, ($) => (e(), i("div", {
-                      key: $.name,
-                      class: "pim-f pim-w-third"
-                    }, [
-                      a("div", li, [
-                        a("label", {
-                          id: v(N, y.id + "-context-" + $.name)
-                        }, V(s(G)($.name)), 9, ti),
-                        D[6] || (D[6] = a("span", { class: "pim-f-note" }, "context", -1))
-                      ]),
-                      g(s(ve), {
-                        disabled: !n.value,
-                        "aria-labelledby": v(N, y.id + "-context-" + $.name),
-                        "model-value": Y(y, $.name),
-                        "onUpdate:modelValue": (T) => ne(y, $.name, T),
-                        options: [{ value: "", label: "not stated" }, { value: "all", label: "all members" }, ...$.members.map((T) => ({ value: T, label: String(T) }))],
-                        "option-label": "label",
-                        "option-value": "value",
-                        appendTo: "self"
-                      }, null, 8, ["disabled", "aria-labelledby", "model-value", "onUpdate:modelValue", "options"])
-                    ]))), 128)),
-                    a("div", si, [
-                      a("div", ii, [
-                        a("label", {
-                          id: v(N, y.id + "-required")
-                        }, "Required", 8, ni),
-                        D[7] || (D[7] = a("span", { class: "pim-f-note" }, "must hold a value", -1))
-                      ]),
-                      g(fe, {
-                        disabled: !n.value,
-                        dropdown: "",
-                        labelledby: v(N, y.id + "-required"),
-                        "model-value": y.require ?? [],
-                        placeholder: "Add a required field",
-                        options: I(N),
-                        "onUpdate:modelValue": ($) => s(Ve)(y, "require", $)
-                      }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
-                    ]),
-                    a("div", oi, [
-                      a("div", di, [
-                        a("label", {
-                          id: v(N, y.id + "-authored")
-                        }, "Authored", 8, ui),
-                        D[8] || (D[8] = a("span", { class: "pim-f-note" }, "must be set in the context itself, not by fallback", -1))
-                      ]),
-                      g(fe, {
-                        disabled: !n.value,
-                        dropdown: "",
-                        labelledby: v(N, y.id + "-authored"),
-                        "model-value": y.authored ?? [],
-                        placeholder: "Add a field to author",
-                        options: I(N),
-                        "onUpdate:modelValue": ($) => s(Ve)(y, "authored", $)
-                      }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
-                    ])
-                  ])
-                ]))), 128)),
-                n.value ? (e(), R(we, {
-                  key: 0,
-                  label: "Requirement code",
-                  action: "Add requirement",
-                  existing: B(N).map((y) => y.id),
-                  onAdd: (y) => te(N, y)
-                }, null, 8, ["existing", "onAdd"])) : w("", !0)
-              ])
-            ])
-          ]),
-          _: 2
-        }, [
-          n.value ? {
-            name: "actions",
-            fn: h(() => [
-              g(s(Z), {
-                type: "button",
-                onClick: (y) => c(N),
-                "aria-label": "Remove " + s(G)(N.code),
-                text: "",
-                severity: "secondary",
-                size: "small"
-              }, {
-                default: h(() => [
-                  g(s(X), { icon: "tabler:trash" })
-                ]),
-                _: 1
-              }, 8, ["onClick", "aria-label"])
-            ]),
-            key: "0"
-          } : void 0
-        ]), 1032, ["title", "code"]))), 128))
-      ]),
-      _: 2
-    }, [
-      n.value ? {
-        name: "add",
-        fn: h(() => [
-          g(we, {
-            label: "Family code",
-            action: "Add family",
-            existing: l.draft.families?.map((N) => N.code),
-            onAdd: d
-          }, {
-            default: h(() => [...D[10] || (D[10] = [
-              a("span", { class: "muted small" }, "Products without a family use the generic one.", -1)
-            ])]),
-            _: 1
-          }, 8, ["existing"])
+                }, 8, ["onClick", "aria-label"])
+              ]),
+              key: "0"
+            } : void 0
+          ]), 1032, ["open", "onUpdate:open", "title"]))), 128))
         ]),
-        key: "0"
-      } : void 0
-    ]), 1032, ["count"]));
+        _: 1
+      }, 8, ["count"])
+    ]));
   }
-}), ci = ["inert"], mi = {
+}), hn = ["inert"], kn = {
   key: 0,
   class: "row wrap"
-}, pi = {
+}, _n = {
   key: 2,
   class: "small muted"
-}, vi = { class: "pim-principal-service" }, fi = /* @__PURE__ */ le({
+}, wn = { class: "pim-principal-service" }, $n = /* @__PURE__ */ de({
   __name: "PrincipalList",
   props: {
     modelValue: {},
@@ -2539,361 +2758,392 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
     disabled: { type: Boolean }
   },
   emits: ["update:modelValue"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = J(!1), v = J(""), n = J({});
-    let p = 0;
-    ce(() => t.modelValue, async (x) => {
-      const I = ++p;
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = J(!1), m = J(""), f = J({});
+    let c = 0;
+    pe(() => t.modelValue, async (P) => {
+      const z = ++c;
       try {
-        const b = await ca(t.catalogId ?? "", x);
-        I === p && (n.value = b);
+        const k = await Ea(t.catalogId ?? "", P);
+        z === c && (f.value = k);
       } catch {
-        I === p && (n.value = {});
+        z === c && (f.value = {});
       }
-    }, { immediate: !0, deep: !0 }), De(() => {
-      p++;
+    }, { immediate: !0, deep: !0 }), Ye(() => {
+      c++;
     });
-    function m(x) {
-      return n.value[x] ?? me(x, "Person");
+    function C(P) {
+      return f.value[P] ?? ne(P, "Person");
     }
-    oa(async () => {
+    Fa(async () => {
       try {
-        await Ra("wc-principal-picker"), r.value = !0;
+        await Ul("wc-principal-picker"), u.value = !0;
       } catch {
-        r.value = !1;
+        u.value = !1;
       }
     });
-    function C(x) {
-      t.disabled || !x.trim() || t.modelValue.includes(x.trim()) || (u("update:modelValue", [...t.modelValue, x.trim()]), v.value = "");
+    function A(P) {
+      t.disabled || !P.trim() || t.modelValue.includes(P.trim()) || (d("update:modelValue", [...t.modelValue, P.trim()]), m.value = "");
     }
-    function j(x) {
-      const I = x.detail;
-      if (!I || typeof I != "object") return;
-      const b = I, f = b.principal_id ?? b.id;
-      typeof f == "string" && C(f);
+    function N(P) {
+      const z = P.detail;
+      if (!z || typeof z != "object") return;
+      const k = z, x = k.principal_id ?? k.id;
+      typeof x == "string" && A(x);
     }
-    function K(x) {
-      t.disabled || u("update:modelValue", t.modelValue.filter((I) => I !== x));
+    function X(P) {
+      t.disabled || d("update:modelValue", t.modelValue.filter((z) => z !== P));
     }
-    return (x, I) => (e(), i("div", {
+    return (P, z) => (e(), i("div", {
       class: "pim-principal-list",
       inert: l.disabled || void 0
     }, [
-      l.modelValue.length ? (e(), i("div", mi, [
-        (e(!0), i(F, null, Q(l.modelValue, (b) => (e(), R(s(ie), {
-          key: b,
+      l.modelValue.length ? (e(), i("div", kn, [
+        (e(!0), i(E, null, ee(l.modelValue, (k) => (e(), T(s(ye), {
+          key: k,
           severity: "secondary"
         }, {
-          default: h(() => [
-            a("span", null, V(m(b)), 1),
-            g(s(Z), {
+          default: w(() => [
+            a("span", null, U(C(k)), 1),
+            y(s(G), {
               text: "",
               size: "small",
               disabled: l.disabled,
-              "aria-label": "Remove " + m(b),
-              onClick: (f) => K(b)
+              "aria-label": "Remove " + C(k),
+              onClick: (x) => X(k)
             }, {
-              default: h(() => [
-                g(s(X), { icon: "tabler:x" })
+              default: w(() => [
+                y(s(le), { icon: "tabler:x" })
               ]),
               _: 1
             }, 8, ["disabled", "aria-label", "onClick"])
           ]),
           _: 2
         }, 1024))), 128))
-      ])) : w("", !0),
-      r.value ? (e(), i("wc-principal-picker", {
+      ])) : v("", !0),
+      u.value ? (e(), i("wc-principal-picker", {
         key: 1,
         config: "{}",
         kinds: "user",
         placeholder: "Add a person…",
-        onConfigChanged: be(j, ["stop"])
-      }, null, 32)) : (e(), i("span", pi, "The person picker is unavailable.")),
-      a("label", vi, [
-        I[3] || (I[3] = a("span", { class: "small muted" }, "Service account", -1)),
-        g(s(Re), {
-          modelValue: v.value,
-          "onUpdate:modelValue": I[0] || (I[0] = (b) => v.value = b),
+        onConfigChanged: Ae(N, ["stop"])
+      }, null, 32)) : (e(), i("span", _n, "The person picker is unavailable.")),
+      a("label", wn, [
+        z[3] || (z[3] = a("span", { class: "small muted" }, "Service account", -1)),
+        y(s(Ge), {
+          modelValue: m.value,
+          "onUpdate:modelValue": z[0] || (z[0] = (k) => m.value = k),
           disabled: l.disabled,
           placeholder: "Service principal id",
-          onKeydown: I[1] || (I[1] = Qe(be((b) => C(v.value), ["prevent"]), ["enter"]))
+          onKeydown: z[1] || (z[1] = wa(Ae((k) => A(m.value), ["prevent"]), ["enter"]))
         }, null, 8, ["modelValue", "disabled"])
       ]),
-      g(s(Z), {
+      y(s(G), {
         severity: "secondary",
         outlined: "",
         size: "small",
-        disabled: l.disabled || !v.value.trim(),
-        onClick: I[2] || (I[2] = (b) => C(v.value))
+        disabled: l.disabled || !m.value.trim(),
+        onClick: z[2] || (z[2] = (k) => A(m.value))
       }, {
-        default: h(() => [
-          g(s(X), { icon: "tabler:plus" }),
-          I[4] || (I[4] = z(" Add service account", -1))
+        default: w(() => [
+          y(s(le), { icon: "tabler:plus" }),
+          z[4] || (z[4] = H(" Add service account", -1))
         ]),
         _: 1
       }, 8, ["disabled"])
-    ], 8, ci));
+    ], 8, hn));
   }
-}), bi = { class: "pim-stack" }, yi = { class: "muted small" }, gi = { class: "pim-fields" }, hi = { class: "pim-f pim-w-half" }, ki = { class: "pim-f-label" }, _i = ["id"], $i = { class: "pim-f pim-w-half" }, wi = { class: "pim-f-label" }, xi = ["id"], Ci = { class: "muted small" }, Vi = { class: "pim-fields" }, Ui = { class: "pim-f pim-w-third" }, Si = { class: "pim-f-label" }, Ai = ["id"], Oi = { class: "pim-f pim-w-third" }, Ii = { class: "pim-f-label" }, Ri = ["for"], ji = { class: "row" }, Ti = ["aria-labelledby"], qi = { class: "pim-f-label" }, Di = ["id"], Ni = { key: 1 }, Pi = { class: "pim-f pim-w-full" }, Li = { class: "pim-f-label" }, zi = ["id"], Bi = /* @__PURE__ */ le({
+}), Cn = { class: "pim-stack" }, xn = { class: "muted small" }, Vn = { class: "muted small" }, Un = { class: "pim-fields" }, An = { class: "pim-f pim-w-half" }, jn = { class: "pim-f-label" }, Sn = ["id"], Rn = { class: "pim-f pim-w-half" }, On = { class: "pim-f-label" }, In = ["id"], Tn = { class: "muted small" }, Pn = { class: "pim-fields" }, qn = { class: "pim-f pim-w-third" }, Dn = { class: "pim-f-label" }, Nn = ["id"], zn = { class: "pim-f pim-w-third" }, Fn = { class: "pim-f-label" }, Bn = ["for"], Ln = { class: "row" }, En = ["aria-labelledby"], Mn = { class: "pim-f-label" }, Wn = ["id"], Hn = { key: 1 }, Jn = { class: "pim-f pim-w-full" }, Kn = { class: "pim-f-label" }, Gn = ["id"], Yn = /* @__PURE__ */ de({
   __name: "BuilderChannels",
   props: {
     catalogId: {},
     draft: {},
-    schema: {}
+    schema: {},
+    view: {}
   },
   emits: ["remove"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = Ae();
-    function v(d, c) {
-      return r + "-" + d + "-" + c;
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = qe();
+    function m(o, j) {
+      return u + "-" + o + "-" + j;
     }
-    const n = M(() => t.schema.access.admin), p = M(() => t.draft.channels ?? []), m = M(() => t.draft.sources ?? []), C = M(() => [...new Set((t.draft.families ?? []).flatMap((d) => (d.requirements ?? []).map((c) => c.id)))].map((d) => ({ value: d }))), j = M(() => (t.draft.families ?? []).filter((d) => d.code !== "generic").map((d) => ({ value: d.code, label: G(d.code) }))), K = M(() => (t.draft.aspects ?? []).map((d) => ({ value: d.namespace, label: G(d.namespace) })));
-    function x(d) {
-      (t.draft.channels ??= []).push({ id: d, requirements: [] });
+    const f = D(() => t.schema.access.admin), c = D(() => t.draft.channels ?? []), C = D(() => t.draft.sources ?? []), A = D(() => [...new Set((t.draft.families ?? []).flatMap((o) => (o.requirements ?? []).map((j) => j.id)))].map((o) => ({ value: o, label: B(o) }))), N = D(() => (t.draft.families ?? []).filter((o) => o.code !== "generic").map((o) => ({ value: o.code, label: B(o.code) }))), X = D(() => (t.draft.aspects ?? []).map((o) => ({ value: o.namespace, label: B(o.namespace) })));
+    function P(o) {
+      (t.draft.channels ??= []).push({ id: o, requirements: [] });
     }
-    function I(d) {
-      p.value.splice(p.value.indexOf(d), 1), t.schema.declaration.channels?.some((c) => c.id === d.id) && u("remove", "channels", d.id);
+    function z(o) {
+      c.value.splice(c.value.indexOf(o), 1), t.schema.declaration.channels?.some((j) => j.id === o.id) && d("remove", "channels", o.id);
     }
-    function b(d) {
-      (t.draft.sources ??= []).push({ id: d, ordering: "none", writes: [] });
+    function k(o) {
+      (t.draft.sources ??= []).push({ id: o, ordering: "none", writes: [] });
     }
-    function f(d) {
-      m.value.splice(m.value.indexOf(d), 1), t.schema.declaration.sources?.some((c) => c.id === d.id) && u("remove", "sources", d.id);
+    function x(o) {
+      C.value.splice(C.value.indexOf(o), 1), t.schema.declaration.sources?.some((j) => j.id === o.id) && d("remove", "sources", o.id);
     }
-    return (d, c) => (e(), i("div", bi, [
-      g(xe, {
-        count: p.value.length,
-        columns: ["code", "details"]
-      }, ue({
-        head: h(() => [
-          c[0] || (c[0] = a("header", { class: "pim-bsection-head" }, [
-            a("h3", null, "Channels")
-          ], -1))
+    return (o, j) => (e(), i("div", Cn, [
+      l.view !== "sources" ? (e(), T(Te, {
+        key: 0,
+        count: c.value.length,
+        columns: ["details"]
+      }, {
+        head: w(() => [
+          j[0] || (j[0] = a("header", { class: "pim-bsection-head pim-ia-group-head" }, [
+            a("div", null, [
+              a("h3", null, "Release destinations"),
+              a("p", { class: "muted small" }, "Choose which families can be released to each destination and what those products need first.")
+            ])
+          ], -1)),
+          f.value ? (e(), T(Ie, {
+            key: 0,
+            label: "Channel name",
+            action: "Add channel",
+            "from-name": "",
+            existing: c.value.map((I) => I.id),
+            onAdd: P
+          }, null, 8, ["existing"])) : v("", !0)
         ]),
-        default: h(() => [
-          (e(!0), i(F, null, Q(p.value, (o) => (e(), R(Ce, {
-            key: o.id,
-            title: s(G)(o.id),
-            code: o.id
-          }, ue({
-            details: h(() => [
-              a("span", yi, V(o.requirements?.length ?? 0) + " " + V(o.requirements?.length === 1 ? "requirement" : "requirements"), 1)
+        default: w(() => [
+          (e(!0), i(E, null, ee(c.value, (I) => (e(), T(Pe, {
+            key: I.id,
+            title: s(B)(I.id)
+          }, Re({
+            details: w(() => [
+              a("span", xn, U(I.families?.length ? I.families.map(s(B)).join(", ") : "All families"), 1),
+              a("span", Vn, U(I.requirements?.length ? I.requirements.map(s(B)).join(", ") : "No release requirements"), 1)
             ]),
-            default: h(() => [
-              a("div", gi, [
-                a("div", hi, [
-                  a("div", ki, [
+            default: w(() => [
+              a("div", Un, [
+                a("div", An, [
+                  a("div", jn, [
                     a("label", {
-                      id: v(o.id, "requirements")
-                    }, "Requirements", 8, _i),
-                    c[1] || (c[1] = a("span", { class: "pim-f-note" }, "a product is ready for the channel when these hold", -1))
+                      id: m(I.id, "requirements")
+                    }, "Release requirements", 8, Sn),
+                    j[1] || (j[1] = a("span", { class: "pim-f-note" }, "a product is ready for the channel when these hold", -1))
                   ]),
-                  g(fe, {
-                    disabled: !n.value,
-                    labelledby: v(o.id, "requirements"),
-                    "model-value": o.requirements ?? [],
-                    options: C.value,
-                    "onUpdate:modelValue": (O) => s(Ve)(o, "requirements", O)
+                  y(_e, {
+                    disabled: !f.value,
+                    labelledby: m(I.id, "requirements"),
+                    "model-value": I.requirements ?? [],
+                    options: A.value,
+                    "onUpdate:modelValue": (M) => s(Fe)(I, "requirements", M)
                   }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
                 ]),
-                a("div", $i, [
-                  a("div", wi, [
+                a("div", Rn, [
+                  a("div", On, [
                     a("label", {
-                      id: v(o.id, "families")
-                    }, "Families", 8, xi),
-                    c[2] || (c[2] = a("span", { class: "pim-f-note" }, "empty means every family", -1))
+                      id: m(I.id, "families")
+                    }, "Families", 8, In),
+                    j[2] || (j[2] = a("span", { class: "pim-f-note" }, "empty means every family", -1))
                   ]),
-                  g(fe, {
-                    disabled: !n.value,
-                    labelledby: v(o.id, "families"),
-                    "model-value": o.families ?? [],
-                    options: j.value,
-                    "onUpdate:modelValue": (O) => s(Ve)(o, "families", O)
+                  y(_e, {
+                    disabled: !f.value,
+                    labelledby: m(I.id, "families"),
+                    "model-value": I.families ?? [],
+                    options: N.value,
+                    "onUpdate:modelValue": (M) => s(Fe)(I, "families", M)
                   }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
                 ])
               ])
             ]),
             _: 2
           }, [
-            n.value ? {
+            f.value ? {
               name: "actions",
-              fn: h(() => [
-                g(s(Z), {
+              fn: w(() => [
+                y(s(G), {
                   type: "button",
-                  onClick: (O) => I(o),
-                  "aria-label": "Remove " + s(G)(o.id),
+                  onClick: (M) => z(I),
+                  "aria-label": "Remove " + s(B)(I.id),
                   text: "",
                   severity: "secondary",
                   size: "small"
                 }, {
-                  default: h(() => [
-                    g(s(X), { icon: "tabler:trash" })
+                  default: w(() => [
+                    y(s(le), { icon: "tabler:trash" })
                   ]),
                   _: 1
                 }, 8, ["onClick", "aria-label"])
               ]),
               key: "0"
             } : void 0
-          ]), 1032, ["title", "code"]))), 128))
+          ]), 1032, ["title"]))), 128))
         ]),
-        _: 2
-      }, [
-        n.value ? {
-          name: "add",
-          fn: h(() => [
-            g(we, {
-              label: "Channel code",
-              action: "Add channel",
-              existing: p.value.map((o) => o.id),
-              onAdd: x
-            }, null, 8, ["existing"])
-          ]),
-          key: "0"
-        } : void 0
-      ]), 1032, ["count"]),
-      g(xe, {
-        count: m.value.length,
-        columns: ["code", "details"]
-      }, ue({
-        head: h(() => [
-          c[3] || (c[3] = a("header", { class: "pim-bsection-head" }, [
-            a("h3", null, "Sources")
-          ], -1))
+        _: 1
+      }, 8, ["count"])) : v("", !0),
+      l.view !== "channels" ? (e(), T(Te, {
+        key: 1,
+        count: C.value.length,
+        columns: ["details"]
+      }, {
+        head: w(() => [
+          j[3] || (j[3] = a("header", { class: "pim-bsection-head pim-ia-group-head" }, [
+            a("div", null, [
+              a("h3", null, "Data sources"),
+              a("p", { class: "muted small" }, "Control who can send updates and which fields each source can change.")
+            ])
+          ], -1)),
+          f.value ? (e(), T(Ie, {
+            key: 0,
+            label: "Source name",
+            action: "Add source",
+            "from-name": "",
+            existing: C.value.map((I) => I.id),
+            onAdd: k
+          }, null, 8, ["existing"])) : v("", !0)
         ]),
-        default: h(() => [
-          (e(!0), i(F, null, Q(m.value, (o) => (e(), R(Ce, {
-            key: o.id,
-            title: s(G)(o.id),
-            code: o.id
-          }, ue({
-            details: h(() => [
-              a("span", Ci, V(o.writes?.length ?? 0) + " " + V(o.writes?.length === 1 ? "field group" : "field groups"), 1)
+        default: w(() => [
+          (e(!0), i(E, null, ee(C.value, (I) => (e(), T(Pe, {
+            key: I.id,
+            title: s(B)(I.id)
+          }, Re({
+            details: w(() => [
+              a("span", Tn, U(I.writes?.length ? I.writes.map(s(B)).join(", ") : "No field groups selected"), 1)
             ]),
-            default: h(() => [
-              a("div", Vi, [
-                a("div", Ui, [
-                  a("div", Si, [
+            default: w(() => [
+              a("div", Pn, [
+                a("div", qn, [
+                  a("div", Dn, [
                     a("label", {
-                      id: v(o.id, "ordering")
-                    }, "Ordering", 8, Ai),
-                    c[4] || (c[4] = a("span", { class: "pim-f-note" }, "sequence keeps late deliveries from winning", -1))
+                      id: m(I.id, "ordering")
+                    }, "Handle incoming updates", 8, Nn),
+                    j[4] || (j[4] = a("span", { class: "pim-f-note" }, "sequence keeps late deliveries from winning", -1))
                   ]),
-                  g(s(ve), {
-                    disabled: !n.value,
-                    "aria-labelledby": v(o.id, "ordering"),
-                    "model-value": o.ordering ?? "none",
-                    "onUpdate:modelValue": (O) => o.ordering = O,
-                    options: [{ value: "none", label: "none" }, { value: "sequence", label: "sequence" }],
+                  y(s(he), {
+                    disabled: !f.value,
+                    "aria-labelledby": m(I.id, "ordering"),
+                    "model-value": I.ordering ?? "none",
+                    "onUpdate:modelValue": (M) => I.ordering = M,
+                    options: [{ value: "none", label: "Use arrival order" }, { value: "sequence", label: "Use the source’s sequence" }],
                     "option-label": "label",
                     "option-value": "value",
                     appendTo: "self"
                   }, null, 8, ["disabled", "aria-labelledby", "model-value", "onUpdate:modelValue"])
                 ]),
-                a("div", Oi, [
-                  a("div", Ii, [
+                a("div", zn, [
+                  a("div", Fn, [
                     a("label", {
-                      for: v(o.id, "audit")
-                    }, "Audit", 8, Ri),
-                    c[5] || (c[5] = a("span", { class: "pim-f-note" }, "record each value change", -1))
+                      for: m(I.id, "audit")
+                    }, "Audit", 8, Bn),
+                    j[5] || (j[5] = a("span", { class: "pim-f-note" }, "record each value change", -1))
                   ]),
-                  a("div", ji, [
-                    g(s(qe), {
-                      disabled: !n.value,
-                      "input-id": v(o.id, "audit"),
-                      "model-value": o.audit !== !1,
-                      "onUpdate:modelValue": (O) => O ? delete o.audit : o.audit = !1
+                  a("div", Ln, [
+                    y(s(la), {
+                      disabled: !f.value,
+                      "input-id": m(I.id, "audit"),
+                      "model-value": I.audit !== !1,
+                      "onUpdate:modelValue": (M) => M ? delete I.audit : I.audit = !1
                     }, null, 8, ["disabled", "input-id", "model-value", "onUpdate:modelValue"]),
-                    a("span", null, V(o.audit === !1 ? "Off for this source" : "As the catalog policy"), 1)
+                    a("span", null, U(I.audit === !1 ? "Off for this source" : "Follow catalog audit settings"), 1)
                   ])
                 ]),
                 a("div", {
                   class: "pim-f pim-w-third",
                   role: "group",
-                  "aria-labelledby": v(o.id, "people")
+                  "aria-labelledby": m(I.id, "people")
                 }, [
-                  a("div", qi, [
+                  a("div", Mn, [
                     a("label", {
-                      id: v(o.id, "people")
-                    }, "People and service accounts", 8, Di),
-                    c[6] || (c[6] = a("span", { class: "pim-f-note" }, "who may write as this source", -1))
+                      id: m(I.id, "people")
+                    }, "People and service accounts", 8, Wn),
+                    j[6] || (j[6] = a("span", { class: "pim-f-note" }, "who may write as this source", -1))
                   ]),
-                  n.value ? (e(), R(fi, {
+                  f.value ? (e(), T($n, {
                     key: 0,
                     "catalog-id": l.catalogId,
-                    "model-value": o.principals ?? [],
-                    "onUpdate:modelValue": (O) => s(Ve)(o, "principals", O)
-                  }, null, 8, ["catalog-id", "model-value", "onUpdate:modelValue"])) : (e(), i("span", Ni, V(o.principals?.length ? o.principals.length + (o.principals.length === 1 ? " allowed account" : " allowed accounts") : "No accounts specified"), 1))
-                ], 8, Ti),
-                a("div", Pi, [
-                  a("div", Li, [
+                    "model-value": I.principals ?? [],
+                    "onUpdate:modelValue": (M) => s(Fe)(I, "principals", M)
+                  }, null, 8, ["catalog-id", "model-value", "onUpdate:modelValue"])) : (e(), i("span", Hn, U(I.principals?.length ? I.principals.length + (I.principals.length === 1 ? " allowed account" : " allowed accounts") : "No accounts specified"), 1))
+                ], 8, En),
+                a("div", Jn, [
+                  a("div", Kn, [
                     a("label", {
-                      id: v(o.id, "writes")
-                    }, "Writes", 8, zi),
-                    c[7] || (c[7] = a("span", { class: "pim-f-note" }, "field groups this source may set", -1))
+                      id: m(I.id, "writes")
+                    }, "Field groups it can update", 8, Gn),
+                    j[7] || (j[7] = a("span", { class: "pim-f-note" }, "field groups this source may set", -1))
                   ]),
-                  g(fe, {
-                    disabled: !n.value,
-                    labelledby: v(o.id, "writes"),
-                    "model-value": o.writes ?? [],
-                    options: K.value,
-                    "onUpdate:modelValue": (O) => s(Ve)(o, "writes", O)
+                  y(_e, {
+                    disabled: !f.value,
+                    labelledby: m(I.id, "writes"),
+                    "model-value": I.writes ?? [],
+                    options: X.value,
+                    "onUpdate:modelValue": (M) => s(Fe)(I, "writes", M)
                   }, null, 8, ["disabled", "labelledby", "model-value", "options", "onUpdate:modelValue"])
                 ])
               ])
             ]),
             _: 2
           }, [
-            n.value ? {
+            f.value ? {
               name: "actions",
-              fn: h(() => [
-                g(s(Z), {
+              fn: w(() => [
+                y(s(G), {
                   type: "button",
-                  onClick: (O) => f(o),
-                  "aria-label": "Remove " + s(G)(o.id),
+                  onClick: (M) => x(I),
+                  "aria-label": "Remove " + s(B)(I.id),
                   text: "",
                   severity: "secondary",
                   size: "small"
                 }, {
-                  default: h(() => [
-                    g(s(X), { icon: "tabler:trash" })
+                  default: w(() => [
+                    y(s(le), { icon: "tabler:trash" })
                   ]),
                   _: 1
                 }, 8, ["onClick", "aria-label"])
               ]),
               key: "0"
             } : void 0
-          ]), 1032, ["title", "code"]))), 128))
+          ]), 1032, ["title"]))), 128))
         ]),
-        _: 2
-      }, [
-        n.value ? {
-          name: "add",
-          fn: h(() => [
-            g(we, {
-              label: "Source code",
-              action: "Add source",
-              existing: m.value.map((o) => o.id),
-              onAdd: b
-            }, null, 8, ["existing"])
-          ]),
-          key: "0"
-        } : void 0
-      ]), 1032, ["count"])
+        _: 1
+      }, 8, ["count"])) : v("", !0)
     ]));
   }
-}), Ei = { class: "pim-stack" }, Mi = { class: "pim-bsection-head" }, Fi = { class: "muted small" }, Hi = {
+}), Zn = {
+  failed: { label: "Setup failed", severity: "danger" },
+  paused: { label: "Background update paused", severity: "warn" },
+  degraded: { label: "Degraded", severity: "warn" },
+  catchingUp: { label: "Catching up", severity: "info" },
+  config: { label: "Configuration needed", severity: "warn" },
+  reset: { label: "Reset required", severity: "warn" },
+  uninstalled: { label: "Uninstalled · still referenced", severity: "warn" },
+  pending: { label: "Setting up", severity: "info" }
+};
+function Wa(l, $) {
+  return !l.parked && (l.bootstrapping || l.last_seq < $);
+}
+function Qn(l, $) {
+  return !l.active || !l.installed || l.problem || l.lifecycle.state === "failed" ? !1 : l.lifecycle.state === "pending" || Object.values(l.projections).some((t) => Wa(t, $));
+}
+function Ha(l, $) {
+  const t = l.problem ?? l.lifecycle.error, d = Object.entries(l.projections), u = d.find(([, f]) => f.parked) ?? d.find(([, f]) => f.error) ?? d.find(([, f]) => Wa(f, $));
+  let m;
+  return l.active && !l.installed ? m = "uninstalled" : t?.code === "plugin_config_invalid" ? m = "config" : t?.code === "plugin_projection_history_pruned" ? m = "reset" : t || l.lifecycle.state === "failed" ? m = "failed" : l.active && u?.[1].parked ? m = "paused" : l.active && u?.[1].error ? m = "degraded" : l.active && u ? m = "catchingUp" : l.active && l.lifecycle.state === "pending" && (m = "pending"), m ? { kind: m, ...Zn[m], error: t, projection: u } : void 0;
+}
+function Xn(l) {
+  return (l.problem ?? l.lifecycle.error)?.code === "plugin_interface_version_unsupported";
+}
+const eo = { class: "pim-stack" }, ao = { class: "pim-bsection-head" }, lo = { class: "muted small" }, to = {
   key: 0,
   class: "pim-aspect muted"
-}, Ji = {
+}, so = {
+  key: 0,
+  class: "muted small"
+}, io = { class: "pim-stack pim-plugin-recovery" }, no = {
+  key: 0,
+  class: "muted small"
+}, oo = {
   key: 1,
   class: "muted small"
-}, Wi = {
-  key: 3,
-  class: "muted small"
-}, Ki = {
+}, ro = { key: 0 }, uo = { key: 1 }, co = { key: 0 }, mo = { key: 0 }, po = { key: 0 }, vo = { key: 1 }, fo = { key: 2 }, bo = { key: 3 }, yo = { key: 0 }, go = {
+  key: 0,
+  class: "pim-ia-action"
+}, ho = {
+  key: 0,
+  class: "pim-ia-dialog"
+}, ko = { class: "pim-ia-dialog-head" }, _o = { key: 1 }, wo = { key: 2 }, $o = { class: "row pim-ia-dialog-actions" }, Co = {
   key: 0,
   class: "pim-aspect muted"
-}, Gi = { class: "row wrap muted small" }, Yi = /* @__PURE__ */ le({
+}, xo = { class: "row wrap muted small" }, Vo = /* @__PURE__ */ de({
   __name: "BuilderPlugins",
   props: {
     draft: {},
@@ -2902,160 +3152,405 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
     pluginConfigs: { default: () => ({}) },
     stale: { type: Boolean }
   },
-  emits: ["remove", "configure"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = /* @__PURE__ */ new Map([
+  emits: ["remove", "configure", "reset", "resume", "refresh", "review", "clearShellBinding"],
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = /* @__PURE__ */ new Map([
       ["eq", "Equals"],
       ["in", "Is one of"],
       ["gt", "Greater than"],
       ["gte", "At least"],
       ["lt", "Less than"],
       ["lte", "At most"]
-    ]), v = {
-      pending: "Setting up",
-      ready: "Ready",
-      failed: "Setup failed"
-    };
-    function n(c, o) {
-      const O = o.map((B) => r.get(B)).filter(Boolean);
-      return [G(c), O.join(", ")].filter(Boolean).join(" · ");
+    ]), m = J({}), f = J(), c = D(() => k.value.find((W) => W.plugin.plugin === f.value)), C = D(() => c.value?.plugin), A = D(() => t.options.plugins.filter((W) => W.installed).length), N = D(() => t.schema.access.admin), X = D(() => t.draft.plugins ?? []), P = D(() => new Map(t.schema.plugins.map((W) => [W.plugin, W]))), z = D(() => {
+      const W = /* @__PURE__ */ new Map();
+      for (const [S, K] of Object.entries(t.schema.attributes)) {
+        if (!K.plugin) continue;
+        const h = W.get(K.plugin) ?? [];
+        h.push(B(S)), W.set(K.plugin, h);
+      }
+      return W;
+    }), k = D(() => t.options.plugins.map((W) => {
+      const S = P.value.get(W.plugin) ?? W, K = Ha(S, t.schema.as_of), h = X.value.some((n) => n.use === S.plugin);
+      return {
+        option: W,
+        plugin: S,
+        status: K,
+        chosen: h,
+        title: ne(S.title ?? W.title, S.installed ? "Plugin" : "Unavailable plugin"),
+        label: !S.active && K?.kind === "failed" ? "Unavailable" : K?.label ?? (h ? S.active ? "Enabled" : "Will enable on apply" : S.active ? "Will disable on apply" : "Disabled"),
+        severity: K?.severity ?? (h ? "success" : "secondary")
+      };
+    }));
+    function x(W, S) {
+      const K = S.map((h) => u.get(h)).filter(Boolean);
+      return [B(W), K.join(", ")].filter(Boolean).join(" · ");
     }
-    const p = M(() => t.schema.access.admin), m = M(() => t.draft.plugins ?? []);
-    function C(c) {
-      return m.value.some((o) => o.use === c.plugin);
+    function o(W, S) {
+      S && !X.value.some((K) => K.use === W) && (t.draft.plugins ??= []).push({ use: W }), S || (t.draft.plugins = X.value.filter((K) => K.use !== W), delete t.pluginConfigs[W], P.value.get(W)?.active && d("remove", "plugins", W));
     }
-    function j(c) {
-      return t.schema.plugins.find((o) => o.plugin === c.plugin);
+    function j(W, S) {
+      m.value[W] = !0, t.pluginConfigs[W] = S;
     }
-    function K(c, o) {
-      o && !C(c) && (t.draft.plugins ??= []).push({ use: c.plugin }), o || (t.draft.plugins = m.value.filter((O) => O.use !== c.plugin), delete t.pluginConfigs[c.plugin], j(c)?.active && u("remove", "plugins", c.plugin));
+    function I(W, S) {
+      const K = W.config_schema.properties;
+      return ne(K?.[S]?.title ?? B(S), "this setting");
     }
-    function x(c, o) {
-      t.pluginConfigs[c.plugin] = o;
+    const M = D(() => t.draft.scopes ?? []);
+    function se(W) {
+      return M.value.includes(W.id);
     }
-    function I(c) {
-      return Object.entries(t.schema.attributes).filter(([, o]) => o.plugin === c.plugin).map(([o]) => G(o));
+    function fe(W, S) {
+      S && !se(W) && (t.draft.scopes ??= []).push(W.id), !S && se(W) && (M.value.splice(M.value.indexOf(W.id), 1), t.schema.declaration.scopes?.includes(W.id) && d("remove", "scopes", W.id));
     }
-    const b = M(() => t.draft.scopes ?? []);
-    function f(c) {
-      return b.value.includes(c.id);
+    const ae = D(() => {
+      const W = C.value;
+      if (!W) return [];
+      const S = W.references;
+      return [
+        { label: "Fields", items: (S?.fields ?? Object.entries(t.schema.attributes).filter(([, h]) => h.plugin === W.plugin).map(([h]) => h)).map((h) => ({ id: h, title: ne(B(h), "Field") })) },
+        { label: "Product filter sets", items: (S?.scopes ?? []).map((h) => ({
+          id: h,
+          title: ne(t.options.scopes.find((n) => n.id === h)?.title, "Unavailable filter set")
+        })) },
+        { label: "Catalog app binding", items: (S?.shell_bindings ?? []).map((h) => ({ id: h, title: "Catalog app" })) },
+        { label: "Readiness checks", items: (S?.checks ?? []).map((h) => ({ id: h, title: "Readiness check" })) },
+        { label: "Dependent plugins", items: (S?.plugins ?? []).map((h) => ({
+          id: h,
+          title: ne(P.value.get(h)?.title, "Dependent plugin")
+        })) }
+      ].filter((h) => h.items.length);
+    });
+    function Z(W) {
+      for (const S of W.references?.scopes ?? [])
+        M.value.includes(S) && (t.draft.scopes = M.value.filter((K) => K !== S), d("remove", "scopes", S));
+      f.value = void 0, o(W.plugin, !1), d("review");
     }
-    function d(c, o) {
-      o && !f(c) && (t.draft.scopes ??= []).push(c.id), !o && f(c) && (b.value.splice(b.value.indexOf(c.id), 1), t.schema.declaration.scopes?.includes(c.id) && u("remove", "scopes", c.id));
-    }
-    return (c, o) => (e(), i("div", Ei, [
-      g(xe, {
-        count: l.options.plugins.length,
+    return (W, S) => (e(), i("div", eo, [
+      y(Te, {
+        count: k.value.length,
         columns: ["details"]
       }, {
-        head: h(() => [
-          a("header", Mi, [
-            o[0] || (o[0] = a("h3", null, "Plugins", -1)),
-            a("span", Fi, V(l.options.plugins.length) + " installed", 1)
+        head: w(() => [
+          a("header", ao, [
+            S[6] || (S[6] = a("h3", null, "Plugins", -1)),
+            a("span", lo, U(A.value) + " installed", 1)
           ])
         ]),
-        default: h(() => [
-          l.options.plugins.length === 0 ? (e(), i("div", Hi, "No plugin is installed.")) : w("", !0),
-          (e(!0), i(F, null, Q(l.options.plugins, (O) => (e(), R(Ce, {
-            key: O.plugin,
-            title: s(me)(O.title, "Plugin")
-          }, ue({
-            details: h(() => [
-              g(s(ie), {
-                severity: C(O) ? "success" : "secondary",
-                value: C(O) ? "Active" : "Inactive"
-              }, null, 8, ["severity", "value"])
+        default: w(() => [
+          k.value.length === 0 ? (e(), i("div", to, "No plugin is installed.")) : v("", !0),
+          (e(!0), i(E, null, ee(k.value, ({ option: K, plugin: h, status: n, chosen: b, title: r, label: L, severity: F }) => (e(), T(Pe, {
+            key: h.plugin,
+            title: r,
+            open: m.value[h.plugin] ?? !!(h.active && n && n.kind !== "pending"),
+            "onUpdate:open": (Q) => m.value[h.plugin] = Q
+          }, Re({
+            details: w(() => [
+              y(s(ye), {
+                severity: F,
+                value: L
+              }, null, 8, ["severity", "value"]),
+              !n && K.description ? (e(), i("span", so, U(s(ne)(K.description, "Adds capabilities to this catalog.")), 1)) : v("", !0)
             ]),
-            default: h(() => [
-              j(O)?.problem ? (e(), R(s($e), {
-                key: 0,
-                severity: "warn"
-              }, {
-                default: h(() => [
-                  z(V(j(O)?.problem?.message) + " ", 1),
-                  a("code", null, V(j(O)?.problem?.code), 1)
-                ]),
-                _: 2
-              }, 1024)) : w("", !0),
-              I(O).length ? (e(), i("p", Ji, "Fields: " + V(I(O).join(", ")) + ".", 1)) : w("", !0),
-              C(O) ? (e(), R(ea, {
-                key: 2,
-                disabled: !p.value,
-                schema: O.config_schema,
-                "model-value": l.pluginConfigs[O.plugin] ?? j(O)?.config ?? {},
-                "onUpdate:modelValue": (B) => x(O, B)
-              }, null, 8, ["disabled", "schema", "model-value", "onUpdate:modelValue"])) : w("", !0),
-              j(O)?.active ? (e(), i("p", Wi, [
-                z(V(v[j(O).lifecycle.state]) + " ", 1),
-                (e(!0), i(F, null, Q(j(O)?.projections, (B, te) => (e(), i("span", { key: te }, " · " + V(s(G)(s(me)(te, "Background update"))) + ": " + V(B.parked ? "Paused" : B.bootstrapping ? "Starting" : "Ready"), 1))), 128))
-              ])) : w("", !0),
-              p.value && j(O)?.active && l.pluginConfigs[O.plugin] ? (e(), R(s(Z), {
-                key: 4,
-                disabled: l.stale,
-                label: "Save configuration",
-                onClick: (B) => u("configure", O.plugin, l.pluginConfigs[O.plugin])
-              }, null, 8, ["disabled", "onClick"])) : w("", !0)
-            ]),
-            _: 2
-          }, [
-            p.value ? {
-              name: "actions",
-              fn: h(() => [
-                g(s(qe), {
-                  "aria-label": "Enable " + s(me)(O.title, "Plugin"),
-                  "model-value": C(O),
-                  "onUpdate:modelValue": (B) => K(O, B)
-                }, null, 8, ["aria-label", "model-value", "onUpdate:modelValue"])
-              ]),
-              key: "0"
-            } : void 0
-          ]), 1032, ["title"]))), 128))
-        ]),
-        _: 1
-      }, 8, ["count"]),
-      g(xe, {
-        count: l.options.scopes.length,
-        columns: ["details"]
-      }, {
-        head: h(() => [...o[1] || (o[1] = [
-          a("header", { class: "pim-bsection-head" }, [
-            a("h3", null, "Scopes"),
-            a("span", { class: "muted small" }, "Filters added by plugins")
-          ], -1)
-        ])]),
-        default: h(() => [
-          l.options.scopes.length === 0 ? (e(), i("div", Ki, "No scope is declared.")) : w("", !0),
-          (e(!0), i(F, null, Q(l.options.scopes, (O) => (e(), R(Ce, {
-            key: O.id,
-            title: s(me)(O.title, "Scope")
-          }, ue({
-            details: h(() => [
-              g(s(ie), {
-                severity: f(O) ? "success" : "secondary",
-                value: f(O) ? "Adopted" : "Not adopted"
-              }, null, 8, ["severity", "value"])
-            ]),
-            default: h(() => [
-              a("div", Gi, [
-                o[2] || (o[2] = a("span", null, "Filters", -1)),
-                (e(!0), i(F, null, Q(O.filters, (B, te) => (e(), R(s(ie), {
-                  key: te,
-                  class: "kx-tag-sm small",
-                  severity: "secondary",
-                  value: n(te, B.ops)
-                }, null, 8, ["value"]))), 128)),
-                a("span", null, V(s(G)(O.access)) + " access required", 1)
+            default: w(() => [
+              a("div", io, [
+                z.value.get(h.plugin)?.length ? (e(), i("p", no, " Adds fields for " + U(z.value.get(h.plugin)?.join(", ")) + ". ", 1)) : v("", !0),
+                h.active && n?.kind === "failed" && n.projection?.[1].parked ? (e(), i("p", oo, " Background update: Paused ")) : v("", !0),
+                n?.kind === "failed" ? (e(), i(E, { key: 2 }, [
+                  y(s(we), {
+                    severity: "warn",
+                    role: "alert"
+                  }, {
+                    default: w(() => [
+                      s(Xn)(h) ? (e(), i(E, { key: 0 }, [
+                        H("This package uses a plugin interface this deployment cannot run. Restore a compatible package to use this plugin.")
+                      ], 64)) : (e(), i(E, { key: 1 }, [
+                        H("The catalog could not set up this plugin. Check the status after resolving the setup problem.")
+                      ], 64))
+                    ]),
+                    _: 2
+                  }, 1024),
+                  y(Ue, {
+                    class: "small pim-error-code pim-ia-disclosure",
+                    label: "Technical details"
+                  }, {
+                    default: w(() => [
+                      a("p", null, [
+                        S[7] || (S[7] = H("Plugin ", -1)),
+                        a("code", null, U(h.plugin), 1)
+                      ]),
+                      n.error?.message ? (e(), i("p", ro, U(n.error.message), 1)) : v("", !0),
+                      n.error?.code ? (e(), i("p", uo, [
+                        a("code", null, U(n.error.code), 1)
+                      ])) : v("", !0)
+                    ]),
+                    _: 2
+                  }, 1024),
+                  N.value && h.references ? (e(), T(s(G), {
+                    key: 0,
+                    label: "Review references",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    onClick: (Q) => f.value = h.plugin
+                  }, null, 8, ["onClick"])) : (e(), T(s(G), {
+                    key: 1,
+                    label: "Check status",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    onClick: S[0] || (S[0] = (Q) => d("refresh"))
+                  }))
+                ], 64)) : n?.kind === "reset" ? (e(), i(E, { key: 3 }, [
+                  y(s(we), { severity: "warn" }, {
+                    default: w(() => [
+                      S[8] || (S[8] = H(" The event history this background update needs was removed. ", -1)),
+                      n.error?.max_pruned_seq !== void 0 ? (e(), i("p", co, "Earliest retained position " + U(n.error.max_pruned_seq + 1) + ".", 1)) : v("", !0)
+                    ]),
+                    _: 2
+                  }, 1024),
+                  y(Ue, {
+                    class: "small pim-error-code pim-ia-disclosure",
+                    label: "Technical details"
+                  }, {
+                    default: w(() => [
+                      a("p", null, [
+                        S[9] || (S[9] = H("Plugin ", -1)),
+                        a("code", null, U(h.plugin), 1)
+                      ]),
+                      n.error?.projection ? (e(), i("p", mo, [
+                        S[10] || (S[10] = H("Background update ", -1)),
+                        a("code", null, U(n.error.projection), 1)
+                      ])) : v("", !0)
+                    ]),
+                    _: 2
+                  }, 1024),
+                  N.value ? (e(), T(s(G), {
+                    key: 0,
+                    label: "Reset background updates",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    disabled: l.stale,
+                    onClick: (Q) => d("reset", h.plugin)
+                  }, null, 8, ["disabled", "onClick"])) : v("", !0)
+                ], 64)) : n?.projection && (n.kind === "paused" || n.kind === "degraded" || n.kind === "catchingUp") ? (e(), i(E, { key: 4 }, [
+                  y(s(we), {
+                    severity: n.kind === "catchingUp" ? "info" : "warn"
+                  }, {
+                    default: w(() => [
+                      n.projection[1].status === "paused" ? (e(), i("p", po, "This update was paused.")) : n.kind === "paused" ? (e(), i("p", vo, "The background worker stopped.")) : n.kind === "degraded" ? (e(), i("p", fo, "The background worker reported an error.")) : (e(), i("p", bo, "This update is processing catalog changes.")),
+                      a("p", null, "Last applied position " + U(n.projection[1].last_seq) + ".", 1)
+                    ]),
+                    _: 2
+                  }, 1032, ["severity"]),
+                  y(Ue, {
+                    class: "small pim-error-code pim-ia-disclosure",
+                    label: "Technical details"
+                  }, {
+                    default: w(() => [
+                      a("p", null, [
+                        S[11] || (S[11] = H("Background update ", -1)),
+                        a("code", null, U(n.projection[0]), 1)
+                      ]),
+                      n.projection[1].error ? (e(), i("p", yo, U(n.projection[1].error), 1)) : v("", !0)
+                    ]),
+                    _: 2
+                  }, 1024),
+                  N.value && n.projection[1].status === "paused" && n.projection[1].cursor_id ? (e(), T(s(G), {
+                    key: 0,
+                    label: "Resume background update",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    disabled: l.stale,
+                    onClick: (Q) => d("resume", n.projection[1].cursor_id)
+                  }, null, 8, ["disabled", "onClick"])) : n.kind === "paused" && N.value ? (e(), T(s(G), {
+                    key: 1,
+                    label: "Reset background updates",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    disabled: l.stale,
+                    onClick: (Q) => d("reset", h.plugin)
+                  }, null, 8, ["disabled", "onClick"])) : (e(), T(s(G), {
+                    key: 2,
+                    label: "Check status",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    onClick: S[1] || (S[1] = (Q) => d("refresh"))
+                  }))
+                ], 64)) : n?.kind === "uninstalled" ? (e(), i(E, { key: 5 }, [
+                  y(s(we), { severity: "warn" }, {
+                    default: w(() => [...S[12] || (S[12] = [
+                      H("The package was removed while it was still enabled for this catalog.", -1)
+                    ])]),
+                    _: 1
+                  }),
+                  y(s(G), {
+                    label: "Review references",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    onClick: (Q) => f.value = h.plugin
+                  }, null, 8, ["onClick"])
+                ], 64)) : b ? (e(), i(E, { key: 6 }, [
+                  y(Ca, {
+                    disabled: !N.value,
+                    schema: K.config_schema,
+                    "model-value": l.pluginConfigs[h.plugin] ?? h.config ?? {},
+                    problem: n?.kind === "config" ? n.error : void 0,
+                    "plugin-id": n?.kind === "config" ? h.plugin : void 0,
+                    "problem-label": n?.error?.field && n.error.field !== "config" ? I(K, n.error.field) : void 0,
+                    "onUpdate:modelValue": (Q) => j(h.plugin, Q)
+                  }, null, 8, ["disabled", "schema", "model-value", "problem", "plugin-id", "problem-label", "onUpdate:modelValue"]),
+                  N.value && h.active && (l.pluginConfigs[h.plugin] || n?.kind === "config") ? (e(), i("div", go, [
+                    y(s(G), {
+                      disabled: l.stale || !l.pluginConfigs[h.plugin],
+                      label: "Save configuration",
+                      size: "small",
+                      onClick: (Q) => d("configure", h.plugin, l.pluginConfigs[h.plugin])
+                    }, null, 8, ["disabled", "onClick"])
+                  ])) : v("", !0)
+                ], 64)) : v("", !0)
               ])
             ]),
             _: 2
           }, [
-            p.value ? {
+            N.value && h.installed && (!n || n.kind === "pending") ? {
               name: "actions",
-              fn: h(() => [
-                g(s(qe), {
-                  "aria-label": "Adopt " + s(me)(O.title, "Scope"),
-                  "model-value": f(O),
-                  "onUpdate:modelValue": (B) => d(O, B)
+              fn: w(() => [
+                y(s(la), {
+                  "aria-label": "Enable " + r,
+                  "model-value": b,
+                  "onUpdate:modelValue": (Q) => o(h.plugin, Q)
+                }, null, 8, ["aria-label", "model-value", "onUpdate:modelValue"])
+              ]),
+              key: "0"
+            } : void 0
+          ]), 1032, ["title", "open", "onUpdate:open"]))), 128))
+        ]),
+        _: 1
+      }, 8, ["count"]),
+      y(ya, {
+        visible: !!C.value,
+        label: "Plugin references",
+        onClose: S[5] || (S[5] = (K) => f.value = void 0)
+      }, {
+        default: w(() => [
+          c.value && C.value ? (e(), i("section", ho, [
+            a("header", ko, [
+              a("div", null, [
+                S[13] || (S[13] = a("h2", null, "Plugin references", -1)),
+                a("p", null, U(c.value.title), 1)
+              ])
+            ]),
+            ae.value.length ? (e(), i(E, { key: 0 }, [
+              S[14] || (S[14] = a("p", null, "Replace or remove these references before deactivating the plugin. You can also restore the package to keep using them.", -1)),
+              (e(!0), i(E, null, ee(ae.value, (K) => (e(), i("div", {
+                key: K.label
+              }, [
+                a("h3", null, U(K.label), 1),
+                a("ul", null, [
+                  (e(!0), i(E, null, ee(K.items, (h) => (e(), i("li", {
+                    key: h.id
+                  }, U(h.title), 1))), 128))
+                ])
+              ]))), 128))
+            ], 64)) : (e(), i("p", _o, "Use the catalog review to see what deactivating this plugin would change.")),
+            C.value.references?.scopes.length && !C.value.references?.shell_bindings.length ? (e(), i("p", wo, "Reviewing removal also includes these product filter sets.")) : v("", !0),
+            y(Ue, {
+              class: "small pim-error-code pim-ia-disclosure",
+              label: "Technical details"
+            }, {
+              default: w(() => [
+                a("p", null, [
+                  S[15] || (S[15] = H("Plugin ", -1)),
+                  a("code", null, U(C.value.plugin), 1)
+                ]),
+                (e(!0), i(E, null, ee(ae.value, (K) => (e(), i("div", {
+                  key: K.label
+                }, [
+                  a("p", null, U(K.label), 1),
+                  a("ul", null, [
+                    (e(!0), i(E, null, ee(K.items, (h) => (e(), i("li", {
+                      key: h.id
+                    }, [
+                      a("code", null, U(h.id), 1)
+                    ]))), 128))
+                  ])
+                ]))), 128))
+              ]),
+              _: 1
+            }),
+            a("div", $o, [
+              N.value && C.value.references?.shell_bindings.length ? (e(), T(s(G), {
+                key: 0,
+                label: "Clear catalog app binding",
+                severity: "secondary",
+                outlined: "",
+                disabled: l.stale,
+                onClick: S[2] || (S[2] = (K) => d("clearShellBinding", C.value.references.shell_bindings[0]))
+              }, null, 8, ["disabled"])) : N.value ? (e(), T(s(G), {
+                key: 1,
+                label: "Review removal",
+                disabled: l.stale,
+                onClick: S[3] || (S[3] = (K) => Z(C.value))
+              }, null, 8, ["disabled"])) : v("", !0),
+              y(s(G), {
+                label: "Close",
+                severity: "secondary",
+                outlined: "",
+                onClick: S[4] || (S[4] = (K) => f.value = void 0)
+              })
+            ])
+          ])) : v("", !0)
+        ]),
+        _: 1
+      }, 8, ["visible"]),
+      y(Te, {
+        count: l.options.scopes.length,
+        columns: ["details"]
+      }, {
+        head: w(() => [...S[16] || (S[16] = [
+          a("header", { class: "pim-bsection-head" }, [
+            a("h3", null, "Product filter sets"),
+            a("span", { class: "muted small" }, "Choose additional ways to filter products.")
+          ], -1)
+        ])]),
+        default: w(() => [
+          l.options.scopes.length === 0 ? (e(), i("div", Co, "No product filter sets are available.")) : v("", !0),
+          (e(!0), i(E, null, ee(l.options.scopes, (K) => (e(), T(Pe, {
+            key: K.id,
+            title: s(ne)(K.title, "Filter set")
+          }, Re({
+            details: w(() => [
+              y(s(ye), {
+                severity: se(K) ? "success" : "secondary",
+                value: se(K) ? "Selected" : "Available"
+              }, null, 8, ["severity", "value"])
+            ]),
+            default: w(() => [
+              a("div", xo, [
+                S[17] || (S[17] = a("span", null, "Filters", -1)),
+                (e(!0), i(E, null, ee(K.filters, (h, n) => (e(), T(s(ye), {
+                  key: n,
+                  class: "kx-tag-sm small",
+                  severity: "secondary",
+                  value: x(n, h.ops)
+                }, null, 8, ["value"]))), 128)),
+                a("span", null, U(s(B)(K.access)) + " access required", 1)
+              ])
+            ]),
+            _: 2
+          }, [
+            N.value ? {
+              name: "actions",
+              fn: w(() => [
+                y(s(la), {
+                  "aria-label": "Use " + s(ne)(K.title, "Filter set"),
+                  "model-value": se(K),
+                  "onUpdate:modelValue": (h) => fe(K, h)
                 }, null, 8, ["aria-label", "model-value", "onUpdate:modelValue"])
               ]),
               key: "0"
@@ -3067,17 +3562,17 @@ const Ja = { class: "pim-table form pim-layout" }, Wa = {
     ]));
   }
 });
-async function Zi(l) {
-  const k = await ya(`/api/v1/pim-admin/catalogs/${encodeURIComponent(l)}/policy_defaults`, "policy defaults");
-  if (k.audit !== "fields" && k.audit !== "off" || !["audit_days", "trash_days", "tombstone_days"].every((t) => typeof k[t] == "number" && Number.isSafeInteger(k[t])))
+async function Uo(l) {
+  const $ = await cl(`/api/v1/pim-admin/catalogs/${encodeURIComponent(l)}/policy_defaults`, "policy defaults");
+  if ($.audit !== "fields" && $.audit !== "off" || !["audit_days", "trash_days", "tombstone_days"].every((t) => typeof $[t] == "number" && Number.isSafeInteger($[t])))
     throw new Error("Policy defaults are unavailable.");
-  for (const [t, u] of Object.entries(pa)) {
-    const r = k[t];
-    if (typeof r != "number" || !Number.isSafeInteger(r) || r < u.min || r > u.max) throw new Error(`Policy ${t} is unavailable.`);
+  for (const [t, d] of Object.entries(Ja)) {
+    const u = $[t];
+    if (typeof u != "number" || !Number.isSafeInteger(u) || u < d.min || u > d.max) throw new Error(`Policy ${t} is unavailable.`);
   }
-  return k;
+  return $;
 }
-const pa = {
+const Ja = {
   proposal_days: {
     min: 1,
     max: 3650,
@@ -3156,42 +3651,52 @@ const pa = {
     title: "Products per import step",
     global: !1
   }
-}, Qi = { class: "form" }, Xi = {
+}, Ao = { class: "form" }, jo = {
   key: 0,
+  class: "muted small pim-policy-intro"
+}, So = {
+  key: 1,
   class: "muted small pim-policy-status",
   role: "status"
-}, en = ["id", "data-policy-group", "aria-label"], an = {
+}, Ro = {
   key: 0,
   class: "pim-bsection-head"
-}, ln = { class: "pim-policy-copy" }, tn = ["for"], sn = ["id"], nn = { key: 0 }, on = ["aria-expanded"], dn = /* @__PURE__ */ le({
+}, Oo = { class: "pim-policy-copy" }, Io = ["for"], To = ["id"], Po = { key: 0 }, qo = {
+  key: 0,
+  class: "pim-policy-value"
+}, Do = {
+  key: 0,
+  class: "muted small"
+}, No = /* @__PURE__ */ de({
   __name: "BuilderPolicy",
   props: {
     draft: {},
     catalogId: {},
     defaults: {},
-    disabled: { type: Boolean }
+    disabled: { type: Boolean },
+    defaultsOnly: { type: Boolean }
   },
   setup(l) {
-    const k = l, t = J(), u = M(() => k.defaults ?? t.value), r = J(), v = J(!1);
-    async function n() {
-      if (!(k.defaults || k.disabled)) {
-        r.value = void 0, v.value = !0;
+    const $ = l, t = J(), d = D(() => $.defaults ?? t.value), u = J(), m = J(!1);
+    async function f() {
+      if (!($.defaults || $.disabled)) {
+        u.value = void 0, m.value = !0;
         try {
-          t.value = await Zi(k.catalogId ?? "");
-        } catch (c) {
-          r.value = Se(c, "Could not read policy defaults.");
+          t.value = await Uo($.catalogId ?? "");
+        } catch (o) {
+          u.value = Le(o, "Could not read policy defaults.");
         } finally {
-          v.value = !1;
+          m.value = !1;
         }
       }
     }
-    oa(n);
-    const p = M(() => k.draft.policy ?? {}), m = J(!1), C = [
+    Fa(f);
+    const c = D(() => $.draft.policy ?? {}), C = [
       { key: "audit", title: "Audit trail", hint: "Fields records each value change. Off records only lifecycle, schema and release history.", kind: "enum" },
       { key: "audit_days", title: "Audit retention (days)", hint: "0 uses the 365-day default. History always expires.", kind: "int", min: 0, max: 106751 },
       { key: "trash_days", title: "Trash window (days)", hint: "How long a deleted product stays restorable.", kind: "int", min: 1, max: 106751 },
       { key: "tombstone_days", title: "Deleted product notices (days)", hint: "How long feeds report a purged product as deleted.", kind: "int", min: 1, max: 106751 }
-    ], j = {
+    ], A = {
       proposal_days: "How long proposals stay in this catalog before removal.",
       proposal_count: "Maximum number of stored proposals in this catalog.",
       completed_work_days: "How long finished release work stays in this catalog.",
@@ -3206,676 +3711,1068 @@ const pa = {
       job_batches: "Maximum groups of products processed in one background work session.",
       import_rows: "Maximum products read together from an import."
     };
-    function K(c) {
-      const o = pa[c];
-      return { key: c, ...o, kind: "int", hint: j[c] };
+    function N(o) {
+      const j = Ja[o];
+      return { key: o, ...j, kind: "int", hint: A[o] };
     }
-    C.push(...["completed_work_days", "abandoned_work_days", "import_days"].map(K));
-    const x = ["proposal_days", "proposal_count"].map(K), I = ["command_deadline_ms", "rebuild_rows", "job_batches", "import_rows", "proposal_bytes", "maintenance_rows", "maintenance_catalogs", "pending_creation_days"].map(K), b = [
+    C.push(...["completed_work_days", "abandoned_work_days", "import_days"].map(N));
+    const X = ["proposal_days", "proposal_count"].map(N), P = ["command_deadline_ms", "rebuild_rows", "job_batches", "import_rows", "proposal_bytes", "maintenance_rows", "maintenance_catalogs", "pending_creation_days"].map(N), z = [
       { id: "retention", title: "Retention", keys: C },
-      { id: "proposals", title: "Proposals", keys: x },
-      { id: "advanced", title: "", keys: I }
-    ], f = M(() => [
-      { value: "inherited", label: u.value ? `${u.value.audit === "fields" ? "Fields" : "Off"} (default)` : "Deployment default" },
+      { id: "proposals", title: "Proposals", keys: X },
+      { id: "advanced", title: "", keys: P }
+    ], k = D(() => [
+      { value: "inherited", label: d.value ? `${d.value.audit === "fields" ? "Fields" : "Off"} (default)` : "Deployment default" },
       { value: "fields", label: "Fields" },
       { value: "off", label: "Off" }
     ]);
-    function d(c, o) {
-      const O = k.draft.policy ?? (k.draft.policy = {});
-      O[c] = o == null || o === "" || o === "inherited" ? !1 : o;
+    function x(o, j) {
+      const I = $.draft.policy ?? ($.draft.policy = {});
+      I[o] = j == null || j === "" || j === "inherited" ? !1 : j;
     }
-    return (c, o) => (e(), i("section", Qi, [
-      o[4] || (o[4] = a("p", { class: "muted small pim-policy-intro" }, "Empty fields inherit the deployment settings.", -1)),
-      v.value ? (e(), i("p", Xi, "Loading deployment defaults…")) : w("", !0),
-      r.value ? (e(), R(Ee, {
-        key: 1,
-        error: r.value
+    return (o, j) => (e(), i("section", Ao, [
+      l.defaultsOnly ? v("", !0) : (e(), i("p", jo, "Empty fields inherit the deployment settings.")),
+      m.value ? (e(), i("p", So, "Loading deployment defaults…")) : v("", !0),
+      u.value ? (e(), T(ra, {
+        key: 2,
+        error: u.value
       }, {
-        default: h(() => [
-          g(s(Z), {
+        default: w(() => [
+          y(s(G), {
             severity: "secondary",
             outlined: "",
             size: "small",
-            onClick: n
+            onClick: f
           }, {
-            default: h(() => [...o[1] || (o[1] = [
-              z("Retry", -1)
+            default: w(() => [...j[0] || (j[0] = [
+              H("Retry", -1)
             ])]),
             _: 1
           })
         ]),
         _: 1
-      }, 8, ["error"])) : w("", !0),
-      (e(), i(F, null, Q(b, (O) => (e(), i(F, {
-        key: O.id
-      }, [
-        O.id !== "advanced" || m.value ? (e(), i("section", {
-          key: 0,
-          id: O.id === "advanced" ? "policy-advanced" : void 0,
-          "data-policy-group": O.id,
-          class: "pim-policy-group",
-          "aria-label": O.title || "Advanced"
-        }, [
-          O.title ? (e(), i("header", an, [
-            a("h3", null, V(O.title), 1)
-          ])) : w("", !0),
-          (e(!0), i(F, null, Q(O.keys, (B) => (e(), i("div", {
-            key: B.key,
+      }, 8, ["error"])) : v("", !0),
+      (e(), i(E, null, ee(z, (I) => y($l(I.id === "advanced" ? Ue : "section"), Cl({
+        key: I.id,
+        ref_for: !0
+      }, I.id === "advanced" ? { label: "Advanced processing settings" } : { "aria-label": I.title }, {
+        "data-policy-group": I.id,
+        class: "pim-policy-group"
+      }), {
+        default: w(() => [
+          I.title ? (e(), i("header", Ro, [
+            a("h3", null, U(I.title), 1)
+          ])) : v("", !0),
+          (e(!0), i(E, null, ee(I.keys, (M) => (e(), i("div", {
+            key: M.key,
             class: "pim-policy-row"
           }, [
-            a("div", ln, [
+            a("div", Oo, [
               a("label", {
-                for: "pol-" + B.key
-              }, V(B.title), 9, tn),
+                for: "pol-" + M.key
+              }, U(M.title), 9, Io),
               a("p", {
-                id: "pol-help-" + B.key
+                id: "pol-help-" + M.key
               }, [
-                z(V(B.hint), 1),
-                B.global ? (e(), i("span", nn, " Managed in deployment settings.")) : w("", !0)
-              ], 8, sn)
+                H(U(M.hint), 1),
+                M.global ? (e(), i("span", Po, " Managed in deployment settings.")) : v("", !0)
+              ], 8, To)
             ]),
-            B.kind === "enum" ? (e(), R(s(ve), {
-              key: 0,
+            l.defaultsOnly ? (e(), i("p", qo, [
+              H(U(d.value?.[M.key] === "fields" ? "Record field changes" : d.value?.[M.key] === "off" ? "Lifecycle and release history" : d.value?.[M.key] ?? "Unavailable") + " ", 1),
+              c.value[M.key] !== void 0 && c.value[M.key] !== !1 ? (e(), i("span", Do, " · Catalog override applies")) : v("", !0)
+            ])) : M.kind === "enum" ? (e(), T(s(he), {
+              key: 1,
               disabled: l.disabled,
-              "input-id": "pol-" + B.key,
-              "aria-describedby": "pol-help-" + B.key,
+              "input-id": "pol-" + M.key,
+              "aria-describedby": "pol-help-" + M.key,
               class: "pim-policy-control",
-              "model-value": typeof p.value[B.key] == "string" ? p.value[B.key] : "inherited",
-              options: f.value,
+              "model-value": typeof c.value[M.key] == "string" ? c.value[M.key] : "inherited",
+              options: k.value,
               "option-label": "label",
               "option-value": "value",
               appendTo: "self",
-              "onUpdate:modelValue": (te) => d(B.key, te)
-            }, null, 8, ["disabled", "input-id", "aria-describedby", "model-value", "options", "onUpdate:modelValue"])) : (e(), R(s(qa), {
-              key: 1,
-              disabled: l.disabled || B.global,
-              "input-id": "pol-" + B.key,
-              "aria-describedby": "pol-help-" + B.key,
+              "onUpdate:modelValue": (se) => x(M.key, se)
+            }, null, 8, ["disabled", "input-id", "aria-describedby", "model-value", "options", "onUpdate:modelValue"])) : (e(), T(s(Sl), {
+              key: 2,
+              disabled: l.disabled || M.global,
+              "input-id": "pol-" + M.key,
+              "aria-describedby": "pol-help-" + M.key,
               class: "pim-policy-control",
-              "model-value": B.global ? Number(u.value?.[B.key] ?? 0) || null : typeof p.value[B.key] == "number" ? Number(p.value[B.key]) : null,
-              min: B.min ?? (B.key === "audit_days" ? 0 : 1),
-              max: B.max,
+              "model-value": M.global ? Number(d.value?.[M.key] ?? 0) || null : typeof c.value[M.key] == "number" ? Number(c.value[M.key]) : null,
+              min: M.min ?? (M.key === "audit_days" ? 0 : 1),
+              max: M.max,
               step: 1,
-              placeholder: u.value ? "Default: " + u.value[B.key] : "Deployment default",
-              "onUpdate:modelValue": (te) => d(B.key, te)
+              placeholder: d.value ? "Default: " + d.value[M.key] : "Deployment default",
+              "onUpdate:modelValue": (se) => x(M.key, se)
             }, null, 8, ["disabled", "input-id", "aria-describedby", "model-value", "min", "max", "placeholder", "onUpdate:modelValue"]))
           ]))), 128))
-        ], 8, en)) : w("", !0),
-        O.id === "proposals" ? (e(), i("button", {
-          key: 1,
-          type: "button",
-          class: "pim-policy-advanced",
-          "aria-expanded": m.value,
-          "aria-controls": "policy-advanced",
-          onClick: o[0] || (o[0] = (B) => m.value = !m.value)
-        }, [
-          g(s(X), {
-            icon: m.value ? "tabler:chevron-down" : "tabler:chevron-right",
-            "aria-hidden": "true"
-          }, null, 8, ["icon"]),
-          o[2] || (o[2] = a("span", null, "Advanced", -1)),
-          o[3] || (o[3] = a("span", { class: "muted small" }, "Processing limits and deployment settings", -1))
-        ], 8, on)) : w("", !0)
-      ], 64))), 64))
+        ]),
+        _: 2
+      }, 1040, ["data-policy-group"])), 64))
     ]));
   }
-}), un = { class: "form" }, rn = { class: "pim-aspect" }, cn = { class: "pim-aspect-head" }, mn = {
+}), zo = { class: "form" }, Fo = { class: "pim-aspect" }, Bo = { class: "pim-aspect-head" }, Lo = {
   key: 0,
   class: "muted small"
-}, pn = /* @__PURE__ */ le({
+}, Eo = /* @__PURE__ */ de({
   __name: "BuilderDeclaration",
   props: {
     draft: {},
     readonly: { type: Boolean }
   },
   emits: ["replace", "validity"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = J(JSON.stringify(t.draft, null, 2)), v = J("");
-    De(() => u("validity", !0)), ce(() => t.draft, (p) => {
-      r.value = JSON.stringify(p, null, 2), v.value = "";
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = J(JSON.stringify(t.draft, null, 2)), m = J("");
+    Ye(() => d("validity", !0)), pe(() => t.draft, (c) => {
+      u.value = JSON.stringify(c, null, 2), m.value = "";
     }, { deep: !0 });
-    function n() {
+    function f() {
       if (!t.readonly)
         try {
-          const p = Ea(r.value);
-          v.value = "", u("validity", !0), u("replace", p);
-        } catch (p) {
-          u("validity", !1), v.value = "Invalid declaration: " + (p instanceof Error ? p.message : String(p));
+          const c = Wl(u.value);
+          m.value = "", d("validity", !0), d("replace", c);
+        } catch (c) {
+          d("validity", !1), m.value = "Invalid declaration: " + (c instanceof Error ? c.message : String(c));
         }
     }
-    return (p, m) => (e(), i("section", un, [
-      a("div", rn, [
-        a("header", cn, [
-          m[1] || (m[1] = a("h3", null, "Declaration", -1)),
-          l.readonly ? w("", !0) : (e(), i("span", mn, "edits apply to the draft when the JSON parses"))
+    return (c, C) => (e(), i("section", zo, [
+      a("div", Fo, [
+        a("header", Bo, [
+          C[1] || (C[1] = a("h3", null, "Declaration", -1)),
+          l.readonly ? v("", !0) : (e(), i("span", Lo, "edits apply to the draft when the JSON parses"))
         ]),
-        v.value ? (e(), R(s($e), {
+        m.value ? (e(), T(s(we), {
           key: 0,
           severity: "error",
           role: "alert"
         }, {
-          default: h(() => [
-            z(V(v.value), 1)
+          default: w(() => [
+            H(U(m.value), 1)
           ]),
           _: 1
-        })) : w("", !0),
-        g(s(Da), {
-          modelValue: r.value,
-          "onUpdate:modelValue": m[0] || (m[0] = (C) => r.value = C),
+        })) : v("", !0),
+        y(s(Rl), {
+          modelValue: u.value,
+          "onUpdate:modelValue": C[0] || (C[0] = (A) => u.value = A),
           readonly: l.readonly,
           "aria-label": "Catalog declaration",
           rows: "28",
           spellcheck: "false",
-          onInput: n,
-          onBlur: n,
+          onInput: f,
+          onBlur: f,
           class: "mono pim-json-edit"
         }, null, 8, ["modelValue", "readonly"])
       ])
     ]));
   }
-}), vn = {
+}), Mo = { class: "pim-section-layout" }, Wo = { class: "kx-main" }, Ho = ["aria-label"], Jo = {
   key: 0,
-  class: "pim-detail-head"
-}, fn = { class: "pim-detail-actions" }, bn = { class: "pim-settings-pane" }, yn = { class: "pim-builder-main pim-readable" }, gn = {
-  key: 1,
+  class: "system-section-head"
+}, Ko = { class: "system-section-head-text" }, Go = { class: "kx-head-actions" }, Yo = { class: "pim-builder-main" }, Zo = {
+  key: 2,
   class: "kx-loading",
   role: "status"
-}, hn = ["aria-labelledby"], kn = { class: "pim-group-head" }, _n = ["id"], $n = { class: "pim-card-body pad" }, wn = { key: 0 }, xn = { key: 1 }, Cn = { key: 2 }, Vn = { key: 3 }, Un = { key: 4 }, Sn = { class: "pim-error-copy" }, An = { key: 0 }, On = {
-  key: 6,
+}, Qo = ["disabled", "inert"], Xo = {
+  key: 0,
+  class: "muted pim-section-facts"
+}, ed = { class: "pim-overview-grid" }, ad = { class: "kx-card-head" }, ld = { class: "kx-head-icon" }, td = { class: "kx-card-id" }, sd = { class: "kx-card-name" }, id = { class: "kx-card-meta" }, nd = { class: "kx-card-desc" }, od = { class: "pim-advanced-actions" }, dd = { class: "pim-ia-action" }, rd = { class: "pim-ia-action" }, ud = { class: "pim-ia-dialog" }, cd = { class: "pim-ia-dialog-head" }, md = {
+  key: 0,
+  class: "dialog-actions"
+}, pd = ["aria-labelledby"], vd = { class: "pim-ia-dialog-head" }, fd = ["id"], bd = { class: "pim-ia-review-impact" }, yd = { key: 0 }, gd = { key: 1 }, hd = { key: 2 }, kd = { key: 3 }, _d = { key: 4 }, wd = { key: 0 }, $d = {
+  key: 0,
   class: "pim-plan-list"
-}, In = { key: 1 }, Rn = {
-  key: 7,
-  class: "row end"
-}, jn = {
-  key: 4,
-  class: "kx-loading",
-  role: "status"
-}, Tn = ["disabled", "inert"], qn = /* @__PURE__ */ le({
+}, Cd = { key: 1 }, xd = {
+  key: 1,
+  class: "pim-ia-review-impact"
+}, Vd = {
+  key: 0,
+  class: "row pim-review-confirm"
+}, Ud = ["for"], Ad = { class: "dialog-actions pim-ia-dialog-actions" }, jd = /* @__PURE__ */ de({
   __name: "SchemaBuilder",
   props: {
     catalogId: {},
     embedded: { type: Boolean },
     title: {},
-    backLabel: {}
+    catalog: {},
+    backLabel: {},
+    focusBack: { type: Boolean }
   },
   emits: ["applied", "back", "dirty-changed"],
-  setup(l, { emit: k }) {
-    const t = l, u = k, r = [
-      { id: "fields", title: "Fields" },
-      { id: "layout", title: "Form layout" },
-      { id: "dimensions", title: "Dimensions" },
-      { id: "vocabularies", title: "Vocabularies" },
-      { id: "families", title: "Families" },
-      { id: "channels", title: "Channels & sources" },
-      { id: "plugins", title: "Plugins & scopes" },
-      { id: "policy", title: "Policy" },
-      { id: "declaration", title: "Declaration" },
-      { id: "history", title: "History" }
-    ], v = J("fields"), n = J(null), p = J(null), m = J({}), C = J({}), j = J({}), K = M(() => Object.fromEntries(Object.entries(j.value).filter(([E]) => m.value.plugins?.some((L) => L.use === E) && !n.value?.plugins.some((L) => L.plugin === E && L.active)))), x = J(), I = J(!1), b = J(null), f = J(!1), d = M(() => n.value?.access.admin === !0), c = J(""), o = J(null), O = J(null), B = Ae(), te = {
+  setup(l, { emit: $ }) {
+    const t = l, d = $, u = {
+      General: { question: "What is this catalog for?", items: [
+        { label: "Overview", icon: "tabler:layout-dashboard" },
+        { label: "History", icon: "tabler:history" }
+      ] },
+      Products: { question: "What does a product look like?", items: [
+        { label: "Families", icon: "tabler:packages" },
+        { label: "Fields", icon: "tabler:list-details" },
+        { label: "Form layout", icon: "tabler:layout" }
+      ] },
+      Values: { question: "Which values can products use?", items: [
+        { label: "Dimensions", icon: "tabler:dimensions" },
+        { label: "Vocabularies", icon: "tabler:book" }
+      ] },
+      Channels: { question: "Where does product data come from and go?", items: [
+        { label: "Channels", icon: "tabler:broadcast" },
+        { label: "Sources", icon: "tabler:database-import" }
+      ] },
+      Access: { question: "Who can use this catalog?", items: [{ label: "Access", icon: "tabler:users" }] },
+      Plugins: { question: "What can this catalog do?", items: [{ label: "Plugins", icon: "tabler:puzzle" }] }
+    }, m = J("General"), f = J("Overview"), c = J(""), C = J(""), A = J(), N = J(!1), X = J(), P = Object.keys(u).map((g) => ({
+      heading: g === "Channels" ? "Publishing and imports" : g,
+      items: u[g].items.map((p) => ({ ...p, value: p.label, section: g }))
+    })), z = [
+      ...P.filter((g) => g.items.length > 1),
+      { heading: "Manage catalog", items: P.filter((g) => g.items.length === 1).flatMap((g) => g.items) }
+    ], k = z.flatMap((g) => g.items), x = D(() => Z.value && W.value ? [
+      { ...z[0], heading: t.title || "Catalog" },
+      ...z.slice(1)
+    ] : []), o = D(() => t.backLabel ? {
+      value: "all-catalogs",
+      label: t.embedded ? "All catalogs" : t.backLabel,
+      icon: "tabler:table"
+    } : void 0), j = J();
+    pe(j, (g) => {
+      t.focusBack && g?.$el.querySelector(".kx-settings-rail-item")?.focus();
+    }, { flush: "post", once: !0 });
+    function I(g) {
+      if (g === "all-catalogs") {
+        d("back");
+        return;
+      }
+      const p = k.find((O) => O.label === g);
+      p && M(p.section, p.label);
+    }
+    function M(g, p = u[g].items[0].label) {
+      m.value === g && f.value === p || (m.value = g, f.value = p, X.value && (X.value.scrollTop = 0));
+    }
+    function se(g) {
+      A.value = g, N.value = !0;
+    }
+    function fe(g) {
+      c.value = g, M("Products", "Fields");
+    }
+    function ae(g, p, O = p + "s") {
+      return g + " " + (g === 1 ? p : O);
+    }
+    const Z = J(null), W = J(null), S = J({}), K = J({}), h = J({}), n = D(() => Object.fromEntries(Object.entries(h.value).filter(([g]) => S.value.plugins?.some((p) => p.use === g) && !Z.value?.plugins.some((p) => p.plugin === g && p.active)))), b = J(), r = J(!1), L = J(null), F = J(!1), Q = D(() => Z.value?.access.admin === !0), ce = J(""), re = J(null), Ee = J(!1), $e = J(!1), ta = J(null), Me = qe(), ua = {
       unchanged: "No changes",
       initial: "First schema",
       cosmetic: "Presentation only",
       additive: "New fields or options",
       semantic: "Affects product data",
       refused: "Changes blocked"
-    }, Y = {
-      "attribute order": "Field order",
+    }, ca = {
+      "attribute order": "Change the order on product forms",
+      added: "Add to this catalog",
+      removed: "Remove from this catalog",
+      adopted: "Enable these product filters",
+      dropped: "Disable these product filters",
+      chosen: "Enable this plugin",
+      changed: "Update what this plugin adds",
+      audit: "Change which updates are recorded",
+      checks: "Change installed readiness checks",
+      "check implementation revised": "Use the updated readiness check",
+      requirements: "Change what products need before release",
+      fallback: "Change where missing values come from",
+      "catalog policy": "Change the catalog override",
+      "variation axes": "Change which fields distinguish variants",
       cardinality: "Number of values",
       default: "Default value",
       scope: "Dimensions",
       form: "Value format",
-      index: "Index settings",
+      index: "How products can be filtered or sorted",
       type: "Field type",
       unique: "Unique values",
-      width: "Width"
-    }, ne = J(null), P = J(!0), D = ze(), N = M(() => !I.value && P.value && !!o.value && o.value.class !== "refused" && !!ne.value?.matches(Ie.value, n.value?.schema_generation ?? -1, K.value)), y = M(() => o.value ? [...o.value.refused, ...o.value.changes.filter((E) => E.class !== "refused")] : []), q = ze(), $ = J(!1);
-    let T = 0;
-    ce([m, C, j], () => {
-      T++, o.value = null;
+      width: "Change the width on product forms"
+    }, Se = J(null), Ce = J(!0), V = Ke(), R = D(() => Ee.value && Qe.value && (!va.value.length || $e.value) && !r.value && Ce.value && !!re.value && re.value.class !== "refused" && !!Se.value?.matches(De.value, Z.value?.schema_generation ?? -1, n.value)), q = D(() => re.value ? [...re.value.refused, ...re.value.changes.filter((g) => g.class !== "refused")] : []), _ = Ke(), oe = Ke(), Y = J(!1);
+    let Oe = 0;
+    pe([S, K, h], () => {
+      Oe++, ge();
     }, { deep: !0, flush: "sync" });
-    async function ee(E = !1, L = !1) {
-      if (re.value && !E) return;
-      const W = q.begin(), _e = T, ye = t.catalogId, ge = L ? Object.entries(j.value).filter(([he]) => n.value?.plugins.some((Ne) => Ne.plugin === he && Ne.active)) : [];
-      $.value = !0, x.value = void 0;
+    async function ve(g = !1, p = !1) {
+      if (xe.value && !g) return;
+      const O = _.begin(), te = Oe, ue = t.catalogId, be = p ? Object.entries(h.value).filter(([ke]) => Z.value?.plugins.some((sa) => sa.plugin === ke && sa.active)) : [];
+      Y.value = !0, b.value = void 0;
       try {
-        const [he, Ne] = await Promise.all([oe.schema(ye), oe.schemaOptions(ye)]);
-        if (!q.current(W) || _e !== T || ye !== t.catalogId) return;
-        n.value = he, p.value = Ne, m.value = Pe(he.declaration), C.value = {}, j.value = Object.fromEntries(ge.filter(([va]) => he.plugins.some((aa) => aa.plugin === va && aa.active))), o.value = null, P.value = !0, I.value = !1;
-      } catch (he) {
-        q.current(W) && (x.value = Se(he, "Could not load settings."));
+        const [ke, sa] = await Promise.all([me.schema(ue), me.schemaOptions(ue)]);
+        if (!_.current(O) || te !== Oe || ue !== t.catalogId) return;
+        Z.value = ke, W.value = sa, S.value = ea(ke.declaration), K.value = {}, h.value = Object.fromEntries(be.filter(([rl]) => ke.plugins.some((Ta) => Ta.plugin === rl && Ta.active))), ge(), Ce.value = !0, r.value = !1;
+      } catch (ke) {
+        _.current(O) && (b.value = Le(ke, "Could not load settings."));
       } finally {
-        q.current(W) && ($.value = !1);
+        _.current(O) && (Y.value = !1);
       }
     }
-    let Oe = () => {
+    let Ze = () => {
     };
-    ce(() => t.catalogId, (E) => {
-      Oe(), Oe = da(`component.${E}`, () => {
-        re.value || ee();
+    pe(() => t.catalogId, (g) => {
+      Ze(), Ze = Ba(`component.${g}`, () => {
+        !xe.value && !F.value ? ve() : f.value === "Plugins" && !F.value && Ne();
       });
-    }, { immediate: !0 }), Ze(async () => {
-      re.value || await ee();
-    }), De(() => {
-      Oe(), D.begin(), q.begin();
-    }), ce(() => t.catalogId, () => {
-      D.begin(), f.value = !1, I.value = !1, n.value = null, p.value = null, H(), ee();
+    }, { immediate: !0 });
+    const Ka = da(async () => {
+      !xe.value && !F.value ? await ve() : f.value === "Plugins" && !F.value && await Ne();
     });
-    const Me = M(() => Object.values(ta(m.value, C.value)).reduce((E, L) => E + (L?.length ?? 0), 0)), re = M(() => !!n.value && (JSON.stringify(m.value) !== JSON.stringify(n.value.declaration) || Me.value > 0 || Object.keys(j.value).length > 0));
-    ce(re, (E) => u("dirty-changed", E), { immediate: !0 });
-    const Fe = M(() => ![m.value.aspects, m.value.dimensions, m.value.vocabularies, m.value.families, m.value.channels, m.value.sources, m.value.plugins, m.value.scopes].some((E) => E?.length)), Ie = M(() => {
-      const E = Pe(m.value), L = ta(E, C.value);
-      return Object.keys(L).length && (E.remove = L), E;
+    Ye(() => {
+      Ze(), V.begin(), _.begin(), oe.begin();
     });
-    ce(re, (E) => {
-      E || (o.value = null);
-    }), ce([Ie, K], () => {
-      o.value = null;
-    }, { deep: !0 });
-    function He(E) {
-      const [L, W] = E.split(" ", 2);
-      if (L === "plugin" && W) return p.value?.plugins.find((ge) => ge.plugin === W)?.title || "Plugin";
-      if (L === "scope" && W) return p.value?.scopes.find((ge) => ge.id === W)?.title || "Scope";
-      if (L === "aspect" && W) return G(W) + " field group";
-      const [_e, ye] = E.split(".", 2);
-      return ye ? `${G(ye)} (${G(_e)})` : G(E);
+    const xa = D(() => Ka.value !== !1 && f.value === "Plugins" && !F.value && Z.value?.plugins.some((g) => Qn(g, Z.value.as_of)) === !0);
+    pe(xa, (g, p, O) => {
+      if (!g) return;
+      let te, ue = !0;
+      const be = () => {
+        te = setTimeout(async () => {
+          await Ne() && ue && xa.value && be();
+        }, 2e3);
+      };
+      be(), O(() => {
+        ue = !1, clearTimeout(te);
+      });
+    }), pe(() => t.catalogId, () => {
+      V.begin(), F.value = !1, r.value = !1, Z.value = null, W.value = null, fa(), ve();
+    });
+    const Ga = D(() => Object.values(Pa(S.value, K.value)).reduce((g, p) => g + (p?.length ?? 0), 0)), Qe = D(() => !!Z.value && (JSON.stringify(S.value) !== JSON.stringify(Z.value.declaration) || Ga.value > 0 || Object.keys(n.value).length > 0)), xe = D(() => Qe.value || Object.keys(h.value).length > 0);
+    pe(xe, (g) => d("dirty-changed", g), { immediate: !0 });
+    const Xe = D(() => S.value.families?.filter((g) => g.code !== "generic") ?? []), ma = D(() => S.value.aspects ?? []), pa = D(() => ma.value.reduce((g, p) => g + (p.attributes?.length ?? 0), 0)), Va = D(() => {
+      const g = new Set(S.value.plugins?.map((p) => p.use));
+      return Object.values(Z.value?.attributes ?? {}).filter((p) => p.plugin && g.has(p.plugin)).length;
+    }), Ya = D(() => !pa.value && !ma.value.length && !Xe.value.length), Ua = D(() => S.value.channels ?? []), Za = D(() => S.value.sources ?? []), Aa = D(() => Z.value?.plugins.filter((g) => g.active) ?? []), Qa = D(() => [
+      {
+        section: "Products",
+        label: "Product setup",
+        icon: "tabler:packages",
+        summary: [ae(Xe.value.length, "family", "families"), ae(pa.value + Va.value, "field")].join(" · "),
+        detail: Xe.value.map((g) => B(g.code)).join(", ") || "Create a family for products that share the same fields."
+      },
+      {
+        section: "Values",
+        label: "Allowed values",
+        icon: "tabler:list-details",
+        summary: [ae(S.value.dimensions?.length ?? 0, "dimension"), ae(S.value.vocabularies?.length ?? 0, "vocabulary", "vocabularies")].join(" · "),
+        detail: S.value.dimensions?.map((g) => B(g.name)).join(", ") || "Add dimensions when values vary by language, region or another context."
+      },
+      {
+        section: "Channels",
+        label: "Publishing and imports",
+        icon: "tabler:arrows-exchange",
+        summary: [ae(Ua.value.length, "channel"), ae(Za.value.length, "source")].join(" · "),
+        detail: Ua.value.map((g) => B(g.id)).join(", ") || "Add a release destination when products are ready to publish."
+      },
+      {
+        section: "Plugins",
+        label: "Catalog tools",
+        icon: "tabler:puzzle",
+        summary: ae(Aa.value.length, "plugin") + " enabled",
+        detail: Aa.value.map((g) => ne(g.title, "Catalog plugin")).join(", ") || "Open Plugins to see which tools you can enable."
+      }
+    ]), Xa = {
+      Overview: u.General.question,
+      History: "What changed in this catalog?",
+      Families: "Which product forms and variants can editors use?",
+      Fields: "What values can products store?",
+      "Form layout": "In what order will editors see fields?",
+      Dimensions: "Where can product values differ?",
+      Vocabularies: "Which terms can product editors choose?",
+      Channels: "Where can products be published?",
+      Sources: "Which systems can send product data?",
+      Access: u.Access.question,
+      Plugins: u.Plugins.question
+    }, ja = D(() => {
+      const g = S.value;
+      switch (f.value) {
+        case "Overview": {
+          const p = t.catalog?.product_count ?? t.catalog?.item_count;
+          return [
+            ...typeof p == "number" ? [ae(p, "product")] : [],
+            ...Z.value?.rebuilding ? ["Updating product readiness"] : [],
+            ...xe.value ? ["Unsaved changes are reflected below"] : []
+          ];
+        }
+        case "History":
+          return ["Recent catalog settings changes"];
+        case "Families":
+          return [
+            ae(Xe.value.length, "family", "families"),
+            ae(Xe.value.filter((p) => p.variation?.length).length, "family with variants", "families with variants")
+          ];
+        case "Fields":
+        case "Form layout":
+          return [ae(pa.value + Va.value, "field"), ae(ma.value.length, "field group")];
+        case "Dimensions":
+          return [ae(g.dimensions?.length ?? 0, "dimension")];
+        case "Vocabularies":
+          return [ae(g.vocabularies?.length ?? 0, "vocabulary", "vocabularies")];
+        case "Channels":
+          return [
+            ae(g.channels?.length ?? 0, "channel"),
+            ...g.channels?.length ? [] : ["Add a channel to give products a release destination"]
+          ];
+        case "Sources":
+          return [ae(g.sources?.length ?? 0, "source")];
+        case "Access":
+          return C.value ? [C.value] : [];
+        case "Plugins":
+          return [
+            ae(g.plugins?.length ?? 0, "plugin") + " selected",
+            (W.value?.plugins.filter((p) => p.installed).length ?? 0) + " available",
+            ae(g.scopes?.length ?? 0, "filter set") + " selected",
+            ...Z.value?.plugins.some((p) => p.active && ["failed", "config", "reset", "paused", "degraded", "uninstalled"].includes(Ha(p, Z.value.as_of)?.kind ?? "")) ? ["Some plugins need attention"] : []
+          ];
+        default:
+          return [];
+      }
+    }), De = D(() => {
+      const g = ea(S.value), p = Pa(g, K.value);
+      for (const [O, te] of Object.entries(p)) {
+        const ue = g.remove ??= {};
+        ue[O] = [.../* @__PURE__ */ new Set([...ue[O] ?? [], ...te])];
+      }
+      return g;
+    });
+    pe(Qe, (g) => {
+      g || ge();
+    }), pe([De, n], ge, { deep: !0 });
+    function el(g) {
+      const [p, O] = g.split(" ", 2);
+      if (p === "plugin" && O) return ne(W.value?.plugins.find((be) => be.plugin === O)?.title, "Plugin");
+      if (p === "scope" && O) return ne(W.value?.scopes.find((be) => be.id === O)?.title, "Product filter set");
+      if (O) return ne(B(O), B(p)) + (p === "aspect" ? " field group" : "");
+      if (g.startsWith("kickside.")) return "Catalog setting";
+      const [te, ue] = g.split(".", 2);
+      return ue ? `${ne(B(ue), "Field")} (${ne(B(te), "Field group")})` : ne(B(g), "Catalog setting");
     }
-    function U(E, L) {
-      x.value = Se(E, L), x.value.code === ga && (I.value = !0, o.value = null, ne.value = null);
+    function al(g) {
+      return g.startsWith("renamed from ") ? "Rename from " + B(g.slice(13)) : g.startsWith("config.") ? "Change " + B(g.slice(7)) : g.endsWith(" owning level") ? "Move a field to another variant level" : ca[g] ?? B(g);
     }
-    async function A() {
-      if (!(re.value && !await ua.confirm({
+    const va = D(() => {
+      const g = De.value.remove;
+      return [
+        ...g?.attributes?.length || g?.aspects?.length ? ["Removing fields deletes the values stored in those fields."] : [],
+        ...g?.vocabularies?.length ? ["Removing a vocabulary deletes its saved terms."] : [],
+        ...g?.channels?.length ? ["Removing a release destination withdraws products already published to it."] : []
+      ];
+    }), Sa = D(() => {
+      const g = Z.value?.declaration;
+      return g ? [
+        ...(S.value.channels ?? []).flatMap((p) => {
+          const O = g.channels?.find((te) => te.id === p.id);
+          return JSON.stringify(p) === JSON.stringify(O) ? [] : [{ subject: B(p.id), effect: O ? "Change which products can be released here and what they need first" : "Add a release destination" }];
+        }),
+        ...(De.value.remove?.channels ?? []).map((p) => ({ subject: B(p), effect: "Remove this release destination" })),
+        ...(S.value.sources ?? []).flatMap((p) => {
+          const O = g.sources?.find((te) => te.id === p.id);
+          return JSON.stringify(p) === JSON.stringify(O) ? [] : [{ subject: B(p.id), effect: O ? "Update how this source can send product data" : "Let this source send product updates" }];
+        }),
+        ...(De.value.remove?.sources ?? []).map((p) => ({ subject: B(p), effect: "Stop accepting updates from this source" }))
+      ] : [];
+    });
+    function We(g, p) {
+      b.value = Le(g, p), b.value.code === ml && (r.value = !0, ge());
+    }
+    async function ll() {
+      if (!(xe.value && !await Je.confirm({
         header: "Discard unsaved changes?",
         message: "Reloading will discard unsaved settings and plugin changes.",
         acceptLabel: "Discard and reload",
         rejectLabel: "Cancel"
       }))) {
-        f.value = !0, c.value = "";
+        F.value = !0, ce.value = "";
         try {
-          await ee(!0);
+          await ve(!0);
         } finally {
-          f.value = !1;
+          F.value = !1;
         }
       }
     }
-    async function S() {
-      if (!n.value || !P.value || I.value) return;
-      const E = D.begin(), L = La(Ie.value, n.value.schema_generation, K.value);
-      f.value = !0, x.value = void 0;
+    async function Ra() {
+      if (!Z.value || !Qe.value || !Ce.value || r.value) return;
+      const g = V.begin(), p = Ll(De.value, Z.value.schema_generation, n.value);
+      F.value = !0, b.value = void 0;
       try {
-        const W = await oe.planSchema(t.catalogId, L.declaration, L.generation, L.pluginConfigs);
-        if (!D.current(E) || !L.matches(Ie.value, n.value.schema_generation, K.value) || !P.value) return;
-        ne.value = L, o.value = W, await Je(), O.value?.focus();
-      } catch (W) {
-        if (!D.current(E)) return;
-        U(W, "Could not review the change."), o.value = null, ne.value = null, await Je(), b.value?.$el.focus();
+        const O = await me.planSchema(t.catalogId, p.declaration, p.generation, p.pluginConfigs);
+        if (!V.current(g) || !p.matches(De.value, Z.value.schema_generation, n.value) || !Ce.value) return;
+        Se.value = p, $e.value = !1, re.value = O, Ee.value = !0, await ba(), ta.value?.focus();
+      } catch (O) {
+        if (!V.current(g)) return;
+        We(O, "Could not review the change."), ge(), await ba(), L.value?.$el.focus();
       } finally {
-        D.current(E) && (f.value = !1);
+        V.current(g) && (F.value = !1);
       }
     }
-    async function _() {
-      if (!n.value || !re.value || !N.value || !ne.value) return;
-      const E = t.catalogId, L = D.begin();
-      f.value = !0, x.value = void 0, c.value = "";
+    async function tl() {
+      if (!Z.value || !xe.value || !R.value || !Se.value) return;
+      const g = t.catalogId, p = V.begin();
+      F.value = !0, b.value = void 0, ce.value = "";
       try {
-        const W = await oe.applySchema(E, ne.value.declaration, ne.value.generation, ne.value.pluginConfigs);
-        if (E !== t.catalogId || !D.current(L) || (await ee(!0, !0), E !== t.catalogId || !D.current(L))) return;
-        c.value = `Applied as generation ${W.generation}`, u("applied", W.generation);
-      } catch (W) {
-        if (E !== t.catalogId || !D.current(L)) return;
-        U(W, "Could not apply the change."), await Je(), b.value?.$el.focus();
+        const O = await me.applySchema(g, Se.value.declaration, Se.value.generation, Se.value.pluginConfigs);
+        if (g !== t.catalogId || !V.current(p) || (await ve(!0, !0), g !== t.catalogId || !V.current(p))) return;
+        ce.value = "Catalog changes applied.", d("applied", O.generation);
+      } catch (O) {
+        if (g !== t.catalogId || !V.current(p)) return;
+        ge(), We(O, "Could not apply the change."), await ba(), L.value?.$el.focus();
       } finally {
-        D.current(L) && (f.value = !1);
+        V.current(p) && (F.value = !1);
       }
     }
-    async function se(E, L) {
-      const W = t.catalogId, _e = q.begin(), ye = D.begin();
-      f.value = !0, x.value = void 0;
+    async function Ne(g = !1) {
+      const p = t.catalogId, O = Z.value, te = oe.begin();
       try {
-        const ge = JSON.stringify(L);
-        if (await oe.configurePlugin(W, E, Pe(L)), W !== t.catalogId || !q.current(_e)) return;
-        const he = await oe.schema(W);
-        if (W !== t.catalogId || !q.current(_e)) return;
-        n.value && (n.value.plugins = he.plugins), JSON.stringify(j.value[E]) === ge && delete j.value[E], c.value = "Configuration saved";
-      } catch (ge) {
-        W === t.catalogId && D.current(ye) && U(ge, "Could not save configuration.");
-      } finally {
-        D.current(ye) && (f.value = !1);
+        const [ue, be] = await Promise.all([me.schema(p), g ? me.schemaOptions(p) : void 0]);
+        return !O || !oe.current(te) || p !== t.catalogId || Z.value !== O ? !1 : (O.plugins = ue.plugins, O.as_of = ue.as_of, be && (W.value = be), !0);
+      } catch (ue) {
+        return g && oe.current(te) && p === t.catalogId && We(ue, "Could not check plugin status."), !1;
       }
     }
-    function H() {
-      j.value = {}, P.value = !0, n.value && (m.value = Pe(n.value.declaration)), C.value = {}, o.value = null, c.value = "";
+    async function Oa(g, p, O = !1) {
+      if (F.value || r.value || !Q.value) return;
+      const te = t.catalogId, ue = _.begin(), be = V.begin();
+      oe.begin(), F.value = !0, b.value = void 0, ce.value = "";
+      try {
+        const ke = JSON.stringify(p);
+        if (O ? await me.configurePlugin(te, g, ea(p), !0) : await me.configurePlugin(te, g, ea(p)), te !== t.catalogId || !_.current(ue) || !await Ne(!0) || te !== t.catalogId || !_.current(ue)) return;
+        !O && JSON.stringify(h.value[g]) === ke && delete h.value[g], ce.value = O ? "Background update reset requested." : "Configuration saved";
+      } catch (ke) {
+        te === t.catalogId && V.current(be) && We(ke, O ? "Could not reset background updates." : "Could not save configuration.");
+      } finally {
+        V.current(be) && (F.value = !1);
+      }
     }
-    function pe(E, L) {
-      const W = C.value[E] ?? [];
-      W.includes(L) || (C.value = { ...C.value, [E]: [...W, L] });
+    async function sl(g) {
+      const p = t.catalogId, O = Z.value?.plugins.find((te) => te.plugin === g && te.active && te.installed);
+      !O?.config || F.value || r.value || !Q.value || !await Je.confirm({
+        header: "Reset background updates?",
+        message: "Background updates will start from a new catalog event. Current product data will be rebuilt into the plugin’s index. Earlier events will be skipped.",
+        acceptLabel: "Reset background updates",
+        rejectLabel: "Cancel"
+      }) || t.catalogId !== p || await Oa(g, O.config, !0);
     }
-    return (E, L) => (e(), i("div", {
-      class: ke(["pim-builder", { embedded: l.embedded }])
+    async function il(g) {
+      const p = t.catalogId;
+      if (!(F.value || r.value || !Q.value)) {
+        F.value = !0, b.value = void 0, ce.value = "";
+        try {
+          await me.resumePluginProjection(p, g), t.catalogId === p && await Ne(!0) && (ce.value = "Background update resumed.");
+        } catch (O) {
+          t.catalogId === p && We(O, "Could not resume the background update.");
+        } finally {
+          t.catalogId === p && (F.value = !1);
+        }
+      }
+    }
+    async function nl(g) {
+      const p = t.catalogId;
+      if (!(F.value || r.value || !Q.value) && !(!await Je.confirm({
+        header: "Clear catalog app binding?",
+        message: "The catalog will use the default app after this setting is saved.",
+        acceptLabel: "Clear binding",
+        rejectLabel: "Cancel"
+      }) || t.catalogId !== p || F.value || !Q.value || !Z.value?.plugins.some((O) => O.references?.shell_bindings.includes(g)))) {
+        F.value = !0, b.value = void 0, ce.value = "";
+        try {
+          if (await me.updateCatalogApp(p, ""), t.catalogId !== p) return;
+          await Ne(!0) && (ce.value = "Catalog app binding cleared.");
+        } catch (O) {
+          t.catalogId === p && We(O, "Could not clear the catalog app binding.");
+        } finally {
+          t.catalogId === p && (F.value = !1);
+        }
+      }
+    }
+    async function ol() {
+      xe.value && !await Je.confirm({
+        header: "Leave this catalog?",
+        message: "Your unsaved catalog changes will be discarded.",
+        acceptLabel: "Discard and open settings",
+        rejectLabel: "Keep editing"
+      }) || (fa(), N.value = !1, Je.navigate("/system/settings"));
+    }
+    function ge() {
+      Ee.value = !1, Se.value = null;
+    }
+    function Ia() {
+      N.value = !1, Ce.value = !0;
+    }
+    function fa() {
+      h.value = {}, Ce.value = !0, Z.value && (S.value = ea(Z.value.declaration)), K.value = {}, ge(), ce.value = "";
+    }
+    function He(g, p) {
+      const O = K.value[g] ?? [];
+      O.includes(p) || (K.value = { ...K.value, [g]: [...O, p] });
+    }
+    function dl(g) {
+      g.button === 0 && g.target instanceof Element && g.target.closest(".kx-settings-rail-item:focus-visible")?.blur();
+    }
+    return (g, p) => (e(), i("section", {
+      class: je(["pim-builder", { embedded: l.embedded }])
     }, [
-      l.embedded ? (e(), i("div", vn, [
-        a("h2", null, V(l.title || "Catalog"), 1),
-        n.value ? (e(), R(s(ie), {
+      a("div", Mo, [
+        o.value || Z.value && W.value ? (e(), T(ql, {
           key: 0,
-          severity: "secondary",
-          value: "Generation " + n.value.schema_generation
-        }, null, 8, ["value"])) : w("", !0),
-        a("div", fn, [
-          de(E.$slots, "actions", {
-            access: n.value?.access
-          }),
-          g(ia, {
-            access: n.value?.access,
-            dirty: re.value,
-            busy: f.value,
-            valid: P.value && !I.value,
-            reviewed: !!o.value,
-            onDiscard: H,
-            onReview: S
-          }, null, 8, ["access", "dirty", "busy", "valid", "reviewed"])
-        ])
-      ])) : (e(), R(ql, {
-        key: 1,
-        title: l.title || "Catalog",
-        subtitle: n.value ? "Settings · generation " + n.value.schema_generation : "Settings",
-        icon: "tabler:settings",
-        "back-label": l.backLabel,
-        onBack: L[0] || (L[0] = (W) => u("back"))
-      }, {
-        default: h(() => [
-          de(E.$slots, "actions", {
-            access: n.value?.access
-          }),
-          g(ia, {
-            access: n.value?.access,
-            dirty: re.value,
-            busy: f.value,
-            valid: P.value && !I.value,
-            reviewed: !!o.value,
-            onDiscard: H,
-            onReview: S
-          }, null, 8, ["access", "dirty", "busy", "valid", "reviewed"])
-        ]),
-        _: 3
-      }, 8, ["title", "subtitle", "back-label"])),
-      n.value && p.value ? (e(), R(s(Aa), {
-        key: 2,
-        value: v.value,
-        "onUpdate:value": L[1] || (L[1] = (W) => v.value = W),
-        class: "pim-section-tabs"
-      }, {
-        default: h(() => [
-          g(s(Oa), { "aria-label": "Schema sections" }, {
-            default: h(() => [
-              (e(), i(F, null, Q(r, (W) => g(s(Ia), {
-                key: W.id,
-                value: W.id
-              }, {
-                default: h(() => [
-                  z(V(W.title), 1)
-                ]),
-                _: 2
-              }, 1032, ["value"])), 64))
-            ]),
-            _: 1
-          })
-        ]),
-        _: 1
-      }, 8, ["value"])) : w("", !0),
-      a("div", bn, [
-        a("div", yn, [
-          x.value ? (e(), R(Ee, {
-            key: 0,
-            ref_key: "errorPanel",
-            ref: b,
-            error: x.value,
-            tabindex: "-1"
-          }, {
-            default: h(() => [
-              I.value ? (e(), R(s(Z), {
-                key: 0,
-                type: "button",
-                severity: "secondary",
-                outlined: "",
-                size: "small",
-                disabled: f.value,
-                onClick: A
-              }, {
-                default: h(() => [...L[5] || (L[5] = [
-                  z("Reload settings", -1)
-                ])]),
-                _: 1
-              }, 8, ["disabled"])) : !n.value || !p.value ? (e(), R(s(Z), {
-                key: 1,
-                type: "button",
-                severity: "secondary",
-                outlined: "",
-                size: "small",
-                onClick: L[2] || (L[2] = (W) => ee())
-              }, {
-                default: h(() => [...L[6] || (L[6] = [
-                  z("Retry", -1)
-                ])]),
-                _: 1
-              })) : w("", !0)
-            ]),
-            _: 1
-          }, 8, ["error"])) : I.value && $.value ? (e(), i("div", gn, "Reloading settings…")) : w("", !0),
-          c.value ? (e(), R(s($e), {
-            key: 2,
-            severity: "success"
-          }, {
-            default: h(() => [
-              z(V(c.value), 1)
-            ]),
-            _: 1
-          })) : w("", !0),
-          o.value ? (e(), i("section", {
-            key: 3,
-            class: "pim-table pim-plan",
-            "aria-labelledby": s(B)
+          ref_key: "rail",
+          ref: j,
+          label: "Catalog settings sections",
+          value: f.value,
+          groups: x.value,
+          "leading-item": o.value,
+          "onUpdate:value": I,
+          onPointerdown: dl
+        }, null, 8, ["value", "groups", "leading-item"])) : v("", !0),
+        a("div", Wo, [
+          a("section", {
+            ref_key: "content",
+            ref: X,
+            class: "kx-main-scroll",
+            "aria-label": f.value
           }, [
-            a("div", kn, [
-              g(s(X), {
-                icon: "tabler:checklist",
-                "aria-hidden": "true"
-              }),
-              a("h3", {
-                id: s(B),
-                ref_key: "reviewHeading",
-                ref: O,
+            Z.value && W.value ? (e(), i("header", Jo, [
+              a("div", Ko, [
+                a("h1", null, U(f.value), 1),
+                a("p", null, U(Xa[f.value]), 1)
+              ]),
+              a("div", Go, [
+                y(It, {
+                  access: Z.value.access,
+                  dirty: xe.value,
+                  busy: F.value,
+                  valid: Ce.value && !r.value && Qe.value,
+                  onDiscard: fa,
+                  onReview: Ra
+                }, null, 8, ["access", "dirty", "busy", "valid"])
+              ])
+            ])) : v("", !0),
+            a("div", Yo, [
+              b.value ? (e(), T(ra, {
+                key: 0,
+                ref_key: "errorPanel",
+                ref: L,
+                error: b.value,
                 tabindex: "-1"
-              }, "Review changes", 8, _n),
-              g(s(ie), {
-                class: "kx-tag-sm",
-                severity: o.value.class === "refused" ? "danger" : o.value.class === "semantic" ? "warn" : "info"
               }, {
-                default: h(() => [
-                  z(V(te[o.value.class] || "Schema changes"), 1)
-                ]),
-                _: 1
-              }, 8, ["severity"])
-            ]),
-            a("div", $n, [
-              o.value.class === "unchanged" ? (e(), i("p", wn, "Nothing would change.")) : o.value.class === "initial" ? (e(), i("p", xn, "This will set up the first schema.")) : o.value.class === "cosmetic" ? (e(), i("p", Cn, "These changes leave stored product values as they are.")) : o.value.class === "additive" ? (e(), i("p", Vn, "Existing product values stay as they are.")) : o.value.class === "semantic" ? (e(), i("p", Un, "The catalog will recalculate product values or readiness after you apply these changes.")) : o.value.class === "refused" ? (e(), R(s($e), {
-                key: 5,
-                severity: "error"
-              }, {
-                default: h(() => [
-                  a("span", Sn, [
-                    L[7] || (L[7] = z(" These changes can’t be applied. ", -1)),
-                    o.value.migration && o.value.refused.some((W) => n.value?.attributes[W.code]) ? (e(), i("span", An, " To change how a field stores values, add a new field and copy the existing values into it. Then remove the original field and give the new field its name. ")) : w("", !0)
-                  ])
-                ]),
-                _: 1
-              })) : w("", !0),
-              y.value.length ? (e(), i("ul", On, [
-                (e(!0), i(F, null, Q(y.value, (W, _e) => (e(), i("li", { key: _e }, [
-                  W.class === "refused" ? (e(), R(s(ie), {
+                default: w(() => [
+                  r.value ? (e(), T(s(G), {
                     key: 0,
-                    class: "kx-tag-sm small",
-                    severity: "danger"
+                    type: "button",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    disabled: F.value,
+                    onClick: ll
                   }, {
-                    default: h(() => [...L[8] || (L[8] = [
-                      z("Blocked", -1)
+                    default: w(() => [...p[11] || (p[11] = [
+                      H("Reload settings", -1)
                     ])]),
                     _: 1
-                  })) : w("", !0),
-                  W.code ? (e(), i("strong", In, V(He(W.code)), 1)) : w("", !0),
-                  a("span", null, V(Y[W.what] || W.what), 1)
-                ]))), 128))
-              ])) : w("", !0),
-              n.value?.access.admin && o.value.class !== "refused" ? (e(), i("div", Rn, [
-                g(s(Z), {
-                  disabled: !re.value || f.value || !N.value,
-                  loading: f.value,
-                  onClick: _
+                  }, 8, ["disabled"])) : !Z.value || !W.value ? (e(), T(s(G), {
+                    key: 1,
+                    type: "button",
+                    severity: "secondary",
+                    outlined: "",
+                    size: "small",
+                    onClick: p[0] || (p[0] = (O) => ve())
+                  }, {
+                    default: w(() => [...p[12] || (p[12] = [
+                      H("Retry", -1)
+                    ])]),
+                    _: 1
+                  })) : v("", !0)
+                ]),
+                _: 1
+              }, 8, ["error"])) : v("", !0),
+              ce.value ? (e(), T(s(we), {
+                key: 1,
+                severity: "success",
+                role: "status"
+              }, {
+                default: w(() => [
+                  H(U(ce.value), 1)
+                ]),
+                _: 1
+              })) : v("", !0),
+              Y.value && (!Z.value || !W.value) ? (e(), i("div", Zo, "Loading catalog settings…")) : Z.value && W.value ? (e(), i("fieldset", {
+                key: 3,
+                class: "pim-editor-surface",
+                disabled: F.value,
+                inert: F.value
+              }, [
+                ja.value.length ? (e(), i("p", Xo, U(ja.value.join(" · ")), 1)) : v("", !0),
+                Q.value ? v("", !0) : (e(), T(s(we), {
+                  key: 1,
+                  severity: "info"
                 }, {
-                  default: h(() => [
-                    z(V(v.value === "layout" ? "Apply layout" : "Apply"), 1)
+                  default: w(() => [...p[13] || (p[13] = [
+                    H("You can view this catalog’s settings.", -1)
+                  ])]),
+                  _: 1
+                })),
+                (e(), i("div", {
+                  key: f.value,
+                  class: "pim-ia-content"
+                }, [
+                  m.value === "General" && f.value === "History" ? (e(), T(Ot, {
+                    key: 0,
+                    "catalog-id": l.catalogId,
+                    "can-resolve-actors": Q.value
+                  }, null, 8, ["catalog-id", "can-resolve-actors"])) : m.value === "General" ? (e(), i(E, { key: 1 }, [
+                    a("div", ed, [
+                      (e(!0), i(E, null, ee(Qa.value, (O) => (e(), i("section", {
+                        key: O.section,
+                        class: "kx-card pim-overview-card"
+                      }, [
+                        a("div", ad, [
+                          a("span", ld, [
+                            y(s(le), {
+                              icon: O.icon,
+                              "aria-hidden": "true"
+                            }, null, 8, ["icon"])
+                          ]),
+                          a("div", td, [
+                            a("h3", sd, U(O.label), 1),
+                            a("p", id, U(O.summary), 1)
+                          ])
+                        ]),
+                        a("p", nd, U(O.detail), 1),
+                        y(s(G), {
+                          type: "button",
+                          text: "",
+                          size: "small",
+                          severity: "secondary",
+                          class: "pim-overview-action",
+                          onClick: (te) => M(O.section)
+                        }, {
+                          default: w(() => [
+                            H(U(O.section === "Products" && Ya.value ? "Set up products" : "View " + O.section.toLowerCase()) + " ", 1),
+                            y(s(le), {
+                              icon: "tabler:arrow-right",
+                              "aria-hidden": "true"
+                            })
+                          ]),
+                          _: 2
+                        }, 1032, ["onClick"])
+                      ]))), 128))
+                    ]),
+                    y(Ue, { label: "Advanced" }, {
+                      default: w(() => [
+                        a("div", od, [
+                          a("div", dd, [
+                            p[14] || (p[14] = a("div", null, [
+                              a("h3", null, "Application defaults"),
+                              a("p", null, "Review the audit, retention and processing settings this catalog inherits.")
+                            ], -1)),
+                            y(s(G), {
+                              label: "View defaults",
+                              severity: "secondary",
+                              outlined: "",
+                              onClick: p[1] || (p[1] = (O) => se("defaults"))
+                            })
+                          ]),
+                          a("div", rd, [
+                            p[15] || (p[15] = a("div", null, [
+                              a("h3", null, "Technical schema"),
+                              a("p", null, "Inspect the complete definition, including integration keys and settings used by installed extensions.")
+                            ], -1)),
+                            y(s(G), {
+                              label: "Open declaration",
+                              severity: "secondary",
+                              outlined: "",
+                              onClick: p[2] || (p[2] = (O) => se("declaration"))
+                            })
+                          ])
+                        ])
+                      ]),
+                      _: 1
+                    })
+                  ], 64)) : m.value === "Products" ? (e(), i(E, { key: 2 }, [
+                    f.value === "Families" ? (e(), T(gn, {
+                      key: 0,
+                      draft: S.value,
+                      schema: Z.value,
+                      options: W.value,
+                      onRemove: He,
+                      onFields: fe
+                    }, null, 8, ["draft", "schema", "options"])) : f.value === "Fields" ? (e(), T(oi, {
+                      key: 1,
+                      family: c.value,
+                      "onUpdate:family": p[3] || (p[3] = (O) => c.value = O),
+                      draft: S.value,
+                      schema: Z.value,
+                      options: W.value,
+                      onRemove: He
+                    }, null, 8, ["family", "draft", "schema", "options"])) : (e(), T(ct, {
+                      key: 2,
+                      draft: S.value,
+                      schema: Z.value,
+                      types: W.value.types
+                    }, null, 8, ["draft", "schema", "types"]))
+                  ], 64)) : m.value === "Values" ? (e(), i(E, { key: 3 }, [
+                    f.value === "Dimensions" ? (e(), T(yi, {
+                      key: 0,
+                      draft: S.value,
+                      schema: Z.value,
+                      onRemove: He
+                    }, null, 8, ["draft", "schema"])) : (e(), T(Di, {
+                      key: 1,
+                      "catalog-id": l.catalogId,
+                      draft: S.value,
+                      schema: Z.value,
+                      onRemove: He
+                    }, null, 8, ["catalog-id", "draft", "schema"]))
+                  ], 64)) : m.value === "Channels" ? (e(), T(Yn, {
+                    key: 4,
+                    "catalog-id": l.catalogId,
+                    draft: S.value,
+                    schema: Z.value,
+                    view: f.value === "Sources" ? "sources" : "channels",
+                    onRemove: He
+                  }, null, 8, ["catalog-id", "draft", "schema", "view"])) : m.value === "Access" ? (e(), T(Bl, {
+                    key: 5,
+                    "catalog-id": l.catalogId,
+                    title: l.title || "Catalog",
+                    access: Z.value.access,
+                    onSummary: p[4] || (p[4] = (O) => C.value = O)
+                  }, null, 8, ["catalog-id", "title", "access"])) : (e(), T(Vo, {
+                    key: 6,
+                    draft: S.value,
+                    schema: Z.value,
+                    options: W.value,
+                    "plugin-configs": h.value,
+                    stale: r.value,
+                    onConfigure: Oa,
+                    onRemove: He,
+                    onReset: sl,
+                    onRefresh: p[5] || (p[5] = (O) => Ne(!0)),
+                    onResume: il,
+                    onReview: Ra,
+                    onClearShellBinding: nl
+                  }, null, 8, ["draft", "schema", "options", "plugin-configs", "stale"]))
+                ])),
+                A.value ? (e(), T(ya, {
+                  key: 2,
+                  visible: N.value,
+                  label: A.value === "defaults" ? "Application defaults" : "Technical schema",
+                  onClose: Ia,
+                  onClosed: p[8] || (p[8] = (O) => A.value = void 0)
+                }, {
+                  default: w(() => [
+                    a("div", ud, [
+                      a("header", cd, [
+                        a("h2", null, U(A.value === "defaults" ? "Application defaults" : "Technical schema"), 1),
+                        y(s(G), {
+                          type: "button",
+                          "aria-label": "Close",
+                          text: "",
+                          severity: "secondary",
+                          onClick: Ia
+                        }, {
+                          default: w(() => [
+                            y(s(le), {
+                              icon: "tabler:x",
+                              "aria-hidden": "true"
+                            })
+                          ]),
+                          _: 1
+                        })
+                      ]),
+                      A.value === "defaults" ? (e(), i(E, { key: 0 }, [
+                        p[16] || (p[16] = a("p", { class: "muted" }, "These settings apply across the application. Catalogs with an explicit override keep their chosen value.", -1)),
+                        y(No, {
+                          "catalog-id": l.catalogId,
+                          draft: S.value,
+                          disabled: !Q.value,
+                          "defaults-only": ""
+                        }, null, 8, ["catalog-id", "draft", "disabled"]),
+                        Q.value ? (e(), i("div", md, [
+                          y(s(G), {
+                            type: "button",
+                            label: "Open application settings",
+                            severity: "secondary",
+                            outlined: "",
+                            onClick: ol
+                          })
+                        ])) : v("", !0)
+                      ], 64)) : (e(), T(Eo, {
+                        key: 1,
+                        draft: S.value,
+                        readonly: !Q.value,
+                        onReplace: p[6] || (p[6] = (O) => S.value = O),
+                        onValidity: p[7] || (p[7] = (O) => {
+                          Ce.value = O, ge();
+                        })
+                      }, null, 8, ["draft", "readonly"]))
+                    ])
                   ]),
                   _: 1
-                }, 8, ["disabled", "loading"])
-              ])) : w("", !0)
+                }, 8, ["visible", "label"])) : v("", !0)
+              ], 8, Qo)) : v("", !0),
+              y(ya, {
+                class: "pim-review-dialog",
+                visible: Ee.value,
+                busy: F.value,
+                label: "Review changes",
+                onClose: ge,
+                onClosed: p[10] || (p[10] = (O) => re.value = null)
+              }, {
+                default: w(() => [
+                  re.value ? (e(), i("section", {
+                    key: 0,
+                    class: "pim-ia-dialog pim-plan",
+                    "aria-labelledby": s(Me)
+                  }, [
+                    a("header", vd, [
+                      a("div", null, [
+                        a("h2", {
+                          id: s(Me),
+                          ref_key: "reviewHeading",
+                          ref: ta,
+                          tabindex: "-1",
+                          autofocus: ""
+                        }, "Review changes", 8, fd),
+                        a("p", null, "Check what will happen when you apply this draft to " + U(l.title || "the catalog") + ".", 1)
+                      ]),
+                      y(s(G), {
+                        type: "button",
+                        "aria-label": "Close review",
+                        disabled: F.value,
+                        text: "",
+                        severity: "secondary",
+                        onClick: ge
+                      }, {
+                        default: w(() => [
+                          y(s(le), {
+                            icon: "tabler:x",
+                            "aria-hidden": "true"
+                          })
+                        ]),
+                        _: 1
+                      }, 8, ["disabled"])
+                    ]),
+                    a("div", bd, [
+                      a("h3", null, U(ua[re.value.class] || "Catalog changes"), 1),
+                      re.value.class === "unchanged" ? (e(), i("p", yd, "The catalog already matches this draft.")) : re.value.class === "initial" ? (e(), i("p", gd, "Product editors will use these settings for new products.")) : re.value.class === "cosmetic" ? (e(), i("p", hd, "Catalog settings will update. Stored product values are kept.")) : re.value.class === "additive" ? (e(), i("p", kd, "The new options become available. Existing product values are kept.")) : re.value.class === "semantic" ? (e(), i("p", _d, "Applying changes can recalculate product values or release readiness across this catalog.")) : re.value.class === "refused" ? (e(), T(s(we), {
+                        key: 5,
+                        severity: "error"
+                      }, {
+                        default: w(() => [
+                          p[17] || (p[17] = H(" These changes can’t be applied. ", -1)),
+                          re.value.migration && re.value.refused.some((O) => Z.value?.attributes[O.code]) ? (e(), i("span", wd, " To change how a field stores values, add a new field and copy the existing values into it. Then remove the original field and give the new field its name. ")) : v("", !0)
+                        ]),
+                        _: 1
+                      })) : v("", !0)
+                    ]),
+                    q.value.length || Sa.value.length ? (e(), i("ul", $d, [
+                      (e(!0), i(E, null, ee(q.value, (O, te) => (e(), i("li", { key: te }, [
+                        O.class === "refused" ? (e(), T(s(ye), {
+                          key: 0,
+                          class: "kx-tag-sm small",
+                          severity: "danger"
+                        }, {
+                          default: w(() => [...p[18] || (p[18] = [
+                            H("Blocked", -1)
+                          ])]),
+                          _: 1
+                        })) : v("", !0),
+                        O.code ? (e(), i("strong", Cd, U(el(O.code)), 1)) : v("", !0),
+                        a("span", null, U(al(O.what)), 1)
+                      ]))), 128)),
+                      (e(!0), i(E, null, ee(Sa.value, (O) => (e(), i("li", {
+                        key: O.subject + O.effect
+                      }, [
+                        a("strong", null, U(O.subject), 1),
+                        a("span", null, U(O.effect), 1)
+                      ]))), 128))
+                    ])) : v("", !0),
+                    va.value.length ? (e(), i("div", xd, [
+                      p[19] || (p[19] = a("h3", null, "Permanent changes", -1)),
+                      (e(!0), i(E, null, ee(va.value, (O) => (e(), i("p", { key: O }, U(O), 1))), 128)),
+                      re.value.class !== "refused" ? (e(), i("div", Vd, [
+                        y(s(xl), {
+                          modelValue: $e.value,
+                          "onUpdate:modelValue": p[9] || (p[9] = (O) => $e.value = O),
+                          "input-id": s(Me) + "-acknowledge",
+                          binary: "",
+                          disabled: F.value
+                        }, null, 8, ["modelValue", "input-id", "disabled"]),
+                        a("label", {
+                          for: s(Me) + "-acknowledge"
+                        }, "I understand the effects of these removals", 8, Ud)
+                      ])) : v("", !0)
+                    ])) : v("", !0),
+                    a("footer", Ad, [
+                      y(s(G), {
+                        type: "button",
+                        label: "Back to editing",
+                        severity: "secondary",
+                        outlined: "",
+                        disabled: F.value,
+                        onClick: ge
+                      }, null, 8, ["disabled"]),
+                      Z.value?.access.admin && re.value.class !== "refused" ? (e(), T(s(G), {
+                        key: 0,
+                        disabled: !xe.value || F.value || !R.value,
+                        loading: F.value,
+                        onClick: tl
+                      }, {
+                        default: w(() => [
+                          H(U(f.value === "Form layout" ? "Apply layout" : "Apply changes"), 1)
+                        ]),
+                        _: 1
+                      }, 8, ["disabled", "loading"])) : v("", !0)
+                    ])
+                  ], 8, pd)) : v("", !0)
+                ]),
+                _: 1
+              }, 8, ["visible", "busy"])
             ])
-          ], 8, hn)) : w("", !0),
-          $.value && (!n.value || !p.value) ? (e(), i("div", jn, "Loading…")) : n.value && p.value && v.value === "history" ? (e(), R(Al, {
-            key: 5,
-            "catalog-id": l.catalogId,
-            "can-resolve-actors": d.value
-          }, null, 8, ["catalog-id", "can-resolve-actors"])) : n.value && p.value ? (e(), i("fieldset", {
-            key: 6,
-            class: "pim-editor-surface",
-            disabled: f.value,
-            inert: f.value
-          }, [
-            d.value ? w("", !0) : (e(), R(s($e), {
-              key: 0,
-              severity: "info",
-              class: "pim-readonly"
-            }, {
-              default: h(() => [...L[9] || (L[9] = [
-                z("Read-only settings", -1)
-              ])]),
-              _: 1
-            })),
-            Fe.value && v.value === "fields" ? (e(), R(s($e), {
-              key: 1,
-              severity: "info"
-            }, {
-              default: h(() => [
-                z(V(d.value ? "Define its schema. Add a field group to start defining fields." : "This catalog has no field groups yet."), 1)
-              ]),
-              _: 1
-            })) : w("", !0),
-            v.value === "fields" ? (e(), R(ls, {
-              key: 2,
-              draft: m.value,
-              schema: n.value,
-              options: p.value,
-              onRemove: pe
-            }, null, 8, ["draft", "schema", "options"])) : v.value === "layout" ? (e(), R(dl, {
-              key: 3,
-              draft: m.value,
-              schema: n.value,
-              types: p.value.types
-            }, null, 8, ["draft", "schema", "types"])) : v.value === "dimensions" ? (e(), R(ms, {
-              key: 4,
-              draft: m.value,
-              schema: n.value,
-              onRemove: pe
-            }, null, 8, ["draft", "schema"])) : v.value === "vocabularies" ? (e(), R(Ts, {
-              key: 5,
-              "catalog-id": l.catalogId,
-              draft: m.value,
-              schema: n.value,
-              onRemove: pe
-            }, null, 8, ["catalog-id", "draft", "schema"])) : v.value === "families" ? (e(), R(ri, {
-              key: 6,
-              draft: m.value,
-              schema: n.value,
-              options: p.value,
-              onRemove: pe
-            }, null, 8, ["draft", "schema", "options"])) : v.value === "channels" ? (e(), R(Bi, {
-              key: 7,
-              "catalog-id": l.catalogId,
-              draft: m.value,
-              schema: n.value,
-              onRemove: pe
-            }, null, 8, ["catalog-id", "draft", "schema"])) : v.value === "plugins" ? (e(), R(Yi, {
-              key: 8,
-              draft: m.value,
-              schema: n.value,
-              options: p.value,
-              "plugin-configs": j.value,
-              stale: I.value,
-              onConfigure: se,
-              onRemove: pe
-            }, null, 8, ["draft", "schema", "options", "plugin-configs", "stale"])) : v.value === "policy" ? (e(), R(dn, {
-              key: 9,
-              "catalog-id": l.catalogId,
-              draft: m.value,
-              disabled: !d.value
-            }, null, 8, ["catalog-id", "draft", "disabled"])) : v.value === "declaration" ? (e(), R(pn, {
-              key: 10,
-              draft: m.value,
-              readonly: !d.value,
-              onReplace: L[3] || (L[3] = (W) => m.value = W),
-              onValidity: L[4] || (L[4] = (W) => {
-                P.value = W, o.value = null;
-              })
-            }, null, 8, ["draft", "readonly"])) : w("", !0)
-          ], 8, Tn)) : w("", !0)
+          ], 8, Ho)
         ])
       ])
     ], 2));
   }
-}), Dn = /* @__PURE__ */ le({
+}), Sd = /* @__PURE__ */ de({
   __name: "SettingsApp",
   setup(l) {
-    const k = ha(), t = ka(), u = J(""), r = M(() => k.value.catalogId ?? ""), v = ze();
-    async function n() {
-      const p = v.begin(), m = r.value;
+    const $ = pl(), t = vl(), d = J(), u = D(() => $.value.catalogId ?? ""), m = Ke();
+    async function f() {
+      const C = m.begin(), A = u.value;
       try {
-        const C = await oe.catalogSummary(m);
-        v.current(p) && (u.value = C?.title || "Untitled catalog");
+        const N = await me.catalogSummary(A);
+        m.current(C) && (d.value = N);
       } catch {
-        v.current(p) && (u.value = "");
+        m.current(C) && (d.value = void 0);
       }
     }
-    return ce(r, () => {
-      u.value = "", n();
-    }), Ze(n), De(() => {
-      v.begin();
-    }), (p, m) => r.value ? (e(), R(qn, {
-      key: r.value,
-      "catalog-id": r.value,
-      title: u.value || "Catalog",
-      embedded: s(k).embedded,
-      "back-label": s(k).embedded ? void 0 : "Back to catalog settings",
-      onBack: m[0] || (m[0] = (C) => s(t)("navigate", { route: "" })),
-      onDirtyChanged: m[1] || (m[1] = (C) => s(t)("dirty-changed", { dirty: C }))
-    }, {
-      actions: h(({ access: C }) => [
-        C?.admin ? (e(), R(Pa, {
-          key: 0,
-          "catalog-id": r.value,
-          title: u.value || "Catalog"
-        }, null, 8, ["catalog-id", "title"])) : w("", !0)
-      ]),
-      _: 1
-    }, 8, ["catalog-id", "title", "embedded", "back-label"])) : w("", !0);
+    pe(u, () => {
+      d.value = void 0, f();
+    }), da(f), Ye(() => {
+      m.begin();
+    });
+    function c() {
+      $.value.embedded ? t("open-catalog-picker", {}) : t("navigate", { route: "" });
+    }
+    return (C, A) => u.value ? (e(), T(jd, {
+      key: u.value,
+      "catalog-id": u.value,
+      title: d.value?.title || "Catalog",
+      catalog: d.value,
+      embedded: s($).embedded,
+      "focus-back": s($).focusBack,
+      "back-label": s($).embedded ? "Back to catalogs" : "Back to catalog settings",
+      onBack: c,
+      onDirtyChanged: A[0] || (A[0] = (N) => s(t)("dirty-changed", { dirty: N }))
+    }, null, 8, ["catalog-id", "title", "catalog", "embedded", "focus-back", "back-label"])) : v("", !0);
   }
 });
-class Nn extends _a {
+class Rd extends fl {
   static get wippyConfig() {
     return {
-      propsSchema: { type: "object", properties: { "catalog-id": { type: "string", default: "" }, embedded: { type: "boolean", default: !1 } } },
+      propsSchema: { type: "object", properties: { "catalog-id": { type: "string", default: "" }, embedded: { type: "boolean", default: !1 }, "focus-back": { type: "boolean", default: !1 } } },
       hostCssKeys: ["themeConfigUrl", "primeVueCssUrl"],
-      inlineCss: $a
+      inlineCss: bl
     };
   }
   static get vueConfig() {
-    return { rootComponent: Dn, plugins: [wa] };
+    return { rootComponent: Sd, plugins: [yl] };
   }
 }
-ja(import.meta.url, Nn);
+Al(import.meta.url, Rd);

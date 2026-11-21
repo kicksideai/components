@@ -30,7 +30,7 @@ it('rejects failed response envelopes', async () => {
   await expect(pim.schema('cat')).rejects.toBeInstanceOf(ApiError)
 })
 it('exposes schema administration and term calls without consumer APIs', () => {
-  expect(Object.keys(pim).sort()).toEqual(['history', 'catalogSummary', 'listCatalogs', 'createCatalog', 'schema', 'applySchema', 'planSchema', 'configurePlugin', 'schemaOptions', 'apply', 'termsPage', 'invalidateTerms'].sort())
+  expect(Object.keys(pim).sort()).toEqual(['history', 'catalogSummary', 'listCatalogs', 'createCatalog', 'schema', 'applySchema', 'planSchema', 'configurePlugin', 'resumePluginProjection', 'updateCatalogApp', 'schemaOptions', 'apply', 'termsPage', 'invalidateTerms'].sort())
 })
 
 it('uses the existing history endpoint with an encoded catalog and cursor query', async () => {

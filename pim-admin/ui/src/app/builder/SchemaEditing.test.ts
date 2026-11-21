@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import { settingsTab } from '../../test/settings-navigation'
 import { api, host } from '@wippy-fe/proxy'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -11,7 +12,6 @@ import SchemaBuilder from './SchemaBuilder.vue'
 
 const wrappers: VueWrapper[] = []
 const button = (w: VueWrapper, name: string) => w.findAll('button').find(b => b.text() === name)!
-const tab = (w: VueWrapper, name: string) => w.findAll('[role=tab]').find(t => t.text() === name)!.trigger('click')
 const response = (data: unknown) => ({ data: { data } }) as never
 
 beforeEach(() => { vi.resetAllMocks() })
@@ -49,22 +49,22 @@ it('keeps a term available to restore after retirement and offers only active pa
   expect(rows[0].retired).toBe(false)
 })
 
-it('keeps the review and its apply action together above the editor and focuses the review', async () => {
+it('keeps the review and its apply action together in a modal and focuses the review', async () => {
   const schema = createSchema()
   vi.mocked(api.get).mockImplementation(async (path: string) => response(path.endsWith('/options') ? { types: [], scopes: [], plugins: [], link_kinds: [] } : schema))
   vi.mocked(api.post).mockResolvedValue(response({ generation: 2, class: 'cosmetic', changes: [{ code: '', class: 'cosmetic', what: 'field order changed' }], refused: [] }))
   const w = mount(SchemaBuilder, { props: { catalogId: 'layout-review', embedded: true }, attachTo: document.body })
   wrappers.push(w)
   await flushPromises()
-  await tab(w, 'Form layout')
+  await settingsTab(w, 'Form layout')
   await w.getComponent(SelectButton).setValue('half')
   await button(w, 'Review changes').trigger('click')
   await flushPromises()
-  const heading = w.get('.pim-plan h3').element
+  const heading = w.get('.pim-plan h2').element
   expect(document.activeElement).toBe(heading)
-  expect(w.get('.pim-editor-surface').element.previousElementSibling).toBe(w.get('.pim-plan').element)
+  expect(w.get('dialog[open][aria-label="Review changes"]').element.contains(heading)).toBe(true)
   expect(w.get('.pim-plan').element.contains(button(w, 'Apply layout').element)).toBe(true)
-  expect(w.get('.pim-plan').text()).toContain('field order changed')
+  expect(w.get('.pim-plan').text()).toContain('Field order changed')
 })
 
 it('focuses review failures and displays the typed error code at the top of the editor', async () => {
@@ -73,7 +73,7 @@ it('focuses review failures and displays the typed error code at the top of the 
   const w = mount(SchemaBuilder, { props: { catalogId: 'review-error' }, attachTo: document.body })
   wrappers.push(w)
   await flushPromises()
-  await tab(w, 'Form layout')
+  await settingsTab(w, 'Form layout')
   await w.getComponent(SelectButton).setValue('half')
   await button(w, 'Review changes').trigger('click')
   await flushPromises()
@@ -113,7 +113,7 @@ it('only offers eligible family fields as axes while keeping other fields availa
   const w = mount(SchemaBuilder, { props: { catalogId: 'family-axis' } })
   wrappers.push(w)
   await flushPromises()
-  await tab(w, 'Families')
+  await settingsTab(w, 'Families')
   await w.get('.pim-definition-toggle').trigger('click')
   const pickers = w.findAllComponents(ChipPicker)
   const codes = (index: number) => pickers[index].props('options')!.map(option => option.value)
@@ -130,10 +130,40 @@ it('shows each blocked change once and keeps it ahead of other review details', 
   const w = mount(SchemaBuilder, { props: { catalogId: 'blocked-review' } })
   wrappers.push(w)
   await flushPromises()
-  await tab(w, 'Form layout')
+  await settingsTab(w, 'Form layout')
   await w.getComponent(SelectButton).setValue('half')
   await button(w, 'Review changes').trigger('click')
   await flushPromises()
-  expect(w.findAll('.pim-plan li').map(row => row.get('span:last-child').text())).toEqual(['Field type', 'Width'])
+  expect(w.findAll('.pim-plan li').map(row => row.get('span:last-child').text())).toEqual(['Field type', 'Change the width on product forms'])
   expect(button(w, 'Apply layout')).toBeUndefined()
+})
+
+it('holds Apply until a stored field removal is acknowledged', async () => {
+  const schema = createSchema()
+  schema.declaration.aspects![0].attributes![0].id = 1
+  vi.mocked(api.get).mockImplementation(async (path: string) => response(path.endsWith('/options') ? { types: [], scopes: [], plugins: [], link_kinds: [] } : schema))
+  vi.mocked(api.post)
+    .mockResolvedValueOnce(response({ generation: 1, class: 'semantic', changes: [{ code: 'core.name', what: 'removed', class: 'semantic' }], refused: [] }))
+    .mockResolvedValueOnce(response({ generation: 2, class: 'semantic' }))
+  const wrapper = mount(SchemaBuilder, { props: { catalogId: 'field-removal' } })
+  wrappers.push(wrapper)
+  await flushPromises()
+  await settingsTab(wrapper, 'Fields')
+  await wrapper.get('.field-toggle').trigger('click')
+  await button(wrapper, 'Remove field').trigger('click')
+  await button(wrapper, 'Review changes').trigger('click')
+  await flushPromises()
+  const apply = button(wrapper, 'Apply changes')
+  expect(apply.attributes('disabled')).toBeDefined()
+  expect(wrapper.get('.pim-review-dialog').text()).toContain('Removing fields deletes the values stored in those fields.')
+  expect(api.post).toHaveBeenCalledTimes(1)
+  await wrapper.get('input[type=checkbox]').setValue(true)
+  expect(apply.attributes('disabled')).toBeUndefined()
+  await apply.trigger('click')
+  await flushPromises()
+  expect(api.post).toHaveBeenLastCalledWith('/api/v1/pim/catalogs/field-removal/schema', {
+    declaration: expect.objectContaining({ remove: { attributes: ['core.name'] } }),
+    expected_generation: 1,
+    plugin_configs: {},
+  })
 })

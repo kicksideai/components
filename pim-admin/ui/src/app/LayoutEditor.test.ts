@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import { settingsTab } from '../test/settings-navigation'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import SelectButton from 'primevue/selectbutton'
@@ -17,7 +18,6 @@ function fixture() {
   return schema
 }
 const button = (w: VueWrapper, text: string) => w.findAll('button').find(b => b.text() === text)!
-const tab = async (w: VueWrapper, text: string) => { await w.findAll('[role=tab]').find(t => t.text() === text)!.trigger('click') }
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(pim.schema).mockResolvedValue(fixture())
@@ -61,23 +61,25 @@ it('shows plugin fields without editable controls and leaves the draft unchanged
 })
 it('shares the field draft, invalidates a review after layout edits, and applies its reviewed snapshot', async () => {
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat', title: 'Apparel' } }); wrappers.push(w); await flushPromises()
+  await settingsTab(w, 'Fields')
   w.getComponent(BuilderFields).props('draft').policy = { trash_days: 45 }
-  await tab(w, 'Form layout')
+  await settingsTab(w, 'Form layout')
   await w.getComponent(SelectButton).setValue('half')
   await button(w, 'Review changes').trigger('click'); await flushPromises()
   expect(pim.planSchema).toHaveBeenLastCalledWith('cat', expect.objectContaining({ policy: { trash_days: 45 } }), 1, {})
+  await button(w, 'Back to editing').trigger('click'); await flushPromises()
   await w.get('[aria-label="Move Color earlier"]').trigger('click')
-  expect(button(w, 'Review changes')).toBeDefined()
+  expect(w.find('.pim-plan').exists()).toBe(false)
   await button(w, 'Review changes').trigger('click'); await flushPromises()
   const reviewed = vi.mocked(pim.planSchema).mock.calls.at(-1)![1]
   expect(reviewed.aspects![0].attributes!.map(a => a.code)).toEqual(['color', 'name'])
   await button(w, 'Apply layout').trigger('click'); await flushPromises()
   expect(pim.applySchema).toHaveBeenLastCalledWith('cat', reviewed, 1, {})
-  expect(w.text()).toContain('Applied as generation 2')
+  expect(w.text()).toContain('Catalog changes applied')
 })
 it('discards layout edits with the same builder action and surfaces generation conflicts', async () => {
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } }); wrappers.push(w); await flushPromises()
-  await tab(w, 'Form layout'); await w.getComponent(SelectButton).setValue('half')
+  await settingsTab(w, 'Form layout'); await w.getComponent(SelectButton).setValue('half')
   await button(w, 'Discard').trigger('click')
   expect(w.getComponent(SelectButton).props('modelValue')).toBe('full')
   expect(w.text()).not.toContain('Unsaved changes')
@@ -92,7 +94,7 @@ it('keeps the layout readable and every mutation unavailable to non-admins', asy
   const schema = fixture(); schema.access.admin = false
   vi.mocked(pim.schema).mockResolvedValue(schema)
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } }); wrappers.push(w); await flushPromises()
-  await tab(w, 'Form layout')
+  await settingsTab(w, 'Form layout')
   expect(w.get('.pim-layout').element.closest('[inert], fieldset[disabled]')).toBeNull()
   expect(w.findAll('.pim-lcard').every(c => c.attributes('draggable') === 'false')).toBe(true)
   expect(w.findAllComponents(SelectButton).every(control => control.props('disabled'))).toBe(true)

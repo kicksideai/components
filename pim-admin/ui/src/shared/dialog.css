@@ -2,3 +2,20 @@
 .native-dialog { color: var(--p-text-color); background: var(--p-content-background); border: 1px solid var(--p-content-border-color); border-radius: 14px; padding: 0; max-width: min(680px, 92vw); max-height: 85vh; overflow: auto; }
 .native-dialog::backdrop { background: var(--p-mask-background); }
 .native-dialog .dialog-box, .native-dialog .pim-sheet { width: auto; max-width: 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .native-dialog {
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity .18s ease, transform .18s ease, display .18s allow-discrete, overlay .18s allow-discrete;
+  }
+  .native-dialog[open] { opacity: 1; transform: translateY(0); }
+  .native-dialog::backdrop {
+    opacity: 0;
+    transition: opacity .18s ease, display .18s allow-discrete, overlay .18s allow-discrete;
+  }
+  .native-dialog[open]::backdrop { opacity: 1; }
+  @starting-style {
+    .native-dialog[open] { opacity: 0; transform: translateY(6px); }
+    .native-dialog[open]::backdrop { opacity: 0; }
+  }
+}
