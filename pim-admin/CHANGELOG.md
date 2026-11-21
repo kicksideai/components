@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/kicksideai/components/compare/pim-admin-v0.1.11...pim-admin-v0.1.12) (2026-11-21)
+
+
+### Bug Fixes
+
+* polish Work and PIM admin settings ([#328](https://github.com/kicksideai/components/issues/328)) ([22a3fda](https://github.com/kicksideai/components/commit/22a3fda0de1df463bd3c4f8f4f9a53307a074aa0))
+
 ## [0.1.11](https://github.com/kicksideai/components/compare/pim-admin-v0.1.10...pim-admin-v0.1.11) (2026-11-21)
 
 
