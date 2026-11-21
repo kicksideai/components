@@ -253,6 +253,7 @@ entries:
   - security
   - uuid
   imports:
+    transition_rules: kickside.work.domain:transition_rules
     seams: kickside.work.domain:seams
     rules: kickside.work.domain:access_rules
     flow: kickside.work.command:flow

@@ -63,6 +63,9 @@ function M.run(input: unknown): (unknown, error?)
         return invoke(service, req.method, req.value)
     end
     if op == "create_function" then return funcs.call("kickside.work.service:create", req) end
+    if op == "plan_transition_adoption" or op == "apply_transition_adoption" then
+        return funcs.call("kickside.work.service:" .. op, req)
+    end
     if BOARD_METHODS[op] then
         if op ~= "create" and op ~= "list" and id ~= nil and req.board_id == nil then req.board_id = id end
         local service, err = open("kickside.work:board")

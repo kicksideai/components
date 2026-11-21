@@ -9,6 +9,7 @@ local document = require("document")
 local fields = require("fields")
 local process = require("process")
 local security = require("security")
+local transition_rules = require("transition_rules")
 local when = require("when")
 local seams = require("seams")
 
@@ -200,9 +201,10 @@ local function plan_transition(ctx: types.PrepareContext, op: types.Op): types.O
         return M.result("invalid", group, "unknown_transition", "process " .. p.id .. " has no transition " .. tostring(op.transition), "transition")
     end
     local authority = ctx.transition_authority
-    if t.prepare_command then
-        if not authority or authority.owner ~= t.prepare_command or authority.operation ~= op then
-            return M.result("denied", group, "transition_command_required", "transition must run through " .. t.prepare_command, "transition")
+    local owner = transition_rules.owner(ctx.board.compiled, item.type, p.id, t)
+    if owner then
+        if not authority or authority.owner ~= owner or authority.operation ~= op then
+            return M.result("denied", group, "transition_command_required", "transition must run through " .. owner, "transition")
         end
     elseif t.command then
         local permitted, err = security.can("work.transition.command", t.command)

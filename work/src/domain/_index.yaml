@@ -117,6 +117,15 @@ entries:
     fields: kickside.work.domain:fields
     values: kickside.work.domain:values
     types: kickside.work:types
+- name: transition_rules
+  kind: library.lua
+  source: file://transition_rules.lua
+  modules: [hash]
+  imports:
+    declaration: kickside.work.domain:declaration
+    process: kickside.work.domain:process
+    types: kickside.work:types
+    values: kickside.work.domain:values
 - name: schema
   kind: library.lua
   meta:
@@ -125,6 +134,7 @@ entries:
   modules:
   - hash
   imports:
+    transition_rules: kickside.work.domain:transition_rules
     seams: kickside.work.domain:seams
     formula: kickside.work.domain:formula
     consts: kickside.work:consts

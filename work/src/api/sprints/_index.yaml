@@ -24,3 +24,24 @@ entries:
   method: POST
   func: close
   path: /work/sprints/close
+- name: plan_adoption
+  kind: function.lua
+  source: file://adoption.lua
+  method: plan
+  imports: &adoption_imports
+    access: kickside.work.api:access
+- name: plan_adoption.endpoint
+  kind: http.endpoint
+  method: POST
+  func: plan_adoption
+  path: /work/sprints/plan_adoption
+- name: apply_adoption
+  kind: function.lua
+  source: file://adoption.lua
+  method: apply
+  imports: *adoption_imports
+- name: apply_adoption.endpoint
+  kind: http.endpoint
+  method: POST
+  func: apply_adoption
+  path: /work/sprints/apply_adoption

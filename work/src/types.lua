@@ -232,9 +232,12 @@ type Process = {
 }
 type Policy = { stage_timeout: string?, stage_max_visits: integer?, comments_per_item: integer?, wip: Wip?, audit: string, audit_days: integer?, trash_days: integer?, tombstone_days: integer?, interval_days: integer? }
 type EventWindow = { ms: integer?, before: string? }
+type TransitionSelector = { item_type: string, process: string, transition: string, command: string, plugin: string, fields: { string } }
+type TransitionRule = TransitionSelector & { digest: string }
 type Compiled = {
     visibility: Visibility?, key_prefix: string, fields: { Field }, item_types: { ItemType }, relation_types: { Relation }, processes: { Process },
     plugins: { PluginDecl }?, scopes: { string }?, policy_overrides: PolicyDecl?, policy: Policy, next_field_id: integer, counter_field: integer?,
+    transition_rules: { [string]: TransitionRule }?,
 }
 -- Model indexes a compiled schema by code and id.
 type Model = {
@@ -361,7 +364,7 @@ return { SearchResults = SearchResults, StageBindingRequest = StageBindingReques
     RelationDecl = RelationDecl, PrincipalDecl = PrincipalDecl, StateDecl = StateDecl, EffectDecl = EffectDecl,
     TransitionDecl = TransitionDecl, ProcessDecl = ProcessDecl, PolicyDecl = PolicyDecl,
     StateMaps = StateMaps, RemoveDecl = RemoveDecl, Declaration = Declaration, Option = Option, Field = Field, ItemType = ItemType, Relation = Relation, State = State,
-    Effect = Effect, Transition = Transition, Process = Process, Policy = Policy, EventWindow = EventWindow, Compiled = Compiled, Model = Model, SchemaChange = SchemaChange,
+    Effect = Effect, Transition = Transition, TransitionSelector = TransitionSelector, TransitionRule = TransitionRule, Process = Process, Policy = Policy, EventWindow = EventWindow, Compiled = Compiled, Model = Model, SchemaChange = SchemaChange,
     Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets,
     Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink,
     CommentRow = CommentRow, CommentPosition = CommentPosition, LinkPosition = LinkPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,

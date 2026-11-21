@@ -111,6 +111,42 @@ entries:
     policies:
     - kickside.work.security:sync_call
     - kickside.work.security:apply_output_publish
+- name: plan_transition_adoption
+  kind: function.lua
+  meta: { private: true }
+  source: file://transition_adoption.lua
+  method: plan
+  modules: [registry, sql]
+  imports: &transition_adoption_imports
+    codec: kickside.work.read:cursor_codec
+    clock: kickside.work.domain:clock
+    commands: kickside.work.command:types
+    declaration: kickside.work.domain:declaration
+    domain: kickside.work:types
+    guard: kickside.work.command:guard
+    limits: kickside.work.settings:limits
+    locate: kickside.work.command:locate
+    pack_catalog: kickside.work.domain:pack_catalog
+    pack_types: kickside.work.domain:types
+    plugin_rows: kickside.work.persist:plugin_rows
+    receipts: kickside.work.command:receipts
+    registry_values: kickside.work.domain:registry_values
+    row_decode: kickside.work.persist:row_decode
+    rules: kickside.work.domain:transition_rules
+    schema: kickside.work.domain:schema
+    schema_commands: kickside.work.command:schema_commands
+    board_store: kickside.work.persist:store
+  security:
+    policies: [kickside.work.security:sync_call]
+- name: apply_transition_adoption
+  kind: function.lua
+  meta: { private: true }
+  source: file://transition_adoption.lua
+  method: apply
+  modules: [registry, sql]
+  imports: *transition_adoption_imports
+  security:
+    policies: [kickside.work.security:sync_call, kickside.work.security:schema_output_publish]
 - name: get
   kind: function.lua
   meta:
