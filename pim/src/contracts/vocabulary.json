@@ -20,7 +20,7 @@
       "type": "object",
       "required": ["namespace", "key"],
       "properties": {
-        "namespace": {"type": "string", "description": "Caller-chosen non-empty scope for the idempotency key within this catalog.", "minLength": 1},
+        "namespace": {"type": "string", "description": "Caller-chosen non-empty scope for the idempotency key of the authenticated actor within this catalog.", "minLength": 1},
         "key": {"type": "string", "description": "Non-empty request key within the namespace; reuse only for the same command.", "minLength": 1}
       },
       "additionalProperties": false,
@@ -979,12 +979,20 @@
         "type": "object",
         "properties": {
           "catalog_id": {"$pim_ref": "catalog_id"},
+          "expected_generation": {
+            "type": "integer",
+            "description": "Schema generation read when preparing the edits. If supplied and stale, the submission fails with schema_generation_conflict. Omit to use the active generation at submission."
+          },
           "items": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
                 "product": {"$pim_ref": "product_ref"},
+                "expect_version": {
+                  "type": "integer",
+                  "description": "Product version from PIMGet or PIMQuery. If supplied and stale, the submission fails with version_conflict. Omit to use the live version at submission."
+                },
                 "set": {
                   "type": "array",
                   "items": {
@@ -1035,12 +1043,13 @@
               "required": ["product"]
             },
             "minItems": 1,
-            "description": "Value or status edits for existing products, from 1 to @{items}; versions are captured at proposal creation.",
+            "description": "Value or status edits for existing products, from 1 to @{items}.",
             "maxItems": {"$pim_limit": "items"}
           },
           "source": {"type": "string", "description": "Source id declared by PIMSchemaGet; omit for a caller-authored change."},
           "origin": {"$pim_ref": "origin"},
           "provenance": {"$pim_ref": "provenance"},
+          "idempotency": {"$pim_ref": "idempotency"},
           "trace_context": {"$pim_ref": "trace_context", "required": ["trace_id"]}
         },
         "required": ["items"],
@@ -1051,7 +1060,7 @@
         "required": ["proposal_id", "status"],
         "properties": {
           "proposal_id": {"type": "string", "description": "Stored proposal id to pass to PIMDecide."},
-          "status": {"type": "string", "description": "Current proposal status.", "enum": ["pending"]}
+          "status": {"type": "string", "description": "Status when the proposal was submitted. PIMProposals returns the current status.", "enum": ["pending"]}
         }
       }
     },
@@ -1854,7 +1863,7 @@
     },
     "propose": {
       "alias": "PIMPropose",
-      "description": "Store value or status edits for products from PIMGet for review with catalog READ. Check status for pending and retain proposal_id for a later decision.",
+      "description": "Submit value or status edits for review with catalog READ access and pass the schema generation and product versions you read so a stale base returns a typed conflict. Retry an uncertain submission with the same request and idempotency key to get the original proposal ID and use PIMProposals for current status.",
       "scope": "state.write"
     },
     "decide": {

@@ -217,8 +217,9 @@ type ModelReleaseBody = { request_id: string, product_id: string, version: integ
     channels: { string }?, actor: string?, at: string?, receipt: Receipt? }
 type PluginConfiguredBody = { plugin: string, config: JsonObject, actor: string?, at: string?, receipt: Receipt? }
 type PluginRebuildBody = { plugin: string, actor: string?, at: string?, receipt: Receipt? }
-type ProposalSubmittedBody = { proposal_id: string, generation: integer, base: { [string]: integer }, items: { ApplyItem },
-    source: string?, origin: Origin?, provenance: JsonObject?, actor: string?, at: string? }
+type ProposalReceipt = { request_hash: string, result: ProposeResult, event_count: integer, marker: string, noop: boolean }
+type ProposalSubmittedBody = { proposal_id: string, generation: integer, base: { [string]: integer }, items: { CapturedProposalItem },
+    source: string?, origin: Origin?, provenance: JsonObject?, actor: string?, at: string?, receipt: ProposalReceipt? }
 type DecisionStatus = "accepted" | "rejected" | "conflict" | "failed"
 type ProposalStatus = "pending" | DecisionStatus
 type ProposalDecidedBody = { proposal_id: string, decision: "accept" | "reject", status: DecisionStatus, result: ApplyResult?,
@@ -300,9 +301,13 @@ type SchemaResult = { generation: integer, class: string, changes: { SchemaChang
 type SchemaPlanResult = { generation: integer, class: string, changes: { SchemaChange }, refused: { SchemaChange }, migration: string? }
 type ReleaseItem = { product: ProductRef, expect_version: integer?, channels: { string }? }
 type ReleaseRequest = { items: { ReleaseItem }, idempotency: Idempotency?, trace_context: TraceContext? }
-type ProposeRequest = { items: { ApplyItem }, source: string?, origin: Origin?, provenance: JsonObject?, trace_context: TraceContext? }
+type ProposalEdit = { set: { ValueEntry }?, clear: { ValueEntry }?, unset: { ValueEntry }?, status: string? }
+type ProposeItem = ProposalEdit & { product: ProductRef, expect_version: integer? }
+type CapturedProposalItem = ProposalEdit & { product: { id: string } }
+type ProposeRequest = { items: { ProposeItem }, source: string?, expected_generation: integer?, idempotency: Idempotency?,
+    origin: Origin?, provenance: JsonObject?, trace_context: TraceContext? }
 type Proposal = {
-    proposal_id: string, source: string?, origin: JsonObject, provenance: JsonObject?, items: { ApplyItem }, base: { [string]: integer },
+    proposal_id: string, source: string?, origin: JsonObject, provenance: JsonObject?, items: { CapturedProposalItem }, base: { [string]: integer },
     generation: integer,
     status: ProposalStatus, result: ApplyResult?, created_by: string, created_at: string, decided_by: string?, decided_at: string?,
 }
@@ -525,7 +530,8 @@ return {
     ValueEntry = ValueEntry, CreateSpec = CreateSpec, TermRef = TermRef, ExpectVersion = ExpectVersion,
     ApplyItem = ApplyItem, Idempotency = Idempotency, ApplyRequest = ApplyRequest, ApplyResult = ApplyResult,
     SchemaRequest = SchemaRequest, SchemaResult = SchemaResult, SchemaPlanResult = SchemaPlanResult,
-    ReleaseItem = ReleaseItem, ReleaseRequest = ReleaseRequest, ProposeRequest = ProposeRequest, Proposal = Proposal,
+    ReleaseItem = ReleaseItem, ReleaseRequest = ReleaseRequest, ProposeItem = ProposeItem, CapturedProposalItem = CapturedProposalItem,
+    ProposeRequest = ProposeRequest, Proposal = Proposal,
     ProposeResult = ProposeResult, DecideRequest = DecideRequest, DecideResult = DecideResult, RebuildResult = RebuildResult,
     ProposalStatus = ProposalStatus, DecisionStatus = DecisionStatus,
         TypeMeta = TypeMeta, ReadStamp = ReadStamp, ResolvedValue = ResolvedValue, ProductView = ProductView,

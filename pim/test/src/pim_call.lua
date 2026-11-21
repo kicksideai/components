@@ -53,8 +53,12 @@ function M.run(input: unknown): (unknown, error?)
         return conflict_writer.decide(id, req.request)
     end
     if op == "interrupt_decision" then
-        conflict_fixture.interrupt_decision(req.phase)
+        conflict_fixture.interrupt_command(req.phase)
         return conflict_writer.decide(id, req.request)
+    end
+    if op == "interrupt_submission" then
+        conflict_fixture.interrupt_command("acknowledgement")
+        return conflict_writer.propose(id, req.request)
     end
     if op == "plan_fold_merge" then return merge_fixture.plan(id, req.source) end
     if op == "batch" then

@@ -149,7 +149,7 @@ local function define()
             f.append_events = function(self: Fake, r: { [string]: unknown }): (unknown, error?)
                 local out, err = base(self, r)
                 local events = r.events :: { types.Event }
-                f.markers["r:1:n1:k"] = { seq = self.last_seq, body = events[1].body }
+                f.markers["r:1:n1:k2:u1"] = { seq = self.last_seq, body = events[1].body }
                 self.done = false
                 return out, err
             end
@@ -170,11 +170,29 @@ local function define()
             local f = fake()
             local c = command(f, one_event, { deadline_ms = 50, fingerprint = { op = "x" }, idempotency = { namespace = "n", key = "k" } })
             assert(pipeline.run(c))
-            f.markers["r:1:n1:k"] = { seq = f.last_seq, body = (f.appended[1].events[1]).body }
+            f.markers["r:1:n1:k2:u1"] = { seq = f.last_seq, body = (f.appended[1].events[1]).body }
             f.done = false
             local _, err = pipeline.run(c)
             test.not_nil(err)
             test.eq((err :: error):kind(), errors.UNAVAILABLE)
+            test.eq(#f.appended, 1)
+        end)
+
+        test.it("waits for every event when the receipt appears during catch-up", function()
+            local f = fake()
+            local c = command(f, one_event, { idempotency = { namespace = "ns", key = "partial" } })
+            assert(pipeline.run(c))
+            local body = f.appended[1].events[1].body :: Map
+            body.receipt.event_count = 3
+            local external = assert(f.appended[1].events[1].external)
+            f.markers[external.external_id] = { seq = 11, body = body }
+            c.receipt = function(marker)
+                f.done = false
+                return f.receipt(marker)
+            end
+            local out, err = pipeline.run(c)
+            test.is_nil(out)
+            test.eq(assert(err):details().code, "projection_behind")
             test.eq(#f.appended, 1)
         end)
 
@@ -185,13 +203,24 @@ local function define()
             end, { idempotency = { namespace = "ns", key = "k" } }))) :: { [string]: unknown }
             test.eq(out.outcome, "done")
             local sent = f.appended[1].events
-            test.eq((sent[1].external :: types.External).external_id, "r:2:ns1:k")
+            test.eq((sent[1].external :: types.External).external_id, "r:2:ns1:k2:u1")
             test.eq((sent[1].external :: types.External).external_source, "app")
-            test.eq((sent[2].external :: types.External).external_id, "e:9:r:2:ns1:k:2")
+            test.eq((sent[2].external :: types.External).external_id, "e:13:r:2:ns1:k2:u1:2")
             local receipt = (sent[1].body :: { [string]: unknown }).receipt :: { [string]: unknown }
             test.not_nil(receipt.request_hash)
             test.eq((receipt.result :: { [string]: unknown }).outcome, "done")
             test.is_nil((sent[2].body :: { [string]: unknown }).receipt)
+        end)
+
+        test.it("includes the authenticated actor in the receipt marker and hash", function()
+            local f = fake()
+            for _, actor in ipairs({ "u1", "u2" }) do
+                assert(pipeline.run(command(f, one_event, { actor = actor, idempotency = { namespace = "ns", key = "k" } })))
+            end
+            local first = f.appended[1].events[1]
+            local second = f.appended[2].events[1]
+            test.is_true(assert(first.external).external_id ~= assert(second.external).external_id)
+            test.is_true((first.body :: Map).receipt.request_hash ~= (second.body :: Map).receipt.request_hash)
         end)
 
         test.it("replays the winner's receipt after losing a race on the same key", function()
@@ -203,7 +232,7 @@ local function define()
             local builds = 0
             local out = assert(pipeline.run(command(f, function(s: integer): (pipeline.Attempt?, error?)
                 builds = builds + 1
-                f.markers["r:2:ns2:k2"] = { seq = 11, body = { receipt = { request_hash = (winner :: Map).receipt.request_hash, result = { outcome = "winner" }, event_count = 1 } } }
+                f.markers["r:2:ns2:k22:u1"] = { seq = 11, body = { receipt = { request_hash = (winner :: Map).receipt.request_hash, result = { outcome = "winner" }, event_count = 1 } } }
                 return one_event(s)
             end, { idempotency = { namespace = "ns", key = "k2" } }))) :: Map
             test.eq(out.outcome, "winner")
@@ -217,7 +246,7 @@ local function define()
             test.not_nil(probe)
             local hash = ((f.appended[1].events[1].body :: Map).receipt :: Map).request_hash
             local out = assert(pipeline.run(command(f, function(s: integer): (pipeline.Attempt?, error?)
-                f.markers["r:2:ns2:k3"] = { seq = 11, body = { receipt = { request_hash = hash, result = { outcome = "winner" }, event_count = 1 } } }
+                f.markers["r:2:ns2:k32:u1"] = { seq = 11, body = { receipt = { request_hash = hash, result = { outcome = "winner" }, event_count = 1 } } }
                 return { result = { outcome = "unchanged" }, events = {}, as_of = s }, nil
             end, { idempotency = { namespace = "ns", key = "k3" } }))) :: Map
             test.eq(out.outcome, "winner")
@@ -229,7 +258,7 @@ local function define()
             assert(pipeline.run(command(f, one_event, { idempotency = { namespace = "ns", key = "probe" } })))
             local hashed = ((f.appended[1].events[1].body :: Map).receipt :: Map).request_hash
             local out = assert(pipeline.run(command(f, function(s: integer): (pipeline.Attempt?, error?)
-                f.markers["r:2:ns4:race"] = { seq = 11, body = { receipt = { request_hash = hashed,
+                f.markers["r:2:ns4:race2:u1"] = { seq = 11, body = { receipt = { request_hash = hashed,
                     result = { outcomes = {{outcome="updated"}} }, event_count = 1 } } }
                 return { result = { outcomes = {{outcome="unchanged"}} }, events = {}, expect={head=s}, as_of=s }, nil
             end, { idempotency = { namespace = "ns", key = "race" },
@@ -262,7 +291,7 @@ local function define()
             local f = fake()
             assert(pipeline.run(command(f, one_event, { idempotency = { namespace = "ns", key = "p" } })))
             local hash = ((f.appended[1].events[1].body :: Map).receipt :: Map).request_hash
-            f.markers["r:2:ns6:broken"] = { seq = 3, body = { receipt = { request_hash = hash } } }
+            f.markers["r:2:ns6:broken2:u1"] = { seq = 3, body = { receipt = { request_hash = hash } } }
             local _, err = pipeline.run(command(f, one_event, { idempotency = { namespace = "ns", key = "broken" } }))
             test.eq((err :: error):kind(), errors.INTERNAL)
         end)
@@ -283,7 +312,7 @@ local function define()
 
         test.it("refuses a stored receipt without a matching request hash", function()
             local f = fake()
-            f.markers["r:2:ns5:plain"] = { seq = 3, body = {} }
+            f.markers["r:2:ns5:plain2:u1"] = { seq = 3, body = {} }
             local _, err = pipeline.run(command(f, one_event, { idempotency = { namespace = "ns", key = "plain" } }))
             test.eq(((err :: error):details() or {}).code, "idempotency_conflict")
         end)
@@ -292,7 +321,7 @@ local function define()
             local f = fake()
             assert(pipeline.run(command(f, one_event, { idempotency = { namespace = "ns", key = "o" }, fingerprint = { a = 1, b = 2 } })))
             local body = f.appended[1].events[1].body
-            f.markers["r:2:ns1:o"] = { seq = 11, body = body }
+            f.markers["r:2:ns1:o2:u1"] = { seq = 11, body = body }
             local again = assert(pipeline.run(command(f, one_event, { idempotency = { namespace = "ns", key = "o" }, fingerprint = { b = 2, a = 1 } }))) :: Map
             test.is_true(again.replayed == true)
         end)
@@ -302,7 +331,7 @@ local function define()
             local first = assert(pipeline.run(command(f, one_event, { idempotency = { namespace = "ns", key = "k" } })))
             test.not_nil(first)
             local sent = f.appended[1].events[1]
-            f.markers["r:2:ns1:k"] = { seq = 11, body = sent.body }
+            f.markers["r:2:ns1:k2:u1"] = { seq = 11, body = sent.body }
             local builds = 0
             local again = assert(pipeline.run(command(f, function(s: integer): (pipeline.Attempt?, error?)
                 builds = builds + 1

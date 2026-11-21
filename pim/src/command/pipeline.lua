@@ -45,8 +45,9 @@ function M.apply_fingerprint(request: types.ApplyRequest): unknown
         provenance = request.provenance, approval_item_id = request.approval_item_id }
 end
 
-function M.marker(idempotency: types.Idempotency): string
+function M.marker(idempotency: types.Idempotency, actor: string): string
     return "r:" .. #idempotency.namespace .. ":" .. idempotency.namespace .. #idempotency.key .. ":" .. idempotency.key
+        .. #actor .. ":" .. actor
 end
 
 -- covered waits until the projection reaches the thread head; missing the
@@ -71,7 +72,7 @@ end
 -- replay answers from the receipt of an earlier run of the same command, or
 -- nil when there is none. A receipt with another request hash means the key was
 -- reused for a different request.
-local function replay(c: Command, marker: string, hashed: string, deadline: clock.Deadline, as_of: integer?): (types.JsonObject?, error?)
+local function replay(c: Command, marker: string, hashed: string, as_of: integer, deadline: clock.Deadline): (types.JsonObject?, error?)
     local read_receipt = c.receipt
     if not read_receipt then return nil, failure.corrupt("idempotent command has no receipt reader") end
     local receipt, seq, ferr = read_receipt(marker)
@@ -82,18 +83,19 @@ local function replay(c: Command, marker: string, hashed: string, deadline: cloc
             details = { code = "idempotency_conflict" } })
     end
     if receipt.event_count == 0 and not receipt.noop then return nil,nil end
-    if not as_of then
-        local cerr: error?
-        as_of, cerr = covered(c, deadline)
-        if cerr or not as_of then return nil, cerr end
-    end
     local stored = receipt.result
     if not stored then return nil, failure.corrupt("stored receipt has no result") end
     local count = type(receipt.event_count) == "number" and math.tointeger(receipt.event_count) or nil
     if not count or count < (receipt.noop and 0 or 1) then
         return nil, failure.corrupt("stored receipt has no valid event count")
     end
-    return stamp(stored, not receipt.noop and seq + count - 1 or nil, as_of, true), nil
+    local final_seq = not receipt.noop and seq + count - 1 or nil
+    if (final_seq or seq) > as_of then
+        local caught, cerr = covered(c, deadline)
+        if cerr or not caught then return nil, cerr end
+        as_of = caught
+    end
+    return stamp(stored, final_seq, as_of, true), nil
 end
 
 -- run executes a command and returns its result with seq, as_of and, for a
@@ -110,23 +112,22 @@ function M.run(c: Command): (types.JsonObject?, error?)
         if idempotency.namespace == "" or idempotency.key == "" then
             return nil, errors.new({ details = { code = "idempotency_key_invalid" }, kind = errors.INVALID, message = "idempotency needs namespace and key" })
         end
-        marker = M.marker(idempotency)
-        hashed = request_hash(c.fingerprint)
+        marker = M.marker(idempotency, c.actor)
+        hashed = request_hash({ actor = c.actor, command = c.fingerprint })
     end
     while not clock.passed(until_at) do
+        local last_seq, cerr = covered(c, until_at)
+        if cerr or not last_seq then return nil, cerr end
         if marker and hashed then
-            local replayed, rerr = replay(c, marker :: string, hashed :: string, until_at)
+            local replayed, rerr = replay(c, marker, hashed, last_seq, until_at)
             if rerr then return nil, rerr end
             if replayed then return replayed, nil end
         end
-        local last_seq, cerr = covered(c, until_at)
-        if cerr or not last_seq then return nil, cerr end
         local attempt, berr = c.build(last_seq)
         if berr or not attempt then
-            local details = berr and berr:details()
-            if marker and hashed and details and details.code == "schema_generation_conflict" then
-                -- Catch-up can materialize the matching receipt before the guarded build.
-                local winner, rerr = replay(c, marker, hashed, until_at)
+            if marker and hashed then
+                -- A winner can fold after the lookup and change the planner's inputs.
+                local winner, rerr = replay(c, marker, hashed, last_seq, until_at)
                 if rerr or winner then return winner, rerr end
             end
             return nil, berr
@@ -134,7 +135,7 @@ function M.run(c: Command): (types.JsonObject?, error?)
         local events: {types.Event} = attempt.events
         local noop = #events == 0
         if noop and marker and hashed then
-            local replayed, rerr = replay(c, marker, hashed, until_at)
+            local replayed, rerr = replay(c, marker, hashed, attempt.as_of, until_at)
             if rerr then return nil, rerr end
             if replayed then return replayed, nil end
         end
@@ -182,9 +183,9 @@ function M.run(c: Command): (types.JsonObject?, error?)
         else aerr=errors.new({kind=errors.CONFLICT,message="projection moved",details={reason="head_mismatch"}}) end
         if aerr then
             if marker and hashed and aerr:kind()==errors.CONFLICT then
-                local _,cerr=covered(c,until_at)
-                if cerr then return nil,cerr end
-                local winner,werr=replay(c,marker,hashed,until_at)
+                local as_of,cerr=covered(c,until_at)
+                if cerr or not as_of then return nil,cerr end
+                local winner,werr=replay(c,marker,hashed,as_of,until_at)
                 if werr then return nil,werr end
                 if winner then return winner,nil end
             end
@@ -195,7 +196,7 @@ function M.run(c: Command): (types.JsonObject?, error?)
             local as_of, derr = covered(c, until_at)
             if derr or not as_of then return nil, derr end
             if marker and hashed and attempt.receipt_after_fold then
-                local result, rerr = replay(c, marker, hashed, until_at, as_of)
+                local result, rerr = replay(c, marker, hashed, as_of, until_at)
                 if rerr then return nil, rerr end
                 if not result then return nil, failure.corrupt("projected release receipt is missing") end
                 return stamp(result, max_seq, as_of, nil), nil

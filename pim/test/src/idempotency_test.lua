@@ -20,6 +20,57 @@ end
 
 local function define()
     test.describe("idempotency", function()
+        test.it("lets two authorized actors use the same command key independently", function()
+            local h = fixture.catalog()
+            local other, other_id = fixture.user(h)
+            assert(h.call("grant", { subject_id = other_id, mask = 3 }))
+            local first = assert(apply(h, { create("CATALOG-A") }, "agent", "create"))
+            local request = { items = { create("CATALOG-B") }, idempotency = { namespace = "agent", key = "create" } }
+            local second, err = other("apply", request)
+            test.is_nil(err, tostring(err))
+            test.eq(assert(second).outcomes[1].outcome, "created")
+            test.is_nil(second.replayed)
+            test.is_true(second.seq > first.seq)
+            test.eq(assert(other("apply", request)).seq, second.seq)
+            test.eq(assert(apply(h, { create("CATALOG-A") }, "agent", "create")).seq, first.seq)
+
+            local edit = { items = { { product = { sku = "CATALOG-A" }, expect_version = "any", status = "draft" } },
+                idempotency = { namespace = "agent", key = "draft" } }
+            test.eq(assert(h.call("apply", edit)).outcomes[1].outcome, "updated")
+            local unchanged = assert(other("apply", edit))
+            test.eq(unchanged.outcomes[1].outcome, "unchanged")
+            test.is_nil(unchanged.replayed)
+            test.is_true(assert(other("apply", edit)).replayed)
+            test.eq(assert(h.call("apply", edit)).outcomes[1].outcome, "updated")
+        end)
+
+        test.it("requires current source permission for apply and proposal receipt replay", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local actor, id = fixture.user(h)
+            assert(h.call("grant", { subject_id = id, mask = 3 }))
+            assert(h.call("apply_schema", { declaration = { sources = {
+                { id = "erp", writes = { "core", "logistics" }, principals = { id } },
+            } } }))
+            local apply_request = { source = "erp", idempotency = { namespace = "agent", key = "apply" },
+                items = { { product = { sku = "RDG" }, expect_version = "any", status = "draft" } } }
+            local proposal_request = { source = "erp", idempotency = { namespace = "agent", key = "propose" },
+                items = { { product = { sku = "RDG" }, set = { { attr = "core.care", value = "Review" } } } } }
+            test.eq(assert(actor("apply", apply_request)).outcomes[1].outcome, "updated")
+            test.is_true(assert(actor("apply", apply_request)).replayed)
+            local proposal = assert(actor("propose", proposal_request))
+            test.eq(assert(actor("propose", proposal_request)).proposal_id, proposal.proposal_id)
+            assert(h.call("apply_schema", { declaration = { sources = {
+                { id = "erp", writes = { "core", "logistics" }, principals = { h.actor:id() } },
+            } } }))
+            for _, case in ipairs({ { method = "apply", request = apply_request }, { method = "propose", request = proposal_request } }) do
+                local out, err = actor(case.method, case.request)
+                test.is_nil(out)
+                test.eq(assert(err):kind(), errors.PERMISSION_DENIED)
+                test.eq(assert(err):details().code, "source_access_denied")
+            end
+        end)
+
         test.it("keys commands per namespace and refuses empty parts", function()
             local h = fixture.catalog()
             local a = assert(apply(h, { create("A") }, "ui", "k1"))
@@ -169,8 +220,10 @@ local function define()
             test.is_true(assert(apply(h, unchanged, "expiry", "noop")).replayed)
 
             local db = assert(store.open())
+            local actor = h.actor:id()
+            local suffix = #actor .. ":" .. actor
             local expired = assert(db:execute("UPDATE kickside_pim_receipt SET expires_at = $1 WHERE catalog_id = $2 AND marker IN ($3, $4)",
-                { clock.ago(1), h.id, "r:6:expiry5:event", "r:6:expiry4:noop" }))
+                { clock.ago(1), h.id, "r:6:expiry5:event" .. suffix, "r:6:expiry4:noop" .. suffix }))
             test.eq(tonumber(expired.rows_affected), 2)
             local cutoff = "2090-01-01T00:00:00Z"
             if db:type() == "sqlite" then cutoff = "2090-01-01 00:00:00" end
@@ -200,8 +253,10 @@ local function define()
             local page = h.call("events", {}) :: { events: { { external_id: string? } } }
             local marked: { [string]: boolean } = {}
             for _, e in ipairs(page.events) do if e.external_id then marked[e.external_id :: string] = true end end
-            test.is_true(marked["r:2:ui5:multi"])
-            test.is_true(marked["e:13:r:2:ui5:multi:2"])
+            local actor = h.actor:id()
+            local marker = "r:2:ui5:multi" .. #actor .. ":" .. actor
+            test.is_true(marked[marker])
+            test.is_true(marked["e:" .. #marker .. ":" .. marker .. ":2"])
         end)
 
         test.it("replays schema applies and withdrawals", function()

@@ -26,6 +26,36 @@ end
 
 local function define()
     test.describe("proposals", function()
+        test.it("returns the original proposal after an interrupted submission acknowledgement", function()
+            local h = fixture.catalog()
+            fixture.boot(h)
+            local product = assert(steps.get(h, "RDG")).product
+            local request = { idempotency = { namespace = "agent", key = "review" },
+                expected_generation = assert(h.call("get_schema", {})).generation,
+                items = { { product = { sku = "RDG" }, expect_version = product.version,
+                    set = { { attr = "core.care", value = "Agent edit" } } } } }
+            local out, err = h.call("interrupt_submission", { request = request })
+            test.is_nil(out)
+            test.eq(assert(err):kind(), errors.UNAVAILABLE)
+            assert(h.call("settle", {}))
+            local pending = assert(h.call("list_proposals", { status = "pending" })).proposals
+            test.eq(#pending, 1)
+            assert(h.call("apply", { items = { { product = { sku = "RDG" }, expect_version = product.version, status = "draft" } } }))
+            assert(h.call("apply_schema", { declaration = { vocabularies = { { code = "review_terms" } } } }))
+            local retry = assert(h.call("propose", request))
+            test.eq(retry.proposal_id, pending[1].proposal_id)
+            test.eq(retry.status, "pending")
+            test.eq(#assert(h.call("list_proposals", {})).proposals, 1)
+            assert(decide(h, retry.proposal_id, "reject"))
+            test.eq(assert(h.call("propose", request)).status, "pending")
+            test.eq(assert(h.call("list_proposals", {})).proposals[1].status, "rejected")
+            request.items[1].set[1].value = "A new edit"
+            local replacement, conflict = h.call("propose", request)
+            test.is_nil(replacement)
+            test.eq(assert(conflict):kind(), errors.CONFLICT)
+            test.eq(assert(conflict):details().code, "idempotency_conflict")
+        end)
+
         test.it("bounds free-form command metadata and schema configuration at admission", function()
             local blob = string.rep("x", 4194305)
             local cases: { { method: string, request: Map } } = {

@@ -33,7 +33,7 @@ local function decode(r: types.Row): (types.Proposal?, error?)
     if err or not decoded then return nil, err end
     r = decoded
     local origin: types.JsonObject = r.origin :: types.JsonObject
-    local items: { types.ApplyItem } = r.items :: { types.ApplyItem }
+    local items = r.items :: { types.CapturedProposalItem }
     local result: types.ApplyResult? = r.result :: types.ApplyResult?
     return { proposal_id = r.proposal_id :: string, source = narrow.text(r.source), origin = origin, items = items,
         base = r.base :: { [string]: integer }, generation = r.generation :: integer,

@@ -990,9 +990,13 @@ The fold persists receipts atomically with projection coverage.
 Successful no-ops append no event: PIM records their result only in
 its receipt store, under the catalog lock with a captured-position and winner
 recheck. A moved position rebuilds the attempt.
-A replay first catches up and consults the PIM store, returning the original
-outcome; a different request under the same key is `CONFLICT /
-idempotency_conflict`. Receipts expire after the catalog event-retention window (currently the catalog
+The catalog and authenticated actor scope each namespace and key. The actor
+participates in the event deduplication marker and request hash. Replay requires
+current catalog access and, for a sourced command, current permission to act
+as the source. PIM catches up before checking that source permission and
+looking up the receipt. It returns the original outcome. A different request
+under the same scoped key returns `CONFLICT / idempotency_conflict`.
+Receipts expire after the catalog event-retention window (currently the catalog
 binding's 90 days); retention removes at most the shared bounded page budget. No-op responses retain an absent domain `seq` and report the
 covering `as_of`. Failed atomic commands create no receipt. Concurrent deliveries
 replay the winner before returning a Core identity conflict. The UI and plugins
@@ -1278,7 +1282,7 @@ Schema boundaries by method (tool inputs equal their contract inputs):
 | Method | Request-level validation | Per-item pipeline decisions |
 |---|---|---|
 | `apply` | object, top-level source/mode/keys and expected schema generation, items list of objects, reference objects with id or sku, operation containers | status, expected version, source sequence, family/term codes, labels, attribute codes, contexts and authored values |
-| `propose` | object, top-level source/origin/provenance/keys, items list of objects, product reference and edit containers | status, attribute codes, contexts and authored values; captures base versions |
+| `propose` | object, optional schema generation and idempotency, items with product references, optional integer versions and edit containers | schema and product fences at submission, status, attribute codes, contexts and authored values |
 | `release` | object, top-level keys, items list of objects, product reference and channel-list structure | missing or malformed expected version and channel codes |
 | `withdraw` | object, top-level keys, items list of objects, product reference and channel-list structure | channel codes |
 | PIM reads, schema operations, `create`, `decide`, `rebuild` | every parameter, including read status and decision enums | no batch-item boundary |
@@ -1697,6 +1701,14 @@ withdrawals. Channel plugins consume the publications feed (§12).
 - `propose` (READ) validates the edits, their source and applicable checks at
   the catalog head, then appends `proposal.submitted`. The fold records the
   review row with the captured product versions and schema generation.
+  Pass `expected_generation` and each item's integer `expect_version` from
+  the reads used to prepare the proposal. When supplied, a stale fence refuses
+  the entire submission with `CONFLICT / schema_generation_conflict` or
+  `CONFLICT / version_conflict`. Omitted fences use the state at submission.
+  With `idempotency`, the first event carries a receipt for the submission.
+  An authorized replay returns the original proposal ID and its submission
+  status `pending`, including after the base changes or the proposal is decided.
+  Read `list_proposals` for current review state.
   Attributes of source-restricted aspects cannot be proposed. Proposal edits
   use the captured product versions for every source, including sequence-ordered
   sources, and leave each source's delivery sequence unchanged.
