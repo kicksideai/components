@@ -2568,3 +2568,10 @@ entries:
     imports:
       test: wippy.test:test
       trim_text: kickside.pim:text
+
+  - name: agent_plugin_cases
+    kind: library.lua
+    source: file://agent_plugin_cases.lua
+    modules: [registry, funcs]
+    imports:
+      test: wippy.test:test

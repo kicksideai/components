@@ -1,0 +1,244 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.compliance
+entries:
+  - name: plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      interface_version: 1
+      title: Supplier compliance
+      description: Tracks supplier certificates and makes approved inventory searchable.
+      settings: app.compliance
+      attachment: app.compliance:attachment
+      seams: [app.compliance:certificate, app.compliance:approved, app.compliance:check, compliance.supplier]
+      tools: [app.compliance:approved_items]
+      config_schema:
+        type: object
+        required: [region]
+        additionalProperties: false
+        properties:
+          region: { type: string, minLength: 2 }
+          crash: { type: boolean }
+      schema: { provider: 'app.compliance:schema' }
+      projections:
+        - { kind: app.compliance:events, input: events, worker_ref: 'func://app.compliance:event_worker', revision: 1, events: [kickside.pim.events:product.created, kickside.pim.events:product.changed] }
+        - { kind: app.compliance:replica, input: state, worker_ref: 'func://app.compliance:state_worker', revision: 1 }
+
+  - name: default_region
+    kind: registry.entry
+    meta: { type: 'kickside.settings:definition' }
+    namespace: app.compliance
+    key: region
+    value_type: string
+    default: EU
+    title: Default compliance region
+    scope: global
+    editable: true
+    visible: true
+
+  - name: attachment
+    kind: contract.binding
+    meta: { class: [pim_test_compliance], placement: { parents: [root], fixed: true } }
+    contracts:
+      - contract: kickside.contract:component
+        methods: { get_status: 'kickside.core.threads:thread_status' }
+      - contract: kickside.contract:deletable
+        context_required: [component_id]
+        methods: { delete: 'app.compliance:delete' }
+
+  - name: certificate
+    kind: registry.entry
+    meta:
+      type: kickside.pim.type
+      title: Supplier certificate
+      form: text
+      indexes: [none, key]
+      functions: { normalize: 'app.compliance:normalize', validate: 'app.compliance:validate' }
+
+  - name: approved
+    kind: registry.entry
+    meta:
+      type: kickside.pim.scope
+      title: Supplier approved
+      table: pim_test_compliance_replica
+      catalog_column: catalog_id
+      product_column: product_id
+      filters:
+        region: { column: region, type: text, ops: [eq, in] }
+
+  - name: schema
+    kind: contract.binding
+    contracts:
+      - contract: kickside.pim:schema_provider
+        methods: { resolve: 'app.compliance:resolve_schema' }
+
+  - name: supplier
+    kind: contract.binding
+    meta: { kind: compliance.supplier, title: Supplier }
+    contracts:
+      - contract: kickside.pim:link_target
+        methods: { resolve: 'app.compliance:resolve_supplier', describe: 'app.compliance:describe_supplier' }
+
+  - name: pack
+    kind: registry.entry
+    meta: { type: kickside.pim.pack, title: Supplier compliance }
+    data: { ui_app: 'app.compliance:catalog_ui' }
+
+  - name: catalog_ui
+    kind: registry.entry
+    meta: { type: kickside.pim.ui.app, title: Supplier compliance, icon: "tabler:shield-check", component: pim-test-compliance, packs: ['app.compliance:pack'] }
+
+  - name: panel
+    kind: registry.entry
+    meta: { type: view.component, title: Supplier compliance, tag_name: pim-test-compliance, base_path: pim-test-compliance, entry_point: panel.js }
+    props: { type: object, properties: { catalog-id: { type: string } } }
+
+  - name: panel_slot
+    kind: registry.entry
+    meta: { type: kickside.pim.ui.panel, plugin: 'app.compliance:plugin', tag: pim-test-compliance, title: Supplier compliance, target: product, access: read, order: 50 }
+
+  - name: certificate_editor
+    kind: registry.entry
+    meta: { type: kickside.pim.ui.editor, plugin: 'app.compliance:plugin', type_ref: 'app.compliance:certificate', tag: pim-test-compliance-certificate }
+
+  - name: supplier_link
+    kind: registry.entry
+    meta: { type: kickside.pim.ui.link, plugin: 'app.compliance:plugin', kind: compliance.supplier, picker: pim-test-compliance-supplier, detail: pim-test-compliance-supplier }
+
+  - name: region_column
+    kind: registry.entry
+    meta: { type: kickside.pim.ui.column, plugin: 'app.compliance:plugin', tag: pim-test-compliance-region, title: Certificate region, aspects: [compliance], access: read, order: 50 }
+
+  - name: audit_action
+    kind: registry.entry
+    meta: { type: kickside.pim.ui.action, plugin: 'app.compliance:plugin', tag: pim-test-compliance-audit, title: Audit certificates, target: catalog, access: admin, order: 50 }
+
+  - name: certificate_component
+    kind: registry.entry
+    meta: { type: view.component, title: Certificate editor, tag_name: pim-test-compliance-certificate, base_path: pim-test-compliance, entry_point: panel.js }
+
+  - name: supplier_component
+    kind: registry.entry
+    meta: { type: view.component, title: Supplier lookup, tag_name: pim-test-compliance-supplier, base_path: pim-test-compliance, entry_point: panel.js }
+
+  - name: region_component
+    kind: registry.entry
+    meta: { type: view.component, title: Certificate region, tag_name: pim-test-compliance-region, base_path: pim-test-compliance, entry_point: panel.js }
+
+  - name: audit_component
+    kind: registry.entry
+    meta: { type: view.component, title: Certificate audit, tag_name: pim-test-compliance-audit, base_path: pim-test-compliance, entry_point: panel.js }
+
+  - name: files
+    kind: fs.directory
+    directory: ./src/compliance/static
+
+  - name: http
+    kind: http.static
+    meta: { server: 'app:gateway' }
+    path: /pim-test-compliance
+    fs: app.compliance:files
+    options: { mime_types: { .js: application/javascript } }
+
+  - name: normalize
+    kind: function.lua
+    source: file://rules.lua
+    method: normalize
+  - name: validate
+    kind: function.lua
+    source: file://rules.lua
+    method: validate
+  - name: resolve_schema
+    kind: function.lua
+    source: file://rules.lua
+    method: schema
+  - name: resolve_supplier
+    kind: function.lua
+    source: file://rules.lua
+    method: resolve
+  - name: describe_supplier
+    kind: function.lua
+    source: file://rules.lua
+    method: describe
+  - name: check
+    kind: function.lua
+    meta: { type: kickside.pim.check }
+    source: file://rules.lua
+    method: check
+    modules: [time, channel]
+
+  - name: state_worker
+    kind: function.lua
+    meta: { type: projection.worker }
+    source: file://worker.lua
+    method: state
+    modules: [sql, contract, security, ctx]
+  - name: event_worker
+    kind: function.lua
+    meta: { type: projection.worker }
+    source: file://worker.lua
+    method: events
+    modules: [sql, contract, security, ctx]
+  - name: delete
+    kind: function.lua
+    source: file://worker.lua
+    method: delete
+    modules: [sql, contract, security, ctx]
+  - name: approved_items
+    kind: function.lua
+    source: file://worker.lua
+    method: approved
+    modules: [sql, contract, security]
+    meta:
+      type: tool
+      title: Approved supplier items
+      llm_alias: ComplianceApprovedItems
+      description: List products with the supplier compliance plugin's approved certificates in the selected region. Requires catalog read.
+      input_schema: '{"type":"object","properties":{"catalog_id":{"type":"string","description":"Catalog with supplier compliance active."},"region":{"type":"string","description":"Region that issued the certificate."}},"required":["catalog_id","region"],"additionalProperties":false}'
+      output_schema: '{"type":"object","properties":{"items":{"type":"array","items":{"type":"object"}}},"required":["items"]}'
+      mcp: { required_scopes: [state.read] }
+
+  - name: read_metadata
+    kind: security.policy
+    groups: [kickside.pim.security:manifest_reader]
+    policy:
+      resources: [app.compliance:state_worker, app.compliance:event_worker]
+      actions: [registry.get]
+      effect: allow
+
+  - name: workers
+    kind: security.policy
+    groups: [wippy.security:process]
+    policy:
+      resources: [app.compliance:state_worker, app.compliance:event_worker, app.compliance:delete]
+      actions: [registry.get, funcs.call]
+      effect: allow
+
+  - name: access
+    kind: security.policy
+    groups: [kickside.security.groups:members]
+    policy:
+      resources: [app.compliance:plugin, app.compliance:attachment, app.compliance:certificate, app.compliance:approved, app.compliance:check, app.compliance:normalize, app.compliance:validate, app.compliance:schema, app.compliance:resolve_schema, app.compliance:supplier, app.compliance:resolve_supplier, app.compliance:describe_supplier, app.compliance:catalog_ui, app.compliance:pack, app.compliance:panel, app.compliance:panel_slot, app.compliance:certificate_editor, app.compliance:supplier_link, app.compliance:region_column, app.compliance:audit_action, app.compliance:certificate_component, app.compliance:supplier_component, app.compliance:region_component, app.compliance:audit_component]
+      actions: [registry.get, registry.find, funcs.call, contract.get, contract.open, contract.call]
+      effect: allow
+
+  - name: tool_access
+    kind: security.policy
+    groups: [kickside.security.groups:members]
+    policy:
+      resources: [app.compliance:approved_items]
+      actions: [registry.get, registry.find, funcs.call]
+      effect: allow
+
+  - name: consumer_plugin_test
+    kind: function.lua
+    source: file://consumer_plugin_test.lua
+    method: run
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    modules: [registry, sql, time, funcs, json, channel, fs]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      agent_cases: app:agent_plugin_cases
+      prune: kickside.core.retention:prune
