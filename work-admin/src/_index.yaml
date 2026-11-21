@@ -137,15 +137,6 @@ entries:
           type: boolean
       required:
       - dirty
-    directory-action:
-      type: object
-      description: Open the create form or application defaults from the embedded rail.
-      properties:
-        name:
-          type: string
-          enum: [create, defaults]
-      required:
-      - name
 - name: defaults_block
   kind: registry.entry
   meta:

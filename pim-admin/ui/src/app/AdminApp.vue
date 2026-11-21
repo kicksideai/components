@@ -68,13 +68,6 @@ function createCatalog() {
   offerDirectOpen = false
   creating.value = true
 }
-async function directoryAction(action: 'create' | 'defaults') {
-  if (action === 'defaults') {
-    if (await mayLeave()) host.navigate('/system/settings')
-    return
-  }
-  if (!selected.value || await backToCatalogs()) createCatalog()
-}
 const catalogMetaId = useId()
 const catalogs = ref<CatalogRow[]>()
 const directoryCount = ref<number>()
@@ -145,7 +138,7 @@ onUnmounted(() => { unsubscribe(); clearTimeout(searchTimer); reads.begin() })
   <main class="kx-shell kx-settings-shell pim-system" :class="{ 'pim-catalog-selected': selected && ready }">
     <ListRail v-if="!selected || !ready" settings class="pim-catalog-picker" title="Catalogs" :count="directoryCount ?? catalogs?.length">
       <template #actions>
-        <SettingsDirectoryActions create-label="Create catalog" @create="directoryAction('create')" @defaults="directoryAction('defaults')" />
+        <SettingsDirectoryActions create-label="Create catalog" @create="createCatalog" @defaults="host.navigate('/system/settings')" />
       </template>
       <template #toolbar>
         <div ref="searchField" class="picker-search">
@@ -177,7 +170,7 @@ onUnmounted(() => { unsubscribe(); clearTimeout(searchTimer); reads.begin() })
     </ListRail>
     <section ref="detail" class="pim-system-main" aria-label="Catalog settings detail" tabindex="-1">
       <kickside-pim-catalog-settings v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" :focus-back="String(focusBack)"
-        :directory-count="directoryCount ?? catalogs?.length" @directory-action="directoryAction($event.detail.name)"
+        :directory-count="directoryCount ?? catalogs?.length"
         @open-catalog-picker="backToCatalogs" @dirty-changed="dirtyChanged" />
       <p v-else-if="selected && loadingSettings" class="kx-loading" role="status">Loading catalog settings…</p>
       <p v-else-if="selected" class="kx-err" role="alert">Catalog settings are unavailable.<Button label="Back to catalogs" severity="secondary" text @click="backToCatalogs" /><Button label="Retry" severity="secondary" outlined @click="loadSettings" /></p>

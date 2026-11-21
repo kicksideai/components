@@ -14,7 +14,6 @@ import LayoutEditor from '../LayoutEditor.vue'
 import HistoryPanel from '../HistoryPanel.vue'
 import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import SettingsDraftActions from '@kickside/ui-kit/SettingsDraftActions.vue'
-import SettingsDirectoryActions from '@kickside/ui-kit/SettingsDirectoryActions.vue'
 import { clone } from '../../state'
 // Schema edits are reviewed and applied together; vocabulary terms save immediately.
 import { computed, nextTick, onUnmounted, ref, useId, watch, type ComponentPublicInstance } from 'vue'
@@ -38,7 +37,7 @@ import { humanLabel } from '../../shared/labels'
 import { presentError, SCHEMA_CONFLICT } from '../../shared/transport'
 
 const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; catalog?: CatalogRow; backLabel?: string; focusBack?: boolean; directoryCount?: number }>()
-const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean]; 'directory-action': [name: 'create' | 'defaults'] }>()
+const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean] }>()
 
 const navigation = {
   General: { question: 'What is this catalog for?', items: [
@@ -519,11 +518,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
   <section class="pim-builder" :class="{ embedded }">
     <div class="pim-section-layout">
       <SettingsRail v-if="allCatalogs || (schema && options)" ref="rail" label="Catalog settings sections" :value="view"
-        :title="embedded ? 'Catalogs' : undefined" :count="directoryCount" :groups="settingsGroups" :leading-item="allCatalogs" @update:value="selectView">
-        <template v-if="embedded" #actions>
-          <SettingsDirectoryActions create-label="Create catalog" @create="emit('directory-action', 'create')" @defaults="emit('directory-action', 'defaults')" />
-        </template>
-      </SettingsRail>
+        :title="embedded ? 'Catalogs' : undefined" :count="directoryCount" :groups="settingsGroups" :leading-item="allCatalogs" @update:value="selectView" />
       <div class="kx-main">
         <section ref="content" class="kx-main-scroll" :aria-label="view">
           <SettingsSectionHead v-if="schema && options" :title="view" :description="questions[view]">

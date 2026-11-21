@@ -1,17 +1,57 @@
-import { defineComponent as te, ref as o, computed as F, watch as Z, openBlock as s, createBlock as Y, withCtx as B, createElementVNode as i, withModifiers as le, toDisplayString as u, createElementBlock as n, Fragment as N, createTextVNode as I, createVNode as v, unref as l, createCommentVNode as b, renderList as Q, onUnmounted as se, useId as oe, onMounted as re, normalizeClass as ie, isRef as ne, nextTick as de } from "vue";
-import { u as ue, e as ce, a as ve } from "./mount-CDzcrCyw.js";
+import { defineComponent as ae, openBlock as s, createElementBlock as r, Fragment as I, createVNode as d, unref as l, withCtx as C, ref as o, computed as M, watch as Z, createBlock as Y, createElementVNode as n, withModifiers as le, toDisplayString as c, createTextVNode as T, createCommentVNode as k, renderList as Q, onUnmounted as se, useId as oe, onMounted as re, normalizeClass as ie, isRef as ne, nextTick as ue } from "vue";
+import { u as de, e as ce, a as ve } from "./mount-CDzcrCyw.js";
 import "pinia";
-import { on as fe, host as ae, define as me } from "@wippy-fe/proxy";
-import K from "primevue/button";
-import ke from "primevue/iconfield";
-import be from "primevue/inputicon";
+import { on as fe, host as te, define as me } from "@wippy-fe/proxy";
+import E from "primevue/button";
+import be from "primevue/iconfield";
+import ke from "primevue/inputicon";
 import X from "primevue/inputtext";
-import { a as J, c as pe, b as ye, w as P, f as ee, _ as he, d as ge, l as _e, e as O, g as we, h as $e } from "./latestRequest-icOSmQHK.js";
-import { Icon as j } from "@iconify/vue";
-import xe from "primevue/selectbutton";
+import { a as J, c as pe, b as ye, w as H, f as ee, _ as he, d as ge, l as _e, e as K, g as we } from "./latestRequest-Cv3QFlsy.js";
+import { Icon as D } from "@iconify/vue";
+import $e from "primevue/selectbutton";
 import Ce from "primevue/toggleswitch";
-import Ve from "primevue/textarea";
-const Be = { class: "work-stack work-tight" }, Se = { class: "work-muted work-small" }, Ue = { class: "work-muted work-small" }, Ae = { class: "work-stack work-tight" }, Le = { class: "work-stack work-tight" }, qe = { class: "work-stack work-tight" }, De = { class: "work-muted work-small" }, Ie = {
+import xe from "primevue/textarea";
+const Ve = /* @__PURE__ */ ae({
+  __name: "SettingsDirectoryActions",
+  props: {
+    createLabel: {}
+  },
+  emits: ["create", "defaults"],
+  setup(x) {
+    return (_, y) => (s(), r(I, null, [
+      d(l(E), {
+        type: "button",
+        text: "",
+        "aria-label": x.createLabel,
+        title: x.createLabel,
+        onClick: y[0] || (y[0] = (V) => _.$emit("create"))
+      }, {
+        icon: C(() => [
+          d(l(D), {
+            icon: "tabler:plus",
+            "aria-hidden": "true"
+          })
+        ]),
+        _: 1
+      }, 8, ["aria-label", "title"]),
+      d(l(E), {
+        type: "button",
+        text: "",
+        "aria-label": "Application defaults",
+        title: "Application defaults",
+        onClick: y[1] || (y[1] = (V) => _.$emit("defaults"))
+      }, {
+        icon: C(() => [
+          d(l(D), {
+            icon: "tabler:settings",
+            "aria-hidden": "true"
+          })
+        ]),
+        _: 1
+      })
+    ], 64));
+  }
+}), Be = { class: "work-stack work-tight" }, Se = { class: "work-muted work-small" }, Le = { class: "work-muted work-small" }, Ue = { class: "work-stack work-tight" }, Ae = { class: "work-stack work-tight" }, qe = { class: "work-stack work-tight" }, De = { class: "work-muted work-small" }, Ie = {
   key: 0,
   class: "work-muted",
   role: "status"
@@ -35,15 +75,15 @@ const Be = { class: "work-stack work-tight" }, Se = { class: "work-muted work-sm
   key: 2,
   class: "kx-err",
   role: "alert"
-}, Pe = { class: "work-dialog-actions" }, He = /* @__PURE__ */ te({
+}, Pe = { class: "work-dialog-actions" }, He = /* @__PURE__ */ ae({
   __name: "CreateBoard",
   props: {
     visible: { type: Boolean }
   },
   emits: ["close", "created"],
-  setup(A, { emit: x }) {
-    const C = A, V = x, g = o(""), c = o(""), p = o("WORK"), k = o(""), y = o(!1), d = o(1), r = o(!1), _ = o(!1), w = o(""), $ = o(""), T = o([]), m = o(""), h = o({}), S = o(/* @__PURE__ */ new Set()), E = {}, R = F(() => {
-      const t = T.value.find((e) => e.id === k.value);
+  setup(x, { emit: _ }) {
+    const y = x, V = _, w = o(""), v = o(""), p = o("WORK"), m = o(""), h = o(!1), u = o(1), i = o(!1), $ = o(!1), B = o(""), S = o(""), N = o([]), f = o(""), g = o({}), L = o(/* @__PURE__ */ new Set()), R = {}, F = M(() => {
+      const t = N.value.find((e) => e.id === m.value);
       return !t || !J(t) ? [] : t.plugins.flatMap((e) => e.config_schema && pe(e.config_schema).length ? [{ id: e.plugin, title: e.title || "Required plugin", schema: e.config_schema }] : []);
     });
     function z(t) {
@@ -51,185 +91,185 @@ const Be = { class: "work-stack work-tight" }, Se = { class: "work-muted work-sm
       if (e) return `${e.message} (Error code: ${e.code})`;
       if (J(t) && t.plugins.some((a) => !a.installed)) return "A required plugin is unavailable.";
     }
-    Z(k, () => {
-      h.value = {}, S.value.clear();
+    Z(m, () => {
+      g.value = {}, L.value.clear();
     });
-    function M(t, e) {
-      e ? S.value.delete(t) : S.value.add(t);
+    function W(t, e) {
+      e ? L.value.delete(t) : L.value.add(t);
     }
-    let U = crypto.randomUUID(), L = "", q = 0;
-    const G = F(() => [{ id: "", title: "Empty board", description: "Set up the fields and process in Board settings.", icon: "tabler:square", version: "", disabled: !1 }, ...T.value.map((t) => {
+    let U = crypto.randomUUID(), A = "", O = 0;
+    const G = M(() => [{ id: "", title: "Empty board", description: "Set up the fields and process in Board settings.", icon: "tabler:square", version: "", disabled: !1 }, ...N.value.map((t) => {
       const e = z(t);
       return { ...t, title: t.title ?? "Unnamed pack", icon: t.icon ?? "tabler:package-off", disabled: !!e, unavailable: e };
-    })]), D = F(() => G.value.find((t) => t.id === k.value)), W = F(() => !!g.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(p.value) && !!D.value && !D.value.disabled && !S.value.size && (d.value === 1 || R.value.every((t) => !Object.keys(ye(t.schema, h.value[t.id] ?? E)).length)));
-    Z(() => C.visible, async (t) => {
-      const e = ++q;
+    })]), j = M(() => G.value.find((t) => t.id === m.value)), P = M(() => !!w.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(p.value) && !!j.value && !j.value.disabled && !L.value.size && (u.value === 1 || F.value.every((t) => !Object.keys(ye(t.schema, g.value[t.id] ?? R)).length)));
+    Z(() => y.visible, async (t) => {
+      const e = ++O;
       if (t) {
-        m.value = "", h.value = {}, S.value.clear(), d.value = 1, w.value = "", $.value = "", g.value = "", c.value = "", p.value = "WORK", k.value = "", y.value = !1, U = crypto.randomUUID(), L = "", T.value = [], _.value = !0;
+        f.value = "", g.value = {}, L.value.clear(), u.value = 1, B.value = "", S.value = "", w.value = "", v.value = "", p.value = "WORK", m.value = "", h.value = !1, U = crypto.randomUUID(), A = "", N.value = [], $.value = !0;
         try {
-          const a = await P.packs();
-          e === q && (T.value = a);
+          const a = await H.packs();
+          e === O && (N.value = a);
         } catch (a) {
-          e === q && ($.value = ee(a, "Could not load packs."));
+          e === O && (S.value = ee(a, "Could not load packs."));
         } finally {
-          e === q && (_.value = !1);
+          e === O && ($.value = !1);
         }
       }
     }, { immediate: !0 });
-    async function H() {
-      if (!W.value || r.value) return;
-      if (d.value === 1) {
-        d.value = 2;
+    async function b() {
+      if (!P.value || i.value) return;
+      if (u.value === 1) {
+        u.value = 2;
         return;
       }
-      r.value = !0, w.value = "";
-      const t = k.value ? { pack: k.value, version: D.value?.version, starter: y.value, ...Object.keys(h.value).length ? { plugin_configs: h.value } : {} } : {}, e = { key_prefix: p.value }, a = JSON.stringify([g.value.trim(), c.value, e, t]);
-      L && L !== a && (U = crypto.randomUUID()), L = a;
+      i.value = !0, B.value = "";
+      const t = m.value ? { pack: m.value, version: j.value?.version, starter: h.value, ...Object.keys(g.value).length ? { plugin_configs: g.value } : {} } : {}, e = { key_prefix: p.value }, a = JSON.stringify([w.value.trim(), v.value, e, t]);
+      A && A !== a && (U = crypto.randomUUID()), A = a;
       try {
-        if (!m.value) {
-          const f = await P.createBoard(g.value.trim(), e, U, t);
-          m.value = f.board_id;
+        if (!f.value) {
+          const q = await H.createBoard(w.value.trim(), e, U, t);
+          f.value = q.board_id;
         }
-        c.value && await P.updateBoard(m.value, { description: c.value }), V("created", m.value), V("close");
-      } catch (f) {
-        w.value = (m.value ? "Board created. Description was not saved. " : "") + ee(f, "Could not save the board.");
+        v.value && await H.updateBoard(f.value, { description: v.value }), V("created", f.value), V("close");
+      } catch (q) {
+        B.value = (f.value ? "Board created. Description was not saved. " : "") + ee(q, "Could not save the board.");
       } finally {
-        r.value = !1;
+        i.value = !1;
       }
     }
     return (t, e) => (s(), Y(he, {
-      visible: A.visible,
+      visible: x.visible,
       label: "New board",
-      busy: r.value,
+      busy: i.value,
       onClose: e[6] || (e[6] = (a) => V("close"))
     }, {
-      default: B(() => [
-        i("form", {
+      default: C(() => [
+        n("form", {
           class: "work-dialog-box",
-          onSubmit: le(H, ["prevent"])
+          onSubmit: le(b, ["prevent"])
         }, [
-          i("header", Be, [
-            i("span", Se, "Step " + u(d.value) + " of 2", 1),
-            i("h2", null, u(d.value === 1 ? "Name your board" : "Choose a pack"), 1),
-            i("p", Ue, u(d.value === 1 ? "Give this work a home and a recognizable item key." : "Packs give your board a starting process and settings you can edit later."), 1)
+          n("header", Be, [
+            n("span", Se, "Step " + c(u.value) + " of 2", 1),
+            n("h2", null, c(u.value === 1 ? "Name your board" : "Choose a pack"), 1),
+            n("p", Le, c(u.value === 1 ? "Give this work a home and a recognizable item key." : "Packs give your board a starting process and settings you can edit later."), 1)
           ]),
-          d.value === 1 ? (s(), n(N, { key: 0 }, [
-            i("label", Ae, [
-              e[7] || (e[7] = I("Title", -1)),
-              v(l(X), {
+          u.value === 1 ? (s(), r(I, { key: 0 }, [
+            n("label", Ue, [
+              e[7] || (e[7] = T("Title", -1)),
+              d(l(X), {
                 id: "board-title",
-                modelValue: g.value,
-                "onUpdate:modelValue": e[0] || (e[0] = (a) => g.value = a),
+                modelValue: w.value,
+                "onUpdate:modelValue": e[0] || (e[0] = (a) => w.value = a),
                 autofocus: "",
                 required: "",
-                disabled: r.value || !!m.value,
+                disabled: i.value || !!f.value,
                 placeholder: "Team delivery"
               }, null, 8, ["modelValue", "disabled"])
             ]),
-            i("label", Le, [
-              e[8] || (e[8] = I("Description", -1)),
-              v(l(Ve), {
+            n("label", Ae, [
+              e[8] || (e[8] = T("Description", -1)),
+              d(l(xe), {
                 id: "board-description",
-                modelValue: c.value,
-                "onUpdate:modelValue": e[1] || (e[1] = (a) => c.value = a),
+                modelValue: v.value,
+                "onUpdate:modelValue": e[1] || (e[1] = (a) => v.value = a),
                 rows: "3",
-                disabled: r.value || !!m.value,
+                disabled: i.value || !!f.value,
                 placeholder: "What does this board help the team deliver?"
               }, null, 8, ["modelValue", "disabled"])
             ]),
-            i("label", qe, [
-              e[9] || (e[9] = I("Item key prefix", -1)),
-              v(l(X), {
+            n("label", qe, [
+              e[9] || (e[9] = T("Item key prefix", -1)),
+              d(l(X), {
                 id: "board-prefix",
                 modelValue: p.value,
                 "onUpdate:modelValue": e[2] || (e[2] = (a) => p.value = a),
                 required: "",
                 pattern: "[A-Z][A-Z0-9]{1,9}",
                 maxlength: "10",
-                disabled: r.value || !!m.value
+                disabled: i.value || !!f.value
               }, null, 8, ["modelValue", "disabled"])
             ]),
-            i("p", De, " Keys look like " + u(p.value || "WORK") + "-1. The prefix must be unique in this installation. ", 1)
-          ], 64)) : (s(), n(N, { key: 1 }, [
-            _.value ? (s(), n("p", Ie, "Loading packs…")) : b("", !0),
-            $.value ? (s(), n("p", Te, u($.value), 1)) : b("", !0),
-            v(l(xe), {
-              modelValue: k.value,
-              "onUpdate:modelValue": e[3] || (e[3] = (a) => k.value = a),
+            n("p", De, " Keys look like " + c(p.value || "WORK") + "-1. The prefix must be unique in this installation. ", 1)
+          ], 64)) : (s(), r(I, { key: 1 }, [
+            $.value ? (s(), r("p", Ie, "Loading packs…")) : k("", !0),
+            S.value ? (s(), r("p", Te, c(S.value), 1)) : k("", !0),
+            d(l($e), {
+              modelValue: m.value,
+              "onUpdate:modelValue": e[3] || (e[3] = (a) => m.value = a),
               class: "work-pack-choices",
               options: G.value,
               optionLabel: "title",
               optionValue: "id",
               optionDisabled: "disabled",
               allowEmpty: !1,
-              disabled: r.value || !!m.value,
+              disabled: i.value || !!f.value,
               "aria-label": "Board pack"
             }, {
-              option: B(({ option: a }) => [
-                i("span", Ee, [
-                  i("span", Ne, [
-                    v(l(j), {
+              option: C(({ option: a }) => [
+                n("span", Ee, [
+                  n("span", Ne, [
+                    d(l(D), {
                       icon: a.icon,
                       "aria-hidden": "true"
                     }, null, 8, ["icon"]),
-                    i("strong", null, u(a.title), 1),
-                    a.version ? (s(), n("span", Re, u(a.version), 1)) : b("", !0)
+                    n("strong", null, c(a.title), 1),
+                    a.version ? (s(), r("span", Re, c(a.version), 1)) : k("", !0)
                   ]),
-                  i("span", Oe, u(a.description), 1),
-                  a.disabled ? (s(), n("span", je, u(a.unavailable), 1)) : b("", !0)
+                  n("span", Oe, c(a.description), 1),
+                  a.disabled ? (s(), r("span", je, c(a.unavailable), 1)) : k("", !0)
                 ])
               ]),
               _: 1
             }, 8, ["modelValue", "options", "disabled"]),
-            k.value ? (s(), n("label", Fe, [
-              v(l(Ce), {
-                modelValue: y.value,
-                "onUpdate:modelValue": e[4] || (e[4] = (a) => y.value = a),
-                disabled: r.value || !!m.value,
+            m.value ? (s(), r("label", Fe, [
+              d(l(Ce), {
+                modelValue: h.value,
+                "onUpdate:modelValue": e[4] || (e[4] = (a) => h.value = a),
+                disabled: i.value || !!f.value,
                 "aria-label": "Include starter items"
               }, null, 8, ["modelValue", "disabled"]),
-              e[10] || (e[10] = I("Include starter items", -1))
-            ])) : b("", !0),
-            R.value.length ? (s(), n("fieldset", {
+              e[10] || (e[10] = T("Include starter items", -1))
+            ])) : k("", !0),
+            F.value.length ? (s(), r("fieldset", {
               key: 3,
-              disabled: r.value || !!m.value,
+              disabled: i.value || !!f.value,
               class: "work-settings-fieldset work-stack"
             }, [
-              (s(!0), n(N, null, Q(R.value, (a) => (s(), n("section", {
-                key: k.value + ":" + a.id,
+              (s(!0), r(I, null, Q(F.value, (a) => (s(), r("section", {
+                key: m.value + ":" + a.id,
                 class: "work-settings-card work-stack work-tight"
               }, [
-                i("h3", null, u(a.title), 1),
-                v(ge, {
+                n("h3", null, c(a.title), 1),
+                d(ge, {
                   schema: a.schema,
-                  "model-value": h.value[a.id] ?? E,
-                  disabled: r.value || !!m.value,
-                  "onUpdate:modelValue": (f) => h.value[a.id] = f,
-                  onValidity: (f) => M(a.id, f)
+                  "model-value": g.value[a.id] ?? R,
+                  disabled: i.value || !!f.value,
+                  "onUpdate:modelValue": (q) => g.value[a.id] = q,
+                  onValidity: (q) => W(a.id, q)
                 }, null, 8, ["schema", "model-value", "disabled", "onUpdate:modelValue", "onValidity"])
               ]))), 128))
-            ], 8, Ke)) : b("", !0),
-            i("div", Me, [
-              i("strong", null, u(g.value), 1),
-              c.value ? (s(), n("p", We, u(c.value), 1)) : b("", !0),
-              i("span", Ze, u(p.value) + "-1", 1),
-              i("p", ze, u(D.value?.title), 1)
+            ], 8, Ke)) : k("", !0),
+            n("div", Me, [
+              n("strong", null, c(w.value), 1),
+              v.value ? (s(), r("p", We, c(v.value), 1)) : k("", !0),
+              n("span", Ze, c(p.value) + "-1", 1),
+              n("p", ze, c(j.value?.title), 1)
             ])
           ], 64)),
-          w.value ? (s(), n("p", Ge, u(w.value), 1)) : b("", !0),
-          i("footer", Pe, [
-            v(l(K), {
-              label: d.value === 1 ? "Cancel" : "Back",
+          B.value ? (s(), r("p", Ge, c(B.value), 1)) : k("", !0),
+          n("footer", Pe, [
+            d(l(E), {
+              label: u.value === 1 ? "Cancel" : "Back",
               severity: "secondary",
-              disabled: r.value || !!m.value,
-              onClick: e[5] || (e[5] = (a) => d.value === 1 ? V("close") : d.value = 1),
+              disabled: i.value || !!f.value,
+              onClick: e[5] || (e[5] = (a) => u.value === 1 ? V("close") : u.value = 1),
               outlined: ""
             }, null, 8, ["label", "disabled"]),
-            v(l(K), {
+            d(l(E), {
               type: "submit",
-              label: d.value === 1 ? "Continue" : m.value ? "Save description" : "Create board",
-              loading: r.value,
-              disabled: !W.value || r.value
+              label: u.value === 1 ? "Continue" : f.value ? "Save description" : "Create board",
+              loading: i.value,
+              disabled: !P.value || i.value
             }, null, 8, ["label", "loading", "disabled"])
           ])
         ], 32)
@@ -239,30 +279,30 @@ const Be = { class: "work-stack work-tight" }, Se = { class: "work-muted work-sm
   }
 });
 function Je() {
-  const A = o([]), x = o(!0), C = o(""), V = o(""), g = o(!1), c = F(() => A.value.filter((d) => `${d.title} ${d.description ?? ""} ${d.key_prefix ?? ""}`.toLocaleLowerCase().includes(V.value.trim().toLocaleLowerCase()))), p = _e();
-  async function k(d = !1) {
-    const r = p();
-    d && (x.value = !0, C.value = "");
+  const x = o([]), _ = o(!0), y = o(""), V = o(""), w = o(!1), v = M(() => x.value.filter((u) => `${u.title} ${u.description ?? ""} ${u.key_prefix ?? ""}`.toLocaleLowerCase().includes(V.value.trim().toLocaleLowerCase()))), p = _e();
+  async function m(u = !1) {
+    const i = p();
+    u && (_.value = !0, y.value = "");
     try {
-      const _ = await P.boards();
-      if (!r()) return;
-      A.value = _, g.value = !0, C.value = "";
-    } catch (_) {
-      r() && (C.value = ee(_, "Could not load boards."));
+      const $ = await H.boards();
+      if (!i()) return;
+      x.value = $, w.value = !0, y.value = "";
+    } catch ($) {
+      i() && (y.value = ee($, "Could not load boards."));
     } finally {
-      r() && (x.value = !1);
+      i() && (_.value = !1);
     }
   }
-  const y = /* @__PURE__ */ new Map();
-  return Z(A, (d) => {
-    for (const [r, _] of y) d.some((w) => w.board_id === r) || (_(), y.delete(r));
-    for (const r of d) y.has(r.board_id) || y.set(r.board_id, fe(`component.${r.board_id}`, () => {
-      k();
+  const h = /* @__PURE__ */ new Map();
+  return Z(x, (u) => {
+    for (const [i, $] of h) u.some((B) => B.board_id === i) || ($(), h.delete(i));
+    for (const i of u) h.has(i.board_id) || h.set(i.board_id, fe(`component.${i.board_id}`, () => {
+      m();
     }));
-  }), ue(k), se(() => {
+  }), de(m), se(() => {
     p();
-    for (const d of y.values()) d();
-  }), { boards: A, loading: x, error: C, search: V, visibleBoards: c, hasLoaded: g, load: k };
+    for (const u of h.values()) u();
+  }), { boards: x, loading: _, error: y, search: V, visibleBoards: v, hasLoaded: w, load: m };
 }
 const Ye = {
   key: 0,
@@ -286,243 +326,235 @@ const Ye = {
   key: 2,
   class: "kx-err",
   role: "alert"
-}, da = {
+}, ua = {
   key: 3,
   class: "kx-empty"
-}, ua = { class: "kx-empty-title" }, ca = { class: "kx-empty-sub" }, va = /* @__PURE__ */ te({
+}, da = { class: "kx-empty-title" }, ca = { class: "kx-empty-sub" }, va = /* @__PURE__ */ ae({
   __name: "AdminApp",
-  setup(A) {
-    const x = o(!1), C = o(!1);
+  setup(x) {
+    const _ = o(!1), y = o(!1);
     async function V() {
-      if (C.value) return !1;
-      if (!x.value) return !0;
-      C.value = !0;
+      if (y.value) return !1;
+      if (!_.value) return !0;
+      y.value = !0;
       try {
-        return await ae.confirm({ header: "Discard changes?", message: "Your unsaved board settings will be discarded.", acceptLabel: "Discard", rejectLabel: "Keep editing" });
+        return await te.confirm({ header: "Discard changes?", message: "Your unsaved board settings will be discarded.", acceptLabel: "Discard", rejectLabel: "Keep editing" });
       } finally {
-        C.value = !1;
+        y.value = !1;
       }
     }
-    const g = o(!1), c = o(""), p = o(""), k = o(!1), y = o(!1), d = o(!0), r = o(), _ = o(), w = o(), { boards: $, loading: T, error: m, search: h, visibleBoards: S, hasLoaded: E, load: R } = Je(), z = oe(), M = F(() => [
-      { heading: "Available", boards: S.value.filter((t) => O(t.access)) },
-      { heading: "Admin access required", boards: S.value.filter((t) => !O(t.access)) }
-    ].filter((t) => t.boards.length));
+    const w = o(!1), v = o(""), p = o(""), m = o(!1), h = o(!1), u = o(!0), i = o(), $ = o(), B = o(), { boards: S, loading: N, error: f, search: g, visibleBoards: L, hasLoaded: R, load: F } = Je(), z = oe(), W = M(() => [
+      { heading: "Available", boards: L.value.filter((b) => K(b.access)) },
+      { heading: "Admin access required", boards: L.value.filter((b) => !K(b.access)) }
+    ].filter((b) => b.boards.length));
     let U = !0;
-    Z(h, () => {
+    Z(g, () => {
       U = !1;
     });
-    function L(t, e = !0) {
-      U = !1, g.value = e, e && r.value?.focus({ preventScroll: !0 }), p.value = c.value = t;
+    function A(b, t = !0) {
+      U = !1, w.value = t, t && i.value?.focus({ preventScroll: !0 }), p.value = v.value = b;
     }
-    async function q() {
-      return await V() ? (x.value = !1, c.value = "", await de(), (_.value?.querySelector('[aria-current="true"]') ?? w.value?.querySelector("input"))?.focus(), !0) : !1;
+    async function O() {
+      return await V() ? (_.value = !1, v.value = "", await ue(), ($.value?.querySelector('[aria-current="true"]') ?? B.value?.querySelector("input"))?.focus(), !0) : !1;
     }
     function G() {
-      U = !1, k.value = !0;
+      U = !1, m.value = !0;
     }
-    async function D(t) {
-      if (t === "defaults") {
-        await V() && ae.navigate("/system/settings");
-        return;
-      }
-      (!c.value || await q()) && G();
-    }
-    Z($, (t) => {
-      if (p.value && !t.some((a) => a.board_id === p.value && O(a.access)) && (p.value = c.value = "", x.value = !1), !U) return;
+    Z(S, (b) => {
+      if (p.value && !b.some((e) => e.board_id === p.value && K(e.access)) && (p.value = v.value = "", _.value = !1), !U) return;
       U = !1;
-      const e = t[0];
-      t.length === 1 && e && O(e.access) && L(e.board_id, !1);
+      const t = b[0];
+      b.length === 1 && t && K(t.access) && A(t.board_id, !1);
     });
-    async function W() {
-      d.value = !0;
+    async function j() {
+      u.value = !0;
       try {
-        y.value = await ce("kickside-work-board-settings");
+        h.value = await ce("kickside-work-board-settings");
       } finally {
-        d.value = !1;
+        u.value = !1;
       }
     }
-    re(W);
-    async function H(t) {
-      k.value = !1, await R(), L(t);
+    re(j);
+    async function P(b) {
+      m.value = !1, await F(), A(b);
     }
-    return (t, e) => (s(), n("main", {
-      class: ie(["kx-shell kx-settings-shell work-admin-shell", { "work-board-selected": c.value && y.value }])
+    return (b, t) => (s(), r("main", {
+      class: ie(["kx-shell kx-settings-shell work-admin-shell", { "work-board-selected": v.value && h.value }])
     }, [
-      !c.value || !y.value ? (s(), Y(we, {
+      !v.value || !h.value ? (s(), Y(we, {
         key: 0,
         settings: "",
         class: "work-board-directory",
         title: "Boards",
-        count: l(E) ? l($).length : void 0
+        count: l(R) ? l(S).length : void 0
       }, {
-        actions: B(() => [
-          v($e, {
+        actions: C(() => [
+          d(Ve, {
             "create-label": "Create board",
-            onCreate: e[0] || (e[0] = (a) => D("create")),
-            onDefaults: e[1] || (e[1] = (a) => D("defaults"))
+            onCreate: G,
+            onDefaults: t[0] || (t[0] = (e) => l(te).navigate("/system/settings"))
           })
         ]),
-        toolbar: B(() => [
-          i("div", {
+        toolbar: C(() => [
+          n("div", {
             ref_key: "searchField",
-            ref: w,
+            ref: B,
             class: "picker-search"
           }, [
-            v(l(ke), null, {
-              default: B(() => [
-                v(l(be), null, {
-                  default: B(() => [
-                    v(l(j), {
+            d(l(be), null, {
+              default: C(() => [
+                d(l(ke), null, {
+                  default: C(() => [
+                    d(l(D), {
                       icon: "tabler:search",
                       "aria-hidden": "true"
                     })
                   ]),
                   _: 1
                 }),
-                v(l(X), {
+                d(l(X), {
                   type: "search",
-                  modelValue: l(h),
-                  "onUpdate:modelValue": e[2] || (e[2] = (a) => ne(h) ? h.value = a : null),
+                  modelValue: l(g),
+                  "onUpdate:modelValue": t[1] || (t[1] = (e) => ne(g) ? g.value = e : null),
                   class: "picker-search-input",
                   "aria-label": "Search boards",
                   placeholder: "Search boards…"
                 }, null, 8, ["modelValue"]),
-                l(h) ? (s(), Y(l(K), {
+                l(g) ? (s(), Y(l(E), {
                   key: 0,
                   type: "button",
                   text: "",
                   severity: "secondary",
                   class: "picker-search-clear",
                   "aria-label": "Clear search",
-                  onClick: e[3] || (e[3] = (a) => {
-                    h.value = "", w.value?.querySelector("input")?.focus();
+                  onClick: t[2] || (t[2] = (e) => {
+                    g.value = "", B.value?.querySelector("input")?.focus();
                   })
                 }, {
-                  icon: B(() => [
-                    v(l(j), {
+                  icon: C(() => [
+                    d(l(D), {
                       icon: "tabler:x",
                       "aria-hidden": "true"
                     })
                   ]),
                   _: 1
-                })) : b("", !0)
+                })) : k("", !0)
               ]),
               _: 1
             })
           ], 512)
         ]),
-        default: B(() => [
-          l(T) ? (s(), n("p", Ye, "Loading boards…")) : l(m) ? (s(), n("div", Qe, [
-            i("p", Xe, u(l(m)), 1),
-            v(l(K), {
+        default: C(() => [
+          l(N) ? (s(), r("p", Ye, "Loading boards…")) : l(f) ? (s(), r("div", Qe, [
+            n("p", Xe, c(l(f)), 1),
+            d(l(E), {
               label: "Retry",
               severity: "secondary",
               outlined: "",
-              onClick: e[4] || (e[4] = (a) => l(R)(!0))
+              onClick: t[3] || (t[3] = (e) => l(F)(!0))
             }, {
-              icon: B(() => [
-                v(l(j), {
+              icon: C(() => [
+                d(l(D), {
                   icon: "tabler:refresh",
                   "aria-hidden": "true"
                 })
               ]),
               _: 1
             })
-          ])) : b("", !0),
-          M.value.length ? (s(), n("ul", {
+          ])) : k("", !0),
+          W.value.length ? (s(), r("ul", {
             key: 2,
             ref_key: "list",
-            ref: _,
+            ref: $,
             class: "picker-list"
           }, [
-            (s(!0), n(N, null, Q(M.value, (a) => (s(), n("li", {
-              key: a.heading
+            (s(!0), r(I, null, Q(W.value, (e) => (s(), r("li", {
+              key: e.heading
             }, [
-              M.value.length > 1 || a.heading !== "Available" ? (s(), n("h2", ea, u(a.heading), 1)) : b("", !0),
-              i("ul", aa, [
-                (s(!0), n(N, null, Q(a.boards, (f) => (s(), n("li", {
-                  key: f.board_id
+              W.value.length > 1 || e.heading !== "Available" ? (s(), r("h2", ea, c(e.heading), 1)) : k("", !0),
+              n("ul", aa, [
+                (s(!0), r(I, null, Q(e.boards, (a) => (s(), r("li", {
+                  key: a.board_id
                 }, [
-                  i("button", {
+                  n("button", {
                     type: "button",
                     class: "picker-row work-rail-row",
-                    "aria-label": "Settings for " + (f.title || "Untitled board"),
-                    "aria-describedby": l(z) + "-" + f.board_id,
-                    "aria-current": p.value === f.board_id ? "true" : void 0,
-                    disabled: !l(O)(f.access),
-                    onClick: (ma) => L(f.board_id)
+                    "aria-label": "Settings for " + (a.title || "Untitled board"),
+                    "aria-describedby": l(z) + "-" + a.board_id,
+                    "aria-current": p.value === a.board_id ? "true" : void 0,
+                    disabled: !l(K)(a.access),
+                    onClick: (q) => A(a.board_id)
                   }, [
-                    i("span", la, u(f.title || "Untitled board"), 1),
-                    i("span", {
-                      id: l(z) + "-" + f.board_id,
+                    n("span", la, c(a.title || "Untitled board"), 1),
+                    n("span", {
+                      id: l(z) + "-" + a.board_id,
                       class: "work-sr-only"
                     }, [
-                      f.key_prefix ? (s(), n(N, { key: 0 }, [
-                        I(u(f.key_prefix) + " · ", 1)
-                      ], 64)) : b("", !0),
-                      I(u(f.open_count ?? 0) + "/" + u(f.item_count ?? 0) + " open", 1),
-                      l(O)(f.access) ? b("", !0) : (s(), n(N, { key: 1 }, [
-                        I(" · Admin access required")
+                      a.key_prefix ? (s(), r(I, { key: 0 }, [
+                        T(c(a.key_prefix) + " · ", 1)
+                      ], 64)) : k("", !0),
+                      T(c(a.open_count ?? 0) + "/" + c(a.item_count ?? 0) + " open", 1),
+                      l(K)(a.access) ? k("", !0) : (s(), r(I, { key: 1 }, [
+                        T(" · Admin access required")
                       ], 64))
                     ], 8, sa)
                   ], 8, ta)
                 ]))), 128))
               ])
             ]))), 128))
-          ], 512)) : b("", !0),
-          l(E) && !l(T) && !l(m) && !l(S).length ? (s(), n("p", oa, u(l($).length ? "No boards match. Try another name or key." : "Create a board or ask a board administrator to grant you access."), 1)) : b("", !0)
+          ], 512)) : k("", !0),
+          l(R) && !l(N) && !l(f) && !l(L).length ? (s(), r("p", oa, c(l(S).length ? "No boards match. Try another name or key." : "Create a board or ask a board administrator to grant you access."), 1)) : k("", !0)
         ]),
         _: 1
-      }, 8, ["count"])) : b("", !0),
-      i("section", {
+      }, 8, ["count"])) : k("", !0),
+      n("section", {
         ref_key: "detail",
-        ref: r,
+        ref: i,
         class: "work-admin-main",
         "aria-label": "Board settings detail",
         tabindex: "-1"
       }, [
-        c.value && y.value ? (s(), n("kickside-work-board-settings", {
-          key: c.value,
-          "board-id": c.value,
+        v.value && h.value ? (s(), r("kickside-work-board-settings", {
+          key: v.value,
+          "board-id": v.value,
           embedded: "true",
-          "focus-back": String(g.value),
-          "directory-count": l(E) ? l($).length : void 0,
-          onDirectoryAction: e[5] || (e[5] = (a) => D(a.detail.name)),
-          onBackToBoards: q,
-          onDirtyChange: e[6] || (e[6] = (a) => x.value = a.detail.dirty)
-        }, null, 40, ra)) : c.value && d.value ? (s(), n("p", ia, "Loading board settings…")) : c.value ? (s(), n("p", na, [
-          e[8] || (e[8] = I("Board settings are unavailable.", -1)),
-          v(l(K), {
+          "focus-back": String(w.value),
+          "directory-count": l(R) ? l(S).length : void 0,
+          onBackToBoards: O,
+          onDirtyChange: t[4] || (t[4] = (e) => _.value = e.detail.dirty)
+        }, null, 40, ra)) : v.value && u.value ? (s(), r("p", ia, "Loading board settings…")) : v.value ? (s(), r("p", na, [
+          t[6] || (t[6] = T("Board settings are unavailable.", -1)),
+          d(l(E), {
             label: "Back to boards",
             severity: "secondary",
             text: "",
-            onClick: q
+            onClick: O
           }),
-          v(l(K), {
+          d(l(E), {
             label: "Reload settings",
             severity: "secondary",
             outlined: "",
-            onClick: W
+            onClick: j
           }, {
-            icon: B(() => [
-              v(l(j), { icon: "tabler:refresh" })
+            icon: C(() => [
+              d(l(D), { icon: "tabler:refresh" })
             ]),
             _: 1
           })
-        ])) : l(E) && !l(m) ? (s(), n("div", da, [
-          v(l(j), {
+        ])) : l(R) && !l(f) ? (s(), r("div", ua, [
+          d(l(D), {
             class: "kx-empty-ico",
             icon: "tabler:adjustments",
             "aria-hidden": "true"
           }),
-          i("h2", ua, u(l($).length ? "Choose a board" : "No boards yet"), 1),
-          i("p", ca, u(l($).length ? "Select a board to manage its items, workflow, access and plugins." : "Create a board to set up its items, workflow, access and plugins."), 1)
-        ])) : b("", !0)
+          n("h2", da, c(l(S).length ? "Choose a board" : "No boards yet"), 1),
+          n("p", ca, c(l(S).length ? "Select a board to manage its items, workflow, access and plugins." : "Create a board to set up its items, workflow, access and plugins."), 1)
+        ])) : k("", !0)
       ], 512),
-      v(He, {
-        visible: k.value,
-        onClose: e[7] || (e[7] = (a) => k.value = !1),
-        onCreated: H
+      d(He, {
+        visible: m.value,
+        onClose: t[5] || (t[5] = (e) => m.value = !1),
+        onCreated: P
       }, null, 8, ["visible"])
     ], 2));
   }

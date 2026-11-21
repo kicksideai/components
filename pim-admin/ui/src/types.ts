@@ -134,5 +134,4 @@ export interface CatalogSettingsEvents {
   navigate: { route: string }
   'dirty-changed': { dirty: boolean }
   'open-catalog-picker': Record<string, never>
-  'directory-action': { name: 'create' | 'defaults' }
 }

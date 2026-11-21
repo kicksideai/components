@@ -3,9 +3,9 @@
 import { computed, provide } from 'vue'
 import { columnLabels, columnWidths, definitionColumns, type DefinitionColumn } from './definitions'
 
-const props = withDefaults(defineProps<{ count: number; columns?: DefinitionColumn[] }>(), { columns: () => ['code'] })
+const props = withDefaults(defineProps<{ count: number; columns?: DefinitionColumn[]; showActions?: boolean }>(), { columns: () => ['code'] })
 provide(definitionColumns, computed(() => props.columns))
-const template = computed(() => ['48px', 'minmax(160px, 1.4fr)', ...props.columns.map(column => columnWidths[column]), '80px'].join(' '))
+const template = computed(() => ['48px', 'minmax(160px, 1.4fr)', ...props.columns.map(column => columnWidths[column]), props.showActions ? '100px' : '80px'].join(' '))
 </script>
 <template>
   <section class="form pim-definition-list" :style="{ '--pim-definition-columns': template }">
@@ -13,7 +13,7 @@ const template = computed(() => ['48px', 'minmax(160px, 1.4fr)', ...props.column
     <div class="pim-definition-scroll" tabindex="0" aria-label="Definitions">
       <div class="pim-definition-grid">
         <div v-if="count > 3" class="pim-definition-columns" aria-hidden="true">
-          <span></span><span>Name</span><span v-for="column in columns" :key="column" :class="'pim-definition-' + column">{{ columnLabels[column] }}</span><span></span>
+          <span></span><span>Name</span><span v-for="column in columns" :key="column" :class="'pim-definition-' + column">{{ columnLabels[column] }}</span><span class="pim-definition-actions-heading">{{ showActions ? 'Actions' : '' }}</span>
         </div>
         <slot />
       </div>

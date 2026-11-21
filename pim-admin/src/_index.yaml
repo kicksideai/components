@@ -119,15 +119,6 @@ entries:
           type: string
       required:
       - route
-    directory-action:
-      type: object
-      description: Open the create form or application defaults from the embedded rail.
-      properties:
-        name:
-          type: string
-          enum: [create, defaults]
-      required:
-      - name
 - name: settings_tab
   kind: registry.entry
   meta:

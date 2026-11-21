@@ -24,7 +24,6 @@ import RelationsEditor from './RelationsEditor.vue'
 import PluginsEditor from './PluginsEditor.vue'
 import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import SettingsDraftActions from '@kickside/ui-kit/SettingsDraftActions.vue'
-import SettingsDirectoryActions from '@kickside/ui-kit/SettingsDirectoryActions.vue'
 import BoardAccessSettings from './BoardAccessSettings.vue'
 import GeneralSettings from './GeneralSettings.vue'
 import { stateTitle } from './process'
@@ -32,7 +31,7 @@ import SchemaReview from './SchemaReview.vue'
 import PackReview from './PackReview.vue'
 import { availablePack, planUpgrade, upgradeRequest, type AvailablePack, type PackPlan, type PackRequest } from '../../packs'
 const props = defineProps<{ boardId: string; embedded?: boolean; focusBack?: boolean; directoryCount?: number }>()
-const emit = defineEmits<{ 'dirty-change': [dirty: boolean]; 'directory-action': [name: 'create' | 'defaults'] }>()
+const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
 const go = useNavigate()
 const draftForm = useId()
 const pane = ref<HTMLElement>()
@@ -329,11 +328,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
   <section class="work-settings-shell work-ia" :class="{ 'work-embedded': embedded }">
     <div class="work-section-layout">
       <SettingsRail ref="rail" label="Board settings sections" :value="tab" :title="embedded ? 'Boards' : undefined" :count="directoryCount"
-        :groups="settingsGroups" :leading-item="allBoards" @update:value="selectSection">
-        <template v-if="embedded" #actions>
-          <SettingsDirectoryActions create-label="Create board" @create="emit('directory-action', 'create')" @defaults="emit('directory-action', 'defaults')" />
-        </template>
-      </SettingsRail>
+        :groups="settingsGroups" :leading-item="allBoards" @update:value="selectSection" />
       <div class="kx-main">
         <div ref="pane" class="kx-main-scroll work-settings-content" role="region" :aria-label="tab">
           <SettingsSectionHead v-if="authorized && schema" :title="tab" :description="sectionDescriptions[tab]">
