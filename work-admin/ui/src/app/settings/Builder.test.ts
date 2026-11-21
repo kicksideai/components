@@ -74,7 +74,7 @@ it('clears a stored board override and a limit on a removed state in their own s
   await button(workflow, 'Clear limit for removed state 1').trigger('click')
   expect(draft.policy!.wip!.removed).toBeUndefined()
   workflow.unmount()
-  const general = mount(GeneralSettings, { props: { draft, schema: schema(), active: false, countsError: false, draftForm: 'draft', disabled: false, canUpgrade: false, canInstall: false } })
+  const general = mount(GeneralSettings, { props: { draft, schema: schema(), active: false, draftForm: 'draft', disabled: false, canUpgrade: false, canInstall: false } })
   await button(general, 'Use default for change history retention').trigger('click')
   expect(draft.policy!.audit_days).toBeUndefined()
   general.unmount()

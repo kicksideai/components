@@ -22,9 +22,6 @@ import ProcessEditor from './ProcessEditor.vue'
 import ProcessMigration from './ProcessMigration.vue'
 import RelationsEditor from './RelationsEditor.vue'
 import PluginsEditor from './PluginsEditor.vue'
-import Tabs from 'primevue/tabs'
-import TabList from 'primevue/tablist'
-import Tab from 'primevue/tab'
 import SettingsActions from './SettingsActions.vue'
 import SettingsHead from './SettingsHead.vue'
 import SectionSummary from './SectionSummary.vue'
@@ -39,14 +36,12 @@ const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
 const go = useNavigate()
 const draftForm = useId()
 const pane = ref<HTMLElement>()
-const panelId = (section: string) => draftForm + '-' + section.toLowerCase().replaceAll(' ', '-')
-const tabId = (section: string) => panelId(section) + '-tab'
 const head = ref<InstanceType<typeof SettingsHead>>()
 const grantsVersion = ref(0)
 function shared() { grantsVersion.value++; void load() }
 let resetGeneration: number | undefined, resetDraft = ''
 const draftSnapshot = () => JSON.stringify([request.value, configs.value, packRequest.value, [...invalid.value]])
-type Section = 'General' | 'Items' | 'Workflow' | 'Access' | 'Plugins'
+type Section = 'General' | 'Item types' | 'Fields' | 'Links' | 'Workflow' | 'Access' | 'Plugins'
 const allBoards = computed(() => ({
   value: 'all-boards',
   label: props.embedded ? 'All boards' : 'Back to board',
@@ -58,7 +53,9 @@ watch(rail, value => {
 }, { flush: 'post', once: true })
 const sectionGroups: SettingsRailGroup[] = [
   { heading: 'Board setup', items: [
-    { value: 'Items', label: 'Items', icon: 'tabler:list-details' },
+    { value: 'Item types', label: 'Item types', icon: 'tabler:list-details' },
+    { value: 'Fields', label: 'Fields', icon: 'tabler:forms' },
+    { value: 'Links', label: 'Links', icon: 'tabler:link' },
     { value: 'Workflow', label: 'Workflow', icon: 'tabler:route' },
   ] },
   { heading: 'Management', items: [
@@ -73,26 +70,18 @@ function selectSection(section: string) {
     tab.value = section as Section
   }
 }
-const itemViews = ['Item types', 'Fields', 'Links'] as const
-const itemView = ref<typeof itemViews[number]>('Item types')
-const itemDescriptions = {
-  'Item types': 'What kinds of work can this board track?',
-  Fields: 'What information can items capture?',
-  Links: 'How can items relate to each other?',
-}
-const sectionDescriptions = computed(() => ({
-  General: 'What is this board for?',
-  Items: itemDescriptions[itemView.value],
+const sectionDescriptions: Record<Section, string> = {
+  General: 'Manage the board name, item key prefix and app.',
+  'Item types': 'Choose the fields, parent relationships and workflow for each kind of work.',
+  Fields: 'Choose what information people can capture on items.',
+  Links: 'Show relationships on both items, such as “Blocks” and “Blocked by.”',
   Workflow: 'How does work move?',
   Access: 'Who can use this board?',
-  Plugins: 'What can this board do?',
-}))
+  Plugins: 'Choose which plugins this board uses.',
+}
 const fieldType = ref('')
 const reviewOpen = ref(false), reviewError = ref(''), reviewOpener = ref<HTMLElement>()
-const openedItems = ref(new Set<typeof itemViews[number]>(['Item types']))
-watch(itemView, value => openedItems.value.add(value))
-watch([tab, itemView], () => pane.value?.scrollTo({ top: 0 }))
-function showFields(type: string) { fieldType.value = type; itemView.value = 'Fields' }
+watch(tab, () => pane.value?.scrollTo({ top: 0 }))
 function closeReview() { reviewOpen.value = false; reviewError.value = ''; confirmedRenames.value = false }
 function openReview(opener?: HTMLElement) {
   if (!dirty.value || !validForm() || invalid.value.size) return
@@ -105,27 +94,11 @@ const visited = ref(new Set<Section>(['General']))
 watch(tab, value => visited.value.add(value))
 const schema = ref<Schema>(), latest = ref<Schema>(), board = ref<BoardRow>(), draft = ref<Declaration>({}), configs = ref<PluginConfigs>({})
 const options = ref<AdminOptions>(), authorized = ref(false), loading = ref(true), busy = ref(false), error = ref(''), saved = ref('')
-const itemTypes = computed(() => draft.value.item_types ?? [])
-const fields = computed(() => draft.value.fields ?? [])
-const links = computed(() => draft.value.relation_types ?? [])
 const processes = computed(() => draft.value.processes ?? [])
-const enabledPlugins = computed(() => draft.value.plugins?.length ?? 0)
-const installedPlugins = computed(() => options.value?.schema_options.plugins.filter(plugin => plugin.installed).length ?? 0)
-const unusedFields = computed(() => fields.value.filter(field => !itemTypes.value.some(type => type.fields.includes(field.code))).length)
 const settingsGroups = computed(() => authorized.value && schema.value ? [
   { heading: board.value?.title || 'Board settings', items: [{ value: 'General', label: 'General', icon: 'tabler:settings' }] },
   ...sectionGroups,
 ] : [])
-const itemFacts = computed(() => {
-  switch (itemView.value) {
-    case 'Item types': return [itemTypes.value.length + (itemTypes.value.length === 1 ? ' item type' : ' item types')]
-    case 'Fields': return [
-      fields.value.length + (fields.value.length === 1 ? ' field' : ' fields'),
-      ...(unusedFields.value ? [unusedFields.value + (unusedFields.value === 1 ? ' unused field' : ' unused fields')] : []),
-    ]
-    case 'Links': return [links.value.length + (links.value.length === 1 ? ' link type' : ' link types')]
-  }
-})
 const guardedTransitions = computed(() => processes.value.flatMap(p => p.transitions ?? []).filter(t => t.when || t.guards?.length || t.require?.length).length)
 const stateCounts = ref<Awaited<ReturnType<typeof work.stateCounts>>>()
 const countsError = ref(false)
@@ -137,7 +110,7 @@ async function loadCounts(id: string) {
   catch { if (current()) { countsError.value = true; stateCounts.value = undefined } }
 }
 watch(tab, section => {
-  if (authorized.value && (section === 'General' || section === 'Workflow')) void loadCounts(props.boardId)
+  if (authorized.value && section === 'Workflow') void loadCounts(props.boardId)
 })
 const packError = ref('')
 const packs = ref<AvailablePack[]>([]), packRequest = ref<PackRequest>(), packPlan = ref<PackPlan>(), packReviewed = ref<PackRequest>()
@@ -247,7 +220,7 @@ async function load(force = false) {
     else if (force || !schema.value || !dirty.value && normalized.generation !== schema.value.generation) reset(normalized)
     if (stale.value) invalidate()
     await loadPacks(current)
-    if (current() && (tab.value === 'General' || tab.value === 'Workflow')) void loadCounts(props.boardId)
+    if (current() && tab.value === 'Workflow') void loadCounts(props.boardId)
   } catch (e) {
     if (!current()) return
     if (e instanceof ApiError && (e.status === 403 || e.kind?.toLowerCase() === 'permission_denied')) authorized.value = false
@@ -350,7 +323,7 @@ async function back() {
 }
 function discard() { resetGeneration = undefined; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
 
-watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; clearPack(); packs.value = []; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; openedItems.value = new Set(['Item types']); itemView.value = 'Item types'; fieldType.value = ''; visited.value = new Set(['General']); selectSection('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; clearPack(); packs.value = []; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; visited.value = new Set(['General']); selectSection('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
 let stop = () => {}
 watch(() => props.boardId, id => { stop(); stop = on(`component.${id}`, () => { void load() }) }, { immediate: true })
 useHostVisibilityRefresh(load)
@@ -392,35 +365,24 @@ function focusRailWithPointer(event: PointerEvent) {
             </div>
 
             <GeneralSettings v-show="tab === 'General'" :draft="draft" :schema="latest ?? schema" :board="board"
-              :active="tab === 'General'" :board-apps="options?.board_apps" :counts="stateCounts" :counts-error="countsError"
+              :active="tab === 'General'" :board-apps="options?.board_apps"
               :draft-form="draftForm" :disabled="busy || checkingRemoval"
               :pack-title="schema.pack ? packTitle : undefined" :outdated="schema.outdated" :upgrade-reason="upgradeReason"
               :can-upgrade="upgradeAvailable && !dirty && !busy && !migrationPending" :can-install="!dirty && !busy && !migrationPending"
               :pack-error="packError" @upgrade="upgrade" @install="installing = true" @retry="loadPacks()"
-              @reload-counts="loadCounts(boardId)" @dirty-change="metadataDirty = $event" @saved="load()" />
+              @dirty-change="metadataDirty = $event" @saved="load()" />
 
             <form :id="draftForm" ref="editor" @submit.prevent="openReview()">
               <fieldset :key="editorVersion" class="work-settings-fieldset" :disabled="busy || checkingRemoval" :inert="busy || checkingRemoval || undefined">
-                <section v-if="visited.has('Items')" v-show="tab === 'Items'" class="work-ia-section">
-                  <SectionSummary :facts="itemFacts" />
-                  <Tabs :value="itemView" @update:value="itemView = $event as typeof itemView" class="work-ia-subnav">
-                    <TabList aria-label="Item settings"><Tab v-for="name in itemViews" :key="name" :value="name" :pt="{ root: { id: tabId(name), 'aria-controls': panelId(name) } }">{{ name }}</Tab></TabList>
-                  </Tabs>
-                  <div v-if="openedItems.has('Item types')" v-show="itemView === 'Item types'"
-                    role="tabpanel" :id="panelId('Item types')" :aria-labelledby="tabId('Item types')">
-                    <TypesEditor :draft="draft" :guard-removal="guardRemoval" :issues="issues" @fields="showFields" />
-                  </div>
-                  <div v-if="openedItems.has('Fields')" v-show="itemView === 'Fields'"
-                    role="tabpanel" :id="panelId('Fields')" :aria-labelledby="tabId('Fields')">
-                    <FieldsEditor :board-id="boardId" :installed-types="options?.installed_types" :draft="draft"
-                      :guard-removal="guardRemoval" :issues="issues" v-model:item-type="fieldType"
-                      @validity="(key, valid) => validity('fields:' + key, valid)" />
-                  </div>
-                  <div v-if="openedItems.has('Links')" v-show="itemView === 'Links'"
-                    role="tabpanel" :id="panelId('Links')" :aria-labelledby="tabId('Links')">
-                    <RelationsEditor :draft="draft" :guard-removal="guardRemoval" />
-                  </div>
-                </section>
+                <TypesEditor v-if="visited.has('Item types')" v-show="tab === 'Item types'" class="work-ia-section"
+                  :draft="draft" :guard-removal="guardRemoval" :issues="issues" />
+
+                <FieldsEditor v-if="visited.has('Fields')" v-show="tab === 'Fields'" class="work-ia-section"
+                  :board-id="boardId" :installed-types="options?.installed_types" :draft="draft" :guard-removal="guardRemoval"
+                  :issues="issues" v-model:item-type="fieldType" @validity="(key, valid) => validity('fields:' + key, valid)" />
+
+                <RelationsEditor v-if="visited.has('Links')" v-show="tab === 'Links'" class="work-ia-section"
+                  :draft="draft" :guard-removal="guardRemoval" />
 
                 <section v-if="visited.has('Workflow')" v-show="tab === 'Workflow'" class="work-ia-section">
                   <SectionSummary :facts="[
@@ -438,11 +400,6 @@ function focusRailWithPointer(event: PointerEvent) {
                   :draft="draft" :grants-version="grantsVersion" @share="head?.share()" @validity="validity('visibility', $event)" />
 
                 <section v-if="visited.has('Plugins')" v-show="tab === 'Plugins'" class="work-ia-section">
-                  <SectionSummary :facts="[
-                    enabledPlugins + (enabledPlugins === 1 ? ' plugin enabled in this setup' : ' plugins enabled in this setup'),
-                    installedPlugins + ' installed',
-                    ...((latest ?? schema).plugins?.some(plugin => plugin.lifecycle.state === 'failed' || Object.values(plugin.projections).some(p => p.parked || p.error)) ? ['Some plugins need attention'] : []),
-                  ]" />
                   <PluginsEditor :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"
                     :filters="options?.filters" :configs="configs" :disabled="busy" @configured="invalidate(); load()" @refresh="load()" @review="openReview"
                     @validity="(key, valid) => validity('plugin:' + key, valid)" />

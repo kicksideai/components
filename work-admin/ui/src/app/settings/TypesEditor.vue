@@ -15,7 +15,6 @@ import { fieldTitle, humanize } from '../../forms'
 import { removeEntry, type RemovalGuard, type SchemaChange, changeReason } from './model'
 import ChipPicker from './ChipPicker.vue'
 const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[] }>()
-const emit = defineEmits<{ fields: [type: string] }>()
 const types = computed(() => props.draft.item_types ?? [])
 const id = ref(''), error = ref(''), removing = ref('')
 const base = computed(() => id.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40))
@@ -53,11 +52,10 @@ async function remove(type: ItemType) {
 </script>
 <template>
   <section class="work-stack" aria-label="Item types editor">
-    <header class="work-section-heading"><div><h2>Item types</h2><p class="work-muted work-small">Choose the fields, parent relationships and workflow for each kind of work.</p></div><Tag class="kx-tag-sm" severity="secondary">{{ types.length }} {{ types.length === 1 ? 'type' : 'types' }}</Tag></header>
     <p v-if="error" class="kx-err" role="alert">{{ error }}</p>
     <DefinitionList columns="types" :count="types.length">
     <DefinitionRow :title="type.title || humanize(type.id)" :kind="draft.processes?.find(p => p.id === type.process)?.name || humanize(type.process)" v-for="(type, index) in types" :key="index" class="work-type-card">
-      <template #usage><span class="work-definition-meta"><Tag class="kx-tag-sm" severity="secondary">{{ type.fields.length }} {{ type.fields.length === 1 ? 'field' : 'fields' }}</Tag><Tag v-if="usedBy(type).length" class="kx-tag-sm" severity="secondary">Parent of {{ usedBy(type).join(', ') }}</Tag></span></template><template #actions><Button :aria-label="'Fields for ' + (type.title || humanize(type.id))" label="Fields" severity="secondary" outlined size="small" @click="emit('fields', type.id)" /></template>
+      <template #usage><span class="work-definition-meta"><Tag class="kx-tag-sm" severity="secondary">{{ type.fields.length }} {{ type.fields.length === 1 ? 'field' : 'fields' }}</Tag><Tag v-if="usedBy(type).length" class="kx-tag-sm" severity="secondary">Parent of {{ usedBy(type).join(', ') }}</Tag></span></template>
       <p v-for="issue in issues?.filter(i => i.code === 'item_type ' + type.id) ?? []" :key="issue.what" class="work-error work-small" role="alert">{{ changeReason(issue) }}</p><div class="work-settings-grid"><label class="work-stack work-tight">Title<InputText v-model="type.title" :placeholder="humanize(type.id)" /></label><label class="work-stack work-tight">Workflow<Select v-model="type.process" aria-label="Workflow" required appendTo="self" optionLabel="label" optionValue="value" optionDisabled="disabled" :options="[...(draft.processes ?? []).map((process) => ({ label: (process.name || humanize(process.id)), value: process.id, disabled: false }))]" /></label></div>
       <ChipPicker label="Fields" :options="(draft.fields ?? []).map(f => ({ value: f.code, label: fieldTitle(f) }))" :model-value="type.fields" @update:model-value="setFields(type, $event)" />
       <Disclosure class="work-disclosure" label="Advanced item type settings"><div class="work-stack">

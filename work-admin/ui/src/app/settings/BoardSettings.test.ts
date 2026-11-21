@@ -30,8 +30,7 @@ beforeEach(() => {
 })
 afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount() })
 async function showFields(w: ReturnType<typeof mount>) {
-  await section(w, 'Items').trigger('click')
-  await getButton(w.get('.work-ia-subnav'), 'Fields').trigger('click')
+  await section(w, 'Fields').trigger('click')
 }
 async function render() {
   const w = mount(BoardSettings, { props: { boardId: 'b' } })
@@ -284,7 +283,7 @@ it('blocks Review while a state duration edit is invalid, including after switch
   await w.get('[aria-label="Edit state In progress"]').trigger('click'); await flushPromises()
   const duration = w.findAllComponents(DurationControl).find(control => control.props('label') === 'Default attempt timeout')!
   await editNumber(duration.getComponent(InputNumber), 0)
-  await section(w, 'Items').trigger('click')
+  await section(w, 'Item types').trigger('click')
   expect(getButton(w, 'Review changes').attributes('disabled')).toBeDefined()
   await getButton(w, 'Review changes').trigger('click'); await flushPromises()
   expect(settings.plan).not.toHaveBeenCalled()
@@ -418,11 +417,10 @@ it('shows the schema refusal when stored items still use an uninstalled plugin',
   vi.mocked(settings.plan).mockResolvedValue({ ...reviewed, class: 'refused', changes: [],
     refused: [{ code: 'risk', class: 'refused', what: 'removed', count: 1 }] })
   const w = await render()
-  const overview = w.get('[aria-label="Board plugins"]')
-  expect(overview.text()).toContain('app:plugin')
-  expect(overview.text()).toContain('Not installed')
   await section(w, 'Plugins').trigger('click')
-  expect(w.text()).toContain('0 installed')
+  const pluginEditor = w.get('[aria-label="Plugins editor"]')
+  expect(pluginEditor.text()).toContain('app:plugin')
+  expect(pluginEditor.text()).toContain('Not installed')
   await w.get('.work-definition-toggle').trigger('click')
   await getButton(w, 'Review references').trigger('click')
   await flushPromises()

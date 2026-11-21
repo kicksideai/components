@@ -7,7 +7,6 @@ import DefinitionList from './DefinitionList.vue'
 import Checkbox from 'primevue/checkbox'
 import ChipPicker from './ChipPicker.vue'
 import Select from 'primevue/select'
-import Tag from 'primevue/tag'
 import { computed, reactive, ref } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -54,13 +53,6 @@ async function remove(id: string) {
     class="work-stack"
     aria-label="Links editor"
   >
-    <header class="work-section-heading">
-      <div>
-        <h3>Links between items</h3>
-        <p class="work-muted work-small">Use a link to show a relationship on both items, such as “Blocks” and “Blocked by.” Use an item reference field to store a selected item as a value, such as “Epic.”</p>
-      </div>
-      <Tag class="kx-tag-sm" severity="secondary">{{ relations.length }} {{ relations.length === 1 ? 'relation' : 'relations' }}</Tag>
-    </header>
     <p
       v-if="error"
       class="kx-err"
