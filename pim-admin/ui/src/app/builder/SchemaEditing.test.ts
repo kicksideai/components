@@ -5,14 +5,15 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import SelectButton from 'primevue/selectbutton'
 import { attribute, createSchema } from '../../test/fixtures'
-import type { ApplyItem, SchemaOptions, TermRow } from '../../types'
+import { successResponse as response } from '../../test/proxy'
+import type { AdminFailure } from '../../../../../admin-http'
+import type { ApplyItem, ApplyResult, ListTermsResult, SchemaOptions, SchemaPlan, TermRow } from '../../types'
 import BuilderVocabularies from './BuilderVocabularies.vue'
 import ChipPicker from './ChipPicker.vue'
 import SchemaBuilder from './SchemaBuilder.vue'
 
 const wrappers: VueWrapper[] = []
 const button = (w: VueWrapper, name: string) => w.findAll('button').find(b => b.text() === name)!
-const response = (data: unknown) => ({ data: { data } }) as never
 
 beforeEach(() => { vi.resetAllMocks() })
 afterEach(() => wrappers.splice(0).forEach(w => w.unmount()))
@@ -26,10 +27,10 @@ it('keeps a term available to restore after retirement and offers only active pa
     { code: 'blue', labels: { en: 'Blue' }, retired: false },
   ]
   vi.mocked(api.get).mockImplementation(async (_path: string, config?: { params?: Record<string, string> }) =>
-    response({ terms: structuredClone(rows.filter(t => config?.params?.retired === 'true' || !t.retired)), as_of: 1 }))
+    response<ListTermsResult>({ terms: structuredClone(rows.filter(t => config?.params?.retired === 'true' || !t.retired)), as_of: 1 }))
   vi.mocked(api.post).mockImplementation(async (_path: string, data: { items: ApplyItem[] }) => {
     rows[0].retired = data.items[0].retired === true
-    return response({ applied: true, outcomes: [{ outcome: 'updated' }] })
+    return response<ApplyResult>({ applied: true, outcomes: [{ outcome: 'updated' }] })
   })
   const w = mount(BuilderVocabularies, { props: { catalogId: 'term-recovery', schema, draft: { vocabularies: [{ code: 'colors', hierarchical: true }] } } })
   wrappers.push(w)
@@ -52,7 +53,7 @@ it('keeps a term available to restore after retirement and offers only active pa
 it('keeps the review and its apply action together in a modal and focuses the review', async () => {
   const schema = createSchema()
   vi.mocked(api.get).mockImplementation(async (path: string) => response(path.endsWith('/options') ? { types: [], scopes: [], plugins: [], link_kinds: [] } : schema))
-  vi.mocked(api.post).mockResolvedValue(response({ generation: 2, class: 'cosmetic', changes: [{ code: '', class: 'cosmetic', what: 'field order changed' }], refused: [] }))
+  vi.mocked(api.post).mockResolvedValue(response<SchemaPlan>({ generation: 2, class: 'cosmetic', changes: [{ code: '', class: 'cosmetic', what: 'field order changed' }], refused: [] }))
   const w = mount(SchemaBuilder, { props: { catalogId: 'layout-review', embedded: true }, attachTo: document.body })
   wrappers.push(w)
   await flushPromises()
@@ -69,7 +70,8 @@ it('keeps the review and its apply action together in a modal and focuses the re
 
 it('focuses review failures and displays the typed error code at the top of the editor', async () => {
   vi.mocked(api.get).mockImplementation(async (path: string) => response(path.endsWith('/options') ? { types: [], scopes: [], plugins: [], link_kinds: [] } : createSchema()))
-  vi.mocked(api.post).mockRejectedValue({ response: { status: 400, data: { message: 'Every variation level needs axes.', details: { code: 'invalid_schema' } } } })
+  const data: AdminFailure = { success: false, error: 'Every variation level needs axes.', details: { code: 'invalid_schema' } }
+  vi.mocked(api.post).mockRejectedValue({ response: { status: 400, data } })
   const w = mount(SchemaBuilder, { props: { catalogId: 'review-error' }, attachTo: document.body })
   wrappers.push(w)
   await flushPromises()
@@ -126,7 +128,7 @@ it('shows each blocked change once and keeps it ahead of other review details', 
   vi.mocked(api.get).mockImplementation(async (path: string) => response(path.endsWith('/options') ? { types: [], scopes: [], plugins: [], link_kinds: [] } : createSchema()))
   const blocked = { code: 'core.name', class: 'refused', what: 'type' }
   const width = { code: 'core.name', class: 'cosmetic', what: 'width' }
-  vi.mocked(api.post).mockResolvedValue(response({ generation: 2, class: 'refused', changes: [width, blocked], refused: [blocked] }))
+  vi.mocked(api.post).mockResolvedValue(response<SchemaPlan>({ generation: 2, class: 'refused', changes: [width, blocked], refused: [blocked] }))
   const w = mount(SchemaBuilder, { props: { catalogId: 'blocked-review' } })
   wrappers.push(w)
   await flushPromises()
@@ -143,7 +145,7 @@ it('holds Apply until a stored field removal is acknowledged', async () => {
   schema.declaration.aspects![0].attributes![0].id = 1
   vi.mocked(api.get).mockImplementation(async (path: string) => response(path.endsWith('/options') ? { types: [], scopes: [], plugins: [], link_kinds: [] } : schema))
   vi.mocked(api.post)
-    .mockResolvedValueOnce(response({ generation: 1, class: 'semantic', changes: [{ code: 'core.name', what: 'removed', class: 'semantic' }], refused: [] }))
+    .mockResolvedValueOnce(response<SchemaPlan>({ generation: 1, class: 'semantic', changes: [{ code: 'core.name', what: 'removed', class: 'semantic' }], refused: [] }))
     .mockResolvedValueOnce(response({ generation: 2, class: 'semantic' }))
   const wrapper = mount(SchemaBuilder, { props: { catalogId: 'field-removal' } })
   wrappers.push(wrapper)

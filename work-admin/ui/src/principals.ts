@@ -2,7 +2,6 @@
 import { onUnmounted, ref, watch, type WatchSource } from 'vue'
 import { formatApiError, post } from './transport'
 import { opaque } from './values'
-import type { QueryResult, Schema } from './types'
 type Labels = Map<string, string>
 const pending = new Map<string, Promise<Labels>>()
 export interface Principal { kind: string; id: string }
@@ -21,11 +20,6 @@ export function principalRefs(value: unknown): Principal[] {
   if (!value || typeof value !== 'object') return []
   const row = value as Record<string, unknown>
   return typeof row.id === 'string' && (row.kind === 'user' || row.kind === 'group') ? [{ kind: row.kind, id: row.id }] : []
-}
-export function resultPrincipals(result: QueryResult, schema: Schema): Principal[] {
-  const fields = (schema.compiled.fields ?? []).filter(field => field.type === 'principal')
-  return [...result.items, ...(result.groups?.flatMap(group => group.items) ?? [])]
-    .flatMap(item => fields.flatMap(field => principalRefs(item.values[field.code])))
 }
 export async function resolveNames(boardId: string, principals: Principal[]): Promise<Labels> {
   const refs = [...new Map(principals.map(p => [`${p.kind}:${p.id}`, { type: p.kind, id: p.id }])).values()].sort((a, b) => `${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`))

@@ -1,4 +1,4 @@
-import { _ as ge, a as ye, b as le, p as ne, c as ie, u as be, d as ke, e as Ce, r as he, f as _e, g as $e, W as xe, s as Se, P as we } from "./styles-B-55fk58.js";
+import { _ as ge, a as ye, b as le, p as ne, c as ie, u as be, d as ke, e as Ce, r as he, f as _e, g as $e, W as xe, s as Se, P as we } from "./styles-DMYHD085.js";
 import { defineComponent as q, openBlock as c, createElementBlock as k, createElementVNode as f, createVNode as d, unref as o, toDisplayString as P, renderSlot as Ie, createTextVNode as T, createCommentVNode as h, createBlock as S, createSlots as Te, withCtx as g, normalizeClass as oe, Fragment as se, ref as u, withModifiers as re, watch as W, useId as Ve, computed as Ae, onUnmounted as Le, renderList as De, nextTick as te } from "vue";
 import { on as Ue, host as ae, define as je } from "@wippy-fe/proxy";
 import _ from "primevue/button";
@@ -239,7 +239,7 @@ const qe = { class: "kx-empty" }, Fe = { class: "kx-empty-ico" }, Me = { class: 
   props: {
     route: {}
   },
-  emits: ["navigate", "dirty-changed"],
+  emits: ["navigate", "dirty-change"],
   setup(n, { emit: v }) {
     const r = n, s = v, m = u(!1), a = u(!1), $ = u(!1), C = u(!1), e = u(!1), w = u(!1), y = u(""), A = u(""), G = u(), H = u(), K = u();
     let L = !0;
@@ -256,7 +256,7 @@ const qe = { class: "kx-empty" }, Fe = { class: "kx-empty-ico" }, Me = { class: 
       $.value = !1, O(l), R.value && (D.value = "", await te()), await B();
     }
     const F = u("");
-    W(e, (l) => s("dirty-changed", l), { flush: "sync" });
+    W(e, (l) => s("dirty-change", l), { flush: "sync" });
     function Q(l) {
       r.route !== void 0 && l !== r.route && s("navigate", l);
     }
@@ -473,7 +473,7 @@ const qe = { class: "kx-empty" }, Fe = { class: "kx-empty-ico" }, Me = { class: 
           embedded: "true",
           "focus-back": String(w.value),
           onOpenCatalogPicker: Y,
-          onDirtyChanged: me
+          onDirtyChange: me
         }, null, 40, et)) : y.value && a.value ? (c(), k("p", tt, "Loading catalog settings…")) : y.value ? (c(), k("p", at, [
           t[6] || (t[6] = T("Catalog settings are unavailable.", -1)),
           d(o(_), {
@@ -509,7 +509,7 @@ const qe = { class: "kx-empty" }, Fe = { class: "kx-empty-ico" }, Me = { class: 
     return (s, m) => (c(), S(lt, {
       route: o(v).route,
       onNavigate: m[0] || (m[0] = (a) => o(r)("navigate", { route: a })),
-      onDirtyChanged: m[1] || (m[1] = (a) => o(r)("dirty-changed", { dirty: a }))
+      onDirtyChange: m[1] || (m[1] = (a) => o(r)("dirty-change", { dirty: a }))
     }, null, 8, ["route"]));
   }
 }), it = { type: "object", properties: { route: { type: "string", default: "" } } };

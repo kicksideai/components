@@ -75,7 +75,7 @@ declaration keys according to the existing schema grammar.
 Choose Single value, Ordered list or Unique set when editing a field. Closing
 Technical schema discards invalid local text. Valid edits stay in the common draft.
 
-The settings component emits `dirty-changed` with `{dirty}` for schema/removal
+The settings component emits `dirty-change` with `{dirty}` for schema/removal
 and plugin drafts. Switching catalogs asks the host to confirm discarding a dirty
 draft; cancellation preserves selection and draft. Catalog ADMIN sees Share
 catalog in Access, which loads the existing `kickside-share` widget with Component access/share URLs.

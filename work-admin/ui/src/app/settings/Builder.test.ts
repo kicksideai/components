@@ -127,22 +127,16 @@ it('identifies dependent regions and timers while display names preserve stable 
   expect(state.run.on_fail).toBe('start'); expect(process.states[0].timers![0].then!.transition).toBe('start')
   expect(uniqueId('timer', [{ id: 'timer_1' }, { id: 'timer_3' }])).toBe('timer_2')
 })
-it('restores drag DOM before updating field order inside a shadow root and disposes sorting', async () => {
-  const { default: Sortable } = await import('sortablejs')
+it('reorders fields and their item type assignments from the keyboard inside a shadow root', async () => {
   const host = document.createElement('div'); document.body.append(host)
   const root = host.attachShadow({ mode: 'open' }), target = document.createElement('div'); root.append(target)
   const draft = reactive<Declaration>({ fields: [{ code: 'title', form: 'text' }, { code: 'priority', form: 'text' }], item_types: [{ id: 'task', fields: ['title', 'priority'], process: 'flow' }] })
   const w = mount(FieldsEditor, { attachTo: target, props: { draft } })
-  const list = w.get<HTMLElement>('.work-field-builder').element, sortable = Sortable.get(list)!
-  expect(sortable.option('forceFallback')).toBe(true); expect(sortable.option('fallbackOnBody')).toBe(false)
-  const destroy = vi.spyOn(sortable, 'destroy'), item = list.children[0] as HTMLElement
-  list.append(item)
-  sortable.option('onEnd')?.(Object.assign(new Event('end'), { item, from: list, to: list, oldDraggableIndex: 0, newDraggableIndex: 1 }) as import('sortablejs').SortableEvent)
-  await flushPromises()
+  await w.findAll('.work-reorder-handle')[0].trigger('keydown', { key: 'ArrowDown' })
   expect(draft.fields!.map(f => f.code)).toEqual(['priority', 'title'])
   expect(draft.item_types![0].fields).toEqual(['priority', 'title'])
   expect(w.findAll('.work-field-row').map(row => row.get<HTMLInputElement>('input[aria-label="Field code"]').element.value)).toEqual(['priority', 'title'])
-  w.unmount(); expect(destroy).toHaveBeenCalledTimes(1); host.remove()
+  w.unmount(); host.remove()
 })
 it('edits field titles, cardinality, indexing, tracking and field access', async () => {
   const draft = reactive<Declaration>({ fields: [{ code: 'points', form: 'int' }] })

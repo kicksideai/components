@@ -47,7 +47,13 @@
     "description": "Open Work administration to create a board or select an existing one. The component uses the signed-in user. Board administrators can review changes to fields, processes, visibility and installed plugins before applying a draft.",
     "props": {
       "type": "object",
-      "properties": { "route": { "type": "string" } }
+      "properties": {
+        "route": {
+          "type": "string",
+          "default": "",
+          "description": "System location relative to this tab, with a board ID, section and optional row."
+        }
+      }
     },
     "scripts": {
       "build": "build"

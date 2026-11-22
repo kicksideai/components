@@ -8,6 +8,7 @@ import HistoryPanel from './HistoryPanel.vue'
 import { pim } from '../api'
 import { when } from '../forms'
 import { deferred } from '../test/fixtures'
+import { principalResponse } from '../test/proxy'
 import { events, visibility } from '../test/setup'
 import type { HistoryResult } from '../types'
 vi.mock('../api', () => ({ pim: { history: vi.fn() } }))
@@ -16,13 +17,13 @@ afterEach(() => wrappers.splice(0).forEach(w => w.unmount()))
 const entry = (seq: number) => ({ seq, n: 1, subject: `Record ${seq}`, kind: 'schema', after: { generation: seq }, actor: 'owner', at: '2026-11-17T12:00:00Z' })
 beforeEach(() => {
   vi.clearAllMocks(); events.clear()
-  vi.mocked(api.post).mockResolvedValue({ data: { data: { principals: [{ id: 'owner', label: 'Avery' }] } } } as never)
+  vi.mocked(api.post).mockResolvedValue(principalResponse({ type: 'user', id: 'owner', label: 'Avery' }))
   vi.mocked(pim.history).mockResolvedValue({ entries: [], as_of: 1 })
 })
 it('fits the history caption and stacked changes with intact metadata at 390px', async () => {
   const name = 'Administrator'
   const recorded = { ...entry(3), sku: 'DEMO-PRODUCT-42', source: 'manual', ctx: 'en · web' }
-  vi.mocked(api.post).mockResolvedValue({ data: { data: { principals: [{ id: 'owner', label: name }] } } } as never)
+  vi.mocked(api.post).mockResolvedValue(principalResponse({ type: 'user', id: 'owner', label: name }))
   vi.mocked(pim.history).mockResolvedValue({ entries: [recorded], next: '3:1', as_of: 3 })
   const w = mount(HistoryPanel, { props: { catalogId: 'cat', canResolveActors: true } }); wrappers.push(w); await flushPromises()
   const css = ['shared/base.css', 'shared/settings.css', 'styles.css']

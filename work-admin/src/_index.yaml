@@ -79,6 +79,7 @@ entries:
     properties:
       route:
         type: string
+        default: ''
         description: System location relative to this tab, with a board ID, section and optional row.
   events:
     navigate:

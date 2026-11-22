@@ -45,7 +45,7 @@ it('guards the back arrow with a dirty draft and allows switching from the direc
   const w = mount(AdminApp); await flushPromises()
   await w.findAll('.pim-catalog-row')[0].trigger('click')
   const settings = w.get('kickside-pim-catalog-settings')
-  await settings.trigger('dirty-changed', { detail: { dirty: true } })
+  await settings.trigger('dirty-change', { detail: { dirty: true } })
   vi.mocked(host.confirm).mockResolvedValueOnce(false)
   await settings.trigger('open-catalog-picker'); await flushPromises()
   expect(host.confirm).toHaveBeenCalledOnce()
@@ -72,7 +72,7 @@ it('requests the picker without changing the host route in embedded settings', a
 it('forwards schema dirty changes across the settings component boundary', async () => {
   const w = mount(SettingsApp); await flushPromises()
   w.getComponent(SchemaBuilder).vm.$emit('dirty-changed', true); await flushPromises()
-  expect(hostEmit).toHaveBeenCalledWith('dirty-changed', { dirty: true }); w.unmount()
+  expect(hostEmit).toHaveBeenCalledWith('dirty-change', { dirty: true }); w.unmount()
 })
 it('clears discarded JSON validity on leaving Declaration and allows visual review', async () => {
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } }); await flushPromises()

@@ -4,31 +4,11 @@ import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { wippyComponentPlugin } from '@wippy-fe/vite-plugin'
 import { defineConfig } from 'vite'
+import hostImportMap from './web-host.import-map.snapshot.json'
 
 const moduleRoot = fileURLToPath(new URL('.', import.meta.url))
 
-// The KickSide shell serves these packages through its import map; they must
-// stay external so the bundle never ships its own copy (a bundled copy both
-// bloats the artifact and breaks on `process.env` references in library code).
-const shellProvided = [
-  'vue',
-  '@primevue/core',
-  '@primeuix/utils',
-  '@primeuix/styled',
-  'pinia',
-  'vue-router',
-  'axios',
-  'nanoevents',
-  'luxon',
-  '@iconify/vue',
-  'iconify-icon',
-  '@tanstack/vue-query',
-  'sanitize-html',
-  'markdown-it',
-  'markdown-it-async',
-  '@wippy-fe/proxy',
-  '@wippy-fe/markdown-iframe',
-]
+const shellProvided = Object.keys(hostImportMap.imports)
 
 export default defineConfig({
   plugins: [vue({ template: { compilerOptions: { isCustomElement: (t) => t.startsWith('wc-') || t.startsWith('kickside-') } } }), wippyComponentPlugin()],
@@ -46,7 +26,6 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      input: { admin: resolve(moduleRoot, 'src/admin.ts'), settings: resolve(moduleRoot, 'src/settings.ts') },
       external: [...shellProvided, /^primevue\//, /^@primevue\//, /^@primeuix\//],
       output: {
         entryFileNames: '[name].js',
