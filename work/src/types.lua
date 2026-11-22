@@ -234,6 +234,24 @@ type Policy = { stage_timeout: string?, stage_max_visits: integer?, comments_per
 type EventWindow = { ms: integer?, before: string? }
 type TransitionSelector = { item_type: string, process: string, transition: string, command: string, plugin: string, fields: { string } }
 type TransitionRule = TransitionSelector & { digest: string }
+type TransitionDefinitions = { [string]: JsonObject }
+type TransitionProof = {
+    process: { initial: string, migration: string, states: TransitionDefinitions, transitions: TransitionDefinitions },
+    fields: TransitionDefinitions,
+}
+type TransitionAdoptionSpec = {
+    item_type: string, process: string, transition: string, command: string, plugin: string, fields: { string },
+    pack: string, base_digest: string,
+}
+type TransitionAdoptionCohort = { generation: integer, life: string, state: string, count: integer }
+type TransitionAdoptionReview = {
+    board_id: string, selector: string, head: integer, generation: integer,
+    selector_digest: string, base_digest: string, installed_digest: string, rule_digest: string,
+}
+type TransitionAdoptionResult = {
+    status: string, cohorts: { TransitionAdoptionCohort }?, conflict: { path: string, generation: integer? }?,
+    review: TransitionAdoptionReview?, token: string?,
+}
 type Compiled = {
     visibility: Visibility?, key_prefix: string, fields: { Field }, item_types: { ItemType }, relation_types: { Relation }, processes: { Process },
     plugins: { PluginDecl }?, scopes: { string }?, policy_overrides: PolicyDecl?, policy: Policy, next_field_id: integer, counter_field: integer?,
@@ -365,6 +383,9 @@ return { SearchResults = SearchResults, StageBindingRequest = StageBindingReques
     TransitionDecl = TransitionDecl, ProcessDecl = ProcessDecl, PolicyDecl = PolicyDecl,
     StateMaps = StateMaps, RemoveDecl = RemoveDecl, Declaration = Declaration, Option = Option, Field = Field, ItemType = ItemType, Relation = Relation, State = State,
     Effect = Effect, Transition = Transition, TransitionSelector = TransitionSelector, TransitionRule = TransitionRule, Process = Process, Policy = Policy, EventWindow = EventWindow, Compiled = Compiled, Model = Model, SchemaChange = SchemaChange,
+    TransitionDefinitions = TransitionDefinitions, TransitionProof = TransitionProof,
+    TransitionAdoptionSpec = TransitionAdoptionSpec, TransitionAdoptionCohort = TransitionAdoptionCohort,
+    TransitionAdoptionReview = TransitionAdoptionReview, TransitionAdoptionResult = TransitionAdoptionResult,
     Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets,
     Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink,
     CommentRow = CommentRow, CommentPosition = CommentPosition, LinkPosition = LinkPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
