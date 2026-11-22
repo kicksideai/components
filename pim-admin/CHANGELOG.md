@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.16](https://github.com/kicksideai/components/compare/pim-admin-v0.1.15...pim-admin-v0.1.16) (2026-11-22)
+
+
+### Bug Fixes
+
+* **pim-admin:** clarify catalog setup handoffs ([#343](https://github.com/kicksideai/components/issues/343)) ([779ec4e](https://github.com/kicksideai/components/commit/779ec4e0720ba5bed0c94711bb2314b4a7dfae84))
+
 ## [0.1.15](https://github.com/kicksideai/components/compare/pim-admin-v0.1.14...pim-admin-v0.1.15) (2026-11-22)
 
 
