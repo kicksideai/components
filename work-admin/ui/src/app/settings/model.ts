@@ -163,7 +163,11 @@ export function validationIssues(error: unknown, declaration: Declaration): Sche
   const details = error.details ?? {}
   let code = typeof details.field === 'string' ? details.field : ''
   if (!code) {
-    const process = declaration.processes?.find(p => p.id === details.process || p.states.some(s => s.id === details.state) || error.message.includes(`process ${p.id}`))
+    const processes = declaration.processes ?? []
+    const stateMatches = typeof details.process !== 'string' && typeof details.state === 'string'
+      ? processes.filter(p => p.states.some(s => s.id === details.state)) : []
+    const process = typeof details.process === 'string' ? processes.find(p => p.id === details.process)
+      : stateMatches.length === 1 ? stateMatches[0] : undefined
     if (process) code = `process ${process.id}`
     else if (typeof details.item_type === 'string') code = `item_type ${details.item_type}`
   }

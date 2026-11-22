@@ -76,6 +76,18 @@ it('places typed compiler errors beside their field, process or item type', asyn
   expect(validationIssues(invalid({ item_type: 'task' }), draft)[0].code).toBe('item_type task')
   expect(validationIssues(new Error('Unavailable'), draft)).toEqual([])
 })
+it('routes a refusal by structured location even when the same state belongs to multiple workflows', async () => {
+  const { validationIssues } = await import('./model')
+  const { ApiError } = await import('../../transport')
+  const draft: Declaration = { processes: ['delivery', 'approval'].map(id => ({
+    id, initial: 'review', states: [{ id: 'review', category: 'started' }],
+  })) }
+  const invalid = (details?: Record<string, unknown>) => new ApiError({ message: 'Invalid transition of process delivery', details }, 'Schema plan')
+  expect(validationIssues(invalid(), draft)).toEqual([])
+  expect(validationIssues(invalid({ state: 'review' }), draft)).toEqual([])
+  expect(validationIssues(invalid({ process: 'approval', state: 'review' }), draft)).toMatchObject([{ code: 'process approval' }])
+  expect(validationIssues(invalid({ item_type: 'task' }), draft)).toMatchObject([{ code: 'item_type task' }])
+})
 it('refuses stored-value field removals and keeps unused removals available', async () => {
   const { removalReason } = await import('./model')
   const plan = { generation: 2, class: 'semantic', refused: [], changes: [{ code: 'priority', what: 'removed', class: 'semantic' }] }
