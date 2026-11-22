@@ -94,6 +94,19 @@ local function state(attachment: string): Map?
     return rows[1] and json.decode(rows[1].state :: string) :: Map or nil
 end
 
+local function observe_lexical_writes(db: sql.DB | sql.Transaction, sqlite: boolean)
+    assert(db:execute("CREATE TABLE app_work_search_lexical_writes (row_id BIGINT NOT NULL)", {}))
+    if sqlite then
+        assert(db:execute([[CREATE TRIGGER app_work_search_lexical_write AFTER INSERT ON kickside_work_search_fts_content
+            BEGIN INSERT INTO app_work_search_lexical_writes VALUES (NEW.id); END]], {}))
+    else
+        assert(db:execute([[CREATE FUNCTION app_work_search_lexical_write() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN INSERT INTO app_work_search_lexical_writes VALUES (NEW.row_id); RETURN NEW; END $$]], {}))
+        assert(db:execute([[CREATE TRIGGER app_work_search_lexical_write AFTER UPDATE OF content, item_key ON kickside_work_search_row
+            FOR EACH ROW EXECUTE FUNCTION app_work_search_lexical_write()]], {}))
+    end
+end
+
 local function define()
     test.describe("Work Search as a Work consumer", function()
         test.it("discovers a pack that adopts the title and description search scope", function()
@@ -177,16 +190,7 @@ local function define()
             local generation = assert(state(attachment)).active.id
             local db = assert(sql.get("app:db"))
             local sqlite = db:type() == sql.type.SQLITE
-            assert(db:execute("CREATE TABLE app_work_search_lexical_writes (row_id BIGINT NOT NULL)", {}))
-            if sqlite then
-                assert(db:execute([[CREATE TRIGGER app_work_search_lexical_write AFTER INSERT ON kickside_work_search_fts_content
-                    BEGIN INSERT INTO app_work_search_lexical_writes VALUES (NEW.id); END]], {}))
-            else
-                assert(db:execute([[CREATE FUNCTION app_work_search_lexical_write() RETURNS trigger LANGUAGE plpgsql AS $$
-                    BEGIN INSERT INTO app_work_search_lexical_writes VALUES (NEW.row_id); RETURN NEW; END $$]], {}))
-                assert(db:execute([[CREATE TRIGGER app_work_search_lexical_write AFTER UPDATE OF content, item_key ON kickside_work_search_row
-                    FOR EACH ROW EXECUTE FUNCTION app_work_search_lexical_write()]], {}))
-            end
+            observe_lexical_writes(db, sqlite)
             local function writes(): integer
                 return assert(db:query([[SELECT COUNT(*) AS n FROM app_work_search_lexical_writes w
                     JOIN kickside_work_search_row r ON r.row_id=w.row_id WHERE r.generation_id=$1]], { generation }))[1].n :: integer
@@ -224,34 +228,30 @@ local function define()
             test.eq(progress_writes, 0)
         end)
 
-        test.it("seeks by item for a full page of unchanged search documents", function()
+        test.it("advances a full page of unchanged search documents without lexical writes", function()
             local db = assert(sql.get("app:db"))
             local sqlite = db:type() == sql.type.SQLITE
             local tx = assert(db:begin())
-            assert(tx:execute([[WITH RECURSIVE numbers(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM numbers WHERE n<25000)
+            assert(tx:execute([[WITH RECURSIVE numbers(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM numbers WHERE n<201)
                 INSERT INTO kickside_work_search_row (generation_id,item_id,item_key,source_seq,content)
-                SELECT 'plan-generation','item-' || n,'KEY-' || n,1,'topic' FROM numbers]], {}))
-            assert(tx:execute("ANALYZE kickside_work_search_row", {}))
+                SELECT 'page-generation','item-' || n,'KEY-' || n,1,'topic' FROM numbers]], {}))
+            observe_lexical_writes(tx, sqlite)
             local documents: { storage.Document } = {}
             for i = 1, 200 do
                 documents[i] = { item_id = "item-" .. i, item_key = "KEY-" .. i, source_seq = 2, content = "topic" }
             end
-            local plan = ""
-            local probe = { query = function(_, statement, params)
-                local prefix = sqlite and "EXPLAIN QUERY PLAN " or "EXPLAIN (COSTS OFF) "
-                for _, row in ipairs(assert(tx:query(prefix .. statement, params))) do
-                    plan = plan .. (sqlite and row.detail or row["QUERY PLAN"]) .. "\n"
-                end
-                return tx:query(statement, params)
-            end }
-            local err = storage.put_page(probe :: any, sqlite, "plan-generation", documents)
+            local err = storage.put_page(tx, sqlite, "page-generation", documents)
+            local advanced = assert(tx:query([[SELECT COUNT(*) AS n FROM kickside_work_search_row
+                WHERE generation_id=$1 AND source_seq=2 AND item_id <> 'item-201']], { "page-generation" }))[1].n
+            local untouched = assert(tx:query([[SELECT source_seq FROM kickside_work_search_row
+                WHERE generation_id=$1 AND item_id='item-201']], { "page-generation" }))[1].source_seq
+            local writes = assert(tx:query("SELECT COUNT(*) AS n FROM app_work_search_lexical_writes", {}))[1].n
             assert(tx:rollback())
-            db:release()
+            assert(db:release())
             test.is_nil(err, tostring(err))
-            test.is_true(plan:find("SEARCH held USING INDEX", 1, true) ~= nil
-                or plan:find("Index Cond:", 1, true) ~= nil, plan)
-            test.is_nil(plan:find("SCAN held", 1, true), plan)
-            test.is_nil(plan:find("Seq Scan on kickside_work_search_row", 1, true), plan)
+            test.eq(advanced, 200)
+            test.eq(untouched, 1)
+            test.eq(writes, 0)
         end)
 
         test.it("rebuilds a generation after a state-feed gap", function()
@@ -372,8 +372,8 @@ local function define()
 
             local result, err = admin("query", { where = { match = "commonword" } }, id)
             test.is_nil(result)
+            test.eq(err:kind(), errors.UNAVAILABLE)
             test.eq(err:details().code, "search_verification_budget")
-            test.is_true(tostring(err):find("too many lexical matches", 1, true) ~= nil, tostring(err))
             test.eq(indexed(admin, id, found.key:lower(), 1)[1].id, item)
         end)
 
