@@ -6,7 +6,8 @@ import { createServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 it('aligns kind cells with nonzero dimensions in a browser for short and long titles', async () => {
-  const server = await createServer({
+  const externalUrl = process.env.WORK_ADMIN_FIXTURE_URL
+  const server = externalUrl ? undefined : await createServer({
     configFile: false,
     root: process.cwd(),
     plugins: [vue({ template: { compilerOptions: { isCustomElement: tag => tag.startsWith('wc-') } } })],
@@ -15,12 +16,12 @@ it('aligns kind cells with nonzero dimensions in a browser for short and long ti
   })
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   try {
-    await server.listen()
+    await server?.listen()
     browser = await chromium.launch()
     const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
     const errors: string[] = []
     page.on('pageerror', error => errors.push(error.message))
-    await page.goto(server.resolvedUrls!.local[0] + 'test/definition-columns.html')
+    await page.goto(new URL('/test/definition-columns.html', externalUrl || server!.resolvedUrls!.local[0]).href)
     const rows = page.locator('.work-definition-head')
     try { await rows.first().waitFor({ timeout: 10000 }) } catch (error) { throw new Error(errors.join('\n') || String(error)) }
     expect(await rows.count()).toBe(4)
@@ -38,6 +39,6 @@ it('aligns kind cells with nonzero dimensions in a browser for short and long ti
     }
   } finally {
     await browser?.close()
-    await server.close()
+    await server?.close()
   }
 }, 30000)

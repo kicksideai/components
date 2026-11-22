@@ -14,6 +14,8 @@ import { work } from '../../api'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import type { BoardRow, Declaration, AdminOptions, Process, Schema, State } from '../../types'
 import { useNavigate } from '../route'
+import { usePackDiscovery } from '../usePackDiscovery'
+import { humanize } from '../../forms'
 import { settings } from './api'
 import { validationIssues, removalReason, clone, normalizeSchema, processMigration, requestDeclaration, reviewSnapshot, type PluginConfigs, type SchemaPlan, type RemovalKind, removeEntry } from './model'
 import FieldsEditor from './FieldsEditor.vue'
@@ -29,8 +31,8 @@ import GeneralSettings from './GeneralSettings.vue'
 import { stateTitle } from './process'
 import SchemaReview from './SchemaReview.vue'
 import PackReview from './PackReview.vue'
-import { availablePack, planUpgrade, upgradeRequest, type AvailablePack, type PackPlan, type PackRequest } from '../../packs'
-const props = defineProps<{ boardId: string; embedded?: boolean; focusBack?: boolean; directoryCount?: number }>()
+import { availablePack, packChoice, planUpgrade, upgradeRequest, type PackPlan, type PackRequest, type PackResult } from '../../packs'
+const props = defineProps<{ boardId: string; embedded?: boolean; focusBack?: boolean }>()
 const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
 const go = useNavigate()
 const draftForm = useId()
@@ -80,7 +82,7 @@ const reviewOpen = ref(false), reviewError = ref(''), reviewOpener = ref<HTMLEle
 watch(tab, () => pane.value?.scrollTo({ top: 0 }))
 function closeReview() { reviewOpen.value = false; reviewError.value = ''; confirmedRenames.value = false }
 function openReview(opener?: HTMLElement) {
-  if (!dirty.value || !validForm() || invalid.value.size) return
+  if (!showDraftActions.value || !validForm() || invalid.value.size) return
   reviewOpener.value = opener
   reviewOpen.value = true
   void review()
@@ -107,8 +109,16 @@ async function loadCounts(id: string) {
 watch(tab, section => {
   if (authorized.value && section === 'Workflow') void loadCounts(props.boardId)
 })
-const packError = ref('')
-const packs = ref<AvailablePack[]>([]), packRequest = ref<PackRequest>(), packPlan = ref<PackPlan>(), packReviewed = ref<PackRequest>()
+const { packs: discoveredPacks, loading: loadingPacks, error: packError, load: loadPacks, reset: resetPacks } = usePackDiscovery()
+const packs = computed(() => discoveredPacks.value.filter(availablePack))
+const packChoices = computed(() => discoveredPacks.value.map(packChoice))
+const installChoice = computed(() => packChoices.value.find(pack => pack.id === installPack.value && !pack.disabled))
+const packRequest = ref<PackRequest>(), packPlan = ref<PackPlan>(), packReviewed = ref<PackRequest>()
+interface PackOperation { request: PackRequest; key: string; result: PackResult; draft: string }
+const packOperation = ref<PackOperation>(), packOperationError = ref('')
+const packInProgress = computed(() => !!packOperation.value && packOperation.value.result.status !== 'done')
+const canManagePack = computed(() => !busy.value && !dirty.value && !migrationPending.value && !packInProgress.value)
+const showDraftActions = computed(() => dirty.value && !(packInProgress.value && packRequest.value))
 const plan = ref<SchemaPlan>(), reviewed = ref<ReturnType<typeof reviewSnapshot>>(), applyKey = ref('')
 const serverIssues = ref<import('./model').SchemaChange[]>([])
 const issues = computed(() => [...serverIssues.value, ...(plan.value?.refused ?? [])])
@@ -118,7 +128,8 @@ const beginRead = latestRequest(), beginReview = latestRequest()
 const request = computed(() => requestDeclaration(draft.value, schema.value?.declaration ?? {}))
 const dirty = computed(() => invalid.value.size > 0 || !!packRequest.value || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(requestDeclaration(schema.value.declaration, schema.value.declaration)) || Object.keys(configs.value).length > 0))
 const metadataDirty = ref(false)
-const unsaved = computed(() => dirty.value || metadataDirty.value)
+const activePluginConfigs = ref<PluginConfigs>({})
+const unsaved = computed(() => dirty.value || metadataDirty.value || Object.keys(activePluginConfigs.value).length > 0)
 watch(unsaved, value => emit('dirty-change', value), { immediate: true, flush: 'sync' })
 const stale = computed(() => !!schema.value && !!latest.value && schema.value.generation !== latest.value.generation)
 const canSchemaApply = computed(() => (!occupiedChanges.value.renamed.length || confirmedRenames.value) && authorized.value && !busy.value && !checkingRemoval.value && !migrationPending.value && !stale.value && !invalid.value.size && plan.value && (plan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && plan.value.class !== 'refused' && !plan.value.refused.length && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value))
@@ -152,11 +163,11 @@ const packMatches = computed(() => !!packReviewed.value && JSON.stringify(packRe
 const canApply = computed(() => packRequest.value ? authorized.value && !busy.value && !invalid.value.size && !stale.value && !migrationPending.value && packMatches.value && plan.value?.class !== 'refused' && !plan.value?.refused.length && packPlan.value?.conflicts.every(c => !!packRequest.value?.resolutions?.[c.path]) : canSchemaApply.value)
 const isReviewed = computed(() => !!plan.value && (!packRequest.value || packMatches.value))
 const packTitle = computed(() => packs.value.find(p => p.id === schema.value?.pack?.id)?.title || 'Installed pack')
-const upgradeAvailable = computed(() => !packError.value && !!schema.value?.outdated && !!packs.value.find(p => p.id === schema.value?.pack?.id))
-const upgradeReason = computed(() => packError.value ? 'Reload packs to check available upgrades.' : !upgradeAvailable.value ? 'Install an available version of this pack to upgrade.' : dirty.value ? 'Discard the current draft before upgrading.' : migrationPending.value ? 'Finish the current migration before upgrading.' : busy.value ? 'Wait for the current request to finish.' : undefined)
+const upgradeAvailable = computed(() => !packError.value && !!schema.value?.outdated && !!packChoices.value.find(p => p.id === schema.value?.pack?.id && !p.disabled))
+const upgradeReason = computed(() => packError.value ? 'Reload packs to check available upgrades.' : packInProgress.value ? 'Finish the current pack installation before upgrading.' : !upgradeAvailable.value ? 'Install an available version of this pack to upgrade.' : dirty.value ? 'Discard the current draft before upgrading.' : migrationPending.value ? 'Finish the current migration before upgrading.' : busy.value ? 'Wait for the current request to finish.' : undefined)
 function clearPack() { packRequest.value = undefined; packPlan.value = undefined; packReviewed.value = undefined }
 async function upgrade() {
-  if (!schema.value?.pack || busy.value || dirty.value) return
+  if (!schema.value?.pack || !canManagePack.value || !upgradeAvailable.value) return
   const installed = packs.value.find(p => p.id === schema.value!.pack!.id)
   if (!installed) return
   reviewOpener.value = undefined
@@ -165,7 +176,7 @@ async function upgrade() {
 }
 async function install() {
   const pack = packs.value.find(p => p.id === installPack.value)
-  if (!schema.value || !pack || pack.plugins.some(p => !p.installed) || busy.value || dirty.value) return
+  if (!schema.value || !pack || !installChoice.value || !canManagePack.value || loadingPacks.value) return
   reviewOpener.value = undefined
   packRequest.value = upgradeRequest(pack, schema.value.generation); installing.value = false; reviewOpen.value = true
   await reviewPack()
@@ -222,11 +233,6 @@ async function load(force = false) {
     invalidate(); error.value = formatApiError(e, 'Could not load board settings.')
   } finally { if (current()) loading.value = false }
 }
-async function loadPacks(current: () => boolean = () => true) {
-  packError.value = ''
-  try { const rows = await work.packs(); if (current()) packs.value = rows.filter(availablePack) }
-  catch (e) { if (current()) packError.value = formatApiError(e, 'Could not load packs.') }
-}
 function validForm() {
   for (const input of Array.from(editor.value?.elements ?? [])) {
     if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement || input instanceof HTMLTextAreaElement)) continue
@@ -270,8 +276,7 @@ async function apply() {
   if (!canApply.value) return
   if (packRequest.value && packReviewed.value) {
     busy.value = true; reviewError.value = ''
-    const appliedDraft = draftSnapshot()
-    try { const result = await settings.packApply(props.boardId, clone(packReviewed.value), applyKey.value); resetGeneration = result.generation; resetDraft = appliedDraft; await load(); saved.value = result.status === 'done' ? 'Pack applied.' : 'Pack installation continues in the background.'; closeReview() }
+    try { await applyPack(clone(packReviewed.value), applyKey.value, draftSnapshot()); closeReview() }
     catch (e) { reviewError.value = formatApiError(e, 'Could not apply the pack upgrade.') }
     finally { busy.value = false }
     return
@@ -286,6 +291,25 @@ async function apply() {
     saved.value = 'Board changes applied.'
     closeReview()
   } catch (e) { reviewError.value = formatApiError(e, 'Could not apply the board changes.') }
+  finally { busy.value = false }
+}
+async function applyPack(request: PackRequest, key: string, appliedDraft: string) {
+  const boardId = props.boardId
+  const result = await settings.packApply(boardId, request, key)
+  if (props.boardId !== boardId) return
+  packOperation.value = { request, key, result, draft: appliedDraft }
+  if (appliedDraft === draftSnapshot()) {
+    resetGeneration = result.generation
+    resetDraft = appliedDraft
+  }
+  await load()
+}
+async function continuePack() {
+  const operation = packOperation.value
+  if (!operation || !packInProgress.value || busy.value || !authorized.value) return
+  busy.value = true; packOperationError.value = ''
+  try { await applyPack(operation.request, operation.key, operation.draft) }
+  catch (e) { packOperationError.value = formatApiError(e, 'Could not continue the pack installation.') }
   finally { busy.value = false }
 }
 async function resume() {
@@ -316,9 +340,9 @@ async function back() {
   if (unsaved.value && !await host.confirm({ header: 'Discard changes?', message: 'Your unsaved board settings will be discarded.', acceptLabel: 'Discard', rejectLabel: 'Keep editing' })) return
   go({ name: 'board', board: props.boardId })
 }
-function discard() { resetGeneration = undefined; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
+function discard() { resetGeneration = undefined; activePluginConfigs.value = {}; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
 
-watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; clearPack(); packs.value = []; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; visited.value = new Set(['General']); selectSection('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { metadataDirty.value = false; activePluginConfigs.value = {}; resetGeneration = undefined; clearPack(); resetPacks(); packOperation.value = undefined; packOperationError.value = ''; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; visited.value = new Set(['General']); selectSection('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
 let stop = () => {}
 watch(() => props.boardId, id => { stop(); stop = on(`component.${id}`, () => { void load() }) }, { immediate: true })
 useHostVisibilityRefresh(load)
@@ -327,16 +351,16 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
 <template>
   <section class="work-settings-shell work-ia" :class="{ 'work-embedded': embedded }">
     <div class="work-section-layout">
-      <SettingsRail ref="rail" label="Board settings sections" :value="tab" :title="embedded ? 'Boards' : undefined" :count="directoryCount"
+      <SettingsRail ref="rail" label="Board settings sections" :value="tab"
         :groups="settingsGroups" :leading-item="allBoards" @update:value="selectSection" />
       <div class="kx-main">
         <div ref="pane" class="kx-main-scroll work-settings-content" role="region" :aria-label="tab">
           <SettingsSectionHead v-if="authorized && schema" :title="tab" :description="sectionDescriptions[tab]">
-            <template v-if="dirty || tab === 'Plugins'" #actions>
+            <template v-if="showDraftActions || tab === 'Plugins'" #actions>
               <Button v-if="tab === 'Plugins'" label="Refresh status" severity="secondary" outlined :disabled="busy || loading" @click="load()">
                 <template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template>
               </Button>
-              <SettingsDraftActions v-if="dirty" :busy="busy" :discard-disabled="checkingRemoval"
+              <SettingsDraftActions v-if="showDraftActions" :busy="busy" :discard-disabled="checkingRemoval"
                 :review-disabled="checkingRemoval || migrationPending || stale || !!invalid.size"
                 @discard="discard" @review="openReview" />
             </template>
@@ -350,6 +374,13 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
           <p v-else-if="!authorized && !error" class="work-notice" role="alert">Ask a board administrator to grant you access to these settings.</p>
 
           <div v-if="authorized && schema" class="work-settings-body">
+            <section v-if="packOperation" class="work-notice work-stack work-tight" aria-label="Pack installation">
+              <p v-if="packInProgress" role="status">Pack installation status <strong>{{ humanize(packOperation.result.status) }}</strong></p>
+              <p v-else role="status">Pack applied.</p>
+              <p class="work-small">Operation <code>{{ packOperation.result.operation_id }}</code> · Job <code>{{ packOperation.result.job_id }}</code></p>
+              <p v-if="packOperationError" class="kx-err" role="alert">{{ packOperationError }}</p>
+              <div v-if="packInProgress"><Button label="Continue pack installation" severity="secondary" outlined :loading="busy" :disabled="busy" @click="continuePack" /></div>
+            </section>
             <p v-if="stale" class="work-notice" role="alert">Someone saved new settings while you were editing. Discard this draft to load their changes.</p>
             <div v-if="migrationPending" class="work-notice">
               <p>{{ latest?.migration_error ? 'Updating existing items paused.' : 'Updating existing items…' }}</p>
@@ -361,7 +392,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
               :active="tab === 'General'" :board-apps="options?.board_apps"
               :draft-form="draftForm" :disabled="busy || checkingRemoval"
               :pack-title="schema.pack ? packTitle : undefined" :outdated="schema.outdated" :upgrade-reason="upgradeReason"
-              :can-upgrade="upgradeAvailable && !dirty && !busy && !migrationPending" :can-install="!dirty && !busy && !migrationPending"
+              :can-upgrade="upgradeAvailable && canManagePack" :can-install="canManagePack"
               :pack-error="packError" @upgrade="upgrade" @install="installing = true" @retry="loadPacks()"
               @dirty-change="metadataDirty = $event" @saved="load()" />
 
@@ -388,6 +419,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
 
                 <section v-if="visited.has('Plugins')" v-show="tab === 'Plugins'" class="work-ia-section">
                   <PluginsEditor :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"
+                    v-model:active-configs="activePluginConfigs"
                     :filters="options?.filters" :configs="configs" :disabled="busy" @configured="invalidate(); load()" @refresh="load()" @review="openReview"
                     @validity="(key, valid) => validity('plugin:' + key, valid)" />
                 </section>
@@ -409,7 +441,8 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
                     :configs="configs" :disabled="busy" activation-locked @validity="(key, valid) => validity('pack-plugin:' + key, valid)" />
                   <SchemaReview v-if="reviewOpen" :board-id="boardId" :original="schema.declaration" :declaration="reviewedDeclaration" :plan="plan"
                     :follows="follows" :config-count="Object.keys(configs).length" :pack-review="!!packPlan" :plugins="options?.schema_options.plugins">
-                    <PackReview v-if="packPlan && packRequest" :plan="packPlan" :request="packRequest" :original="schema.declaration" :disabled="busy" @change="packReviewed = undefined; applyKey = ''" />
+                    <PackReview v-if="packPlan && packRequest" :plan="packPlan" :request="packRequest" :original="schema.declaration"
+                      :plugins="options?.schema_options.plugins" :disabled="busy" @change="packReviewed = undefined; applyKey = ''" />
                   </SchemaReview>
                   <p v-if="!busy && !isReviewed && !stale && !reviewError">Check the impact again before applying.</p>
                 </div>
@@ -427,12 +460,24 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
     </div>
 
     <NativeDialog v-if="authorized" :visible="installing" label="Install pack" :busy="busy" @close="installing = false">
-      <form class="work-dialog-box work-stack" @submit.prevent="install">
+      <form v-if="installing" class="work-dialog-box work-stack" @submit.prevent="install">
         <h2>Install a pack</h2>
         <p class="work-muted work-small">Packs give an empty board a starting setup. Review checks whether this board is eligible.</p>
-        <label class="work-stack work-tight">Pack<Select v-model="installPack" aria-label="Pack to install" appendTo="self" optionLabel="title" optionValue="id" optionDisabled="disabled" :options="packs.map(p => ({ ...p, disabled: p.plugins.some(plugin => !plugin.installed) }))" /></label>
-        <p v-if="!packs.length" class="work-muted">No available packs were found.</p>
-        <footer class="work-dialog-actions"><Button label="Cancel" severity="secondary" outlined @click="installing = false" /><Button type="submit" label="Review pack" :disabled="!installPack || busy || dirty" /></footer>
+        <p v-if="loadingPacks" class="work-muted" role="status">Loading packs…</p>
+        <div v-else-if="packError" class="kx-err work-alert-actions">
+          <p role="alert">{{ packError }}</p>
+          <Button label="Reload packs" severity="secondary" outlined @click="loadPacks()" />
+        </div>
+        <label v-else-if="packChoices.length" class="work-stack work-tight">Pack
+          <Select v-model="installPack" aria-label="Pack to install" appendTo="self" optionLabel="title" optionValue="id" optionDisabled="disabled" :options="packChoices"
+            :pt="{ option: ({ context }) => ({ 'aria-label': [context.option.title, context.option.unavailable].filter(Boolean).join('. ') }) }">
+            <template #option="{ option }">
+              <span>{{ option.title }}<small v-if="option.unavailable" class="work-pack-unavailable work-block">{{ option.unavailable }}</small></span>
+            </template>
+          </Select>
+        </label>
+        <p v-else class="work-muted">No available packs were found.</p>
+        <footer class="work-dialog-actions"><Button label="Cancel" severity="secondary" outlined @click="installing = false" /><Button type="submit" label="Review pack" :disabled="!installChoice || !canManagePack || loadingPacks || !!packError" /></footer>
       </form>
     </NativeDialog>
   </section>

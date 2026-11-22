@@ -49,17 +49,11 @@ License: LicenseRef-KickSide-Community-1.0
 
 Lockfiles: `docscout/ui/package-lock.json`
 
-### npm: @kickside/ui-kit@1.7.6
-
-License: LicenseRef-KickSide-Community-1.0
-
-Lockfiles: `work-admin/ui/package-lock.json`
-
 ### npm: @kickside/ui-kit@1.7.7
 
 License: LicenseRef-KickSide-Community-1.0
 
-Lockfiles: `pim-admin/ui/package-lock.json`
+Lockfiles: `pim-admin/ui/package-lock.json`, `work-admin/ui/package-lock.json`
 
 ### npm: @nodelib/fs.scandir@2.1.5
 

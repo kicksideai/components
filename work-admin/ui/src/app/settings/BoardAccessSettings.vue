@@ -21,14 +21,17 @@ const capabilities = ref<Capability[]>([])
 const memberGroups = computed(() => grants.value?.filter(grant => grant.subject_type === 'group').length ?? 0)
 const memberPeople = computed(() => (grants.value?.length ?? 0) - memberGroups.value)
 const memberPreview = computed(() => [...(grants.value ?? [])]
-  .sort((a, b) => Number(!!b.owner) - Number(!!a.owner) || b.access_mask - a.access_mask).slice(0, 6))
+  .sort((a, b) => Number(!!b.owner) - Number(!!a.owner) || b.access_mask - a.access_mask)
+  .slice(0, 6).map(grant => ({ ...grant, permissions: memberPermissions(grant) })))
 const memberRefs = computed(() => memberPreview.value.map(grant => ({ id: grant.subject_id, kind: grant.subject_type ?? 'user' })))
 const names = usePrincipalNames(() => props.boardId, memberRefs)
 function memberName(grant: Grant) {
   return grant.full_name || names.label({ id: grant.subject_id, kind: grant.subject_type ?? 'user', email: grant.email })
 }
 function memberPermissions(grant: Grant) {
+  if (grant.owner) return 'Owner'
   return capabilities.value.filter(capability => (grant.access_mask & capability.bit) === capability.bit)
+    .map(capability => capability.label).join(', ')
 }
 const grantsError = ref(false)
 const beginRead = latestRequest()
@@ -66,10 +69,7 @@ watch(() => [props.active, props.boardId], () => { if (props.active) void load()
         <li v-for="member in memberPreview" :key="member.subject_type + member.subject_id" class="work-settings-row">
           <Icon :icon="member.subject_type === 'group' ? 'tabler:users' : 'tabler:user'" aria-hidden="true" />
           <strong class="work-spacer">{{ memberName(member) }}</strong>
-          <Tag v-if="member.owner" severity="secondary" value="Owner" />
-          <span v-else class="work-chips">
-            <Tag v-for="permission in memberPermissions(member)" :key="permission.key" severity="secondary" :value="permission.label" />
-          </span>
+          <Tag v-if="member.permissions" class="kx-tag-sm" severity="secondary" :value="member.permissions" />
         </li>
       </ul>
       <p v-if="grants && grants.length > memberPreview.length" class="work-settings-row work-muted work-small">
@@ -82,7 +82,7 @@ watch(() => [props.active, props.boardId], () => { if (props.active) void load()
       </div>
       <p v-else-if="!grants" class="work-settings-row work-muted" role="status">Loading members…</p>
     </section>
-    <Disclosure class="work-settings-card work-disclosure" :label="draft.visibility ? 'Advanced · Item visibility rules set' : 'Advanced · Item visibility'">
+    <Disclosure class="work-disclosure" :label="draft.visibility ? 'Advanced · Item visibility rules set' : 'Advanced · Item visibility'">
       <VisibilityEditor :board-id="boardId" :draft="draft" @validity="$emit('validity', $event)" />
     </Disclosure>
   </section>

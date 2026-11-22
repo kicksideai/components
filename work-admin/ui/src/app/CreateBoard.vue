@@ -13,11 +13,13 @@ import { configErrors, configFields } from './settings/config'
 import type { PluginConfigs } from './settings/model'
 import NativeDialog from '../NativeDialog.vue'
 import { work } from '../api'
-import { availablePack, type Pack } from '../packs'
+import { availablePack, packChoice } from '../packs'
+import { usePackDiscovery } from './usePackDiscovery'
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ close: []; created: [boardId: string] }>()
 const title = ref(''), description = ref(''), prefix = ref('WORK'), selected = ref(''), starter = ref(false)
-const step = ref(1), busy = ref(false), loading = ref(false), error = ref(''), discoveryError = ref(''), packs = ref<Pack[]>([])
+const step = ref(1), busy = ref(false), error = ref('')
+const { packs, loading, error: discoveryError, load: loadPacks, reset: resetPacks } = usePackDiscovery()
 const created = ref(''), configs = ref<PluginConfigs>({}), invalid = ref(new Set<string>())
 const emptyConfig: Record<string, unknown> = {}
 const requiredConfigs = computed(() => {
@@ -27,27 +29,17 @@ const requiredConfigs = computed(() => {
     ? [{ id: plugin.plugin, title: plugin.title || 'Required plugin', schema: plugin.config_schema }]
     : [])
 })
-function unavailable(pack: Pack): string | undefined {
-  const problem = availablePack(pack) ? pack.plugins.find(plugin => plugin.problem && plugin.installed)?.problem : pack.problem
-  if (problem) return `${problem.message} (Error code: ${problem.code})`
-  if (availablePack(pack) && pack.plugins.some(plugin => !plugin.installed)) return 'A required plugin is unavailable.'
-}
 watch(selected, () => { configs.value = {}; invalid.value.clear() })
 function validity(id: string, valid: boolean) { if (valid) invalid.value.delete(id); else invalid.value.add(id) }
-let key = crypto.randomUUID(), attempted = '', read = 0
-const choices = computed(() => [{ id: '', title: 'Empty board', description: 'Set up the fields and process in Board settings.', icon: 'tabler:square', version: '', disabled: false }, ...packs.value.map(pack => {
-  const reason = unavailable(pack)
-  return { ...pack, title: pack.title ?? 'Unnamed pack', icon: pack.icon ?? 'tabler:package-off', disabled: !!reason, unavailable: reason }
-})])
+let key = crypto.randomUUID(), attempted = ''
+const choices = computed(() => [{ id: '', title: 'Empty board', description: 'Set up the fields and process in Board settings.', icon: 'tabler:square', version: '', disabled: false }, ...packs.value.map(packChoice)])
 const chosen = computed(() => choices.value.find(pack => pack.id === selected.value))
-const valid = computed(() => !!title.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(prefix.value) && !!chosen.value && !chosen.value.disabled && !invalid.value.size && (step.value === 1 || requiredConfigs.value.every(plugin => !Object.keys(configErrors(plugin.schema, configs.value[plugin.id] ?? emptyConfig)).length)))
-watch(() => props.visible, async visible => {
-  const current = ++read
+const valid = computed(() => !!title.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(prefix.value) && !!chosen.value && !chosen.value.disabled && !invalid.value.size && (step.value === 1 || requiredConfigs.value.every(plugin => !Object.keys(configErrors(plugin.schema, configs.value[plugin.id] ?? emptyConfig, false)).length)))
+watch(() => props.visible, visible => {
+  resetPacks()
   if (!visible) return
-  created.value = ''; configs.value = {}; invalid.value.clear(); step.value = 1; error.value = ''; discoveryError.value = ''; title.value = ''; description.value = ''; prefix.value = 'WORK'; selected.value = ''; starter.value = false; key = crypto.randomUUID(); attempted = ''; packs.value = []; loading.value = true
-  try { const rows = await work.packs(); if (current === read) packs.value = rows }
-  catch (e) { if (current === read) discoveryError.value = formatApiError(e, 'Could not load packs.') }
-  finally { if (current === read) loading.value = false }
+  created.value = ''; configs.value = {}; invalid.value.clear(); step.value = 1; error.value = ''; title.value = ''; description.value = ''; prefix.value = 'WORK'; selected.value = ''; starter.value = false; key = crypto.randomUUID(); attempted = ''
+  void loadPacks()
 }, { immediate: true })
 async function create() {
   if (!valid.value || busy.value) return
@@ -112,7 +104,10 @@ async function create() {
       >
       <template v-else
         ><p v-if="loading" class="work-muted" role="status">Loading packs…</p>
-        <p v-if="discoveryError" class="kx-err" role="alert">{{ discoveryError }}</p>
+        <div v-if="discoveryError" class="kx-err work-alert-actions">
+          <p role="alert">{{ discoveryError }}</p>
+          <Button label="Reload packs" severity="secondary" outlined @click="loadPacks()" />
+        </div>
         <SelectButton
           v-model="selected"
           class="work-pack-choices"
@@ -141,7 +136,7 @@ async function create() {
         <fieldset v-if="requiredConfigs.length" :disabled="busy || !!created" class="work-settings-fieldset work-stack">
           <section v-for="plugin in requiredConfigs" :key="selected + ':' + plugin.id" class="work-settings-card work-stack work-tight">
             <h3>{{ plugin.title }}</h3>
-            <ConfigForm :schema="plugin.schema" :model-value="configs[plugin.id] ?? emptyConfig" :disabled="busy || !!created"
+            <ConfigForm :schema="plugin.schema" :model-value="configs[plugin.id] ?? emptyConfig" :disabled="busy || !!created" suggest-defaults
               @update:model-value="configs[plugin.id] = $event" @validity="validity(plugin.id, $event)" />
           </section>
         </fieldset>

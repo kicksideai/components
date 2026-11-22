@@ -7,6 +7,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import ListRail from '@kickside/ui-kit/ListRail.vue'
+import EmptyState from '@kickside/ui-kit/EmptyState.vue'
 import SettingsDirectoryActions from '@kickside/ui-kit/SettingsDirectoryActions.vue'
 import { Icon } from '@iconify/vue'
 import CreateBoard from '../CreateBoard.vue'
@@ -117,15 +118,12 @@ async function created(id: string) {
     </ListRail>
     <section ref="detail" class="work-admin-main" aria-label="Board settings detail" tabindex="-1">
       <kickside-work-board-settings v-if="selected && ready" :key="selected" :board-id="selected" embedded="true" :focus-back="String(focusBack)"
-        :directory-count="hasLoaded ? boards.length : undefined"
         @back-to-boards="backToBoards" @dirty-change="dirty = $event.detail.dirty" />
       <p v-else-if="selected && widgetLoading" class="kx-loading" role="status">Loading board settings…</p>
       <p v-else-if="selected" class="kx-err" role="alert">Board settings are unavailable.<Button label="Back to boards" severity="secondary" text @click="backToBoards" /><Button label="Reload settings" severity="secondary" outlined @click="loadSettings"><template #icon><Icon icon="tabler:refresh" /></template></Button></p>
-      <div v-else-if="hasLoaded && !error" class="kx-empty">
-        <Icon class="kx-empty-ico" icon="tabler:adjustments" aria-hidden="true" />
-        <h2 class="kx-empty-title">{{ boards.length ? 'Choose a board' : 'No boards yet' }}</h2>
-        <p class="kx-empty-sub">{{ boards.length ? 'Select a board to manage its items, workflow, access and plugins.' : 'Create a board to set up its items, workflow, access and plugins.' }}</p>
-      </div>
+      <EmptyState v-else-if="hasLoaded && !error" icon="tabler:adjustments"
+        :title="boards.length ? 'Choose a board' : 'No boards yet'"
+        :hint="boards.length ? 'Select a board to manage its items, workflow, access and plugins.' : 'Create a board to set up its items, workflow, access and plugins.'" />
     </section>
     <CreateBoard :visible="creating" @close="creating = false" @created="created" />
   </main>

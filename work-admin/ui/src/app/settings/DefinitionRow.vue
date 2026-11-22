@@ -4,7 +4,7 @@ import { ref, useSlots } from 'vue'
 import ContentAction from '../ContentAction.vue'
 import Tag from 'primevue/tag'
 import { Icon } from '@iconify/vue'
-const props = defineProps<{ title: string; code?: string; kind?: string; description?: string; initialOpen?: boolean }>()
+const props = defineProps<{ title: string; code?: string; kind?: string; kindLabel?: string; description?: string; initialOpen?: boolean }>()
 const open = ref(!!props.initialOpen)
 const slots = useSlots()
 </script>
@@ -21,7 +21,13 @@ const slots = useSlots()
       </div>
       <div class="work-definition-details">
         <span class="work-definition-code"><code v-if="code" class="work-mono" :title="code">{{ code }}</code></span>
-        <span class="work-definition-kind"><Tag v-if="kind" severity="secondary" :value="kind" /></span>
+        <span class="work-definition-kind">
+          <Tag v-if="kind" severity="secondary">
+            <span v-if="kindLabel" class="work-definition-kind-label">{{ kindLabel }}:</span>
+            <span class="work-definition-kind-value">{{ kind }}</span>
+          </Tag>
+          <slot name="status" />
+        </span>
         <span class="work-definition-flags"><slot name="flags" /></span>
         <div class="work-definition-usage"><slot name="usage" /></div>
       </div>

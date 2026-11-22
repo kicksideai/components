@@ -2,12 +2,19 @@
 <script setup lang="ts">
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import Select from 'primevue/select'
+import { computed } from 'vue'
 import type { PackPlan, PackRequest } from '../../packs'
-import type { Declaration } from '../../types'
+import type { Declaration, PluginOption } from '../../types'
 import { humanize } from '../../forms'
 import { stateTitle } from './process'
-const props = defineProps<{ plan: PackPlan; request: PackRequest; original: Declaration; disabled?: boolean }>()
+const props = defineProps<{ plan: PackPlan; request: PackRequest; original: Declaration; plugins?: PluginOption[]; disabled?: boolean }>()
 const emit = defineEmits<{ change: [] }>()
+const resources = computed(() => [
+  { label: 'Saved views', entries: props.plan.views?.map(view => ({ id: view.id, name: view.title || view.id })) },
+  { label: 'Automations', entries: props.plan.automations?.map(automation => ({ id: automation.id, name: automation.id })) },
+  { label: 'Traits', entries: props.plan.traits?.map(id => ({ id, name: id })) },
+  { label: 'Required plugins', entries: props.plan.plugins?.map(id => ({ id, name: props.plugins?.find(plugin => plugin.plugin === id)?.title || id })) },
+].filter(group => group.entries?.length))
 function processName(id: string) { return props.original.processes?.find(p => p.id === id)?.name || humanize(id) }
 function conflictTitle(path: string) {
   const [section, ...parts] = path.split('.')
@@ -22,6 +29,15 @@ function resolve(path: string, value: 'local' | 'incoming') { (props.request.res
 function map(process: string, state: string, value: string) { ((props.request.maps ??= {})[process] ??= {})[state] = value; emit('change') }
 </script>
 <template>
+  <section class="work-stack work-tight" aria-label="Pack resources">
+    <h3>Pack resources</h3>
+    <p>Target version <strong>{{ plan.version }}</strong></p>
+    <p v-if="resources.length" class="work-muted work-small">Resources included in this plan.</p>
+    <div v-for="group in resources" :key="group.label">
+      <h4>{{ group.label }}</h4>
+      <ul><li v-for="entry in group.entries" :key="entry.id">{{ entry.name }}</li></ul>
+    </div>
+  </section>
   <section v-if="plan.conflicts.length" class="work-stack" aria-label="Pack conflicts"><h3>Local edits conflict</h3><p class="work-muted work-small">Choose which declaration to keep for each conflict, then review again.</p>
     <div v-for="conflict in plan.conflicts" :key="conflict.path" class="work-stack work-tight">
       <label class="work-stack work-tight work-pack-review-field">{{ conflictTitle(conflict.path) }}<Select :model-value="request.resolutions?.[conflict.path]" :aria-label="'Resolution for ' + conflictTitle(conflict.path)" :disabled="disabled" appendTo="self" placeholder="Choose a resolution" optionLabel="label" optionValue="value" :options="[{ label: 'Keep local edits', value: 'local' }, { label: 'Use pack changes', value: 'incoming' }]" @update:model-value="resolve(conflict.path, $event)" /></label>

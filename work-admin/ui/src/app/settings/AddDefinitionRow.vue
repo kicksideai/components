@@ -9,6 +9,7 @@ const props = defineProps<{
   action: string
   label: string
   maxlength?: number
+  regular?: boolean
   validate?: (value: string) => string | undefined
 }>()
 const emit = defineEmits<{ open: []; add: [value: string] }>()
@@ -43,7 +44,7 @@ function add() {
 <template>
   <div ref="row" class="work-add-definition">
     <Button v-if="!editing" type="button" :label="action" aria-expanded="false"
-      severity="secondary" outlined size="small" @click="open">
+      severity="secondary" outlined :size="regular ? undefined : 'small'" @click="open">
       <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
     </Button>
     <div v-else class="work-add-editor" @keydown.esc.stop.prevent="close">
@@ -53,8 +54,8 @@ function add() {
       </label>
       <slot />
       <div class="work-row work-wrap">
-        <Button type="button" :label="action" size="small" :disabled="!value || !!issue" @click="add" />
-        <Button type="button" label="Cancel" text severity="secondary" size="small" @click="close" />
+        <Button type="button" :label="action" :size="regular ? undefined : 'small'" :disabled="!value || !!issue" @click="add" />
+        <Button type="button" label="Cancel" text severity="secondary" :size="regular ? undefined : 'small'" @click="close" />
       </div>
       <p v-if="issue" :id="hintId" class="work-error work-small" role="status">{{ issue }}</p>
     </div>

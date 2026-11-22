@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { host } from '@wippy-fe/proxy'
 import type { PluginOption } from '../../types'
 import { schema } from '../../test/fixtures'
 import { getButton } from '../../test/controls'
@@ -170,6 +171,7 @@ it('shows the retained floor and offers declaration review for a history gap', a
 })
 
 it('resets a parked projection through Work once its worker cause is resolved', async () => {
+  vi.mocked(host.confirm).mockResolvedValueOnce(true)
   const wrapper = renderPlugin({ ...states[3].plugin, lifecycle: normal.lifecycle })
   try {
     await wrapper.get('.work-definition-toggle').trigger('click')
@@ -177,6 +179,7 @@ it('resets a parked projection through Work once its worker cause is resolved', 
     expect(wrapper.text()).toContain('Worker stopped')
     await getButton(wrapper, 'Reset projection').trigger('click')
     await flushPromises()
+    expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ header: 'Reset projection?' }))
     expect(settings.configure).toHaveBeenCalledExactlyOnceWith('board', id)
   } finally { wrapper.unmount() }
 })

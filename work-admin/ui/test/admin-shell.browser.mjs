@@ -112,6 +112,12 @@ async function run(browser, width, colorScheme, capture) {
     await header().getByRole('heading', { name: first, exact: true }).waitFor()
     await shot(route + '-' + first.toLowerCase())
     await check(route + ' S1 stable rail and header', async () => {
+      if (tag === 'work-admin') {
+        assert.ok(await rail.evaluate(node => node.parentElement.classList.contains('kx-settings-rail-standalone')))
+        assert.equal(await root.locator('.kx-railhead:visible').count(), 0, 'directory heading stays in the picker')
+        if (width === 1440) assert.equal((await css(rail)).width, pickerBox.width)
+        return
+      }
       const frame = root.locator('.kx-settings-list-rail:visible').or(rail).first()
       assert.deepEqual(await css(frame), pickerBox, 'rail dimensions, background and padding')
       assert.equal((await css(frame.locator('.kx-rail-body'))).padding, pickerBodyPadding, 'scroll body padding')

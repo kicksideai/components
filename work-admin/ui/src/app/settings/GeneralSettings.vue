@@ -104,7 +104,7 @@ const history = computed(() => {
       </p>
       <p v-if="packError" class="kx-err" role="alert">{{ packError }}</p>
       <Button v-if="packError" label="Reload packs" severity="secondary" outlined size="small" @click="$emit('retry')" />
-      <Button v-else-if="!packTitle" label="Install pack" severity="secondary" outlined size="small" :disabled="!canInstall" @click="$emit('install')" />
+      <Button v-if="!packTitle" label="Install pack" severity="secondary" outlined size="small" :disabled="!canInstall" @click="$emit('install')" />
       <Button v-else-if="outdated" label="Update pack" severity="secondary" outlined size="small" :disabled="!canUpgrade" :title="upgradeReason" @click="$emit('upgrade')" />
     </section>
 

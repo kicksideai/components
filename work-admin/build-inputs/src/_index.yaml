@@ -8,4 +8,4 @@ entries:
   - name: ui_kit
     kind: ns.dependency
     component: kickside/ui-kit
-    version: ">=1.7.6"
+    version: ">=1.7.7"
