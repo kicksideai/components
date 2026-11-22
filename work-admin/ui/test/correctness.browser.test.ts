@@ -261,7 +261,7 @@ it('adds workflows and states from actions with no permanent add input', async (
     await panel.getByRole('button', { name: 'New process', exact: true }).press('Enter')
     await processName.fill('Customer intake')
     await processName.press('Enter')
-    const process = panel.getByRole('combobox', { name: 'Process', exact: true })
+    const process = panel.getByRole('combobox', { name: 'Workflow', exact: true })
     await expect.poll(() => process.innerText()).toBe('Customer intake')
     await process.click()
     expect(await panel.getByRole('option', { name: 'New process…', exact: true }).count()).toBe(0)
