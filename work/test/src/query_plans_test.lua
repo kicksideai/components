@@ -98,6 +98,45 @@ local function define()
             test.is_nil(plan:find("TEMP B-TREE", 1, true), plan)
             test.is_nil(plan:find("Bitmap", 1, true), plan)
         end)
+
+        test.it("seeks both item keys when PostgreSQL statistics describe unrelated boards", function()
+            local db = assert(store.open())
+            if db:type() ~= "postgres" then db:release(); return end
+            local board = fixture.board()
+            local ancestors = tables.names(board.id).set
+            local tx = assert(db:begin())
+            assert(tx:execute([[CREATE TEMP TABLE kickside_work_item
+                (LIKE public.kickside_work_item INCLUDING ALL) ON COMMIT DROP]], {}))
+            local insert = [[INSERT INTO kickside_work_item
+                (board_id,item_id,number,type,state,category,process_generation,visit,parent_id,path,version,life,document,created_seq,updated_seq,created_at,updated_at)
+                ]]
+            assert(tx:execute(insert .. [[SELECT CAST(n AS text),'unrelated',1,'task','open','started',
+                1,1,NULL,'/unrelated/',1,'live','{}',0,0,'','' FROM generate_series(1,25000) n]], {}))
+            assert(tx:execute("ANALYZE pg_temp.kickside_work_item", {}))
+            -- A bulk fixture can leave recent board data outside the table statistics.
+            assert(tx:execute(insert .. [[SELECT $1,'child-' || n,n,'task','open','started',
+                1,1,'root','/root/child-' || n || '/',1,'live','{}',0,0,'','' FROM generate_series(1,5000) n
+                UNION ALL SELECT $1,'root',5001,'task','open','started',1,1,NULL,'/root/',1,'live','{}',0,0,'',''
+                UNION ALL SELECT 'zz-other','child-missing',1,'task','open','started',
+                1,1,'root','/root/child-missing/',1,'live','{}',0,0,'','']], { board.id }))
+            assert(tx:execute("INSERT INTO " .. ancestors .. [[ (item_id,col,value_key)
+                SELECT item_id,'path_under','root' FROM kickside_work_item WHERE board_id=$1 AND parent_id='root'
+                UNION ALL SELECT 'child-missing','path_under','root']], { board.id }))
+
+            local plan = ""
+            local probe = { query = function(_, statement, params)
+                plan = explain(db, statement, params, tx)
+                return tx:query(statement, params)
+            end }
+            local root = assert(store.item(tx, board.id, "root"))
+            local rows = assert(tree_rows.live_subtree(probe :: any, root, 5002, db:type()))
+            assert(tx:rollback())
+            db:release()
+
+            test.eq(#rows, 5001)
+            test.eq(rows[2].item_id, "child-1")
+            test.not_nil(plan:find("Index Scan using kickside_work_item_pkey", 1, true), plan)
+        end)
     end)
 
     test.describe("move alias query plans", function()
