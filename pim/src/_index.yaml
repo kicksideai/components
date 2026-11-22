@@ -211,8 +211,6 @@ entries:
 
   - name: failure
     kind: library.lua
-    meta:
-      comment: The native error PIM raises most.
     source: file://failure.lua
     imports:
       error_envelope: kickside.contract:error_envelope

@@ -2,27 +2,49 @@
 -- Data boundaries retain native classification beside their DataError fields.
 local failure = require("failure")
 local M = {}
-type Failure = { success: boolean, error: { code: string, message: string, retriable: boolean, scope: string,
-    details: { [string]: unknown } } }
+type Code = "auth_expired" | "rate_limited" | "invalid_config" | "invalid_request" | "not_found" | "conflict"
+    | "permission_denied" | "provider_unavailable" | "provider_error" | "cursor_expired" | "history_unavailable"
+    | "stalled" | "dependency_missing" | "idempotency_conflict" | "unknown"
+type CodeOverride = Code | "source_gap" | "contract_unavailable"
+type NativeDetails = { code: string?, kind: string?, retryable: boolean? } & { [string]: unknown }
+type Failure = { success: boolean, error: { code: Code, message: string, retriable: boolean, scope: string,
+    details: NativeDetails } }
+M.CodeOverride = CodeOverride
 M.Failure = Failure
-function M.failure(err: error, code: string?, scope: string?): Failure
+
+local function boundary_code(kind: string, override: CodeOverride?): Code
+    if override == "source_gap" then return "cursor_expired" end
+    if override == "contract_unavailable" then return "provider_unavailable" end
+    if override then return override end
+    if kind == errors.INVALID then return "invalid_request" end
+    if kind == errors.PERMISSION_DENIED then return "permission_denied" end
+    if kind == errors.NOT_FOUND then return "not_found" end
+    if kind == errors.CONFLICT then return "conflict" end
+    return "provider_unavailable"
+end
+
+function M.failure(err: error, override: CodeOverride?, scope: string?): Failure
     local kind = err:kind()
-    local mapped = code
-    if not mapped then
-        if kind == errors.INVALID then mapped = "invalid_request"
-        elseif kind == errors.PERMISSION_DENIED then mapped = "permission_denied"
-        elseif kind == errors.NOT_FOUND then mapped = "not_found"
-        elseif kind == errors.CONFLICT then mapped = "conflict"
-        else mapped = "provider_unavailable" end
-    end
-    local allowed: {[string]:boolean}={auth_expired=true,rate_limited=true,invalid_config=true,invalid_request=true,not_found=true,conflict=true,permission_denied=true,
-        provider_unavailable=true,provider_error=true,cursor_expired=true,history_unavailable=true,stalled=true,dependency_missing=true,idempotency_conflict=true,unknown=true}
-    if mapped=="source_gap" then mapped="cursor_expired" end
-    if not allowed[mapped :: string] then mapped="provider_unavailable" end
-    err = failure.coded(err, mapped :: string)
-    local details = err:details() or {}
+    local code = boundary_code(kind, override)
+    err = failure.coded(err, code)
+    local details = (err:details() or {}) :: NativeDetails
     details.kind, details.retryable = kind, err:retryable()
-    return { success = false, error = { code = mapped, message = err:message(), retriable = err:retryable() == true, scope = scope or "item",
+    return { success = false, error = { code = code, message = err:message(), retriable = err:retryable() == true, scope = scope or "item",
         details = details } }
 end
+
+function M.publications(err: error): Failure
+    local details = err:details()
+    if details and details.code == "cursor_expired" then return M.failure(err, "cursor_expired") end
+    return M.failure(err, err:kind() == errors.INVALID and "invalid_config" or nil)
+end
+
+function M.write(err: error): Failure
+    local details = err:details()
+    if err:kind() == errors.CONFLICT and details and details.code == "idempotency_conflict" then
+        return M.failure(err, "idempotency_conflict")
+    end
+    return M.failure(err)
+end
+
 return M

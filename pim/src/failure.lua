@@ -1,5 +1,4 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- The native error PIM raises most.
 local error_envelope = require("error_envelope")
 local M = {}
 
