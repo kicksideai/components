@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.22](https://github.com/kicksideai/components/compare/work-admin-v0.1.21...work-admin-v0.1.22) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work-admin:** separate board review and workflow editor concerns ([#363](https://github.com/kicksideai/components/issues/363)) ([7cc4f40](https://github.com/kicksideai/components/commit/7cc4f40596423a22f4e66fdb51320af42ed20403))
+
 ## [0.1.21](https://github.com/kicksideai/components/compare/work-admin-v0.1.20...work-admin-v0.1.21) (2026-11-22)
 
 
