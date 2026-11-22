@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.43](https://github.com/kicksideai/components/compare/work-v0.1.42...work-v0.1.43) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work:** share test helpers and drive stale timers directly ([#386](https://github.com/kicksideai/components/issues/386)) ([7bc9b57](https://github.com/kicksideai/components/commit/7bc9b5767fdc4b8a414e381daf1c899888ba9e10))
+
 ## [0.1.42](https://github.com/kicksideai/components/compare/work-v0.1.41...work-v0.1.42) (2026-11-22)
 
 
