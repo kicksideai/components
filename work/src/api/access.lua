@@ -38,8 +38,9 @@ function M.call(method: string, input: types.Body, contract_id: string?, optiona
     local data, err = board_client.call(method, input, contract_id)
     if err then
         if optional_method and (err:details() or {}).code == "method_unavailable" then
-            return failure(errors.new({ kind = errors.NOT_FOUND, message = "This operation requires a compatible installed module.",
+            local status, body = failure(errors.new({ kind = errors.NOT_FOUND, message = "This operation requires a compatible installed module.",
                 details = { code = "method_unavailable", method = method } }))
+            return status, body
         end
         local status, body = failure(err)
         return status, body

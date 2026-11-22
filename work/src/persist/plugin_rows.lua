@@ -7,6 +7,7 @@ local codec = require("row_decode")
 local domain = require("domain")
 local storage = require("storage")
 local jobs = require("jobs")
+local values = require("values")
 local M = {}
 local function decode(raw: domain.Row): (domain.PluginState?, error?)
     local row, err = codec.object(raw, { "plugin", "attachment_id", "impl_id" },
@@ -38,6 +39,13 @@ function M.list(tx: storage.Executor, board_id: string, pending: boolean?, limit
     end
     return out, nil
 end
+
+local function configure(tx: sql.Transaction, board_id: string, plugin: string, seq: integer, config: domain.JsonObject): error?
+    local _, err = tx:execute([[UPDATE kickside_work_plugin SET config = $1, lifecycle = '{"state":"pending"}', progress = '{}', revision = $2 WHERE board_id = $3 AND plugin = $4 AND active = 1]],
+        { json.encode(config), seq, board_id, plugin })
+    return err
+end
+
 function M.schema(tx: sql.Transaction, board_id: string, compiled: domain.Compiled, seq: integer, configs: { [string]: domain.JsonObject }?): error?
     local rows, err = M.list(tx, board_id)
     if err then return err end
@@ -47,12 +55,16 @@ function M.schema(tx: sql.Transaction, board_id: string, compiled: domain.Compil
     for _, plugin in ipairs(compiled.plugins or {}) do
         listed[plugin.use] = true
         local old = existing[plugin.use]
+        local config = (configs or {})[plugin.use]
         if not old or not old.active or old.attachment_id ~= plugin.attachment_id then
             local _, perr = tx:execute([[INSERT INTO kickside_work_plugin (board_id, plugin, attachment_id, impl_id, config, active, revision, applied_revision)
                 VALUES ($1, $2, $3, $4, $5, 1, $6, 0) ON CONFLICT (board_id, plugin) DO UPDATE SET active = 1,
                 config = excluded.config, attachment_id = excluded.attachment_id, impl_id = excluded.impl_id, revision = excluded.revision, applied_revision = 0, lifecycle = '{"state":"pending"}', progress = '{}']],
-                { board_id, plugin.use, plugin.attachment_id, plugin.attachment_kind, json.encode((configs or {})[plugin.use] or {}), seq })
+                { board_id, plugin.use, plugin.attachment_id, plugin.attachment_kind, json.encode(config or {}), seq })
             if perr then return perr end
+        elseif config and not values.equal(old.config, config) then
+            local cerr = configure(tx, board_id, plugin.use, seq, config)
+            if cerr then return cerr end
         end
     end
     for _, row in ipairs(rows or {}) do
@@ -64,9 +76,7 @@ function M.schema(tx: sql.Transaction, board_id: string, compiled: domain.Compil
     return nil
 end
 function M.configure(tx: sql.Transaction, board_id: string, event: domain.FoldEvent): error?
-    local _, err = tx:execute([[UPDATE kickside_work_plugin SET config = $1, lifecycle = '{"state":"pending"}', progress = '{}', revision = $2 WHERE board_id = $3 AND plugin = $4 AND active = 1]],
-        { json.encode(event.body.config or {}), event.seq, board_id, event.body.plugin })
-    return err
+    return configure(tx, board_id, event.body.plugin :: string, event.seq, (event.body.config or {}) :: domain.JsonObject)
 end
 function M.rebuild(tx: sql.Transaction, board_id: string, event: domain.FoldEvent): error?
     local _, err = tx:execute([[UPDATE kickside_work_plugin SET revision = $1, lifecycle = '{"state":"pending"}', progress = '{}' WHERE board_id = $2 AND plugin = $3 AND active = 1]], { event.seq, board_id, event.body.plugin })

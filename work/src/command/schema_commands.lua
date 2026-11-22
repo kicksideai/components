@@ -110,6 +110,7 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     end
     local effective: domain.Declaration
     local compiled: domain.Compiled
+    local config_changes: { domain.SchemaChange } = {}
     if frozen then
         effective, compiled = declaration.copy(frozen.declaration), declaration.copy(frozen.compiled)
     else
@@ -121,18 +122,19 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
         local configured, config_err = plugin_rows.list(db, board_id)
         if config_err then return nil, config_err end
         local configs: { [string]: domain.JsonObject } = {}
-        local active: { [string]: boolean } = {}
         local listed: { [string]: boolean } = {}
         for _, entry in ipairs(effective.plugins or {}) do listed[entry.use] = true end
         for _, row in ipairs(configured or {}) do
-            if row.active then configs[row.plugin] = row.config; active[row.plugin] = true end
+            if row.active then configs[row.plugin] = row.config end
         end
         for id, config in pairs(request.plugin_configs or {}) do
-            if not listed[id] then return nil, guard.invalid("initial configuration names an unlisted plugin", { code = "plugin_unlisted" }) end
-            if active[id] then return nil, guard.invalid("active plugin configuration changes through its attachment", { code = "plugin_config_requires_attachment" }) end
+            if not listed[id] then return nil, guard.invalid("configuration names an unlisted plugin", { code = "plugin_unlisted" }) end
+            if configs[id] and not values.equal(configs[id], config) then
+                config_changes[#config_changes + 1] = { what = "plugin.config", class = "cosmetic", code = id }
+            end
             configs[id] = config
         end
-        if request.declaration.plugins ~= nil then
+        if request.declaration.plugins ~= nil or next(request.plugin_configs or {}) ~= nil then
             local resolved, err = plugins.compile(effective.plugins, configs, board_id, previous and previous.plugins)
             if err then return nil, err end
             effective.plugins = resolved
@@ -165,7 +167,7 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     if limit_err then return nil, limit_err end
     declaration.stamp(effective, compiled)
     local digest = schema.digest(compiled)
-    if board and board.digest == digest and request.pack == nil then
+    if board and board.digest == digest and request.pack == nil and #config_changes == 0 then
         return { generation = generation, class = "unchanged", changes = {}, refused = {}, declaration = effective,
             compiled = compiled, digest = digest, unchanged = true, claim = false, migrates = false, maps = {} }, nil
     end
@@ -188,6 +190,8 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     local maps: { [string]: { [string]: string } } = {}
     for _, p in ipairs(request.declaration.processes or {}) do maps[p.id] = p.map or {} end
     local delta = changes.changes(board and board.compiled or nil, compiled, usage, maps)
+    table.sort(config_changes, function(a, b) return a.code < b.code end)
+    for _, change in ipairs(config_changes) do delta[#delta + 1] = change end
     local refused: { domain.SchemaChange } = {}
     local narrowing: { types.ReferenceNarrowing } = {}
     local other_refusal = false

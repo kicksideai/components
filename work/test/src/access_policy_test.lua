@@ -75,7 +75,7 @@ local function exact(policy_id: string, expected: { [string]: boolean })
             test.eq(policy:evaluate(actor, "access", id), expected[id] and "allow" or "undefined", id)
         end
     end
-    test.eq(seen, 42)
+    test.eq(seen, 44)
     test.eq(policy:evaluate(actor, "access", "kickside.work.api:get.endpoint.unlisted"), "undefined")
 end
 
