@@ -1,7 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- The pipeline delivers one head conflict, then builds at the winning head.
 local store = require("store")
-local values = require("values")
 local pipeline = require("pipeline")
 local writer = require("writer")
 local types = require("types")
@@ -95,25 +93,26 @@ function M.run(command: pipeline.Command): (unknown, error?)
         end
         return pipeline.run(command)
     end
-    local db, err = store.open()
-    if err or not db then return nil, err end
-    local catalog, cerr = store.catalog(db, catalog_id)
-    db:release()
-    if cerr or not catalog then return nil, cerr end
-    local first, ferr = command.build(catalog.applied_seq)
-    if ferr or not first then return nil, ferr end
-    if generation_changes then
-        local compiled = catalog.compiled
-        compiled.attributes["ids.code"].config.length = 3
-        local next_db, nerr = store.open()
-        if nerr or not next_db then return nil, nerr end
-        local _, uerr = next_db:execute("UPDATE kickside_pim_catalog SET generation = generation + 1, compiled = $1 WHERE catalog_id = $2",
-            { values.canonical(compiled), catalog_id })
-        next_db:release()
-        if uerr then return nil, uerr end
-    end
-    local second, serr = command.build(catalog.applied_seq + 1)
-    if serr or not second then return nil, serr end
-    return second.result, nil
+    local client = command.client
+    local first = true
+    command.client = {
+        append_events = function(_, request)
+            if not first then return client:append_events(request) end
+            first = false
+            if generation_changes then
+                local changed = assert(writer.apply_schema(catalog_id, { declaration = { aspects = {
+                    { namespace = "ids", attributes = {
+                        { code = "code", type = "app:code_type", index = "key", config = { length = 3 } },
+                    } },
+                } } }))
+                assert(changed.generation > 2)
+            end
+            return nil, errors.new({ kind = errors.CONFLICT, message = "injected head mismatch", details = { reason = "head_mismatch" } })
+        end,
+        catch_up_projection = function(_, request)
+            return client:catch_up_projection(request)
+        end,
+    }
+    return pipeline.run(command)
 end
 return M
