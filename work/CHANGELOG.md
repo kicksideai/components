@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.38](https://github.com/kicksideai/components/compare/work-v0.1.37...work-v0.1.38) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work:** streamline reads and contract vocabulary ([#367](https://github.com/kicksideai/components/issues/367)) ([0e9f113](https://github.com/kicksideai/components/commit/0e9f11333ab1ee09fc4061f7d6fda3eb338dc1f6))
+
 ## [0.1.37](https://github.com/kicksideai/components/compare/work-v0.1.36...work-v0.1.37) (2026-11-22)
 
 
