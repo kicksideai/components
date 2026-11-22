@@ -21,20 +21,6 @@ local schema_commands = require("schema_commands")
 local sql = require("sql")
 local M = {}
 
-type Spec = {
-    item_type: string, process: string, transition: string, command: string, plugin: string, fields: { string },
-    pack: string, base_digest: string,
-}
-type Cohort = { generation: integer, life: string, state: string, count: integer }
-type Review = {
-    board_id: string, selector: string, head: integer, generation: integer,
-    selector_digest: string, base_digest: string, installed_digest: string, rule_digest: string,
-}
-type Result = {
-    status: string, cohorts: { Cohort }?, conflict: { path: string, generation: integer? }?,
-    review: Review?, token: string?,
-}
-
 local function stale(): error
     return errors.new({ kind = errors.CONFLICT, message = "The board or adoption definition changed. Review adoption again.",
         details = { code = "transition_adoption_stale" } })
@@ -57,7 +43,7 @@ local function digest(value: unknown): boolean
     return type(value) == "string" and #value == 64 and value:find("[^0-9a-f]") == nil
 end
 
-local function load(id: string): (Spec?, error?)
+local function load(id: string): (domain.TransitionAdoptionSpec?, error?)
     local entry, err = registry.get(id)
     if err then return nil, err end
     if not entry or entry.kind ~= "registry.entry" or (entry.meta or {}).type ~= "kickside.work.transition_adoption" then return nil, invalid() end
@@ -76,14 +62,15 @@ local function load(id: string): (Spec?, error?)
     if not command or command.kind ~= "function.lua" or (command.meta or {}).type ~= "kickside.work.transition_command" then
         return nil, invalid()
     end
-    return data :: Spec, nil
+    return data :: domain.TransitionAdoptionSpec, nil
 end
 
-local function refusing(path: string, generation: integer?): Result
+local function refusing(path: string, generation: integer?): domain.TransitionAdoptionResult
     return { status = "ineligible", conflict = { path = path, generation = generation } }
 end
 
-local function cohorts(db: sql.Transaction, board: domain.Board, spec: Spec, deadline: domain.Deadline): ({ Cohort }?, Result?, error?)
+local function cohorts(db: sql.Transaction, board: domain.Board, spec: domain.TransitionAdoptionSpec,
+    deadline: domain.Deadline): ({ domain.TransitionAdoptionCohort }?, domain.TransitionAdoptionResult?, error?)
     local rows, err = db:query([[SELECT process_generation, life, state, COUNT(*) AS count
         FROM kickside_work_item WHERE board_id=$1 AND type=$2 AND life IN ('live','trashed')
         GROUP BY process_generation, life, state ORDER BY process_generation, life, state]], { board.board_id, spec.item_type })
@@ -92,7 +79,7 @@ local function cohorts(db: sql.Transaction, board: domain.Board, spec: Spec, dea
         return nil, nil, errors.new({ kind = errors.INTERNAL, message = "transition adoption cohort query returned no rows proof",
             details = { code = "transition_adoption_response" } })
     end
-    local out: { Cohort } = table.create(0, 1)
+    local out: { domain.TransitionAdoptionCohort } = table.create(0, 1)
     local checked: { [integer]: { [string]: boolean } } = {}
     for _, row in ipairs(rows) do
         if clock.passed(deadline) then return nil, nil, timed_out() end
@@ -125,8 +112,8 @@ local function context(board_id: string): string
     return "work/transition-adoption/" .. board_id .. "/" .. guard.actor_id()
 end
 
-local function inspect(db: sql.Transaction, board: domain.Board, id: string, spec: Spec, installed: string, head: integer,
-    deadline: domain.Deadline): (Result?, error?)
+local function inspect(db: sql.Transaction, board: domain.Board, id: string, spec: domain.TransitionAdoptionSpec,
+    installed: string, head: integer, deadline: domain.Deadline): (domain.TransitionAdoptionResult?, error?)
     local key = rules.key(spec.item_type, spec.transition)
     local rule = board.compiled.transition_rules and board.compiled.transition_rules[key]
     if rule and rule.command == spec.command and rule.process == spec.process then return { status = "already_adopted" }, nil end
@@ -149,7 +136,7 @@ local function inspect(db: sql.Transaction, board: domain.Board, id: string, spe
     if refused then return refused, nil end
     local rule_digest, path = rules.digest(board.compiled, spec)
     if not rule_digest then return refusing(path or "processes." .. spec.process, board.generation), nil end
-    local review: Review = { board_id = board.board_id, selector = id, head = math.max(head, board.applied_seq),
+    local review: domain.TransitionAdoptionReview = { board_id = board.board_id, selector = id, head = math.max(head, board.applied_seq),
         generation = board.generation, selector_digest = receipts.request_hash(spec), base_digest = spec.base_digest,
         installed_digest = installed, rule_digest = rule_digest }
     local token, err = codec.seal(receipts.request_hash(review), context(board.board_id))
@@ -157,7 +144,7 @@ local function inspect(db: sql.Transaction, board: domain.Board, id: string, spe
     return { status = "eligible", cohorts = groups, review = review, token = token }, nil
 end
 
-function M.plan(request: unknown): (Result?, error?)
+function M.plan(request: unknown): (domain.TransitionAdoptionResult?, error?)
     if type(request) ~= "table" or not text(request.board_id) or not text(request.selector) then return nil, invalid() end
     local board_id, err = locate.resolve(request.board_id :: string)
     if err or not board_id then return nil, err end
@@ -178,7 +165,7 @@ function M.plan(request: unknown): (Result?, error?)
     local tx, err = db:begin()
     if err or not tx then db:release(); return nil, err end
     if db:type() == sql.type.POSTGRES then err = board_store.read_snapshot(tx, deadline) end
-    local result: Result? = nil
+    local result: domain.TransitionAdoptionResult? = nil
     if not err then
         local board
         board, err = board_store.board(tx, board_id)
@@ -203,7 +190,7 @@ function M.apply(request: unknown): (commands.SchemaResult?, error?)
     if type(request) ~= "table" or not text(request.key) or type(request.token) ~= "string" or not validate_review(request.review) then
         return nil, invalid()
     end
-    local review = request.review :: Review
+    local review = request.review :: domain.TransitionAdoptionReview
     local board_id = review.board_id
     local err = guard.require_access(board_id, guard.admin_access())
     if err then return nil, err end

@@ -26,16 +26,15 @@ test('Work retains the published sprint endpoint IDs and the host router binding
     readFile(new URL('../../src/api/sprints/_index.yaml', import.meta.url), 'utf8'),
     readFile(new URL('../../../work-planning/src/_index.yaml', import.meta.url), 'utf8'),
   ]))
-  const endpointIds = ['plan_close.endpoint', 'close.endpoint']
-    .map(name => `${sprints.namespace}:${name}`)
+  const expectedEndpoints = ['plan_close', 'close', 'plan_adoption', 'apply_adoption'].map(name => ({
+    id: `${sprints.namespace}:${name}.endpoint`, path: `/work/sprints/${name}`, method: 'POST',
+  }))
+  const endpointIds = expectedEndpoints.map(endpoint => endpoint.id)
   const router = work.entries.find(entry => entry.name === 'api_router')
 
   assert.deepEqual(sprints.entries.filter(entry => entry.kind === 'http.endpoint').map(entry => ({
     id: `${sprints.namespace}:${entry.name}`, path: entry.path, method: entry.method,
-  })), [
-    { id: endpointIds[0], path: '/work/sprints/plan_close', method: 'POST' },
-    { id: endpointIds[1], path: '/work/sprints/close', method: 'POST' },
-  ])
+  })), expectedEndpoints)
   assert.deepEqual(router.targets.filter(target => endpointIds.includes(target.entry)),
     endpointIds.map(entry => ({ entry, path: '.meta.router' })))
   assert.equal(router.default, undefined)

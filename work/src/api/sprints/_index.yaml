@@ -26,8 +26,8 @@ entries:
   path: /work/sprints/close
 - name: plan_adoption
   kind: function.lua
-  source: file://adoption.lua
-  method: plan
+  source: file://plan_adoption.lua
+  method: handler
   imports: &adoption_imports
     access: kickside.work.api:access
 - name: plan_adoption.endpoint
@@ -37,8 +37,8 @@ entries:
   path: /work/sprints/plan_adoption
 - name: apply_adoption
   kind: function.lua
-  source: file://adoption.lua
-  method: apply
+  source: file://apply_adoption.lua
+  method: handler
   imports: *adoption_imports
 - name: apply_adoption.endpoint
   kind: http.endpoint

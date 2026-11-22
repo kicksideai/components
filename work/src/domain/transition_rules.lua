@@ -24,13 +24,7 @@ local function shape(value: types.JsonObject, exclude: { string }): types.JsonOb
     return out
 end
 
-type Definitions = { [string]: types.JsonObject }
-type Proof = {
-    process: { initial: string, migration: string, states: Definitions, transitions: Definitions },
-    fields: Definitions,
-}
-
-local function proof(compiled: types.Compiled, selector: types.TransitionSelector, field_ids: boolean): (Proof?, string?)
+local function proof(compiled: types.Compiled, selector: types.TransitionSelector, field_ids: boolean): (types.TransitionProof?, string?)
     local item_type: types.ItemType? = nil
     for _, entry in ipairs(compiled.item_types) do
         if entry.id == selector.item_type then item_type = entry; break end
@@ -42,8 +36,8 @@ local function proof(compiled: types.Compiled, selector: types.TransitionSelecto
     end
     local prefix = "processes." .. selector.process
     if not definition then return nil, prefix end
-    local states: Definitions = {}
-    local routes: Definitions = {}
+    local states: types.TransitionDefinitions = {}
+    local routes: types.TransitionDefinitions = {}
     local edge: types.Transition? = nil
     for _, state in ipairs(definition.states) do
         states[state.id] = shape(state :: types.JsonObject, { "name" })
@@ -83,7 +77,7 @@ local function proof(compiled: types.Compiled, selector: types.TransitionSelecto
     for _, code in ipairs(process.fields_used(definition)) do
         if not carried[code] then return nil, "item_types." .. selector.item_type .. ".fields." .. code end
     end
-    local fields: { [string]: types.JsonObject } = {}
+    local fields: types.TransitionDefinitions = {}
     for _, code in ipairs(selector.fields) do
         for _, field in ipairs(compiled.fields) do
             if field.code == code then
