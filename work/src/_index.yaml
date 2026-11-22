@@ -32,10 +32,10 @@ entries:
     comment: Resolves the board execution identity the migration job runs under.
   component: kickside/execution
 - name: dep.kickside.contract
-  version: '*'
+  version: '>=0.3.13'
   kind: ns.dependency
   meta:
-    comment: Shared component and deletable contracts.
+    comment: Shared lifecycle contracts and plugin schema resolution.
   component: kickside/contract
 - name: dep.wippy.migration
   version: '>=0.3.26'
