@@ -261,10 +261,12 @@ function reviewRemoval(plugin: PluginView) {
     </NativeDialog>
 
     <DefinitionList :count="options.scopes.length" :columns="['details']">
-      <template #head><header class="pim-bsection-head"><h3>Product filter sets</h3><span class="muted small">Choose additional ways to filter products.</span></header></template>
-      <Disclosure class="small pim-ia-disclosure" label="Filter set technical details">
-        <p>Product filter sets are <code>scopes</code> in <code>PIMQuery</code>. Use the filter set ID in <code>scopes[].id</code>.</p>
-      </Disclosure>
+      <template #head>
+        <header class="pim-bsection-head"><h3>Product filter sets</h3><span class="muted small">Choose additional ways to filter products.</span></header>
+        <Disclosure class="small pim-ia-disclosure" label="Filter set technical details">
+          <p>Product filter sets are <code>scopes</code> in <code>PIMQuery</code>. Use the filter set ID in <code>scopes[].id</code>.</p>
+        </Disclosure>
+      </template>
       <div v-if="options.scopes.length === 0" class="pim-aspect muted">No product filter sets are available.</div>
       <DefinitionRow route-section="plugins" :route-id="'scope:' + s.id" v-for="s in options.scopes" :key="s.id" :title="humanLabel(s.title, 'Filter set')">
         <template #details><Tag :severity="adopted(s) ? 'success' : 'secondary'" :value="adopted(s) ? 'Selected' : 'Available'" /></template>

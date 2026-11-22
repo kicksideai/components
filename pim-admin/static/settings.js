@@ -3701,18 +3701,16 @@ const _o = { class: "pim-stack" }, wo = { class: "pim-bsection-head" }, $o = { c
         count: a.options.scopes.length,
         columns: ["details"]
       }, {
-        head: w(() => [...P[20] || (P[20] = [
-          l("header", { class: "pim-bsection-head" }, [
+        head: w(() => [
+          P[21] || (P[21] = l("header", { class: "pim-bsection-head" }, [
             l("h3", null, "Product filter sets"),
             l("span", { class: "muted small" }, "Choose additional ways to filter products.")
-          ], -1)
-        ])]),
-        default: w(() => [
+          ], -1)),
           f(Ce, {
             class: "small pim-ia-disclosure",
             label: "Filter set technical details"
           }, {
-            default: w(() => [...P[21] || (P[21] = [
+            default: w(() => [...P[20] || (P[20] = [
               l("p", null, [
                 W("Product filter sets are "),
                 l("code", null, "scopes"),
@@ -3724,7 +3722,9 @@ const _o = { class: "pim-stack" }, wo = { class: "pim-bsection-head" }, $o = { c
               ], -1)
             ])]),
             _: 1
-          }),
+          })
+        ]),
+        default: w(() => [
           a.options.scopes.length === 0 ? (e(), i("div", Jo, "No product filter sets are available.")) : y("", !0),
           (e(!0), i(L, null, ee(a.options.scopes, (Z) => (e(), T(De, {
             "route-section": "plugins",
