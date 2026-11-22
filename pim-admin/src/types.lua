@@ -1,11 +1,9 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local pim_types = require("pim_types")
-local M = {}
-type Map = { [string]: unknown }
-type Catalog = { get_schema: (self: Catalog, Map) -> (unknown, error?),
+type Catalog = { get_schema: (self: Catalog, pim_types.GetSchemaRequest & { catalog_id: string }) -> (pim_types.SchemaView?, error?),
     policy_defaults: (self: Catalog, { catalog_id: string }) -> (pim_types.Policy?, error?) }
-type Directory = { resolve: (self: Directory, Map) -> (unknown, error?) }
-M.Map = Map
-M.Catalog = Catalog
-M.Directory = Directory
-return M
+type PrincipalRef = { type: "user" | "group", id: string }
+type PrincipalRefs = { refs: { PrincipalRef } }
+type PrincipalLabel = { type: string, id: string, label: string, sublabel: string? }
+type Directory = { resolve: (self: Directory, PrincipalRefs) -> ({ principals: { PrincipalLabel } }?, error?) }
+return { Catalog = Catalog, PrincipalRefs = PrincipalRefs, Directory = Directory }
