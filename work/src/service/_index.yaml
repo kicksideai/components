@@ -11,7 +11,6 @@ entries:
   imports: &id001
     schema_commands: kickside.work.command:schema_commands
     apply_ops: kickside.work.command:apply_ops
-    process_report: kickside.work.command:process_report
     query: kickside.work.read:query
     cross_board: kickside.work.read:cross_board
     reader: kickside.work.read:reader
