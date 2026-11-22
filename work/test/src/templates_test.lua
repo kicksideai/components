@@ -210,6 +210,40 @@ return { run = test.run_cases(function()
             test.eq(items[1].id, generic.outcomes[1].item)
         end)
 
+        test.it("replays a retained Work 0.1.21–0.1.30 template receipt", function()
+            local h = fixture.board()
+            activate(h)
+            event_window(h, 90)
+            local template = publish(h, "Preset")
+            local key = "pre-namespace"
+            local created = assert(h.call("apply", {
+                mode = "atomic",
+                key = "work-templates/request/" .. tostring(hash.sha256(key)),
+                source = "work-templates",
+                origin = { template_id = "weekly", version = template.version,
+                    overrides_hash = tostring(hash.sha256('{"title":"Historical result"}')) },
+                ops = { { op = "create", type = "task", values = { title = "Historical result" } } },
+            }))
+            test.is_true(created.applied)
+
+            local replay = assert(instantiate(h, template, key, { title = "Historical result" }))
+            test.is_true(replay.replayed)
+            test.eq(replay.seq, created.seq)
+            test.eq(replay.outcomes[1].item, created.outcomes[1].item)
+            local _, conflict = instantiate(h, template, key, { estimate = 1 })
+            code(conflict, "idempotency_conflict")
+
+            event_window(h, 3)
+            local db = assert(sql.get("app:db"))
+            local old = time.now():add(assert(time.parse_duration("-96h"))):utc():format("2006-01-02T15:04:05.000000000Z")
+            assert(db:execute("UPDATE kickside_work_receipt SET at = $1 WHERE board_id = $2 AND seq = $3",
+                { old, h.id, created.seq }))
+            assert(db:release())
+            local _, expired = instantiate(h, template, key, { estimate = 1 })
+            code(expired, "template_override_denied")
+            test.eq(#assert(h.call("query", {})).items, 1)
+        end)
+
         test.it("checks stored field identities when schema changes and keeps successful replays", function()
             local h = fixture.board()
             activate(h)

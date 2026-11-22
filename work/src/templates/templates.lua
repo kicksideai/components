@@ -165,6 +165,8 @@ local function instantiate(input: unknown, replay_window: integer?, replay_only:
             return presets.current(board, version)
         end }, nil
     end
+    -- Work 0.1.21–0.1.30 writes these keys. Retire this lookup after all old receipts drain,
+    -- including on boards where event retention is disabled.
     local function legacy_ops(): ({ commands.Op }?, error?)
         local version, _, verr = version_of(req :: types.Pinned)
         if verr then
