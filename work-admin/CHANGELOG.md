@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21](https://github.com/kicksideai/components/compare/work-admin-v0.1.20...work-admin-v0.1.21) (2026-11-22)
+
+
+### Bug Fixes
+
+* unify Work Admin plugin and link settings ([#351](https://github.com/kicksideai/components/issues/351)) ([e781c75](https://github.com/kicksideai/components/commit/e781c756f27b08071a1ac41e168c0eb074192211))
+
 ## [0.1.20](https://github.com/kicksideai/components/compare/work-admin-v0.1.19...work-admin-v0.1.20) (2026-11-22)
 
 
