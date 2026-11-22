@@ -5,7 +5,7 @@ local security = require("security")
 local failure = require("failure")
 local M = {}
 type Input = { [string]: unknown }
-type Catalog = { [string]: (Catalog, Input) -> (unknown, error?) }
+type Catalog = { [string]: ((Catalog, Input) -> (unknown, error?))? }
 M.Catalog = Catalog
 function M.open(): (Catalog?, error?)
     local def, err = contract.get("kickside.pim:catalog")
@@ -15,5 +15,16 @@ function M.open(): (Catalog?, error?)
     if oerr then return nil, failure.coded(errors.wrap(oerr, "catalog contract open"), "contract_unavailable") end
     if not client then return nil, errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "catalog contract open returns no client", details = { code = "contract_unavailable" } }) end
     return client :: Catalog, nil
+end
+
+function M.call(method: string, input: Input): (unknown, error?)
+    local client, err = M.open()
+    if err or not client then return nil, err end
+    local invoke = client[method]
+    if not invoke then
+        return nil, errors.new({ kind = errors.INTERNAL, message = "catalog contract has no method " .. method,
+            details = { code = "contract_unavailable" } })
+    end
+    return invoke(client, input)
 end
 return M

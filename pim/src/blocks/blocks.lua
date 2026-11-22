@@ -23,11 +23,7 @@ local function run(method: string, args: unknown): (unknown, error?)
     for k, v in pairs((type(a.input) == "table" and a.input or {}) :: Map) do input[k] = v end
     input.catalog_id = catalog_id
     if method == "wait_for_product" then input.timeout_ms = config.timeout_ms end
-    local client, err = catalog_client.open()
-    if err or not client then return nil, err end
-    local fn = client[method]
-    if not fn then return nil, errors.new({ kind = errors.INTERNAL, message = "catalog contract has no method " .. method, details = { code = "contract_unavailable" } }) end
-    return fn(client, input)
+    return catalog_client.call(method, input)
 end
 
 function M.get_product(args: unknown): (unknown, error?) return run("get", args) end

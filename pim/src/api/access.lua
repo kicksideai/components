@@ -39,20 +39,9 @@ local function reject(res: http.Response, err: error, status: number?)
 end
 
 local function call(method: string, input: Body): (number, Envelope)
-    local service, err = catalog_client.open()
-    if err or not service then
+    local data, err = catalog_client.call(method, input)
+    if err then
         local status, body = failure(err :: error)
-        return status, body
-    end
-    local fn = service[method]
-    if not fn then
-        local status, body = failure(errors.new({ kind = errors.INTERNAL, message = "catalog contract has no method " .. method,
-            details = { code = "contract_unavailable" } }))
-        return status, body
-    end
-    local data, cerr = fn(service, input)
-    if cerr then
-        local status, body = failure(cerr)
         return status, body
     end
     return http.STATUS.OK, { success = true, data = data }

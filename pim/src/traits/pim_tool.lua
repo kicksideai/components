@@ -9,11 +9,7 @@ local function run(method: string, args: Map, catalog_id: unknown): (Map?, error
     local input: Map = {}
     for key, value in pairs(args) do input[key] = value end
     if input.catalog_id == nil then input.catalog_id = catalog_id end
-    local client, err = catalog_client.open()
-    if err then return nil, err end
-    local service = client :: catalog_client.Catalog
-    local invoke = service[method] :: (catalog_client.Catalog, Map) -> (Map?, error?)
-    local out, cerr = invoke(service, input)
+    local out, cerr = catalog_client.call(method, input)
     if cerr then return nil, cerr end
     local result = out :: Map
     result.success = true

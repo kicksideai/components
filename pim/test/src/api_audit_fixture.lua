@@ -20,7 +20,7 @@ end
 function M.response(): Response
     return {set_status=function(_self: unknown,value: number) state.status=value end,set_content_type=function() end,write_json=function(_self: unknown,value: unknown) state.payload=value end} :: Response
 end
-function M.open(): (unknown,error?)
+function M.call(_method: string, _input: { [string]: unknown }): (unknown,error?)
     state.calls=(state.calls :: integer)+1
     return nil,errors.new({kind=errors.UNAVAILABLE,message="contract touched",details={code="contract_touched"}})
 end
