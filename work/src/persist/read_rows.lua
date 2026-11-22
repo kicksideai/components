@@ -1,9 +1,50 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
--- Durable change-feed and history pages.
+-- Durable comment, change-feed and history pages.
 local sql = require("sql")
 local domain = require("domain")
+local codec = require("row_decode")
 local M = {}
 local LINK_ORDER = "seq, board_id, from_id, type, to_board_id, to_id"
+
+local function decode_comments(rows: { domain.Row }): ({ domain.CommentRow }?, error?)
+    local out: { domain.CommentRow } = {}
+    for _, row in ipairs(rows) do
+        local comment, err = codec.comment(row)
+        if err or not comment then return nil, err end
+        out[#out + 1] = comment
+    end
+    return out, nil
+end
+
+function M.comment(db: sql.DB | sql.Transaction, board_id: string, comment_id: string): (domain.CommentRow?, error?)
+    local rows, err = db:query("SELECT * FROM kickside_work_comment WHERE board_id = $1 AND comment_id = $2", { board_id, comment_id })
+    if err then return nil, errors.wrap(err, "comment read failed") end
+    local row = rows and rows[1]
+    if not row then return nil, nil end
+    return codec.comment(row)
+end
+
+-- comments lists an item's live comments, oldest first.
+function M.comments(db: sql.DB | sql.Transaction, board_id: string, item_id: string, limit: integer, after: domain.CommentPosition?): ({ domain.CommentRow }?, error?)
+    local params: domain.SqlParams = { board_id, item_id }
+    local seek = ""
+    if after then
+        params[3], params[4] = after.created_at, after.comment_id
+        seek = " AND (created_at, comment_id) > ($3, $4)"
+    end
+    params[#params + 1] = limit
+    local rows, err = db:query("SELECT * FROM kickside_work_comment WHERE board_id = $1 AND item_id = $2 AND deleted = 0"
+        .. seek .. " ORDER BY created_at, comment_id LIMIT $" .. #params, params)
+    if err then return nil, errors.wrap(err, "comment read failed") end
+    return decode_comments(rows or {})
+end
+
+function M.comment_page(db: sql.DB | sql.Transaction, board_id: string, item_id: string, after: string, limit: integer): ({ domain.CommentRow }?, error?)
+    local rows, err = db:query([[SELECT * FROM kickside_work_comment WHERE board_id=$1 AND item_id=$2
+        AND deleted=0 AND comment_id > $3 ORDER BY comment_id LIMIT $4]], { board_id,item_id,after,limit })
+    if err then return nil, err end
+    return decode_comments(rows or {})
+end
 
 function M.changes(tx: sql.DB | sql.Transaction, board: domain.Board, seq: integer, item_id: string, limit: integer): ({ domain.Row }?, error?)
     return tx:query([[SELECT updated_seq, item_id FROM kickside_work_item WHERE board_id = $1 AND updated_seq <= $2

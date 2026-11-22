@@ -6,6 +6,7 @@ local consts = require("consts")
 local rules = require("rules")
 local rank = require("rank")
 local store = require("store")
+local tree_rows = require("tree_rows")
 local types = require("types")
 local fold_batch = require("fold_batch")
 local document = require("document")
@@ -265,22 +266,15 @@ local function apply_parented(tx: storage.Executor, board: types.Board, event: t
     return nil
 end
 
--- canonical_link orders a symmetric same-board relation so one row stores both directions.
-local function canonical_link(board: types.Board, type_id: string, from: string, target: types.Target): (string, string, string)
-    local relation = board.model.relations[type_id]
-    if relation and relation.symmetric and target.board == board.board_id and target.item < from then
-        return target.item, target.board, from
-    end
-    return from, target.board, target.item
-end
-
 local function apply_link(tx: storage.Executor, board: types.Board, event: types.FoldEvent, batch: types.FoldBatch, linked: boolean): error?
     local body = event.body
     local item, err = fold_batch.load(tx, board.board_id, batch, body.item)
     if err or not item then return err end
     local type_id, target = body.type, body.target
     if not type_id or not target then return fold_batch.corrupt("link event is incomplete") end
-    local from, to_board, to_id = canonical_link(board, type_id, item.item_id, target)
+    local relation = board.model.relations[type_id]
+    local symmetric = relation ~= nil and relation.symmetric
+    local from, to_board, to_id = tree_rows.link_endpoints(board.board_id, item.item_id, target, symmetric)
     if linked then
         err = fold_batch.exec(tx, [[INSERT INTO kickside_work_link (board_id, from_id, type, to_board_id, to_id, at, seq)
             VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (board_id, from_id, type, to_board_id, to_id) DO NOTHING]],

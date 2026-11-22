@@ -33,11 +33,6 @@ local function outcome_of(i: integer, plan: types.OpPlan): types.Outcome
     return { op = i, status = plan.status, item = plan.item, version = plan.version, comment = plan.comment, findings = plan.findings, error = plan.error }
 end
 
-local function stored_outcomes(found: types.Durable): { types.Outcome }
-    local result = found.receipt.result :: { outcomes: { types.Outcome }? }
-    return result.outcomes or {}
-end
-
 -- fill_keys sets the item key on every outcome that names an item, from the
 -- projection the command waited for.
 local function fill_keys(board_id: string, outcomes: { types.Outcome }, replayed: boolean?): error?
@@ -128,107 +123,6 @@ local function groups_of(ops: { types.Op }, indices: { integer }): ({ string }, 
     return order, groups
 end
 
-local function hash_apply(request: types.ApplyRequest, mode: string, ops: { types.Op }, source: string): string
-    return receipts.request_hash({ op = "apply", mode, ops, source, origin = request.origin, expected_head = request.expected_head })
-end
-
-local function read_legacy_claim(ctx: types.ApplyContext, provider: types.AtomicProvider?): (types.Durable?, error?)
-    local key = ctx.request.key
-    if not provider or not provider.legacy_ops or not key then return nil, nil end
-    local hit, err = receipts.command(ctx.board_id, "apply/" .. provider.namespace .. "/" .. key)
-    if err or not hit then return nil, err end
-    -- The former namespace was shared with WorkApply. Check the full request
-    -- fingerprint, including the resolved operation, before returning its result.
-    local ops, oerr = provider.legacy_ops()
-    if oerr then return nil, oerr end
-    if not ops or hit.receipt.request_hash ~= hash_apply(ctx.request, "atomic", ops, ctx.source) then
-        return nil, receipts.conflict_of()
-    end
-    local outcomes = stored_outcomes(hit)
-    if #outcomes ~= 1 or outcomes[1].status ~= "applied" then return nil, receipts.conflict_of() end
-    return hit, nil
-end
-
-local function read_claim(ctx: types.ApplyContext, key: string): (types.Durable?, error?)
-    local command, err = receipts.command(ctx.board_id, key)
-    if err then return nil, err end
-    if command and command.receipt.request_hash ~= ctx.hashed then return nil, receipts.conflict_of() end
-    return command, nil
-end
-
-local function stored_claim(ctx: types.ApplyContext): (types.Durable?, error?)
-    local key = ctx.base
-    if not key then return nil, nil end
-    local version, version_err = receipts.version(ctx.board_id, key, ctx.until_at)
-    if version_err or not version then return nil, version_err end
-    ctx.claim_version = version
-    local command, err = read_claim(ctx, key)
-    if err or command then return command, err end
-    local _, cover_err = receipts.covered(ctx.board_id, ctx.until_at)
-    if cover_err then return nil, cover_err end
-    return read_claim(ctx, key)
-end
-
--- Independent commands leave one receipt per committed group.
-local function read_groups(ctx: types.ApplyContext, key: string, groups: { string }): ({ [string]: types.Durable }?, boolean, error?)
-    local found: { [string]: types.Durable } = {}
-    local command, err = read_claim(ctx, key)
-    if err then return nil, false, err end
-    ctx.claimed = command ~= nil
-    if not command then return found, false, nil end
-    ctx.generation = command.receipt.result.generation :: string
-    local complete = true
-    for _, group in ipairs(groups) do
-        local hit, ferr = receipts.command(ctx.board_id, key .. "/" .. ctx.generation .. "/" .. group)
-        if ferr then return nil, false, ferr end
-        if hit then found[group] = hit else complete = false end
-    end
-    return found, complete, nil
-end
-
-local function stored(ctx: types.ApplyContext, indices: { integer }): ({ [string]: types.Durable }?, error?)
-    local key = ctx.base
-    if not key then return {}, nil end
-    local version, version_err = receipts.version(ctx.board_id, key, ctx.until_at)
-    if version_err or not version then return nil, version_err end
-    ctx.claim_version = version
-    local groups = groups_of(ctx.ops, indices)
-    local found, complete, err = read_groups(ctx, key, groups)
-    if err or complete then return found, err end
-    -- Cover commits that could have advanced the shard before we sampled its guard.
-    local _, cover_err = receipts.covered(ctx.board_id, ctx.until_at)
-    if cover_err then return nil, cover_err end
-    local covered, _, read_err = read_groups(ctx, key, groups)
-    return covered, read_err
-end
-
-local function claim_write(ctx: types.ApplyContext, result: domain.JsonObject): types.Write
-    local write = receipts.claim(ctx.board_id, ctx.base :: string, ctx.hashed, result, nil, ctx.claim_version)
-    receipts.decorate(write.events[1], guard.actor_id(), guard.stamp_now(), ctx.source, ctx.request.origin, ctx.request.trace_context)
-    return write
-end
-
-local function claim(ctx: types.ApplyContext, writes: { types.Write }): boolean
-    local required = not ctx.claimed
-    -- Existing item/comment subjects already serialize replay of their group.
-    -- Free groups need the key claim even after another group claimed the key.
-    for _, write in ipairs(writes) do if write.group == items.FREE then required = true end end
-    if ctx.base and required and #writes > 0 then
-        table.insert(writes, 1, claim_write(ctx, { generation = ctx.generation }))
-        return true
-    end
-    return false
-end
-
-local function seal_atomic(ctx: types.ApplyContext, writes: { types.Write }, outcomes: { types.Outcome })
-    if not ctx.base then return end
-    for _, write in ipairs(writes) do
-        receipts.mark(write.events, ctx.base .. "/" .. write.group)
-    end
-    -- The claim is the only receipt. Projection can publish it only after every group.
-    writes[#writes + 1] = claim_write(ctx, { outcomes = outcomes } :: domain.JsonObject)
-end
-
 local function head_changed(): error
     return errors.new({ kind = errors.CONFLICT, message = "Board head changed.", details = { code = "head_changed" } })
 end
@@ -237,18 +131,18 @@ local function run_atomic(ctx: types.ApplyContext, provider: types.AtomicProvide
     local expected_head = ctx.request.expected_head
     for _ = 1, consts.LIMITS.prepare_retries + 1 do
         if clock.passed(ctx.until_at) then break end
-        local hit, ferr = stored_claim(ctx)
+        local hit, ferr = receipts.atomic_apply(ctx)
         if ferr then return nil, ferr end
-        if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
+        if hit then return finish(ctx, receipts.apply_outcomes(hit), true, hit.seq, true) end
         local last_seq, cu_err = receipts.covered(ctx.board_id, ctx.until_at)
         if cu_err or not last_seq then return nil, cu_err end
-        local legacy, legacy_err = read_legacy_claim(ctx, provider)
+        local legacy, legacy_err = receipts.legacy_apply(ctx, provider)
         if legacy_err then return nil, legacy_err end
-        if legacy then return finish(ctx, stored_outcomes(legacy), true, legacy.seq, true) end
+        if legacy then return finish(ctx, receipts.apply_outcomes(legacy), true, legacy.seq, true) end
         if expected_head ~= nil and last_seq ~= expected_head then
-            local replay, replay_err = stored_claim(ctx)
+            local replay, replay_err = receipts.atomic_apply(ctx)
             if replay_err then return nil, replay_err end
-            if replay then return finish(ctx, stored_outcomes(replay), true, replay.seq, true) end
+            if replay then return finish(ctx, receipts.apply_outcomes(replay), true, replay.seq, true) end
             return nil, head_changed()
         end
         local ops, prepared = ctx.ops, nil :: types.AtomicPreparation?
@@ -273,13 +167,13 @@ local function run_atomic(ctx: types.ApplyContext, provider: types.AtomicProvide
             outcomes[i] = outcome_of(i, plans[i] :: types.OpPlan)
             if plans[i].status ~= "applied" and plans[i].status ~= "unchanged" then failed = true end
         end
-        local hit, recovery_err = stored_claim(ctx)
+        local hit, recovery_err = receipts.atomic_apply(ctx)
         if recovery_err then return nil, recovery_err end
-        if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
+        if hit then return finish(ctx, receipts.apply_outcomes(hit), true, hit.seq, true) end
         if board.applied_seq > last_seq then
-            local legacy, legacy_err = read_legacy_claim(ctx, provider)
+            local legacy, legacy_err = receipts.legacy_apply(ctx, provider)
             if legacy_err then return nil, legacy_err end
-            if legacy then return finish(ctx, stored_outcomes(legacy), true, legacy.seq, true) end
+            if legacy then return finish(ctx, receipts.apply_outcomes(legacy), true, legacy.seq, true) end
         end
         if expected_head ~= nil and board.applied_seq > expected_head then return nil, head_changed() end
         if prepared then
@@ -307,12 +201,12 @@ local function run_atomic(ctx: types.ApplyContext, provider: types.AtomicProvide
                 event.body.audit = board.compiled.policy.audit
             end
         end
-        seal_atomic(ctx, writes, outcomes)
+        receipts.seal_atomic(ctx, writes, outcomes)
         local max_seq, aerr = append.writes(ctx.c, ctx.board_id, writes)
         if not aerr then return finish(ctx, outcomes, true, max_seq, nil) end
-        local hit, ferr = stored_claim(ctx)
+        local hit, ferr = receipts.atomic_apply(ctx)
         if ferr then return nil, ferr end
-        if hit then return finish(ctx, stored_outcomes(hit), true, hit.seq, true) end
+        if hit then return finish(ctx, receipts.apply_outcomes(hit), true, hit.seq, true) end
         local subject = mismatch_subject(aerr)
         local stale_head = threads.mismatch(aerr, "head_mismatch")
         if stale_head and expected_head ~= nil then return nil, head_changed() end
@@ -336,14 +230,14 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
     local replayed = false
     local wrote = false
     local function recover(): error?
-        local found, err = stored(ctx, pending)
-        if err or not found then return err end
         local order, groups = groups_of(ctx.ops, pending)
+        local found, err = receipts.group_receipts(ctx, order)
+        if err or not found then return err end
         local remaining: { integer } = {}
         for _, group in ipairs(order) do
             local hit = found[group]
             if hit then
-                for _, outcome in ipairs(stored_outcomes(hit)) do outcomes[outcome.op] = outcome end
+                for _, outcome in ipairs(receipts.apply_outcomes(hit)) do outcomes[outcome.op] = outcome end
                 if not last_append or hit.seq > last_append then last_append = hit.seq end
                 replayed = true
             else
@@ -389,22 +283,17 @@ local function run_independent(ctx: types.ApplyContext): (types.ApplyResult?, er
                 receipts.decorate(event, actor, at, ctx.source, ctx.request.origin, ctx.request.trace_context)
                 event.body.audit = board.compiled.policy.audit
             end
-            if ctx.base then
-                receipts.mark(w.events, ctx.base .. "/" .. w.group, {
-                    request_hash = ctx.hashed, result = { outcomes = w_outcomes } :: domain.JsonObject,
-                }, ctx.base .. "/" .. ctx.generation .. "/" .. w.group)
-            end
-            local batch: { types.Write } = { w }
-            local claimed = claim(ctx, batch)
+            local batch, claimed = receipts.seal_group(ctx, w, w_outcomes, w.group == items.FREE)
             local max_seq, aerr = append.writes(ctx.c, ctx.board_id, batch)
             local committed = not aerr
             if claimed and not aerr then ctx.claim_version = (ctx.claim_version :: integer) + 1 end
             if aerr and ctx.base then
-                local found, ferr = stored(ctx, w.ops)
+                local order = groups_of(ctx.ops, w.ops)
+                local found, ferr = receipts.group_receipts(ctx, order)
                 if ferr then return nil, ferr end
                 if found and found[w.group] then
                     local hit = found[w.group]
-                    w_outcomes = stored_outcomes(hit)
+                    w_outcomes = receipts.apply_outcomes(hit)
                     max_seq, aerr = hit.seq, nil
                 end
             end
@@ -461,7 +350,7 @@ function M.apply(request: types.ApplyRequest, boundary: domain.Deadline?, provid
     if deadline_err or not until_at then return nil, deadline_err end
     if boundary and boundary.ns < until_at.ns then until_at = boundary end
     local namespace = provider and ("provider/" .. provider.namespace) or "apply"
-    local hashed = provider and receipts.request_hash(provider.fingerprint) or hash_apply(request, mode, request.ops, source)
+    local hashed = provider and receipts.request_hash(provider.fingerprint) or receipts.apply_hash(request, mode, request.ops, source)
     local ctx: types.ApplyContext = {
         settings = settings, c = c, board_id = board_id, request = request, ops = request.ops, source = source,
         transition_authority = authority, hashed = hashed, base = key and (namespace .. "/" .. key) or nil,
