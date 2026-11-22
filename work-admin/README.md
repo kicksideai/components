@@ -81,8 +81,10 @@ output schemas for all 41 static Work tools through MCP 0.2.13 or later. The
 published Work probe installs the exact minimum Work release and exercises a
 published Flow binding, ADMIN-only schema options, visibility removal, and
 saved-view rejection.
-The custom scope probe exercises both helpers with a host-selected group. The
-harness fails for empty suites and failed cases. PostgreSQL
+The custom scope probe exercises both helpers with a host-selected group. Each
+harness instance uses its own OS-assigned loopback port for API, asset and MCP
+requests, so variants can run alongside other instances. The harness fails for
+empty suites and failed cases. PostgreSQL
 uses the `postgres` profile; supply a fresh database through
 `WIPPY_ARGS="--set vars.pg_database=work_admin_test"`.
 

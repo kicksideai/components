@@ -10,13 +10,19 @@ local funcs = require("funcs")
 local uuid = require("uuid")
 local json = require("json")
 local http_client = require("http_client")
+local system = require("system")
 local actors = require("actors")
 local test = require("test")
 local time = require("time")
 
 local M = {}
 
-M.API = "http://127.0.0.1:19241/api/v1"
+function M.url(path: string): string
+    local gateway = assert(system.supervisor.state("app:gateway"))
+    local details = assert(gateway.details, "Work Admin test gateway did not report a listener")
+    local address = assert(details:match("^service listening on (127%.0%.0%.1:[1-9]%d*)$"), details)
+    return "http://" .. address .. path
+end
 
 type Json = { [string]: unknown }
 type Reply = { status: number, body: Json }
@@ -37,7 +43,7 @@ M.Reply = Reply
 function M.get(path: string, token: string?): Reply
     local headers: { [string]: string } = { ["Content-Type"] = "application/json" }
     if token then headers.Authorization = "Bearer " .. token end
-    local res, err = http_client.request("GET", M.API .. path, { headers = headers })
+    local res, err = http_client.request("GET", M.url("/api/v1" .. path), { headers = headers })
     assert(not err and res, tostring(err))
     local decoded: unknown = res.body ~= "" and json.decode(res.body) or {}
     return { status = res.status_code, body = decoded :: Json }
@@ -53,7 +59,7 @@ local function open(actor: security.Actor, scope: security.Scope): Session
     assert(restored_scope:evaluate(actor, "access", "kickside.work.admin.api:options.endpoint") == scope:evaluate(actor, "access", "kickside.work.admin.api:options.endpoint"), "stored session preserves module capability")
     tokens:close()
     local function send(method: string, path: string, body: string): Reply
-        local res, err = http_client.request(method, M.API .. path, { headers = { ["Content-Type"] = "application/json", Authorization = "Bearer " .. token }, body = body })
+        local res, err = http_client.request(method, M.url("/api/v1" .. path), { headers = { ["Content-Type"] = "application/json", Authorization = "Bearer " .. token }, body = body })
         assert(not err and res, tostring(err))
         return { status = res.status_code, body = json.decode(res.body) :: Json }
     end

@@ -24,7 +24,7 @@ entries:
     auto_start: true
 - name: gateway
   kind: http.service
-  addr: :19241
+  addr: 127.0.0.1:0
   lifecycle:
     auto_start: true
 - name: api
@@ -262,6 +262,7 @@ entries:
   - uuid
   - json
   - http_client
+  - system
   - contract
   - time
   imports: &id002
