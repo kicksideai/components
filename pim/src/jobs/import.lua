@@ -8,16 +8,18 @@ local budget=require("budget")
 local clock=require("clock")
 local component=require("component")
 local execution_identity=require("execution_identity")
-local types=require("types")
+local job_types = require("job_types")
 local M={}
-function M.batch(input:{catalog_id:string}): ({done:boolean}?,error?)
+function M.batch(input:{catalog_id:string}): (job_types.BatchResult?, error?)
     local _,err=component.validate_access(input.catalog_id,component.ACCESS.ADMIN)
     if err then return nil,err :: error end
     local done,berr=work.batch(input.catalog_id)
     if berr or done==nil then return nil,berr end
     return {done=done},nil
 end
-function M.run(input:{job:{id:string,lease_token:string,execution_seq:integer,deadline:string?}?,payload:{catalog_id:string,request_id:string}?}): (unknown,error?)
+type Input = job_types.Input<{ catalog_id: string, request_id: string }>
+
+function M.run(input: Input): (job_types.SelfCompleted | job_types.BatchResult | nil, error?)
     local job,payload=input.job,input.payload
     if not job or not payload then return nil,errors.new({kind=errors.INVALID,retryable=false,message="import job is malformed",details={code="import_job_invalid"}}) end
     local operating,oerr=defaults.catalog(payload.catalog_id)
@@ -37,10 +39,10 @@ function M.run(input:{job:{id:string,lease_token:string,execution_seq:integer,de
         if not valid then return {self_completed=true},nil end
         local result,err=execution_identity.run_as(task.identity,"kickside.pim.jobs:import_batch",payload,{deferred_owner="kickside.pim.jobs:import",execution_root=payload.catalog_id})
         if err then return nil,err :: error end
-        if (result :: {done:boolean}).done then return {done=true},nil end
+        if (result :: job_types.BatchResult).done then return {done=true},nil end
     end
     local completed,cerr=jobs.complete(job.id,budget.lease(job),{rearm=clock.now()})
     if cerr then return nil,cerr end
-    return {self_completed=true,completion=completed},nil
+    return {self_completed=true,completion=completed :: job_types.Completion?},nil
 end
 return M

@@ -22,16 +22,15 @@ local document = require("document")
 local item_index = require("item_index")
 local types = require("types")
 
+local job_types = require("job_types")
 local M = {}
 
-type Job = { id: string, lease_token: string, execution_seq: integer, deadline: string? }
-type Input = { job: Job?, payload: { catalog_id: string? }? }
+type Input = job_types.Input<{ catalog_id: string? }>
 
 
 type BatchInput = { catalog_id: string, deadline: string? }
-type BatchResult = { done: boolean }
 type Progress = { done: boolean, published: boolean? }
-type RunResult = { self_completed: boolean?, rebuilt: boolean?, completion: unknown }
+type RunResult = job_types.SelfCompleted | { rebuilt: boolean }
 
 
 -- rewrite rebuilds the next products in one transaction; it answers true when the
@@ -95,7 +94,7 @@ end
 
 -- batch runs one rebuild batch. The job calls it as the catalog's execution
 -- identity, so plugin checks run under the owner's authority, as in the fold.
-function M.batch(input: BatchInput): (BatchResult?, error?)
+function M.batch(input: BatchInput): (job_types.BatchResult?, error?)
     local _, access_err = component.validate_access(input.catalog_id, component.ACCESS.ADMIN)
     if access_err then return nil, failure.coded(errors.wrap(access_err, "rebuild catalog access"), "component_access_denied") end
     local operating,oerr=defaults.catalog(input.catalog_id)
@@ -113,7 +112,7 @@ function M.batch(input: BatchInput): (BatchResult?, error?)
 end
 
 -- work runs the rebuild batches of one invocation.
-local function work(job: Job, catalog_id: string, deadline: clock.Deadline, operating:types.Policy): (RunResult?, error?)
+local function work(job: job_types.Job, catalog_id: string, deadline: clock.Deadline, operating:types.Policy): (RunResult?, error?)
     local identity, ierr = catalog_identity(catalog_id)
     if ierr then return nil, ierr end
     for _ = 1, operating.job_batches do
@@ -124,13 +123,13 @@ local function work(job: Job, catalog_id: string, deadline: clock.Deadline, oper
         local out, berr = execution_identity.run_as(identity, consts.REBUILD_BATCH, { catalog_id = catalog_id, deadline = job.deadline },
             { deferred_owner = consts.REBUILD_OWNER, execution_root = catalog_id })
         if berr then return nil, berr :: error end
-        if (out :: BatchResult).done then
+        if (out :: job_types.BatchResult).done then
             return { rebuilt = true }, nil
         end
     end
     local completion, cerr = jobs.complete(job.id, budget.lease(job), { rearm = clock.now() })
     if cerr then return nil, cerr end
-    return { self_completed = true, completion = completion }, nil
+    return { self_completed = true, completion = completion :: job_types.Completion? }, nil
 end
 
 type Parked = { park: boolean, record: { status: string, error: string } }

@@ -1923,6 +1923,7 @@ entries:
     kind: library.lua
     source: file://term_merge_boundary_probe.lua
     imports:
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       error_envelope: kickside.contract:error_envelope
       budget: kickside.pim.jobs:budget
@@ -2260,6 +2261,7 @@ entries:
     source: file://rebuild_progress_probe.lua
     modules: [funcs]
     imports:
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       jobs: app:job_boundary_fixture
       budget: kickside.pim.jobs:budget
@@ -2364,6 +2366,7 @@ entries:
       policies:
         - kickside.pim.security:merge_defer
     imports:
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       error_envelope: kickside.contract:error_envelope
       budget: kickside.pim.jobs:budget

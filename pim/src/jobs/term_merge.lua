@@ -15,14 +15,14 @@ local merge_rows = require("merge_rows")
 local writer = require("writer")
 local types = require("types")
 
+local job_types = require("job_types")
 local M = {}
 
-type Job = { id: string, lease_token: string, execution_seq: integer, deadline: string? }
 type Payload = { catalog_id: string?, vocabulary: string?, from: string?, into: string? }
-type Input = { job: Job?, payload: Payload? }
+type Input = job_types.Input<Payload>
 type BatchInput = { catalog_id: string, vocabulary: string, from: string, into: string, source: string?, deadline: string?,trace_context: types.TraceContext? }
 type BatchResult = { remaining: integer }
-type RunResult = { self_completed: boolean?, merged: boolean?, completion: unknown }
+type RunResult = job_types.SelfCompleted | { merged: boolean }
 
 
 
@@ -81,7 +81,7 @@ function M.run(input: Input): (RunResult?, error?)
     end
     local completion, cerr = jobs.complete(job.id, budget.lease(job), { rearm = clock.now() })
     if cerr then return nil, cerr end
-    return { self_completed = true, completion = completion }, nil
+    return { self_completed = true, completion = completion :: job_types.Completion? }, nil
 end
 
 return M

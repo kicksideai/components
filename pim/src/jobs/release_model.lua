@@ -13,14 +13,13 @@ local clock = require("clock")
 local types = require("types")
 local component = require("component")
 local failure = require("failure")
+local job_types = require("job_types")
 local M = {}
-type Job = { id: string, lease_token: string, execution_seq: integer, deadline: string? }
-type Input = { job: Job?, payload: { catalog_id: string?, request_id: string? }? }
+type Input = job_types.Input<{ catalog_id: string?, request_id: string? }>
 type BatchInput = { catalog_id: string, request_id: string, deadline: string? }
-type BatchResult = { done: boolean }
-type Result = { self_completed: boolean?, completion: unknown, released: boolean? }
+type Result = job_types.SelfCompleted | { released: boolean }
 
-function M.batch(input: BatchInput): (BatchResult?, error?)
+function M.batch(input: BatchInput): (job_types.BatchResult?, error?)
     local _, access_err = component.validate_access(input.catalog_id, component.ACCESS.WRITE)
     if access_err then return nil, failure.coded(errors.wrap(access_err, "model release catalog access"), "component_access_denied") end
     local deadline, derr = budget.deadline(input.deadline)
@@ -70,10 +69,10 @@ function M.run(input: Input): (Result?, error?)
             { catalog_id = payload.catalog_id, request_id = payload.request_id, deadline = job.deadline },
             { deferred_owner = consts.RELEASE_OWNER, execution_root = payload.catalog_id })
         if err then return nil, err :: error end
-        if (out :: BatchResult).done then return { released = true }, nil end
+        if (out :: job_types.BatchResult).done then return { released = true }, nil end
     end
     local completion, cerr = jobs.complete(job.id, lease, { rearm = clock.now() })
     if cerr then return nil, cerr end
-    return { self_completed = true, completion = completion }, nil
+    return { self_completed = true, completion = completion :: job_types.Completion? }, nil
 end
 return M
