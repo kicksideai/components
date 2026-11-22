@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.18](https://github.com/kicksideai/components/compare/work-admin-v0.1.17...work-admin-v0.1.18) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work-admin:** connect item type setup and board sharing ([#342](https://github.com/kicksideai/components/issues/342)) ([ed5852b](https://github.com/kicksideai/components/commit/ed5852bdd06673baf5ffa0ff4b176ee91a5f15a2))
+
 ## [0.1.17](https://github.com/kicksideai/components/compare/work-admin-v0.1.16...work-admin-v0.1.17) (2026-11-22)
 
 
