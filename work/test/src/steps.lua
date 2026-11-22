@@ -15,11 +15,20 @@ local lifecycle = require("lifecycle")
 local M = {}
 
 type Map = { [string]: unknown }
+type PluginView = domain.PluginView
+M.Map = Map
+M.PluginView = PluginView
 
 -- detail renders an error with its details for assertion messages.
 function M.detail(err: unknown): string
     if err == nil then return "no error" end
     return tostring(err) .. " " .. json.encode((err :: error):details() or {})
+end
+
+function M.call(h: fixture.Handle, method: string, input: unknown): Map
+    local out, err = h.call(method, input)
+    assert(not err and out, M.detail(err))
+    return out :: Map
 end
 
 function M.retention_run(): Map

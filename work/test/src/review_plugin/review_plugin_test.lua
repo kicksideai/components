@@ -12,20 +12,17 @@ local http_client = require("http_client")
 local gateway = require("gateway")
 local fixture = require("fixture")
 local steps = require("steps")
-type Map = { [string]: unknown }
+local call = steps.call
+type Map = steps.Map
+type PluginSchema = { plugins: { steps.PluginView } }
 local NS = "app.review_plugin:"
 local PLUGIN, REGISTER, AUDIT = NS .. "plugin", NS .. "register", NS .. "audit"
 local VIEW = { type = "change_review", columns = { "title", "risk" }, config = { show_score = true } }
 
-local function call(h: fixture.Handle, method: string, input: Map): Map
-    local out, err = h.call(method, input)
-    assert(out, steps.detail(err))
-    return out :: Map
-end
-
-local function active(h: fixture.Handle): Map
-    for _, plugin in ipairs(call(h, "get_schema", {}).plugins) do
-        if plugin.plugin == PLUGIN then return plugin :: Map end
+local function active(h: fixture.Handle): steps.PluginView
+    local schema = call(h, "get_schema", {}) :: PluginSchema
+    for _, plugin in ipairs(schema.plugins) do
+        if plugin.plugin == PLUGIN then return plugin end
     end
     error("Change Review is missing from the board schema")
 end
@@ -174,7 +171,8 @@ local function define()
             local core = steps.create(h, "task", { title = "Core still writes" })
             local seq = call(h, "get", { item = { id = core } }).as_of :: integer
             steps.wait_for("other plugin core-item fold", function(): boolean
-                for _, plugin in ipairs(call(h, "get_schema", {}).plugins) do
+                local schema = call(h, "get_schema", {}) :: PluginSchema
+                for _, plugin in ipairs(schema.plugins) do
                     if plugin.plugin == "app:folding_plugin" then
                         return plugin.projections["app:item_fold"].last_seq >= seq
                     end
@@ -419,11 +417,11 @@ local function define()
             local view = call(h, "get_schema", {})
             settled(h, view.as_of :: integer)
             revise(PLUGIN, function(meta) meta.schema = { provider = NS .. "missing_provider" } end)
-            local checked = call(h, "get_schema", { check_plugins = true })
+            local checked = call(h, "get_schema", { check_plugins = true }) :: PluginSchema
             for _, plugin in ipairs(checked.plugins) do
                 if plugin.plugin == PLUGIN then
                     test.eq(plugin.lifecycle.state, "failed")
-                    test.eq(plugin.lifecycle.error.source, "schema_provider")
+                    test.eq(assert(plugin.lifecycle.error).source, "schema_provider")
                     return
                 end
             end
