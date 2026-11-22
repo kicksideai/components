@@ -3,6 +3,12 @@ version: "1.0"
 namespace: kickside.pim.schema
 
 entries:
+  - name: types
+    kind: library.lua
+    source: file://types.lua
+    imports:
+      types: kickside.pim:types
+
   - name: compile
     kind: library.lua
     meta:
@@ -19,6 +25,7 @@ entries:
       sections: kickside.pim.schema:sections
       contexts: kickside.pim.schema:contexts
       types: kickside.pim:types
+      lookups_types: kickside.pim.schema:types
 
   - name: declaration_shape
     kind: library.lua
@@ -61,6 +68,7 @@ entries:
       values: kickside.pim.domain:values
       failure: kickside.pim:failure
       types: kickside.pim:types
+      lookups_types: kickside.pim.schema:types
 
   - name: contexts
     kind: library.lua

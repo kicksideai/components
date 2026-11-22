@@ -8,6 +8,7 @@ local consts = require("consts")
 local values = require("values")
 local shape = require("shape")
 local types = require("types")
+local lookups_types = require("lookups_types")
 local policy = require("policy")
 local sections = require("sections")
 local references = require("references")
@@ -15,21 +16,7 @@ local references = require("references")
 local contexts = require("contexts")
 local M = { ctx_key = contexts.ctx_key, chain = contexts.chain, check_context = contexts.check_context }
 
-type TypeLookup = (string) -> (types.TypeMeta?, error?)
-type CheckLookup = (string) -> (string?, error?)
--- ScopeLookup answers whether a registry id is a well-formed scope declaration.
-type ScopeLookup = (string) -> (boolean, error?)
--- LinkLookup answers whether a link kind is bound.
-type LinkLookup = (string) -> (boolean, error?)
--- PluginCheck checks a plugin id names a plugin for PIM and its config fits the
--- manifest.
-type PluginCheck = (string, types.JsonObject) -> error?
--- Lookups are the registry answers compile needs: the type of an attribute,
--- whether an id is a check, a scope or a plugin accepting its config, and
--- whether a link kind is bound. Compile itself reads no registry.
-type Lookups = { type_of: TypeLookup, check_digest: CheckLookup?, scope: ScopeLookup?, plugin: PluginCheck?, link_kind: LinkLookup? }
-M.Lookups = Lookups
-M.CheckLookup = CheckLookup
+M.Lookups = lookups_types.Lookups
 
 local L = consts.LIMITS
 
@@ -120,7 +107,7 @@ function M.width_of(a: types.Attribute): string
 end
 
 local function compile_attribute(ns: string, raw: types.AttributeDecl, dims: { types.Dimension },
-    dimset: { [string]: types.Dimension }, vocabularies: { [string]: types.Vocabulary }, lookups: Lookups,
+    dimset: { [string]: types.Dimension }, vocabularies: { [string]: types.Vocabulary }, lookups: lookups_types.Lookups,
     prev: types.Attribute?): (types.Attribute?, error?)
     local type_of = lookups.type_of
     if type(raw.code) ~= "string" or not raw.code:match(CODE) then return nil, invalid("invalid attribute code in " .. ns) end
@@ -298,7 +285,7 @@ end
 type AspectSet = { attributes: { [string]: types.Attribute }, aspects: { [string]: types.Aspect }, by_aspect: { [string]: { string } }, next_id: integer }
 
 local function compile_aspects(declared: { OwnedAspect }, prev: types.Compiled?, dimlist: { types.Dimension }, dimset: { [string]: types.Dimension },
-    vocabularies: { [string]: types.Vocabulary }, lookups: Lookups): (AspectSet?, error?)
+    vocabularies: { [string]: types.Vocabulary }, lookups: lookups_types.Lookups): (AspectSet?, error?)
     local prev_attrs: { [string]: types.Attribute } = (prev and prev.attributes) or {}
     local prev_by_id: { [integer]: types.Attribute } = {}
     for _, a in pairs(prev_attrs) do prev_by_id[a.id] = a end
@@ -352,7 +339,7 @@ local function compile_aspects(declared: { OwnedAspect }, prev: types.Compiled?,
     return { attributes = attributes, aspects = aspects, by_aspect = by_aspect, next_id = next_id }, nil
 end
 
-local function compile_family(f: types.FamilyDecl, set: AspectSet, dimlist: { types.Dimension }, check_lookup: CheckLookup?, families: { [string]: types.Family }): error?
+local function compile_family(f: types.FamilyDecl, set: AspectSet, dimlist: { types.Dimension }, check_lookup: lookups_types.CheckDigestLookup?, families: { [string]: types.Family }): error?
     local aspects, by_aspect, attributes = set.aspects, set.by_aspect, set.attributes
     if type(f.code) ~= "string" or not f.code:match(CODE) or families[f.code] then return invalid("invalid family") end
     local members: { [string]: integer } = {}
@@ -453,7 +440,7 @@ local function compile_family(f: types.FamilyDecl, set: AspectSet, dimlist: { ty
 end
 
 local function compile_families(declaration: types.Declaration, set: AspectSet, dimlist: { types.Dimension },
-    check_lookup: CheckLookup?): ({ [string]: types.Family }?, error?)
+    check_lookup: lookups_types.CheckDigestLookup?): ({ [string]: types.Family }?, error?)
     local families: { [string]: types.Family } = {}
     local all: { string } = {}
     for ns in pairs(set.aspects) do all[#all + 1] = ns end
@@ -470,7 +457,7 @@ local function compile_families(declaration: types.Declaration, set: AspectSet, 
 end
 
 -- compile(prev, declaration, lookups) returns the compiled model or an error.
-function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookups: Lookups): (types.Compiled?, error?)
+function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookups: lookups_types.Lookups): (types.Compiled?, error?)
     if type(declaration) ~= "table" then return nil, invalid("declaration required") end
     local dims, derr = contexts.compile_dimensions(declaration.dimensions)
     if derr then return nil, derr end
