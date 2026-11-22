@@ -50,7 +50,7 @@ function removeSource(s: SourceDecl) {
       <template v-if="canEdit" #head>
         <AddSchemaCode label="Channel name" action="Add channel" from-name :existing="channels.map(item => item.id)" @add="addChannel" />
       </template>
-      <DefinitionRow v-for="c in channels" :key="c.id" :title="humanize(c.id)">
+      <DefinitionRow route-section="channels" :route-id="c.id" v-for="c in channels" :key="c.id" :title="humanize(c.id)">
         <template #details>
           <span class="muted small">{{ c.families?.length ? c.families.map(humanize).join(', ') : 'All families' }}</span>
           <span class="muted small">{{ c.requirements?.length ? c.requirements.map(humanize).join(', ') : 'No release requirements' }}</span>
@@ -66,7 +66,7 @@ function removeSource(s: SourceDecl) {
       <template v-if="canEdit" #head>
         <AddSchemaCode label="Source name" action="Add source" from-name :existing="sources.map(item => item.id)" @add="addSource" />
       </template>
-      <DefinitionRow v-for="s in sources" :key="s.id" :title="humanize(s.id)">
+      <DefinitionRow route-section="sources" :route-id="s.id" v-for="s in sources" :key="s.id" :title="humanize(s.id)">
         <template #details><span class="muted small">{{ s.writes?.length ? s.writes.map(humanize).join(', ') : 'No field groups selected' }}</span></template>
         <template v-if="canEdit" #actions><Button type="button" @click="removeSource(s)" :aria-label="'Remove ' + humanize(s.id)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
         <div class="pim-fields">

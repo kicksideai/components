@@ -1,19 +1,32 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { ref, useSlots } from 'vue'
+import { inject, ref, useSlots, watch } from 'vue'
 import ContentAction from '../ContentAction.vue'
 import Tag from 'primevue/tag'
 import { Icon } from '@iconify/vue'
-const props = defineProps<{ title: string; code?: string; kind?: string; kindLabel?: string; description?: string; initialOpen?: boolean }>()
+import { sectionRow } from './sectionRow'
+const props = defineProps<{ title: string; code?: string; kind?: string; kindLabel?: string; description?: string; initialOpen?: boolean; routeSection?: string; routeId?: string }>()
 const open = ref(!!props.initialOpen)
 const slots = useSlots()
+const location = inject(sectionRow, undefined)
+function matches(row: string | undefined) {
+  return !!props.routeSection && !!props.routeId && row === props.routeSection + '/' + props.routeId
+}
+watch(() => location?.selected.value, (selected, previous) => {
+  if (matches(selected)) open.value = true
+  else if (matches(previous)) open.value = false
+}, { immediate: true })
+function toggle() {
+  open.value = !open.value
+  if (props.routeSection && props.routeId) location?.choose(props.routeSection, props.routeId, open.value)
+}
 </script>
 <template>
   <article class="work-definition">
     <header class="work-definition-head" :class="{ 'work-definition-has-handle': slots.handle }">
       <div v-if="slots.handle" class="work-definition-handle"><slot name="handle" /></div>
       <div class="work-definition-lead">
-        <ContentAction class="work-definition-toggle" :aria-expanded="open" @activate="open = !open">
+        <ContentAction class="work-definition-toggle" :aria-expanded="open" @activate="toggle">
           <Icon icon="tabler:chevron-right" aria-hidden="true" />
           <span class="work-row-title" :title="title">{{ title }}</span>
         </ContentAction>

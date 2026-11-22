@@ -123,7 +123,7 @@ function setContext(r: RequirementDecl, dim: string, member: string) {
       <template v-if="canEdit" #head>
         <AddSchemaCode label="Family name" action="Add family" from-name :existing="families.map(item => item.code)" @add="add" />
       </template>
-    <DefinitionRow v-for="f in families" :key="f.code" v-model:open="open[f.code]" :title="humanize(f.code)">
+    <DefinitionRow route-section="families" :route-id="f.code" v-for="f in families" :key="f.code" v-model:open="open[f.code]" :title="humanize(f.code)">
       <template #details>
         <span class="muted small">{{ attributesOf(f).length }} fields</span>
         <Tag v-if="levels(f).length" severity="secondary" :value="levels(f).length + (levels(f).length === 1 ? ' variant level' : ' variant levels')" />

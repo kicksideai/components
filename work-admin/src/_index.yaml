@@ -72,9 +72,27 @@ entries:
     entry_point: admin.js
     icon: tabler:layout-kanban
     description: Open Work administration to create a board or select an existing one.
-      The component uses the signed-in user and takes no props. Board administrators
+      The component uses the signed-in user. Board administrators
       review item, workflow, visibility and plugin changes before applying a draft.
-    props: {}
+  props:
+    type: object
+    properties:
+      route:
+        type: string
+        description: System location relative to this tab, with a board ID, section and optional row.
+  events:
+    navigate:
+      type: object
+      properties:
+        route:
+          type: string
+      required: [route]
+    dirty-change:
+      type: object
+      properties:
+        dirty:
+          type: boolean
+      required: [dirty]
 - name: settings_tab
   kind: registry.entry
   meta:
@@ -108,6 +126,9 @@ entries:
         type: string
         default: ''
         description: Board whose settings the signed-in administrator edits.
+      route:
+        type: string
+        description: Section and optional expanded row in System.
       embedded:
         type: boolean
         default: false

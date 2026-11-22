@@ -198,7 +198,7 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
           </div>
         </header>
       </template>
-      <DefinitionRow v-for="(attr, i) in a.attributes ?? []" :key="key(a.namespace, attr)"
+      <DefinitionRow route-section="fields" :route-id="attr.id === undefined ? undefined : key(a.namespace, attr)" v-for="(attr, i) in a.attributes ?? []" :key="key(a.namespace, attr)"
         v-model:open="open[key(a.namespace, attr)]" :title="humanize(attr.code)"
         :kind="fieldTypeTitle(typeOf(attr))" :usage="usage(a.namespace)"
         class="pim-attr" head-class="pim-attr-row" toggle-class="field-toggle">

@@ -139,7 +139,7 @@ const openedField = ref('')
     </div>
     <p v-if="!shown.length" class="work-settings-card work-muted">No fields here yet. Add a field to capture information.</p>
     <DefinitionList v-reorder columns="fields" :count="shown.length">
-    <DefinitionRow :title="fieldTitle(field)" :initial-open="openedField === field.code" :kind="customType(field)?.title || forms.find(f => f.value === kind(field))?.label || humanize(kind(field))"
+    <DefinitionRow route-section="fields" :route-id="field.code" :title="fieldTitle(field)" :initial-open="openedField === field.code" :kind="customType(field)?.title || forms.find(f => f.value === kind(field))?.label || humanize(kind(field))"
       v-for="({ field, index }) in shown" :key="field.id ?? index" class="work-field-row work-reorder-entry work-stack">
       <template #handle><Button type="button" class="work-reorder-handle work-icon-button" :aria-label="'Drag ' + fieldTitle(field) + ' or use the arrow keys to reorder'" @keydown.up.prevent="reorder(index, -1)" @keydown.down.prevent="reorder(index, 1)" severity="secondary" text size="small"><Icon icon="tabler:grip-vertical" aria-hidden="true" /></Button></template>
       <template #flags><Tag v-if="field.track" class="kx-tag-sm" severity="secondary" value="Tracked" /><Tag v-if="field.intervals" class="kx-tag-sm" severity="secondary" value="Intervals" /></template>

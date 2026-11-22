@@ -6,7 +6,7 @@ import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NativeDialog from '../../NativeDialog.vue'
 import ContentAction from '../ContentAction.vue'
 import ProcessGraph from './ProcessGraph.vue'
@@ -15,9 +15,11 @@ import TransitionSettings from './TransitionSettings.vue'
 import { categories, categoryTitle, uniqueId, stateUses, transitionUses, stateTitle, transitionTitle, stateMeaning, mainPath } from './process'
 import { type RemovalGuard, type SchemaChange, changeReason, removeEntry } from './model'
 import type { Declaration, InstalledRule, ItemType, Process, State, StateCounts, Transition } from '../../types'
+import { sectionRow } from './sectionRow'
 import StateSettings from './StateSettings.vue'
 const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string; counts?: StateCounts; countTypes?: ItemType[]; guards?: InstalledRule[] }>()
 const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
+const location = inject(sectionRow, undefined)
 const processes = computed(() => props.draft.processes ?? [])
 const creating = ref(false), newName = ref(''), selected = ref(''), error = ref(''), mode = ref('Map'), target = ref('')
 const choosingTarget = ref(false)
@@ -50,6 +52,8 @@ watch(process, () => { modeChosen.value = false; defaultMode() })
 function clear() { editingName.value = false; choosingTarget.value = false; selectedState.value = undefined; selectedTransition.value = undefined; error.value = ''; inspectorOpener = undefined }
 async function closeInspector() {
   const opener = inspectorOpener
+  const selected = location?.selected.value
+  if (selected?.startsWith('workflow/')) location?.choose('workflow', selected.slice('workflow/'.length), false)
   clear()
   await nextTick()
   if (opener?.isConnected) opener.focus()
@@ -70,6 +74,7 @@ async function focusInspector() {
 }
 function chooseState(state: State, opener?: InspectorOpener) {
   inspectorOpener = opener; editingName.value = false; choosingTarget.value = false; selectedState.value = state; selectedTransition.value = undefined; target.value = ''; error.value = ''
+  if (process.value) location?.choose('workflow', process.value.id + '.state.' + state.id, true)
   void focusInspector()
 }
 async function showTarget(open: boolean) {
@@ -81,9 +86,30 @@ async function showTarget(open: boolean) {
 }
 function chooseTransition(transition: Transition, opener?: InspectorOpener) {
   inspectorOpener = opener; editingName.value = false; selectedTransition.value = transition; selectedState.value = undefined; error.value = ''
+  if (process.value) location?.choose('workflow', process.value.id + '.transition.' + transition.id, true)
   void focusInspector()
 }
 watch([process, mode], clear)
+watch([() => location?.selected.value, processes], async ([selectedRoute], previous) => {
+  if (!selectedRoute?.startsWith('workflow/')) {
+    if (previous?.[0]?.startsWith('workflow/')) clear()
+    return
+  }
+  const [processId, kind, id] = selectedRoute.slice('workflow/'.length).split('.')
+  const workflow = processes.value.find(row => row.id === processId)
+  if (!workflow) return
+  if (process.value !== workflow) {
+    selected.value = workflow.id
+    await nextTick()
+    if (location?.selected.value !== selectedRoute) return
+  }
+  const state = kind === 'state' ? workflow.states.find(row => row.id === id) : undefined
+  const transition = kind === 'transition' ? workflow.transitions?.find(row => row.id === id) : undefined
+  if (state === selectedState.value && transition === selectedTransition.value) return
+  clear()
+  selectedState.value = state
+  selectedTransition.value = transition
+}, { immediate: true, flush: 'post' })
 const processCounts = computed(() => {
   if (!props.counts || !process.value) return
   const types = props.countTypes?.filter(type => type.process === process.value?.id) ?? []
@@ -415,6 +441,9 @@ async function remove(p: Process) {
     ></Button>
     <Disclosure v-if="process" class="work-disclosure" label="Advanced workflow settings">
       <div class="work-stack">
+        <Disclosure class="work-small" label="Technical details">
+          <p>Workflow definitions are <code>processes</code> in <code>WorkGetSchema</code> and <code>WorkApplySchema</code>.</p>
+        </Disclosure>
         <label class="work-stack work-tight">Workflow name<InputText v-model="process.name" aria-label="Workflow name" /></label>
         <p v-if="staleLimits.length" class="work-muted">Some item limits belong to removed states.</p>
         <Button v-for="(id, index) in staleLimits" :key="id" :label="'Clear limit for removed state ' + (index + 1)" severity="secondary" text @click="delete draft.policy!.wip![id]" />

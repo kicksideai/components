@@ -60,7 +60,7 @@ async function remove(id: string) {
       role="alert"
     >{{ error }}</p>
     <DefinitionList columns="relations" :count="relations.length">
-    <DefinitionRow :title="relation.outward || humanize(relation.id)" :kind="relation.symmetric ? 'Same both ways' : 'Different each way'"
+    <DefinitionRow route-section="links" :route-id="relation.id" :title="relation.outward || humanize(relation.id)" :kind="relation.symmetric ? 'Same both ways' : 'Different each way'"
       v-for="(relation, index) in relations"
       :key="index"
       class="work-stack"

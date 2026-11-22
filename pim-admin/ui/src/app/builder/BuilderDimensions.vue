@@ -54,7 +54,7 @@ function setFallback(d: DimensionDecl, m: string, list: string[]) {
 
 <template>
   <DefinitionList :count="dims.length" :columns="['details', 'usage']">
-    <DefinitionRow :title="humanize(d.name)" v-for="d in dims" :key="d.name" :usage="usedBy(d).length ? 'Used in ' + usedBy(d).length + ' places' : 'Unused'">
+    <DefinitionRow route-section="dimensions" :route-id="d.name" :title="humanize(d.name)" v-for="d in dims" :key="d.name" :usage="usedBy(d).length ? 'Used in ' + usedBy(d).length + ' places' : 'Unused'">
       <template #details><span class="muted small">{{ d.members.map(humanize).join(', ') || 'No allowed values' }}</span></template>
       <template v-if="canEdit" #actions>
 
