@@ -9,11 +9,16 @@ import { resolve } from 'node:path'
 
 let server: ViteDevServer
 let browser: Browser
+let origin: string
 
 beforeAll(async () => {
   // Other browser fixtures use different Vite configs; do not invalidate their dependencies.
-  server = await createServer({ configFile: false, root: process.cwd(), cacheDir: 'node_modules/.vite-process-graph-browser', plugins: [vue()], server: { host: '127.0.0.1', port: 0 } })
-  await server.listen()
+  if (process.env.WORK_ADMIN_FIXTURE_URL) origin = process.env.WORK_ADMIN_FIXTURE_URL
+  else {
+    server = await createServer({ configFile: false, root: process.cwd(), cacheDir: 'node_modules/.vite-process-graph-browser', plugins: [vue()], server: { host: '127.0.0.1', port: 0 } })
+    await server.listen()
+    origin = server.resolvedUrls!.local[0]
+  }
   browser = await chromium.launch()
 }, 60000)
 
@@ -36,7 +41,7 @@ it.each(['Fit', 'resize'])('fits branching geometry in the first DOM update afte
   const page = await browser.newPage({ viewport: { width: action === 'Fit' ? 552 : 1390, height: 900 } })
   try {
     await throttle(page)
-    await page.goto(`${server.resolvedUrls!.local[0]}test/process-graph.html?process=branching`)
+    await page.goto(new URL('/test/process-graph.html?process=branching', origin).href)
     const canvas = page.getByLabel('Process map', { exact: true })
     const svg = canvas.locator(':scope > svg')
     const waitForViewport = () => expect.poll(() => svg.evaluate(element => {
@@ -78,7 +83,7 @@ it.each(cases)('renders real diagram geometry for $name in $theme at $width px',
   page.on('pageerror', error => errors.push(error.message))
   try {
     await throttle(page)
-    await page.goto(`${server.resolvedUrls!.local[0]}test/process-graph.html?process=${name}&theme=${theme}`)
+    await page.goto(new URL(`/test/process-graph.html?process=${name}&theme=${theme}`, origin).href)
     const canvas = page.getByLabel('Process map', { exact: true })
     await canvas.waitFor()
     await canvas.press('0')
@@ -116,7 +121,7 @@ it.each([1500, 900])('renders every CI/CD route after Fit and inspector resizing
   const page = await browser.newPage({ viewport: { width, height: 1000 } })
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message))
   try {
-    await page.goto(`${server.resolvedUrls!.local[0]}test/process-graph.html?process=cicd`)
+    await page.goto(new URL('/test/process-graph.html?process=cicd', origin).href)
     const canvas = page.getByLabel('Process map', { exact: true })
     await canvas.press('0')
     await expect.poll(() => page.locator('.work-state-card').count()).toBe(10)

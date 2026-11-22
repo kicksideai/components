@@ -10,8 +10,11 @@ import { cicd } from '../src/app/settings/__fixtures__/processes'
 import { schema } from '../src/test/fixtures'
 let server: ViteDevServer, browser: Browser
 beforeAll(async () => {
-  server = await createServer({ configFile: false, root: process.cwd(), cacheDir: 'node_modules/.vite-correctness-browser', plugins: [vue({ template: { compilerOptions: { isCustomElement: t => t.startsWith('kickside-') || t.startsWith('wc-') } } })], server: { host: '127.0.0.1', port: 0 } })
-  await server.listen(); browser = await chromium.launch()
+  if (!process.env.WORK_ADMIN_FIXTURE_URL) {
+    server = await createServer({ configFile: false, root: process.cwd(), cacheDir: 'node_modules/.vite-correctness-browser', plugins: [vue({ template: { compilerOptions: { isCustomElement: t => t.startsWith('kickside-') || t.startsWith('wc-') } } })], server: { host: '127.0.0.1', port: 0 } })
+    await server.listen()
+  }
+  browser = await chromium.launch()
 }, 60000)
 afterAll(async () => { await browser?.close(); await server?.close() })
 async function shot(page: Page, name: string) {
@@ -27,11 +30,30 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
   page.setDefaultTimeout(5000)
   const errors: string[] = [], requests: { path: string; body: Record<string, unknown> }[] = []
   page.on('pageerror', e => errors.push(e.message))
-  let view = schema(), hold = false, held: Route | undefined, createdTitle = '', description = ''
+  let view = schema(), hold = false, held: Route | undefined, createdTitle = '', description = '', discoveryAttempts = 0, packApplies = 0
   let boardTitle = 'Delivery', boardApp: string | undefined
-  if (mode === 'board-setup') {
+  const plugin = {
+    plugin: 'fixture:enhancements', title: 'Board enhancements', description: 'Adds tools for planning and tracking work on this board.',
+    installed: true, requires: [], tools: [], active: false, lifecycle: { state: 'ready' as const }, projections: {},
+    config_schema: { type: 'object', properties: { threshold: { type: 'integer', title: 'Threshold' }, aliases: { title: 'Aliases', type: 'array', items: { type: 'string' } } } },
+  }
+  const requiredPlugin = {
+    ...plugin, config_schema: {
+      type: 'object', required: ['threshold'], properties: {
+        threshold: { type: 'integer', title: 'Threshold', minimum: 1 },
+        batch: { type: 'integer', title: 'Batch size', default: 5 },
+      },
+    },
+  }
+  if (mode === 'board-setup' || mode === 'admin-plugin-draft') {
     view.declaration.plugins = [{ use: 'fixture:enhancements' }]
-    view.plugins = [{ plugin: 'fixture:enhancements', active: true, installed: true, requires: [], tools: [], lifecycle: { state: 'ready' }, projections: {} }]
+    view.plugins = [{ plugin: 'fixture:enhancements', active: true, installed: true, requires: [], tools: [], lifecycle: { state: 'ready' }, projections: {}, config: { threshold: 1 } }]
+  }
+  if (mode === 'projection-reset') {
+    view.declaration.plugins = [{ use: plugin.plugin }]
+    view.plugins = [{ ...plugin, active: true, projections: { events: { parked: true, bootstrapping: false, last_seq: 0, error: 'Worker stopped' } } }]
+  }
+  if (mode === 'board-setup') {
     view.declaration.fields!.push(...['Acceptance criteria', 'Resolution notes', 'Escalation reason', 'External issue tracker reference', 'Final trailing choice']
       .map((title, index) => ({ code: 'extra_' + index, title, form: 'text' as const })))
   }
@@ -52,9 +74,32 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
     if (path.includes('/component-access/grants/')) return route.fulfill({ json: { success: true, access: [] } })
     if (path.endsWith('/components/access-model')) return route.fulfill({ json: { success: true, capabilities: [] } })
     if (path.endsWith('/query')) return reply({ items: [], groups: [] })
-    if (path.endsWith('/packs')) return reply({ packs: [{ id: 'broken:pack', title: 'Broken installed pack', problem: { code: 'invalid_pack', message: 'Pack data is malformed' } }, { id: 'release:pack', title: 'Release pipeline', version: '1.0.0', icon: 'tabler:route', description: 'Release work', requires: [], plugins: [] }] })
-    if (path.endsWith('/options')) return reply({ access, schema_options: { plugins: [{ plugin: 'fixture:enhancements', title: 'Board enhancements', description: 'Adds tools for planning and tracking work on this board.', installed: true, requires: [], config_schema: { type: 'object', properties: { threshold: { type: 'integer', title: 'Threshold' }, aliases: { title: 'Aliases', type: 'array', items: { type: 'string' } } } } }] }, board_apps: [{ id: 'fixture:tracker', title: 'Tracker' }], installed_types: [{ id: 'fixture:rating', title: 'Rating' }] })
+    if (path.endsWith('/packs')) {
+      discoveryAttempts++
+      if (['create-discovery', 'install-pack'].includes(mode) && discoveryAttempts === 1) {
+        return route.fulfill({ status: 503, json: { success: false, error: 'Pack discovery offline' } })
+      }
+      return reply({ packs: [{ id: 'broken:pack', title: 'Broken installed pack', problem: { code: 'invalid_pack', message: 'Pack data is malformed' } }, { id: 'release:pack', title: 'Release pipeline', version: '1.0.0', icon: 'tabler:route', description: 'Release work', requires: [], plugins: [] }] })
+    }
+    if (path.endsWith('/options')) return reply({ access, schema_options: { plugins: [mode === 'plugin-validation' ? requiredPlugin : plugin] }, board_apps: [{ id: 'fixture:tracker', title: 'Tracker' }], installed_types: [{ id: 'fixture:rating', title: 'Rating' }] })
+    if (path.endsWith('/pack_plan')) return reply({
+      pack: 'release:pack', version: '1.0.0', digest: 'pack', generation: 2,
+      class: 'cosmetic', declaration: view.declaration, changes: [], refused: [], conflicts: [], maps: {},
+      views: [{ id: 'change-register', title: 'Change register' }],
+      automations: [{ id: 'review-notification' }], traits: ['app:review_trait'], plugins: [plugin.plugin],
+    })
+    if (path.endsWith('/pack_apply')) {
+      packApplies++
+      view = { ...view, generation: 2 }
+      return reply({ operation_id: 'operation-12', job_id: 'job-34', status: packApplies === 1 ? 'pending' : 'done', generation: 2 })
+    }
     if (path.endsWith('/state_counts')) return reply({ task: { todo: 2, doing: 1 } })
+    if (path.endsWith('/configure_plugin')) {
+      const config = body.config as Record<string, unknown>
+      if (config?.threshold === 99) return route.fulfill({ status: 422, json: { success: false, error: 'Threshold rejected' } })
+      view.plugins![0].config = config
+      return reply({ attachment_id: 'enhancements' })
+    }
     if (path.endsWith('/get_schema')) {
       if (path.includes('/new/')) return reply({ generation: 1, declaration: { key_prefix: 'WORK' }, compiled: {}, key_prefix: 'WORK', as_of: 1 })
       if (hold) { hold = false; held = route; return }
@@ -89,7 +134,8 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
     }
     throw new Error('Unexpected fixture request: ' + path)
   })
-  await page.goto(`${server.resolvedUrls!.local[0]}test/correctness.html?mode=${mode}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+  const origin = process.env.WORK_ADMIN_FIXTURE_URL || server.resolvedUrls!.local[0]
+  await page.goto(new URL(`/test/correctness.html?mode=${mode}`, origin).href, { waitUntil: 'domcontentloaded', timeout: 30000 })
   return { page, errors, requests, release: async () => { await held!.fulfill({ json: { success: true, data: view } }) }, isHeld: () => !!held }
 }
 
@@ -645,6 +691,159 @@ it('asks before discarding a board draft and preserves it when the operator canc
   } finally { await page.close() }
 }, 30000)
 
+it('guards unsaved active plugin settings until saved or discarded', async () => {
+  const { page, requests } = await fixture('admin-plugin-draft')
+  try {
+    const delivery = page.getByRole('button', { name: 'Settings for Delivery', exact: true })
+    const back = page.getByRole('button', { name: 'All boards', exact: true })
+    const threshold = page.getByRole('spinbutton', { name: 'Threshold', exact: true })
+    const save = page.getByRole('button', { name: 'Save plugin settings' })
+    async function openPlugin() {
+      await delivery.click()
+      await boardSection(page, 'Plugins').click()
+      await page.getByRole('button', { name: 'Board enhancements', exact: true }).click()
+    }
+    async function keepEditing() {
+      await back.click()
+      await page.getByRole('dialog', { name: 'Discard changes?' }).waitFor({ timeout: 2000 })
+      await page.locator('#keep').click()
+    }
+
+    await openPlugin()
+    await threshold.fill('7')
+    await boardSection(page, 'General').click()
+    await keepEditing()
+    await boardSection(page, 'Plugins').click()
+    expect(await threshold.inputValue()).toBe('7')
+    expect(await page.getByRole('button', { name: 'Review changes', exact: true }).count()).toBe(0)
+
+    await threshold.fill('99')
+    await save.click()
+    await expect.poll(() => requests.find(r => r.path.endsWith('/configure_plugin'))?.body.config).toEqual({ threshold: 99 })
+    await page.getByRole('alert').filter({ hasText: /Threshold rejected|Could not configure plugin/ }).waitFor()
+    await keepEditing()
+    expect(await threshold.inputValue()).toBe('99')
+
+    await threshold.fill('8')
+    await save.click()
+    await page.getByText('Plugin configuration saved.').waitFor()
+    await back.click()
+    await delivery.waitFor()
+    expect(await page.locator('#confirm').isVisible()).toBe(false)
+
+    await openPlugin()
+    expect(await threshold.inputValue()).toBe('8')
+    await threshold.fill('10')
+    await page.getByRole('button', { name: 'Reset', exact: true }).click()
+    expect(await threshold.inputValue()).toBe('8')
+    expect(await save.isEnabled()).toBe(false)
+    await back.click()
+    await delivery.waitFor()
+
+    await openPlugin()
+    await threshold.fill('11')
+    await back.click()
+    await page.getByRole('dialog', { name: 'Discard changes?' }).waitFor()
+    await page.locator('#discard').click()
+    await openPlugin()
+    expect(await threshold.inputValue()).toBe('8')
+    expect(requests.filter(r => r.path.endsWith('/configure_plugin'))).toHaveLength(2)
+  } finally { await page.close() }
+}, 30000)
+
+it('shows the pack version and planned resources before applying', async () => {
+  const { page, requests } = await fixture('settings')
+  try {
+    await page.getByRole('button', { name: 'Install pack', exact: true }).click()
+    await page.getByRole('combobox', { name: 'Pack to install' }).click()
+    await page.getByRole('option', { name: /Release pipeline/ }).click()
+    await page.getByRole('button', { name: 'Review pack', exact: true }).click()
+    const resources = page.getByRole('region', { name: 'Pack resources' })
+    for (const name of ['1.0.0', 'Change register', 'review-notification', 'app:review_trait', 'Board enhancements']) {
+      await resources.getByText(name, { exact: true }).waitFor({ timeout: 2000 })
+    }
+    expect(requests.some(r => r.path.endsWith('/pack_apply'))).toBe(false)
+  } finally { await page.close() }
+}, 30000)
+
+it('shows a collapsed plugin configuration error and submits only explicit overrides', async () => {
+  const { page, requests } = await fixture('plugin-validation')
+  try {
+    await boardSection(page, 'Plugins').click()
+    await page.getByRole('switch', { name: 'Enable Board enhancements' }).click()
+    await page.getByText('Configuration needed', { exact: true }).waitFor({ timeout: 2000 })
+    await page.getByText('Threshold: A value is required.', { exact: true }).waitFor()
+    const review = page.getByRole('button', { name: 'Review changes', exact: true })
+    expect(await review.isEnabled()).toBe(false)
+    await page.getByRole('button', { name: 'Board enhancements', exact: true }).click()
+    const threshold = page.getByRole('spinbutton', { name: 'Threshold', exact: true })
+    expect(await threshold.getAttribute('aria-required')).toBe('true')
+    await threshold.fill('7')
+    const batch = page.getByRole('spinbutton', { name: 'Batch size', exact: true })
+    await batch.focus()
+    expect(await batch.inputValue()).toBe('')
+    await page.getByText('Suggested value: 5', { exact: true }).waitFor()
+    await review.click()
+    await expect.poll(() => requests.find(r => r.path.endsWith('/plan_schema'))?.body.plugin_configs)
+      .toEqual({ 'fixture:enhancements': { threshold: 7 } })
+  } finally { await page.close() }
+}, 30000)
+
+it('retries pack discovery inside New board and explains an invalid pack', async () => {
+  const { page } = await fixture('create-discovery')
+  try {
+    await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Change Review')
+    await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'New board' })
+    await dialog.getByText('Pack discovery offline', { exact: false }).waitFor()
+    await dialog.getByRole('button', { name: 'Reload packs', exact: true }).click({ timeout: 2000 })
+    await dialog.getByText(/Pack data is malformed.*invalid_pack/).waitFor()
+    await dialog.getByText('Release pipeline', { exact: true }).waitFor()
+  } finally { await page.close() }
+}, 30000)
+
+it('recovers pack discovery and continues the frozen operation with the same key', async () => {
+  const { page, requests } = await fixture('install-pack')
+  try {
+    await page.getByRole('button', { name: 'Install pack', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Install pack' })
+    await dialog.getByText('Pack discovery offline', { exact: false }).waitFor({ timeout: 2000 })
+    await dialog.getByRole('button', { name: 'Reload packs', exact: true }).click()
+    await dialog.getByRole('combobox', { name: 'Pack to install' }).click()
+    const malformed = dialog.getByRole('option', { name: /Broken installed pack.*Pack data is malformed.*invalid_pack/ })
+    expect(await malformed.getAttribute('aria-disabled')).toBe('true')
+    await dialog.getByRole('option', { name: /Release pipeline/ }).click()
+    await dialog.getByRole('button', { name: 'Review pack', exact: true }).click()
+    await page.getByRole('button', { name: 'Apply changes', exact: true }).click()
+    const operation = page.getByRole('region', { name: 'Pack installation' })
+    for (const text of ['Pending', 'operation-12', 'job-34']) await operation.getByText(text, { exact: true }).waitFor()
+    await operation.getByRole('button', { name: 'Continue pack installation' }).click()
+    await operation.getByText('Pack applied.', { exact: true }).waitFor()
+    const applied = requests.filter(r => r.path.endsWith('/pack_apply'))
+    expect(applied).toHaveLength(2)
+    expect(applied[0].body.key).toEqual(expect.any(String))
+    expect(applied[0].body).toEqual(applied[1].body)
+  } finally { await page.close() }
+}, 30000)
+
+it('explains projection reset before recovery and lets the operator cancel', async () => {
+  const { page, requests } = await fixture('projection-reset')
+  try {
+    await boardSection(page, 'Plugins').click()
+    await page.getByRole('button', { name: 'Board enhancements', exact: true }).click()
+    await page.getByText(/Worker stopped/).waitFor()
+    const reset = page.getByRole('button', { name: 'Reset projection', exact: true })
+    await reset.click()
+    const confirm = page.getByRole('dialog', { name: 'Reset projection?' })
+    await confirm.getByText(/rebuild from current items or replay retained events/i).waitFor({ timeout: 2000 })
+    await confirm.getByRole('button', { name: 'Cancel', exact: true }).click()
+    expect(requests.some(r => r.path.endsWith('/configure_plugin'))).toBe(false)
+    await reset.click()
+    await confirm.getByRole('button', { name: 'Reset projection', exact: true }).click()
+    await expect.poll(() => requests.find(r => r.path.endsWith('/configure_plugin'))?.body).toEqual({ plugin: 'fixture:enhancements' })
+  } finally { await page.close() }
+}, 30000)
+
 it('confirms leaving an edited board description and clears the prompt after Cancel', async () => {
   const { page, errors } = await fixture('admin')
   try {
@@ -677,7 +876,8 @@ it('fits board fields and the add action in a 390px settings surface', async () 
     const details = await page.getByRole('region', { name: 'Board settings detail' }).boundingBox()
     const shell = await page.locator('.work-admin-shell').boundingBox()
     expect(details?.width).toBe(shell?.width)
-    expect(await page.getByRole('complementary', { name: /^Boards/ }).isVisible()).toBe(true)
+    expect(await page.getByRole('navigation', { name: 'Board settings sections' }).isVisible()).toBe(true)
+    expect(await page.getByRole('complementary', { name: /^Boards/ }).count()).toBe(0)
     expect(await page.getByRole('searchbox', { name: 'Search boards' }).count()).toBe(0)
     const list = fields.locator('.work-definition-scroll')
     expect(await list.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0)

@@ -3,7 +3,7 @@
 <html><head><meta charset="utf-8"><title>Work administration correctness fixture</title></head>
 <body style="margin:0">
   <div id="fixture"></div>
-  <dialog id="confirm"><h2>Discard changes?</h2><p>Your unsaved board settings will be discarded.</p><button id="keep">Keep editing</button><button id="discard">Discard</button></dialog>
+  <dialog id="confirm" aria-labelledby="confirm-title"><h2 id="confirm-title">Discard changes?</h2><p>Your unsaved board settings will be discarded.</p><button id="keep">Keep editing</button><button id="discard">Discard</button></dialog>
   <script>
     const listeners = new Map()
     window.fixtureNotify = topic => { for (const fn of listeners.get(topic) || []) fn() }
@@ -19,7 +19,12 @@
       on: (topic, fn) => { if (!listeners.has(topic)) listeners.set(topic, new Set()); listeners.get(topic).add(fn); return () => listeners.get(topic).delete(fn) },
       loadByTagName: async () => undefined,
       host: { confirm: options => new Promise(resolve => {
-        const dialog = document.querySelector('#confirm'); dialog.showModal()
+        const dialog = document.querySelector('#confirm')
+        dialog.querySelector('h2').textContent = options.header
+        dialog.querySelector('p').textContent = options.message
+        dialog.querySelector('#keep').textContent = options.rejectLabel
+        dialog.querySelector('#discard').textContent = options.acceptLabel
+        dialog.showModal()
         document.querySelector('#keep').onclick = () => { dialog.close(); resolve(false) }
         document.querySelector('#discard').onclick = () => { dialog.close(); resolve(true) }
       }) },
@@ -50,8 +55,10 @@
     } body { padding:24px; } #fixture { min-height:700px; } dialog { border:1px solid #cbd5e1; border-radius:12px; padding:24px; }`
     document.head.append(sheet)
     const mode = new URLSearchParams(location.search).get('mode')
-    const component = mode === 'create' ? CreateBoard : mode === 'admin' ? AdminApp : BoardSettings
-    const props = mode === 'create' ? { visible:true, onCreated: id => { window.createdBoard = id } } : mode === 'admin' ? {} : { boardId:'b' }
+    const isCreate = mode === 'create' || mode === 'create-discovery'
+    const isAdmin = mode === 'admin' || mode === 'admin-plugin-draft'
+    const component = isCreate ? CreateBoard : isAdmin ? AdminApp : BoardSettings
+    const props = isCreate ? { visible:true, onCreated: id => { window.createdBoard = id } } : isAdmin ? {} : { boardId:'b' }
     createApp({ render: () => h(component, props) }).use(PrimeVuePlugin).provide(HOST_VISIBILITY_PROVIDER, ref(null)).mount('#fixture')
   </script>
 </body></html>

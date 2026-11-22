@@ -198,10 +198,10 @@ async function remove(p: Process) {
           @update:model-value="selected = $event"
         />
         <strong v-else>{{ process.name || 'Untitled process' }}</strong>
-        <Button label="Add state" severity="secondary" outlined size="small" @click="addState(process, $event.currentTarget as HTMLElement)"
+        <Button label="Add state" severity="secondary" outlined @click="addState(process, $event.currentTarget as HTMLElement)"
           ><template #icon><Icon icon="tabler:plus" /></template
         ></Button>
-        <Button label="Add transition" severity="secondary" outlined size="small" :disabled="process.states.length < 2"
+        <Button label="Add transition" severity="secondary" outlined :disabled="process.states.length < 2"
           @click="addTransition(process, $event.currentTarget as HTMLElement)" />
         <Select
           v-model="process.initial"
@@ -254,7 +254,6 @@ async function remove(p: Process) {
           aria-label="New process"
           text
           severity="secondary"
-          size="small"
           @click="creating = true"
           ><template #icon><Icon icon="tabler:plus" /></template
         ></Button>
@@ -414,7 +413,7 @@ async function remove(p: Process) {
     <Button v-else label="New process" severity="secondary" outlined @click="creating = true"
       ><template #icon><Icon icon="tabler:plus" /></template
     ></Button>
-    <Disclosure v-if="process" class="work-settings-card work-disclosure" label="Advanced workflow settings">
+    <Disclosure v-if="process" class="work-disclosure" label="Advanced workflow settings">
       <div class="work-stack">
         <label class="work-stack work-tight">Workflow name<InputText v-model="process.name" aria-label="Workflow name" /></label>
         <p v-if="staleLimits.length" class="work-muted">Some item limits belong to removed states.</p>

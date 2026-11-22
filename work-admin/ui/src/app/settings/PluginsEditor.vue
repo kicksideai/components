@@ -3,6 +3,7 @@
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { formatApiError } from '../../transport'
 import { Icon } from '@iconify/vue'
+import { host } from '@wippy-fe/proxy'
 import DefinitionRow from './DefinitionRow.vue'
 import DefinitionList from './DefinitionList.vue'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -13,14 +14,15 @@ import { configFields } from './config'
 import Button from 'primevue/button'
 import type { Declaration, InstalledRule, PluginOption, Schema } from '../../types'
 import type { PluginConfigs } from './model'
-import { clone } from './model'
 import { pluginIssue, projectionHealth } from './plugin-state'
 import { settings } from './api'
 import ConfigForm from './ConfigForm.vue'
 const props = defineProps<{ boardId: string; draft: Declaration; schema: Schema; options: PluginOption[]; configs: PluginConfigs; disabled?: boolean; activationLocked?: boolean; filters?: InstalledRule[] }>()
 const emit = defineEmits<{ configured: []; refresh: []; review: [opener?: HTMLElement]; validity: [key: string, valid: boolean] }>()
-const edit = ref<PluginConfigs>({}), busy = ref(''), error = ref(''), saved = ref('')
+const edit = defineModel<PluginConfigs>('activeConfigs', { default: () => ({}) })
+const busy = ref(''), error = ref(''), saved = ref('')
 const invalid = ref(new Set<string>())
+const validationMessages = ref<Record<string, string>>({})
 const repairing = ref(new Set<string>())
 const rows = computed(() => props.options.map(plugin => {
   const current = state(plugin.plugin)
@@ -69,8 +71,27 @@ function config(id: string): Record<string, unknown> {
   if (active(id)) return edit.value[id] ?? state(id)?.config ?? emptyConfig
   return props.configs[id] ?? emptyConfig
 }
-function update(id: string, value: Record<string, unknown>) { if (active(id)) edit.value[id] = value; else props.configs[id] = value }
+function update(id: string, value: Record<string, unknown>) {
+  if (active(id)) edit.value = { ...edit.value, [id]: value }
+  else props.configs[id] = value
+}
+function resetConfig(id: string) {
+  if (active(id)) {
+    const next = { ...edit.value }
+    delete next[id]
+    edit.value = next
+  } else delete props.configs[id]
+}
 function validity(id: string, valid: boolean) { if (valid) invalid.value.delete(id); else invalid.value.add(id); if (!active(id)) emit('validity', id, valid) }
+async function resetProjection(id: string) {
+  const confirmed = await host.confirm({
+    header: 'Reset projection?',
+    message: 'Resetting can rebuild from current items or replay retained events, depending on the projection.',
+    acceptLabel: 'Reset projection',
+    rejectLabel: 'Cancel',
+  })
+  if (confirmed) await submit(id, true)
+}
 async function submit(id: string, retry = false) {
   if (readOnly.value || (!retry && invalid.value.has(id))) return
   busy.value = id
@@ -80,7 +101,7 @@ async function submit(id: string, retry = false) {
     if (retry) await settings.configure(props.boardId, id)
     else {
       await settings.configure(props.boardId, id, config(id))
-      delete edit.value[id]
+      resetConfig(id)
       repairing.value.delete(id)
     }
     saved.value = retry ? 'Plugin recovery started.' : 'Plugin configuration saved.'
@@ -100,8 +121,11 @@ async function submit(id: string, retry = false) {
       <DefinitionRow v-for="{ plugin, current, issue } in rows" :key="plugin.plugin"
         :title="plugin.installed === false ? plugin.plugin : plugin.title || plugin.plugin"
         :description="plugin.description"
-        :kind="selected(plugin.plugin) !== active(plugin.plugin) ? 'Pending review' : issue?.status"
+        :kind="selected(plugin.plugin) && invalid.has(plugin.plugin) ? 'Configuration needed' : selected(plugin.plugin) !== active(plugin.plugin) ? 'Pending review' : issue?.status"
         class="work-stack">
+        <template v-if="selected(plugin.plugin) && validationMessages[plugin.plugin]" #status>
+          <span class="work-block work-small work-error">{{ validationMessages[plugin.plugin] }}</span>
+        </template>
         <template #actions>
           <ToggleSwitch v-if="issue?.kind !== 'missing'" :model-value="selected(plugin.plugin)"
             :aria-label="'Enable ' + (plugin.title || plugin.plugin)"
@@ -135,7 +159,7 @@ async function submit(id: string, retry = false) {
             </Disclosure>
           </template>
           <div v-else-if="issue?.kind === 'reset'" class="work-row">
-            <Button label="Reset projection" severity="secondary" outlined :disabled="readOnly" @click="submit(plugin.plugin, true)" />
+            <Button label="Reset projection" severity="secondary" outlined :disabled="readOnly" @click="resetProjection(plugin.plugin)" />
             <span class="work-muted work-small">Resolve the worker error before resetting.</span>
           </div>
           <div v-else-if="issue?.kind === 'configuration' && selected(plugin.plugin) && hasConfig(plugin) && !repairing.has(plugin.plugin)" class="work-row">
@@ -163,10 +187,11 @@ async function submit(id: string, retry = false) {
               :disabled="!!busy || disabled" @update:model-value="toggleConfig(plugin.plugin, $event)" />
             <p class="work-muted">Selected types get Current sprint and Milestone fields.</p>
           </template>
-          <ConfigForm v-else :disabled="!!busy || disabled" :schema="plugin.config_schema" :model-value="config(plugin.plugin)"
-            @update:model-value="update(plugin.plugin, $event)" @validity="validity(plugin.plugin, $event)" />
+          <ConfigForm v-else :disabled="!!busy || disabled" :schema="plugin.config_schema" :model-value="config(plugin.plugin)" suggest-defaults
+            @update:model-value="update(plugin.plugin, $event)" @validity="validity(plugin.plugin, $event)"
+            @validation-message="validationMessages[plugin.plugin] = $event" />
           <div class="work-form-actions">
-            <Button :label="issue ? 'Reset form values' : 'Reset'" severity="secondary" outlined :disabled="!!busy || disabled" @click="update(plugin.plugin, active(plugin.plugin) ? clone(state(plugin.plugin)?.config ?? {}) : {})" />
+            <Button :label="issue ? 'Reset form values' : 'Reset'" severity="secondary" outlined :disabled="!!busy || disabled" @click="resetConfig(plugin.plugin)" />
             <Button v-if="active(plugin.plugin)" label="Save plugin settings" :disabled="!!busy || disabled || invalid.has(plugin.plugin) || !edit[plugin.plugin]" :loading="busy === plugin.plugin" @click="submit(plugin.plugin)" />
           </div>
         </component>

@@ -116,9 +116,6 @@ entries:
         type: boolean
         default: false
         description: Focus the first rail action when opening settings from the picker.
-      directory-count:
-        type: number
-        description: Board count in the embedded System picker.
   events:
     navigate:
       type: object

@@ -132,7 +132,7 @@ const openedField = ref('')
     <div class="work-form-actions work-wrap">
       <Select :model-value="currentType?.id ?? ''" aria-label="Filter fields by item type" placeholder="All item types" appendTo="self" optionLabel="label" optionValue="value"
         :options="[{ value: '', label: 'All item types' }, ...typeChoices]" @update:model-value="emit('update:itemType', $event)" />
-      <AddDefinitionRow action="Add field" label="Field name" :maxlength="255" @open="startAdd" @add="add">
+      <AddDefinitionRow action="Add field" label="Field name" :maxlength="255" regular @open="startAdd" @add="add">
         <label class="work-stack work-tight">Kind<Select v-model="newKind" aria-label="New field kind" appendTo="self" :options="kindOptions" optionLabel="label" optionValue="value" /></label>
         <ChipPicker v-if="typeChoices.length" label="Show on item types" :options="typeChoices" v-model="placement" />
       </AddDefinitionRow>

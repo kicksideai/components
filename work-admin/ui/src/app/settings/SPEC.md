@@ -10,10 +10,12 @@ and a stable retry key. A successful Apply retains its committed generation as a
 reset target until an accepted read reaches it, even if a notification supersedes
 the first read; that reset is consumed once. Other concurrent drafts stay stale.
 Board selection and Back ask through the shared host confirmation before
-replacing an unsaved schema or metadata draft. Settings report both through the widget boundary. Saving or canceling metadata clears its pending state independently of the schema draft.
-The picker and opened board use the same rail frame, title and count. Create
-board and Application defaults are available from the directory. All boards
-returns focus to the selected row. All sections use the shared UI Kit rail and
+replacing unsaved schema, metadata or active plugin edits. Settings report the
+combined dirty state through the widget boundary. Each editor clears its own
+pending state on save or explicit discard.
+The board directory frames its count, Create board and Application defaults.
+An opened board uses the standalone settings rail. All boards returns focus to
+the selected directory row. All sections use the shared UI Kit rail and
 scrolling pane. Access contains Share board. The section header shows draft
 actions when board settings have unsaved changes. Board titles wrap in both
 surfaces, and the definition lists place metadata and row actions below the title
@@ -95,9 +97,9 @@ problem reason. A missing title is shown as Unnamed pack. Valid packs and Empty 
 
 Board settings open in General. The Board setup rail group contains Item types,
 Fields, Links and Workflow. Management contains Access and Plugins. In System, All boards is the first item in the section rail and
-returns the operator to the board directory. The directory title, count and
-actions are visible in both states. The board name groups its General settings.
-A draft shows Unsaved changes, Discard and Review changes in the section header.
+returns the operator to the board directory. The board name groups its General
+settings. A schema draft shows Unsaved changes, Discard and Review changes in
+the section header.
 Review changes keeps the active section behind the review. Schema changes use
 the existing plan/apply snapshot. Board identity,
 the opening-app binding, sharing and settings for already active plugins use
@@ -105,10 +107,12 @@ their existing independent write endpoints. Board identity uses `wc-icon-picker`
 The administrator can choose a registered opening app by title where the Work
 binding contract is available. Clearing the selection uses the installation
 default. General presents the board name, app and key prefix as inline controls.
-Name, app, description and icon save together through the metadata action.
+Narrow screens place board details controls below their descriptions. Name,
+app, description and icon save together through the metadata action.
 Item counts and pack status share one line above the recent changes disclosure.
 
-Expand an item type to edit the fields it uses. Fields defines fields shared by
+Item types show a Workflow column on wide panels and a Workflow label on narrow
+panels. Expand an item type to edit the fields it uses. Fields defines fields shared by
 the board and can filter by item type. Links defines relationships that appear
 on both items. Add actions open the corresponding editor on demand. Cancel and
 Escape close the inline name editor and return focus to its Add action. Field
@@ -120,11 +124,17 @@ Workflow shows caller-visible item counts for the committed workflow and edits
 limits and requirements on the state where they apply. Map and List use the
 same transition inspector. Installed checks and query filters come from Work
 registry metadata. Each plugin row places its title and description beside the
-activation switch. A badge signals a pending change or a health issue.
+activation switch. A badge signals a pending change, configuration needed, or a
+health issue. An invalid configuration shows its first field error in the row
+summary. Required fields are marked, and manifest suggestions appear beside the
+control. Only entered overrides are sent for newly activated plugins, so Work can
+apply deployment settings to omitted optional fields. Reset projection explains
+the effect and asks for confirmation before starting recovery.
 
 Access is an ADMIN-only section. The board header and Access open the same shared
 `kickside-share` widget for the board component’s grants and share routes.
-The widget owns grant/revoke and its overlay. Per-item visibility lives in Access under Advanced.
+The widget owns grant/revoke and its overlay. Each preview row shows one compact
+badge listing its capabilities or Owner. Per-item visibility lives in Access under Advanced.
 
 Native dialogs within the settings ShadowRoot are an owner-approved exception
 to shared overlays. They retain browser top-layer modality, Escape handling,
@@ -157,9 +167,12 @@ Plugin status is explicitly the last read snapshot. Refresh status in the Plugin
 load path while preserving schema drafts and open editors for the same generation, and reporting newer schema generations
 as stale. Pack requirements use exact `plugin` manifest identities. Upgrade and
 initial installation share pack planning/apply, frozen generation/maps/conflict
-choices, and initial configuration forms; invalid configuration blocks Apply.
-Pack discovery also runs for unprovenanced boards. Their Install pack action
-submits the ordinary pack plan; Work decides eligibility, including emptiness.
+choices, and initial configuration forms. Invalid configuration blocks Apply.
+Review shows the target version and the plan's saved views, automations, traits and required plugins.
+New board and Install pack can reload discovery and show unavailable choices with
+their reasons. Work decides whether a board is eligible, including emptiness.
+An accepted installation shows the operation status and both identifiers.
+Continuing uses the same reviewed request and operation key.
 Packed creation uses the same configuration editor as Install pack, with the title and schema from discovery. Values still travel under the exact manifest ID, join the frozen retry identity, and are validated by Work before admission. Empty board sends no plugin configuration.
 Automated states retain `run.stage` as their editable run label. The shared
 published Flow picker selects a Flow. The browser’s native version selector stays

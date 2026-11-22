@@ -8,8 +8,23 @@ export type Pack = AvailablePack | UnavailablePack
 export const availablePack = (pack: Pack): pack is AvailablePack => !('problem' in pack)
 export interface PackSelection { pack?: string; version?: string; starter?: boolean; plugin_configs?: Record<string, Record<string, unknown>> }
 export interface PackRequest { pack: string; version?: string; expected_generation: number; maps?: Record<string, Record<string, string>>; plugin_configs?: Record<string, Record<string, unknown>>; resolutions?: Record<string, 'local' | 'incoming'> }
-export interface PackPlan extends SchemaPlan { pack: string; version: string; digest: string; declaration: Declaration; conflicts: { path: string; base: unknown; local_value: unknown; incoming: unknown }[]; maps: Record<string, Record<string, string>> }
+export interface PackPlan extends SchemaPlan {
+  pack: string; version: string; digest: string; declaration: Declaration
+  conflicts: { path: string; base: unknown; local_value: unknown; incoming: unknown }[]
+  maps: Record<string, Record<string, string>>
+  views?: { id: string; title: string }[]
+  automations?: { id: string }[]
+  traits?: string[]
+  plugins?: string[]
+}
 export interface PackResult { operation_id: string; job_id: string; status: string; generation: number }
+
+export function packChoice(pack: Pack) {
+  const problem = availablePack(pack) ? pack.plugins.find(plugin => plugin.problem && plugin.installed)?.problem : pack.problem
+  const unavailable = problem ? `${problem.message} (Error code: ${problem.code})`
+    : availablePack(pack) && pack.plugins.some(plugin => !plugin.installed) ? 'A required plugin is unavailable.' : undefined
+  return { ...pack, title: pack.title ?? 'Unnamed pack', icon: pack.icon ?? 'tabler:package-off', disabled: !!unavailable, unavailable }
+}
 
 export function upgradeRequest(pack: AvailablePack, generation: number): PackRequest {
   return { pack: pack.id, version: pack.version, expected_generation: generation }
