@@ -36,8 +36,7 @@ local function record(tx: types.Executor, catalog_id: string, receipt: Receipt, 
         {catalog_id,receipt.marker,receipt.request_hash,values.canonical(receipt.result),seq,receipt.event_count,receipt.noop and 1 or 0,clock.after(at,days),at})
     return err
 end
--- Projection folding already holds the catalog lock and materializes the first
--- schema before recording its result. It never admits a missing owner.
+-- The fold holds the catalog lock and materializes the first schema before recording its receipt.
 function M.record(tx:types.Executor,catalog_id:string,receipt:Receipt,seq:integer,at:string): error?
     local rows,err=tx:query([[SELECT catalog_id FROM kickside_pim_catalog WHERE catalog_id=$1
         AND NOT EXISTS(SELECT 1 FROM kickside_pim_cleanup WHERE catalog_id=$1)]],{catalog_id})
