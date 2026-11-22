@@ -596,6 +596,29 @@ it('exposes field controls by their labels and separates the keyboard reorder ha
   } finally { await page.close() }
 }, 30000)
 
+it('drags a field into a new position and reviews the same order for its item type', async () => {
+  const { page, requests } = await fixture('settings')
+  try {
+    await boardSection(page, 'Fields').click()
+    const rows = page.locator('.work-field-row')
+    const handle = rows.first().getByRole('button', { name: /^Drag Title / })
+    const destination = rows.nth(1)
+    await handle.scrollIntoViewIfNeeded()
+    const start = (await handle.boundingBox())!, end = (await destination.boundingBox())!
+    const x = start.x + start.width / 2
+    await page.mouse.move(x, start.y + start.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(x, end.y + end.height - 4, { steps: 12 })
+    await page.mouse.up()
+    await expect.poll(() => rows.first().getByRole('button', { name: 'Description', exact: true }).count()).toBe(1)
+    expect(await rows.nth(1).getByRole('button', { name: 'Title', exact: true }).count()).toBe(1)
+
+    await page.getByRole('button', { name: 'Review changes', exact: true }).click()
+    await expect.poll(() => requests.find(request => request.path.endsWith('/plan_schema'))?.body.declaration)
+      .toMatchObject({ item_types: [{ id: 'task', fields: ['description', 'title', 'assignee', 'priority', 'due', 'labels'] }] })
+  } finally { await page.close() }
+}, 30000)
+
 it.each([
   { mode: 'Map', type: 'state', close: 'Escape' },
   { mode: 'Map', type: 'transition', close: 'button' },
