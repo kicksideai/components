@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.44](https://github.com/kicksideai/components/compare/work-v0.1.43...work-v0.1.44) (2026-11-22)
+
+
+### Bug Fixes
+
+* share plugin schema resolution across Work and PIM ([#392](https://github.com/kicksideai/components/issues/392)) ([bc4fc6a](https://github.com/kicksideai/components/commit/bc4fc6aabf3fdce07483dded778b5d9bed0cca72))
+
 ## [0.1.43](https://github.com/kicksideai/components/compare/work-v0.1.42...work-v0.1.43) (2026-11-22)
 
 
