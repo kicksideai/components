@@ -20,11 +20,19 @@ entries:
     meta:
       comment: Command pipeline - idempotent receipts, append under the attempt's guard, rebuild on a lost race, read-your-writes.
     source: file://pipeline.lua
+    imports:
+      clock: kickside.pim:clock
+      threads: kickside.pim.command:threads
+      receipts: kickside.pim.command:receipts
+      types: kickside.pim:types
+
+  - name: receipts
+    kind: library.lua
+    source: file://receipts.lua
     modules: [hash]
     imports:
       failure: kickside.pim:failure
       clock: kickside.pim:clock
-      threads: kickside.pim.command:threads
       values: kickside.pim.domain:values
       types: kickside.pim:types
 
