@@ -3,26 +3,26 @@ directories:
     src: ./src
 modules:
     - name: kickside/automation
-      version: 0.2.30
-      hash: 2e3157c6ca087c537a4751fbf88e0f4d1eaf79e4b4673cd262ec41784f42fb42
+      version: 0.2.44
+      hash: 79f31e0f0a8d7b672aecca8cf9adef7eb094fe29cd0ed7a7badf526e6bedd8a9
     - name: kickside/blocks
       version: 0.1.44
       hash: 1b129211e35a658ccd1ef6c94e33cfe2a01a0137543284a0f4ecdf2142dcb3e5
     - name: kickside/component
-      version: 0.3.28
-      hash: 689ac0c21b33bd89912e8213acb58cf70991fc44be96a3a273c44a9db61cce33
+      version: 0.3.33
+      hash: 1d3d7c3c47120302d68b56b8fbf088296a0b3633a9157f90d68af35b9c261cbb
     - name: kickside/contract
-      version: 0.3.12
-      hash: ee99d200098d260c7dc4673849ac386256b446c8e5db880d903bd89eeff7fa9b
+      version: 0.3.13
+      hash: a13d0a4d5f949d6d75aeaaf2fa9d14b25fb95acdaca31d03df56ff193ed4ac57
     - name: kickside/core
-      version: 0.3.37
-      hash: b1e5a64bd4e37183e2c32964969b4751f5460d4bb05cf4bddbbe8416bc0be3f5
+      version: 0.3.54
+      hash: fecf46db346c1ac1d04c408ff9e481c3bc6cfc2e146de91cd3ce487eb166c6bb
     - name: kickside/execution
       version: 0.2.8
       hash: 7ffa847541cce7d03424bad43828fb08e9b077b6a08b3fe857cd0a22fa589e97
     - name: kickside/jobs
-      version: 0.1.96
-      hash: a14fea84761c474fb6127cf08f79958419437b20122028339e5629cdd387dde7
+      version: 0.1.101
+      hash: b6af17d5db7fdfc4d4aba04c04307f8c1b20d6c5b60bc1c2b6852a932c852436
     - name: kickside/realtime-dispatch
       version: 0.1.1
       hash: 6f0fa3625683510a1565afff3b40b6726ea5604b940b1627b787f6615683264d
@@ -45,7 +45,7 @@ modules:
       version: 0.2.24
       hash: c1e42fd386cf9fa085d35918b28627a74fd90cdd14f9369d3e7924f3fe31e511
     - name: kickside/work
-      version: 0.1.17
+      version: 0.1.43
     - name: kickside/work-search
       version: 0.0.0
     - name: kickside/workflows

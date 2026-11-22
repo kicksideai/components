@@ -76,10 +76,8 @@ entries:
   modules:
   - funcs
   - registry
-  - contract
-  - security
-  - hash
   imports:
+    plugin_schema: kickside.contract:plugin_schema
     worker: kickside.core.projections.persist:worker
     registry_values: kickside.work.domain:registry_values
     shape: kickside.work.domain:shape

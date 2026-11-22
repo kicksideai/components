@@ -1846,9 +1846,10 @@ entries:
   - name: plugins_failure_probe
     kind: library.lua
     source: file://plugins_failure_probe.lua
-    modules: [contract, hash, security]
+    modules: [contract, security]
     imports:
       registry: app:registry_failure_fixture
+      plugin_schema: kickside.contract:plugin_schema
       worker: kickside.core.projections.persist:worker
       failure: kickside.pim:failure
       shape: kickside.pim:shape
