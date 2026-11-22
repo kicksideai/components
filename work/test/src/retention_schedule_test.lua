@@ -55,7 +55,17 @@ local function define()
         local child: string?
         local settings_board: fixture.Handle?
         local batch_board: fixture.Handle?
+        local stop_listening: (() -> ())?
+        local registered = false
         test.after_each(function()
+            if registered then
+                registered = false
+                assert(process.registry.unregister(NAME, process.registry.CONSISTENT))
+            end
+            if stop_listening then
+                stop_listening()
+                stop_listening = nil
+            end
             if settings_board then
                 assert(settings_board.call("unset_setting",{namespace="kickside.work",key="trash_days"}))
                 settings_board=nil
@@ -140,30 +150,27 @@ local function define()
             test.eq(position.board_after, h.id, "discovery has passed the target")
             test.is_true((tonumber(position.pending_page_budget) or 0) > 0)
             local mailbox = assert(process.listen(TOPIC))
+            stop_listening = function() process.unlisten(mailbox) end
             assert(process.registry.register(NAME, nil, process.registry.CONSISTENT))
-            local ok, err = pcall(function()
-                test.eq(steps.one(h, { op = "delete", item = id }).status, "applied")
-                assert(h.call("settle", {}))
-                local timer = time.after("5s")
-                local wake: { [string]: unknown }? = nil
-                while not wake do
-                    local message = channel.select({ mailbox:case_receive(), timer:case_receive() })
-                    assert(message.channel == mailbox, "committed projection did not deliver the retention wake")
-                    local change = message.value :: { [string]: unknown }
-                    if change.kind == "projection_eligibility_changed" and change.thread_id == h.id then
-                        wake = change
-                    end
+            registered = true
+            test.eq(steps.one(h, { op = "delete", item = id }).status, "applied")
+            assert(h.call("settle", {}))
+            local timer = time.after("5s")
+            local wake: { [string]: unknown }? = nil
+            while not wake do
+                local message = channel.select({ mailbox:case_receive(), timer:case_receive() })
+                assert(message.channel == mailbox, "committed projection did not deliver the retention wake")
+                local change = message.value :: { [string]: unknown }
+                if change.kind == "projection_eligibility_changed" and change.thread_id == h.id then
+                    wake = change
                 end
-                local db = assert(store.open())
-                local result, pass_err = runner.on_wakes(db, tostring(process.pid()), { { kind = "continue" }, wake })
-                db:release()
-                assert(result, steps.detail(pass_err))
-                test.eq(#result.owner_failures, 0)
-                steps.retention_run()
-            end)
-            assert(process.registry.unregister(NAME, process.registry.CONSISTENT))
-            process.unlisten(mailbox)
-            assert(ok, tostring(err))
+            end
+            local connection = assert(store.open())
+            local result, pass_err = runner.on_wakes(connection, tostring(process.pid()), { { kind = "continue" }, wake })
+            connection:release()
+            assert(result, steps.detail(pass_err))
+            test.eq(#result.owner_failures, 0)
+            steps.retention_run()
             test.eq(life(h, id), "purged", "the wake must reach the target within two callbacks")
         end)
 
