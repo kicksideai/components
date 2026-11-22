@@ -107,7 +107,7 @@
 .pim-family-fields { align-items: end; }
 .pim-family-fields .p-multiselect { width: 100%; min-width: 0; }
 .pim-family-fields .p-multiselect-label { flex-wrap: wrap; white-space: normal; }
-.pim-add-level { justify-self: start; }
+.pim-add-level, .pim-form-action { justify-self: start; }
 .pim-family-requirements-head { margin-bottom: 12px; }
 .pim-family-requirements-head h3 { margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--p-text-muted-color); }
 .pim-family-requirements-head p { margin: 0; }

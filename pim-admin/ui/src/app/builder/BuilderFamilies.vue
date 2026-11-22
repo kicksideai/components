@@ -17,7 +17,7 @@ import { humanize } from '../../forms'
 import ChipPicker from './ChipPicker.vue'
 
 const props = defineProps<{ draft: Declaration; schema: SchemaView; options: SchemaOptions }>()
-const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string]; fields: [family: string] }>()
+const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string]; fields: [family: string]; 'variant-field': [family: string] }>()
 const familyPrefix = useId()
 function fieldId(family: FamilyDecl, name: string): string {
   return familyPrefix + '-' + family.code + '-' + name
@@ -96,6 +96,11 @@ function remove(f: FamilyDecl) {
 function levels(f: FamilyDecl) {
   return f.variation ?? []
 }
+function variantChoices(family: FamilyDecl) {
+  return levels(family).map(level => ({
+    level, axes: variationOptions(family, level, 'axes'), own: variationOptions(family, level, 'own'),
+  }))
+}
 function addLevel(f: FamilyDecl) {
   (f.variation ??= []).push({ axes: [] })
 }
@@ -146,18 +151,24 @@ function setContext(r: RequirementDecl, dim: string, member: string) {
         <header class="pim-aspect-head"><h3>Variants</h3></header>
         <p class="muted small pim-axis-help">Choose what makes one variant different from another. Each field can be used once.</p>
         <div class="pim-stack tight">
-          <div v-for="(level, li) in levels(f)" :key="li" class="pim-level">
+          <div v-for="({ level, axes, own }, li) in variantChoices(f)" :key="li" class="pim-level">
             <div class="pim-level-head"><strong>Level {{ li + 1 }}</strong><Button v-if="canEdit" type="button" aria-label="Remove level" @click="levels(f).splice(li, 1)" text severity="secondary" size="small"><Icon icon="tabler:x" /></Button></div>
             <div class="pim-fields">
               <div class="pim-f pim-w-half">
                 <div class="pim-f-label"><label :id="fieldId(f, li + '-axes')">Distinguish variants by</label></div>
-                <p class="muted small pim-axis-help">Choose a single-value field with no dimensions. Text and record fields are excluded.</p>
-                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, li + '-axes')" :model-value="level.axes ?? []" :options="variationOptions(f, level, 'axes')" placeholder="Add an axis" @update:model-value="level.axes = $event" />
+                <p class="muted small pim-axis-help">Use a field with a single value and no dimensions, such as Integer. Text and record fields are excluded.</p>
+                <template v-if="canEdit && !axes.length">
+                  <p class="muted small pim-axis-help">No eligible field is available in this family. Choose its field group above, or create the field first and choose its group when you return.</p>
+                  <Button type="button" label="Create a field in Fields" severity="secondary" outlined size="small"
+                    class="pim-form-action" @click="emit('variant-field', f.code)" />
+                </template>
+                <ChipPicker v-else :disabled="!canEdit" dropdown :labelledby="fieldId(f, li + '-axes')" :model-value="level.axes ?? []"
+                  :options="axes" placeholder="Choose a field" @update:model-value="level.axes = $event" />
               </div>
               <div class="pim-f pim-w-half">
                 <div class="pim-f-label"><label :id="fieldId(f, li + '-owned')">Other fields edited here</label></div>
                 <p class="muted small pim-axis-help">Other fields you edit at this level.</p>
-                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, li + '-owned')" :model-value="level.own ?? []" :options="variationOptions(f, level, 'own')" placeholder="Add a field" @update:model-value="$event.length ? (level.own = $event) : delete level.own" />
+                <ChipPicker :disabled="!canEdit" dropdown :labelledby="fieldId(f, li + '-owned')" :model-value="level.own ?? []" :options="own" placeholder="Add a field" @update:model-value="$event.length ? (level.own = $event) : delete level.own" />
               </div>
             </div>
           </div>

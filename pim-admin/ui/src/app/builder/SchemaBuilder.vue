@@ -71,6 +71,8 @@ const selectedRow = ref('')
 const section = ref<Section>('General')
 const view = ref('Overview')
 const familyFilter = ref('')
+const handoff = ref<{ from: 'Channels' | 'Families'; id: string }>()
+const handoffDestination = computed(() => handoff.value?.from === 'Channels' ? 'Families' : handoff.value ? 'Fields' : undefined)
 const advanced = ref<'defaults' | 'declaration'>()
 const advancedVisible = ref(false)
 const content = ref<HTMLElement>()
@@ -111,7 +113,10 @@ function setLocation(next: Section, nextView: string, row = '') {
   if (props.route !== undefined) emit('navigate', [sectionKeys[nextView], ...(row ? [encodeURIComponent(row)] : [])].join('/'))
 }
 function selectSection(next: Section, nextView = navigation[next].items[0].label) {
-  if (section.value !== next || view.value !== nextView) setLocation(next, nextView)
+  if (section.value !== next || view.value !== nextView) {
+    handoff.value = undefined
+    setLocation(next, nextView)
+  }
 }
 function chooseRow(key: string, id: string, open: boolean) {
   if (props.route === undefined || sectionKeys[view.value] !== key || (!open && selectedRow.value !== key + '/' + id)) return
@@ -132,6 +137,7 @@ watch(() => props.route, route => {
   if (route === undefined) return
   const [key, row] = route.split('/')
   const item = sectionItems.find(option => sectionKeys[option.label] === key)
+  if (item?.label !== handoffDestination.value) handoff.value = undefined
   let id = ''
   try { if (row) id = decodeURIComponent(row) } catch { /* Invalid identifiers have no selected row. */ }
   if (item?.label === 'Fields' && id && selectedRow.value !== 'fields/' + id) familyFilter.value = ''
@@ -144,6 +150,28 @@ function openAdvanced(panel: 'defaults' | 'declaration') {
 function showFields(family: string) {
   familyFilter.value = family
   selectSection('Products', 'Fields')
+}
+async function moveToSetup(next: Section, nextView: string, row = '') {
+  setLocation(next, nextView, row)
+  await nextTick()
+  content.value?.focus({ preventScroll: true })
+}
+function showRequirements(channel: string) {
+  handoff.value = { from: 'Channels', id: channel }
+  const allowed = channels.value.find(item => item.id === channel)?.families
+  const candidates = families.value.filter(family => !allowed?.length || allowed.includes(family.code))
+  void moveToSetup('Products', 'Families', candidates.length === 1 ? candidates[0].code : undefined)
+}
+function createVariantField(family: string) {
+  familyFilter.value = ''
+  handoff.value = { from: 'Families', id: family }
+  void moveToSetup('Products', 'Fields')
+}
+function returnToSetup() {
+  if (!handoff.value) return
+  const { from, id } = handoff.value
+  handoff.value = undefined
+  void moveToSetup(from === 'Channels' ? 'Channels' : 'Products', from, id)
 }
 function count(amount: number, one: string, many = one + 's') {
   return amount + ' ' + (amount === 1 ? one : many)
@@ -549,6 +577,7 @@ function closeAdvanced() {
   valid.value = true
 }
 function discard() {
+  handoff.value = undefined
   pluginConfigs.value = {}
   pluginRefusal.value = undefined
   valid.value = true
@@ -571,7 +600,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
       <SettingsRail v-if="allCatalogs || (schema && options)" ref="rail" label="Catalog settings sections" :value="view"
         :groups="settingsGroups" :leading-item="allCatalogs" @update:value="selectView" />
       <div class="kx-main">
-        <section ref="content" class="kx-main-scroll" :aria-label="view">
+        <section ref="content" class="kx-main-scroll" :aria-label="view" tabindex="-1">
           <SettingsSectionHead v-if="schema && options" :title="view" :description="questions[view]">
             <template v-if="editable && dirty" #actions>
               <SettingsDraftActions :busy="busy" :review-disabled="!valid || stale || !schemaDirty"
@@ -590,6 +619,15 @@ function remove(kind: keyof RemoveDecl, id: string) {
               <Message v-if="!editable" severity="info">You can view this catalog’s settings.</Message>
 
               <div :key="view" class="pim-ia-content">
+                <div v-if="handoff && view === handoffDestination" class="kx-card pim-ia-action">
+                  <div>
+                    <p v-if="handoff.from === 'Channels'" class="muted small">Open the family that defines what products need before release, then add a release requirement.</p>
+                    <p v-else class="muted small">Add a field with a single value and no dimensions, such as Integer. When you return, select its group under Field groups.</p>
+                  </div>
+                  <Button type="button" severity="secondary" outlined size="small" @click="returnToSetup">
+                    <Icon icon="tabler:arrow-left" aria-hidden="true" /> Back to {{ humanize(handoff.id) }}
+                  </Button>
+                </div>
                 <HistoryPanel v-if="section === 'General' && view === 'History'" :catalog-id="catalogId" :can-resolve-actors="editable" />
                 <template v-else-if="section === 'General'">
                   <div class="pim-overview-grid">
@@ -619,7 +657,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
                 </template>
 
                 <template v-else-if="section === 'Products'">
-                  <BuilderFamilies v-if="view === 'Families'" :draft="draft" :schema="schema" :options="options" @remove="remove" @fields="showFields" />
+                  <BuilderFamilies v-if="view === 'Families'" :draft="draft" :schema="schema" :options="options" @remove="remove" @fields="showFields" @variant-field="createVariantField" />
                   <BuilderFields v-else-if="view === 'Fields'" v-model:family="familyFilter" :draft="draft" :schema="schema" :options="options" @remove="remove" />
                   <LayoutEditor v-else :draft="draft" :schema="schema" :types="options.types" />
                 </template>
@@ -627,7 +665,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
                   <BuilderDimensions v-if="view === 'Dimensions'" :draft="draft" :schema="schema" @remove="remove" />
                   <BuilderVocabularies v-else :catalog-id="catalogId" :draft="draft" :schema="schema" @remove="remove" />
                 </template>
-                <BuilderChannels v-else-if="section === 'Channels'" :catalog-id="catalogId" :draft="draft" :schema="schema" :view="view === 'Sources' ? 'sources' : 'channels'" @remove="remove" />
+                <BuilderChannels v-else-if="section === 'Channels'" :catalog-id="catalogId" :draft="draft" :schema="schema" :view="view === 'Sources' ? 'sources' : 'channels'" @remove="remove" @requirements="showRequirements" />
                 <CatalogShare v-else-if="section === 'Access'" :catalog-id="catalogId" :title="title || 'Catalog'" :access="schema.access" />
                 <BuilderPlugins v-else :draft="draft" :schema="schema" :options="options" :plugin-configs="pluginConfigs" :refusal="pluginRefusal" :stale="stale"
                   @configure="configure" @remove="remove" @reset="resetPlugin" @clear-refusal="pluginRefusal = undefined"
