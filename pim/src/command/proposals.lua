@@ -66,12 +66,12 @@ function M.plan_request(captured: Capture, source: string?): types.ApplyRequest
 end
 
 -- accept_request turns a proposal into the apply request that accepts it.
-function M.accept_request(proposal: types.Proposal): types.ApplyRequest
+function M.accept_request(proposal: types.Proposal): types.ApplyRequest & { proposal_id: string }
     local items = apply_items(proposal.items, proposal.base)
     local origin: types.Origin = { type = "proposal", id = proposal.proposal_id }
     if proposal.origin.type and proposal.origin.id then origin = { type = tostring(proposal.origin.type), id = tostring(proposal.origin.id) } end
     return { items = items, mode = "atomic", expected_generation = proposal.generation, source = proposal.source,
-        origin = origin, provenance = proposal.origin.provenance :: types.JsonObject?, approval_item_id = proposal.proposal_id }
+        origin = origin, provenance = proposal.origin.provenance :: types.JsonObject?, proposal_id = proposal.proposal_id }
 end
 
 return M

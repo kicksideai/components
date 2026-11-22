@@ -1,6 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Compilation contributes installed plugin tools, restricted by role and activation.
-local registry = require("registry")
 local catalog_client = require("catalog_client")
 local plugins = require("plugins")
 local types = require("types")
@@ -12,15 +11,12 @@ type Contribution = { tools: { Tool } }
 local function contribute(context: Map, read_only: boolean): (Contribution?, error?)
     local declarations: { { tools: { string }? } } = {}
     if context.catalog_id ~= nil then
-        local client, err = catalog_client.open()
-        if err then return nil, err end
-        local service = client :: catalog_client.Catalog
-        local get_schema = service.get_schema :: (catalog_client.Catalog, Map) -> (Map?, error?)
-        local schema, serr = get_schema(service, { catalog_id = context.catalog_id })
+        local result, serr = catalog_client.call("get_schema", { catalog_id = context.catalog_id })
         if serr then
             if serr:kind() == errors.PERMISSION_DENIED or serr:kind() == errors.NOT_FOUND then return { tools = {} }, nil end
             return nil, serr
         end
+        local schema = result :: types.SchemaView
         for _, plugin in ipairs(schema.plugins) do
             if plugin.active == true and not plugin.problem then declarations[#declarations + 1] = plugin end
         end

@@ -52,7 +52,20 @@ local function define()
                 test.eq(#calls("normalize"), changed and 2 or 1)
                 test.eq(#calls("validate"), changed and 2 or 1)
                 test.eq(out.outcomes[1].outcome, changed and "invalid" or "created")
-                if changed then test.eq(out.outcomes[1].findings[1].code, "wrong_length") end
+                local stored, read_err = steps.get(h, "CONFLICTED")
+                if changed then
+                    test.eq(out.outcomes[1].findings[1].code, "wrong_length")
+                    test.is_false(out.applied)
+                    test.is_nil(out.seq)
+                    test.not_nil(out.as_of)
+                    test.is_nil(stored)
+                    test.eq(assert(read_err):kind(), errors.NOT_FOUND)
+                else
+                    test.is_true(out.applied)
+                    test.is_nil(read_err, tostring(read_err))
+                    test.eq(assert(stored).values["ids.code"].value, "ABCD")
+                    test.is_true(out.as_of >= assert(out.seq))
+                end
             end)
         end
 

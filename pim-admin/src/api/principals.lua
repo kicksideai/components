@@ -49,7 +49,8 @@ function M.post()
     if not json.validate_string(schema, raw) then return fail(res, invalid_refs()) end
     local body, body_err = json.decode(raw)
     if body_err then return fail(res, body_err) end
-    local refs = (body :: { refs: { { type: string, id: string } } }).refs
+    local request = body :: types.PrincipalRefs
+    local refs = request.refs
     if #refs > 200 then return fail(res, invalid_refs()) end
     for _, ref in ipairs(refs) do
         if ref.id == "" then return fail(res, invalid_refs()) end
