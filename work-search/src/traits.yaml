@@ -12,7 +12,7 @@ entries:
       type: object
       properties: { board_id: { type: string } }
       additionalProperties: false
-  prompt: Use WorkFindItems on a board with Work Search. Put the search text in where.match and include any other Work filters in the same predicate. Search considers up to 1000 candidates per board and returns them in ordinary Work order. Preserve the returned cursor when paging.
+  prompt: Use WorkFindItems on a board with Work Search. Put the search text in where.match and include any other Work filters in the same predicate. Search verifies up to 2,000 lexical candidates per board and allows up to 1,000 visible matches. Results follow ordinary Work order. Preserve the returned cursor when paging.
   tools:
   - kickside.work.traits:list_boards
   - kickside.work.traits:find_items

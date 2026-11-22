@@ -21,6 +21,15 @@ entries:
   - { entry: 'kickside.work_search:01_search', path: .meta.target_db }
   - { entry: 'kickside.work_search:02_streaming_matches', path: .meta.target_db }
   - { entry: 'kickside.work_search:storage_db_access', path: .policy.resources }
+- name: user_security_scope
+  kind: ns.requirement
+  meta: { value_kind: security.scope }
+  default: kickside.security.groups:members
+  targets:
+  - { entry: 'kickside.work_search:worker_discovery', path: '.groups +=' }
+  - { entry: 'kickside.work_search:member_access', path: '.groups +=' }
+  - { entry: 'kickside.work_search:pack_trait_discovery', path: '.groups +=' }
+  - { entry: 'kickside.work_search:resolver_method', path: '.groups +=' }
 - name: storage_config
   kind: registry.entry
   meta: { private: true }
@@ -77,9 +86,11 @@ entries:
   source: file://resolver.lua
   method: resolve_ids
   modules: [ctx, security, time]
-  imports:
-    work: kickside.work_search:work
+  imports: &search_imports
+    board_client: kickside.work:client
+    reads: kickside.work.read:types
     storage: kickside.work_search:storage
+    types: kickside.work_search:types
   security:
     policies: &storage_policies [kickside.work_search:storage_config_access, kickside.work_search:storage_db_access]
 - name: project
@@ -88,9 +99,7 @@ entries:
   source: file://projection.lua
   method: run
   modules: [sql, uuid]
-  imports:
-    work: kickside.work_search:work
-    storage: kickside.work_search:storage
+  imports: *search_imports
   security:
     policies: *storage_policies
 - name: delete_attachment
@@ -116,7 +125,7 @@ entries:
   policy: { resources: [], actions: [db.get], effect: allow }
 - name: worker_discovery
   kind: security.policy
-  groups: [kickside.security.groups:members, wippy.security:process]
+  groups: [wippy.security:process]
   policy:
     resources:
     - kickside.work_search:project
@@ -132,10 +141,9 @@ entries:
     resources: [kickside.work_search:project]
     actions: [registry.get, funcs.call]
     effect: allow
-- name: work
+- name: types
   kind: library.lua
-  source: file://work.lua
-  modules: [contract]
+  source: file://types.lua
 - name: storage
   kind: library.lua
   source: file://storage.lua
@@ -164,7 +172,7 @@ entries:
     migration: wippy.migration:migration
 - name: member_access
   kind: security.policy
-  groups: [kickside.security.groups:members]
+  groups: []
   meta: { title: Work Search, surface: kickside.work_search, intent: module_access }
   policy:
     resources:
@@ -179,7 +187,7 @@ entries:
     effect: allow
 - name: pack_trait_discovery
   kind: security.policy
-  groups: [kickside.security.groups:members]
+  groups: []
   policy:
     resources: [kickside.work_search:search]
     actions: [registry.get]
@@ -198,7 +206,7 @@ entries:
     effect: allow
 - name: resolver_method
   kind: security.policy
-  groups: [kickside.security.groups:members]
+  groups: []
   policy:
     resources: [resolve_ids]
     actions: [contract.call]

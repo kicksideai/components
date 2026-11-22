@@ -1,16 +1,10 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local work = require("work")
+local board_client = require("board_client")
+local reads = require("reads")
 local storage = require("storage")
 local sql = require("sql")
+local types = require("types")
 local uuid = require("uuid")
-
-type Map = { [string]: unknown }
-type Config = { board_id: string, attachment_id: string, plugin: string, start_seq: integer }
-type Input = { thread_id: string, projection: { kind: string, body: { worker_config: Config } },
-    range: { from_seq: integer, to_seq: integer } }
-type Result = { last_seq: integer, patch: { token: string? }? }
-type Change = { item_id: string, key: string?, op: string, updated_seq: integer, values: Map? }
-type Page = { changes: { Change }, reset: boolean, token: string, attachment_id: string, generation: integer, done: boolean }
 
 local PLUGIN = "kickside.work_search:plugin"
 local PROJECTION = "kickside.work_search:items"
@@ -39,7 +33,7 @@ local function text(value: unknown): string
     return type(value) == "string" and value:gsub("%z", " ") or ""
 end
 
-local function index_page(tx: sql.Transaction, sqlite: boolean, target: storage.Generation, page: Page): error?
+local function index_page(tx: sql.Transaction, sqlite: boolean, target: storage.Generation, page: reads.PluginFeed): error?
     local documents: { storage.Document } = {}
     for _, change in ipairs(page.changes) do
         if change.op == "delete" then
@@ -67,7 +61,7 @@ local function load(attachment_id: string): (storage.State?, error?)
     return state or {}, nil
 end
 
-local function run(input: Input): (Result?, error?)
+local function run(input: types.ProjectionRequest): (types.ProjectionResult?, error?)
     local config = input.projection.body.worker_config
     local id = input.thread_id
     if config.plugin ~= PLUGIN or config.board_id ~= id or input.projection.kind ~= PROJECTION then
@@ -75,11 +69,11 @@ local function run(input: Input): (Result?, error?)
             details = { code = "search_projection_invalid" } })
     end
     local attachment = config.attachment_id
-    local board, open_err = work.open()
+    local board, open_err = board_client.open()
     if open_err or not board then return nil, open_err end
-    local raw, err = board:get_schema({ board_id = id })
+    local raw, err = assert(board.get_schema)(board, { board_id = id })
     if err or not raw then return nil, err end
-    local schema = raw :: { generation: integer, declaration: { scopes: { string }? } }
+    local schema = raw :: reads.SchemaView
     local scope, scope_err = configured(schema.declaration.scopes or {})
     if scope_err then return nil, scope_err end
     local state, load_err = load(attachment)
@@ -87,19 +81,19 @@ local function run(input: Input): (Result?, error?)
     local current = state.building or state.active
     local same = current and current.schema == schema.generation and current.scope == scope
         and current.registration == config.start_seq
-    local page: Page? = nil
+    local page: reads.PluginFeed? = nil
     if scope and not state.retired and (not state.building or same) then
-        local request = { board_id = id, plugin = PLUGIN, kind = PROJECTION, token = same and state.token or nil }
-        local response, feed_err = board:plugin_feed(request)
+        local request: reads.PluginFeedRequest = { board_id = id, plugin = PLUGIN, kind = PROJECTION, token = same and state.token or nil }
+        local response, feed_err = assert(board.plugin_feed)(board, request)
         if feed_err or not response then return nil, feed_err end
-        page = response :: Page
+        page = response :: reads.PluginFeed
         if page.generation ~= schema.generation or page.attachment_id ~= attachment then
             return nil, pending("search_projection_changed", "search projection source changed during the page read")
         end
     end
 
     local more = { last_seq = input.range.from_seq - 1 }
-    return storage.write(attachment, id, function(tx: sql.Transaction, sqlite: boolean, held: storage.State): (Result?, error?)
+    return storage.write(attachment, id, function(tx: sql.Transaction, sqlite: boolean, held: storage.State): (types.ProjectionResult?, error?)
         if held.deleting or held.revision ~= state.revision then
             return nil, pending("search_projection_changed", "search projection changed before the page committed")
         end
@@ -122,7 +116,7 @@ local function run(input: Input): (Result?, error?)
         end
         if not page then return nil, pending("search_projection_changed", "search page is unavailable") end
         if not same or page.reset then
-            held.building = { id = (uuid.v4()), schema = schema.generation, scope = scope, registration = config.start_seq }
+            held.building = { id = (uuid.v4()), schema = page.generation, scope = scope, registration = config.start_seq }
         end
         local target = (held.building or held.active) :: storage.Generation
         local fold_err = index_page(tx, sqlite, target, page)
