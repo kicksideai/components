@@ -266,7 +266,6 @@ local function define()
 
         test.it("accepts empty lists in config and effective config", function()
             local p = assert(plugins.load("app:probe_listed_plugin"))
-            test.is_nil(plugins.check("app:probe_listed_plugin", {}))
             local e = assert(plugins.merged(p, { tags = { "a" } }, { tags = {} }))
             test.eq(#(e.tags :: { unknown }), 0)
         end)

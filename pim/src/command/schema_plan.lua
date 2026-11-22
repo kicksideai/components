@@ -72,7 +72,11 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
     local effective, merr = declaration.merge(prev_declaration, incoming)
     if merr or not effective then return nil, merr end
     local next_compiled, cerr = schema.compile(prev, effective, {
-        type_of = seams.load_type, check_digest = seams.check_digest, plugin = plugins.check, link_kind = links.has_kind,
+        type_of = seams.load_type, check_digest = seams.check_digest, link_kind = links.has_kind,
+        plugin = function(id: string): error?
+            local _, err = plugins.load(id)
+            return err
+        end,
         scope = function(id: string): (boolean, error?)
             local scope, err = scopes.load(id)
             return scope ~= nil, err

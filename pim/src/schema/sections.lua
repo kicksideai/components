@@ -121,13 +121,13 @@ function M.scopes(declaration: types.Declaration, scope_lookup: lookups_types.Sc
     return scopes, nil
 end
 
-function M.plugins(declaration: types.Declaration, plugin_check: lookups_types.PluginLookup?): ({ [string]: types.PluginEntry }?, error?)
+function M.plugins(declaration: types.Declaration, plugin_lookup: lookups_types.PluginLookup?): ({ [string]: types.PluginEntry }?, error?)
     local plugins: { [string]: types.PluginEntry } = {}
     for _, entry in ipairs(declaration.plugins or {}) do
         local id = entry.use
         if type(id) ~= "string" or id == "" or plugins[id] then return nil, invalid("plugin membership requires distinct nonempty ids") end
-        if not plugin_check then return nil, invalid("plugin " .. id .. " cannot be checked here") end
-        local perr = plugin_check(id, {})
+        if not plugin_lookup then return nil, invalid("plugin " .. id .. " cannot be checked here") end
+        local perr = plugin_lookup(id)
         if perr then return nil, errors.wrap(perr, "plugin " .. id) end
         plugins[id] = { use = id, schema = entry.schema }
     end

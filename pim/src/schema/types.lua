@@ -3,7 +3,7 @@ local types = require("types")
 
 type CheckDigestLookup = (string) -> (string?, error?)
 type ScopeLookup = (string) -> (boolean, error?)
-type PluginLookup = (string, types.JsonObject) -> error?
+type PluginLookup = (string) -> error?
 type Lookups = {
     type_of: (string) -> (types.TypeMeta?, error?),
     check_digest: CheckDigestLookup?,
