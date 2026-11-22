@@ -68,7 +68,8 @@
 .pim-stack.tight { gap: 8px; }
 .pim-attr-row:hover { background: var(--kx-overlay-hover); }
 .pim-add-row { padding: 12px 14px; gap: 8px; }
-.pim-add-editor { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.pim-add-editor { display: flex; flex: 1 1 auto; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.pim-add-actions { gap: 8px; }
 .pim-add-code-error { flex-basis: 100%; margin: 0; color: var(--p-message-error-color); }
 .pim-level { padding: 10px 12px; border: 1px solid var(--p-content-border-color); border-radius: 10px; }
 .pim-level-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }

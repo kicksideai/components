@@ -85,8 +85,8 @@ function dragEnd() {
             <span class="pim-lcard-name">{{ humanize(attr.code) }}</span>
             <span class="pim-lcard-type">{{ typeTitles.get(attr.type) ?? fieldTypeTitle(undefined) }}</span>
             <span v-if="canEdit" class="pim-lcard-move">
-              <Button type="button" :disabled="index === 0" :aria-label="'Move ' + humanize(attr.code) + ' earlier'" @click="moveField(aspect.attributes ?? [], index, index - 1)" class="arrow" text severity="secondary" size="small"><Icon icon="tabler:arrow-left" /></Button>
-              <Button type="button" :disabled="index === (aspect.attributes ?? []).length - 1" :aria-label="'Move ' + humanize(attr.code) + ' later'" @click="moveField(aspect.attributes ?? [], index, index + 1)" class="arrow" text severity="secondary" size="small"><Icon icon="tabler:arrow-right" /></Button>
+              <Button type="button" :disabled="index === 0" :aria-label="'Move ' + humanize(attr.code) + ' earlier'" @click="moveField(aspect.attributes ?? [], index, index - 1)" class="kx-iconbtn sm" text severity="secondary" size="small"><Icon icon="tabler:arrow-left" /></Button>
+              <Button type="button" :disabled="index === (aspect.attributes ?? []).length - 1" :aria-label="'Move ' + humanize(attr.code) + ' later'" @click="moveField(aspect.attributes ?? [], index, index + 1)" class="kx-iconbtn sm" text severity="secondary" size="small"><Icon icon="tabler:arrow-right" /></Button>
             </span>
           </div>
           <SelectButton :disabled="!canEdit" :model-value="fieldWidth(schema, aspect.namespace, attr)" :options="WIDTHS" option-label="label" option-value="value" :allow-empty="false" :aria-label="'Width of ' + humanize(attr.code)" @update:model-value="attr.width = $event" />

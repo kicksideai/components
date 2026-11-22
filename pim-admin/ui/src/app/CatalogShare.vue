@@ -54,17 +54,17 @@ async function share() {
 </script>
 <template>
   <div class="pim-stack">
-    <section class="form pim-card-body pad pim-ia-action">
+    <section class="form pim-access-card pim-ia-action">
       <div>
         <h3>Members and sharing</h3>
-        <p>{{ summary }}</p>
+        <p class="pim-access-summary">{{ summary }}</p>
       </div>
       <Button v-if="access.admin" type="button" label="Share catalog" :loading="loading" @click="share">
         <template #icon><Icon icon="tabler:share" aria-hidden="true" /></template>
       </Button>
       <Button v-if="countsFailed" type="button" label="Reload member counts" severity="secondary" text @click="loadGrants" />
     </section>
-    <section class="form pim-card-body pad pim-stack" aria-labelledby="pim-access-roles-heading">
+    <section class="form pim-access-card pim-stack" aria-labelledby="pim-access-roles-heading">
       <h3 id="pim-access-roles-heading">What members can do</h3>
       <dl class="pim-access-roles">
         <div><dt>Read</dt><dd>View products and their details.</dd></div>

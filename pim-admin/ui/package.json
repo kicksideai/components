@@ -12,7 +12,7 @@
   ],
   "type": "module",
   "dependencies": {
-    "@kickside/ui-kit": "^1.7.6",
+    "@kickside/ui-kit": "^1.7.7",
     "@wippy-fe/theme": "0.0.70",
     "@wippy-fe/webcomponent-core": "0.0.70",
     "@wippy-fe/webcomponent-vue": "0.0.70",

@@ -15,7 +15,8 @@ export class ApiError extends Error {
     this.status = status
   }
 }
-export interface AdminError { message: string; code?: string }
+export interface PluginConfigRefusal { plugin: string; field: string; message: string }
+export interface AdminError { message: string; code?: string; pluginConfig?: PluginConfigRefusal }
 export const SCHEMA_CONFLICT = 'schema_generation_conflict'
 const errorMessages: Readonly<Record<string, string>> = {
   [SCHEMA_CONFLICT]: 'This catalog’s settings changed while you were editing.',
@@ -24,9 +25,13 @@ const errorMessages: Readonly<Record<string, string>> = {
 }
 
 export function presentError(error: unknown, fallback: string): AdminError {
-  const detail = error instanceof ApiError ? error.details?.code : undefined
+  const details = error instanceof ApiError ? error.details : undefined
+  const detail = details?.code
   const code = typeof detail === 'string' && detail ? detail : undefined
   const message = error instanceof Error && error.message ? error.message : fallback
+  if (code === 'plugin_config_invalid' && typeof details?.plugin === 'string' && typeof details.field === 'string') {
+    return { message, code, pluginConfig: { plugin: details.plugin, field: details.field, message } }
+  }
   return { message: code && Object.prototype.hasOwnProperty.call(errorMessages, code) ? errorMessages[code] : message, code }
 }
 

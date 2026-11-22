@@ -63,6 +63,39 @@ const cases = [
     },
   },
   {
+    name: 'repair-parked-worker', status: 'Background update paused', action: 'Reset background updates',
+    state: {
+      config_schema: {
+        type: 'object',
+        properties: { region: { type: 'string' }, crash: { type: 'boolean', title: 'Crash on update' } },
+      },
+      config: { region: 'EU', crash: true },
+      projections: { [projection]: cursor({ parked: true, error: 'Supplier mapping crashed.' }) },
+    },
+    async verify({ row, requests, button }) {
+      const crash = row.getByRole('checkbox', { name: 'Crash on update' })
+      await crash.waitFor()
+      assert.equal(await crash.isChecked(), true)
+      await crash.uncheck()
+      await button(row, 'Save configuration').click()
+      await row.getByText('Enabled', { exact: true }).waitFor()
+      assert.deepEqual(requests.configure, [{ plugin: manifest, config: { region: 'EU', crash: false } }])
+    },
+  },
+  {
+    name: 'configuration-field-label', status: 'Degraded', action: 'Check status',
+    state: {
+      config_schema: { type: 'object', properties: { hold_seconds: { type: 'integer', minimum: 1 } } },
+      config: { hold_seconds: 30 },
+      projections: { [projection]: cursor({ last_seq: 100, error: 'The supplier feed is unavailable.' }) },
+    },
+    async verify({ row }) {
+      const field = row.getByRole('spinbutton', { name: 'Hold seconds', exact: true })
+      await field.waitFor()
+      assert.equal(await field.inputValue(), '30')
+    },
+  },
+  {
     name: 'worker-error', status: 'Degraded', action: 'Check status',
     state: { projections: { [projection]: cursor({ last_seq: 100, error: 'The supplier feed is unavailable.' }) } },
     async verify({ row, state, requests, button }) {
@@ -94,20 +127,40 @@ const cases = [
       config: {}, problem: issue('plugin_config_invalid', manifest + ' config: missing required property issuer.', { field: 'issuer' }),
       lifecycle: { state: 'failed', error: issue('plugin_config_invalid', manifest + ' config: missing required property issuer.', { field: 'issuer' }) },
     },
-    async verify({ row, requests, button }) {
+    async verify({ row, requests, button, page, capture }) {
       await row.getByText(/certificate issuer is required/i).waitFor()
       await button(row, 'Technical details').click()
       await diagnostics(row, manifest).getByText(/missing required property issuer/).waitFor()
       const field = row.getByRole('textbox', { name: /certificate issuer/i })
       await field.fill('Reject me')
       await button(row, 'Save configuration').click()
-      await row.page().getByText('Choose an approved certificate issuer.').waitFor()
+      await page.getByText(/Choose an approved certificate issuer/).waitFor()
+      await capture('save-refusal')
+      await row.getByRole('alert').getByText('Certificate issuer: Choose an approved certificate issuer.').waitFor()
       assert.equal(await field.inputValue(), 'Reject me')
       await field.fill('Approved issuer')
       await button(row, 'Save configuration').click()
       await row.getByText('Enabled', { exact: true }).waitFor()
       assert.equal(await field.inputValue(), 'Approved issuer')
       assert.deepEqual(requests.configure, ['Reject me', 'Approved issuer'].map(issuer => ({ plugin: manifest, config: { issuer } })))
+    },
+  },
+  {
+    name: 'activation-configuration-refusal', status: 'Disabled', action: 'Enable Supplier compliance',
+    state: { active: false, config: {} },
+    async verify({ row, requests, button, page, capture }) {
+      await row.getByRole('switch', { name: 'Enable Supplier compliance' }).check()
+      await button(page, 'Review changes').click()
+      await page.getByText(/A required plugin setting is missing/).waitFor()
+      await capture('review-refusal')
+      await row.getByRole('alert').getByText('Certificate issuer: A required plugin setting is missing.').waitFor()
+      const field = row.getByRole('textbox', { name: /certificate issuer/i })
+      await field.fill('Approved issuer')
+      await button(page, 'Review changes').click()
+      await button(page, 'Apply changes').waitFor()
+      assert.equal(requests.plan.length, 2)
+      assert.deepEqual(requests.plan[0].plugin_configs, {}, 'Unset overrides must be resolved by the backend')
+      assert.deepEqual(requests.plan[1].plugin_configs, { [manifest]: { issuer: 'Approved issuer' } })
     },
   },
   {
@@ -179,14 +232,14 @@ const cases = [
 
 const browser = await chromium.launch()
 const button = (root, name) => root.getByRole('button', { name, exact: true })
-const root = new URL('./', import.meta.url)
+const shots = new URL((process.env.PIM_TEST_SHOTS ?? 'shots') + '/', import.meta.url)
 const layouts = process.env.PIM_TEST_MATRIX === 'quick'
   ? [[1440, 'light']] : [[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']]
 const importMap = await fetch(origin + '/imports.json').then(response => {
   assert.ok(response.ok, 'host import map is available through the reverse tunnel')
   return response.text()
 })
-await mkdir(new URL('shots/', root), { recursive: true })
+await mkdir(shots, { recursive: true })
 let failed = 0
 
 try {
@@ -203,6 +256,11 @@ try {
       const requests = { schema: 0, configure: [], plan: [], settings: [], resume: [] }
       const title = state.plugin.title ?? 'Unavailable plugin'
       const name = `${test.name}-${width}-${theme}`
+      const capture = suffix => page.screenshot({
+        path: new URL(name + '-' + suffix + '.png', shots).pathname,
+        animations: 'disabled',
+        fullPage: true,
+      })
       await page.route(origin + '/recovery', route => route.fulfill({
         contentType: 'text/html',
         body: `<!doctype html><html lang="en" class="w-theme-${theme}"><meta charset="utf-8">
@@ -257,7 +315,7 @@ try {
       })
       await page.route(origin + endpoint + '/**', async route => {
         const path = new URL(route.request().url()).pathname.slice(endpoint.length)
-        const declaration = { plugins: [{ use: manifest }], ...(test.state.references ? { scopes: test.state.references.scopes } : {}) }
+        const declaration = { plugins: test.state.active === false ? [] : [{ use: manifest }], ...(test.state.references ? { scopes: test.state.references.scopes } : {}) }
         if (path === '/summary') return route.fulfill({ json: { title: 'Plugin recovery catalog' } })
         if (path === '/schema') {
           requests.schema++
@@ -275,7 +333,10 @@ try {
           const body = route.request().postDataJSON()
           requests.configure.push(body)
           if (body.config.issuer === 'Reject me') return route.fulfill({
-            status: 400, json: { code: 'plugin_config_invalid', message: 'Choose an approved certificate issuer.' },
+            status: 400, json: {
+              details: { code: 'plugin_config_invalid', plugin: manifest, field: 'issuer' },
+              message: 'Choose an approved certificate issuer.',
+            },
           })
           state.plugin = { ...ready, config: body.config, ...(body.reset ? { projections: { [projection]: cursor({ bootstrapping: true }) } } : {}) }
           return route.fulfill({ json: { seq: 100 } })
@@ -286,7 +347,14 @@ try {
           return route.fulfill({ json: { catalog_id: 'recovery' } })
         }
         if (path === '/schema/plan') {
-          requests.plan.push(route.request().postDataJSON())
+          const body = route.request().postDataJSON()
+          requests.plan.push(body)
+          if (test.name === 'activation-configuration-refusal' && !body.plugin_configs?.[manifest]) return route.fulfill({
+            status: 400, json: {
+              details: { code: 'plugin_config_invalid', plugin: manifest, field: 'issuer' },
+              message: 'A required plugin setting is missing.',
+            },
+          })
           if (test.name === 'attachment-binding-absent') return route.fulfill({
             status: 503, json: { details: { code: 'plugin_cleanup_unavailable' },
               message: 'Restore the package that provides the attachment deletion binding before deactivating this plugin.' },
@@ -302,11 +370,13 @@ try {
         await row.getByText(test.status, { exact: true }).waitFor({ timeout: 3000 })
         const toggle = row.getByRole('button', { name: new RegExp(title) })
         if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click()
-        await button(row, test.action).waitFor()
-        assert.ok(await button(row, test.action).evaluate(element => {
-          const body = element.closest('.pim-definition-body')
-          return body && element.getBoundingClientRect().width < body.getBoundingClientRect().width - 16
-        }), 'recovery action uses an intrinsic button width')
+        if (test.state.active !== false) {
+          await button(row, test.action).waitFor()
+          assert.ok(await button(row, test.action).evaluate(element => {
+            const body = element.closest('.pim-definition-body')
+            return body && element.getBoundingClientRect().width < body.getBoundingClientRect().width - 16
+          }), 'recovery action uses an intrinsic button width')
+        }
         for (const id of [manifest, projection, ...Object.values(missingRefs).flat()]) {
           const exposed = await row.getByText(id).evaluateAll(elements => elements.some(element => element.getClientRects().length > 0))
           assert.equal(exposed, false, 'technical IDs are hidden before disclosure')
@@ -317,11 +387,12 @@ try {
           return rect.left >= -1 && rect.right <= innerWidth + 1 && element.scrollWidth <= element.clientWidth + 1
         }), 'plugin row fits the viewport')
         assert.equal(await page.locator('html').evaluate((html, expected) => html.classList.contains('w-theme-' + expected), theme), true)
-        await row.screenshot({ path: new URL('shots/' + name + '.png', root).pathname, animations: 'disabled' })
-        await test.verify({ row, state, requests, button, page })
+        await row.screenshot({ path: new URL(name + '.png', shots).pathname, animations: 'disabled' })
+        await capture('initial')
+        await test.verify({ row, state, requests, button, page, capture })
         if (test.name === 'attachment-binding-absent') {
           await page.getByRole('alert').filter({ hasText: 'Restore the plugin package before removing it.' })
-            .screenshot({ path: new URL('shots/' + name + '-refusal.png', root).pathname, animations: 'disabled' })
+            .screenshot({ path: new URL(name + '-refusal.png', shots).pathname, animations: 'disabled' })
         }
         assert.deepEqual(pageErrors, [])
         console.log(`PASS ${name}`)
@@ -335,7 +406,7 @@ try {
           navigation: Array.from(element.shadowRoot?.querySelectorAll('nav,[role=listbox]') ?? []).map(child => child.outerHTML.slice(0, 400)),
         })))
         console.log([...pageErrors, ...loadingErrors].slice(0, 8).join('\n'))
-        await page.screenshot({ path: new URL('shots/' + name + '-failure.png', root).pathname }).catch(() => {})
+        await capture('failure').catch(() => {})
       } finally {
         await page.context().close()
       }

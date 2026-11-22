@@ -34,9 +34,9 @@ import { requestGeneration } from '../../shared/requests'
 import { reconcileRemovals, reviewedRequest } from '../../state'
 import { humanize } from '../../forms'
 import { humanLabel } from '../../shared/labels'
-import { presentError, SCHEMA_CONFLICT } from '../../shared/transport'
+import { presentError, SCHEMA_CONFLICT, type PluginConfigRefusal } from '../../shared/transport'
 
-const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; catalog?: CatalogRow; backLabel?: string; focusBack?: boolean; directoryCount?: number }>()
+const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; catalog?: CatalogRow; backLabel?: string; focusBack?: boolean }>()
 const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean] }>()
 
 const navigation = {
@@ -115,6 +115,7 @@ const options = ref<SchemaOptions | null>(null)
 const draft = ref<Declaration>({})
 const removed = ref<RemoveDecl>({})
 const pluginConfigs = ref<PluginConfigs>({})
+const pluginRefusal = ref<PluginConfigRefusal>()
 const initialConfigs = computed(() => Object.fromEntries(Object.entries(pluginConfigs.value).filter(([id]) => draft.value.plugins?.some(p => p.use === id) && !schema.value?.plugins.some(p => p.plugin === id && p.active))))
 const error = ref<ReturnType<typeof presentError>>()
 const stale = ref(false)
@@ -179,6 +180,7 @@ async function load(replaceDraft = false, preserveActiveConfigs = false) {
   const retainedConfigs = preserveActiveConfigs ? Object.entries(pluginConfigs.value).filter(([plugin]) => schema.value?.plugins.some(p => p.plugin === plugin && p.active)) : []
   loading.value = true
   error.value = undefined
+  pluginRefusal.value = undefined
   try {
     const [view, opts] = await Promise.all([pim.schema(id), pim.schemaOptions(id)])
     if (!loads.current(generation) || revision !== editRevision || id !== props.catalogId) return
@@ -329,8 +331,16 @@ const localChanges = computed(() => {
 })
 
 function reportSchemaError(cause: unknown, fallback: string) {
-  error.value = presentError(cause, fallback)
-  if (error.value.code !== SCHEMA_CONFLICT) return
+  const presented = presentError(cause, fallback)
+  const rejection = presented.pluginConfig
+  const option = options.value?.plugins.find(plugin => plugin.installed && plugin.plugin === rejection?.plugin)
+  if (rejection && option && draft.value.plugins?.some(plugin => plugin.use === rejection.plugin)) {
+    pluginRefusal.value = rejection
+    selectSection('Plugins')
+    return
+  }
+  error.value = presented
+  if (presented.code !== SCHEMA_CONFLICT) return
   stale.value = true
   closeReview()
 }
@@ -426,6 +436,7 @@ async function configure(plugin: string, config: Record<string, unknown>, reset 
     if (id !== props.catalogId || !loads.current(generation)) return
     if (!await refreshPluginStatus(true) || id !== props.catalogId || !loads.current(generation)) return
     if (!reset && JSON.stringify(pluginConfigs.value[plugin]) === snapshot) delete pluginConfigs.value[plugin]
+    if (pluginRefusal.value?.plugin === plugin) pluginRefusal.value = undefined
     saved.value = reset ? 'Background update reset requested.' : 'Configuration saved'
   } catch (e) {
     if (id === props.catalogId && reviews.current(action)) reportSchemaError(e, reset ? 'Could not reset background updates.' : 'Could not save configuration.')
@@ -500,6 +511,7 @@ function closeAdvanced() {
 }
 function discard() {
   pluginConfigs.value = {}
+  pluginRefusal.value = undefined
   valid.value = true
   if (schema.value) draft.value = clone(schema.value.declaration)
   removed.value = {}
@@ -518,7 +530,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
   <section class="pim-builder" :class="{ embedded }">
     <div class="pim-section-layout">
       <SettingsRail v-if="allCatalogs || (schema && options)" ref="rail" label="Catalog settings sections" :value="view"
-        :title="embedded ? 'Catalogs' : undefined" :count="directoryCount" :groups="settingsGroups" :leading-item="allCatalogs" @update:value="selectView" />
+        :groups="settingsGroups" :leading-item="allCatalogs" @update:value="selectView" />
       <div class="kx-main">
         <section ref="content" class="kx-main-scroll" :aria-label="view">
           <SettingsSectionHead v-if="schema && options" :title="view" :description="questions[view]">
@@ -543,13 +555,14 @@ function remove(kind: keyof RemoveDecl, id: string) {
                 <template v-else-if="section === 'General'">
                   <div class="pim-overview-grid">
                     <section v-for="card in overview" :key="card.section" class="kx-card pim-overview-card">
-                      <div class="kx-card-head">
-                        <span class="kx-head-icon"><Icon :icon="card.icon" aria-hidden="true" /></span>
-                        <div class="kx-card-id"><h3 class="kx-card-name">{{ card.label }}</h3><p class="kx-card-meta">{{ card.summary }}</p></div>
+                      <span class="kx-head-icon"><Icon :icon="card.icon" aria-hidden="true" /></span>
+                      <div class="kx-card-id">
+                        <h3 class="kx-card-name">{{ card.label }}</h3>
+                        <p class="kx-card-meta">{{ card.summary }}</p>
                       </div>
                       <p class="kx-card-desc">{{ card.detail }}</p>
-                      <Button type="button" text size="small" severity="secondary" class="pim-overview-action" @click="selectSection(card.section)">
-                        {{ card.section === 'Products' && setupEmpty ? 'Set up products' : 'View ' + card.section.toLowerCase() }}
+                      <Button type="button" text class="pim-overview-action" @click="selectSection(card.section)">
+                        {{ card.section === 'Products' ? (setupEmpty ? 'Set up products' : 'View families') : 'View ' + card.section.toLowerCase() }}
                         <Icon icon="tabler:arrow-right" aria-hidden="true" />
                       </Button>
                     </section>
@@ -577,7 +590,8 @@ function remove(kind: keyof RemoveDecl, id: string) {
                 </template>
                 <BuilderChannels v-else-if="section === 'Channels'" :catalog-id="catalogId" :draft="draft" :schema="schema" :view="view === 'Sources' ? 'sources' : 'channels'" @remove="remove" />
                 <CatalogShare v-else-if="section === 'Access'" :catalog-id="catalogId" :title="title || 'Catalog'" :access="schema.access" />
-                <BuilderPlugins v-else :draft="draft" :schema="schema" :options="options" :plugin-configs="pluginConfigs" :stale="stale" @configure="configure" @remove="remove" @reset="resetPlugin"
+                <BuilderPlugins v-else :draft="draft" :schema="schema" :options="options" :plugin-configs="pluginConfigs" :refusal="pluginRefusal" :stale="stale"
+                  @configure="configure" @remove="remove" @reset="resetPlugin" @clear-refusal="pluginRefusal = undefined"
                   @refresh="refreshPluginStatus(true)" @resume="resumePluginProjection" @review="review" @clear-shell-binding="clearShellBinding" />
               </div>
 

@@ -6,18 +6,25 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { computed, ref, watch } from 'vue'
 import { ensureTag } from '../mount'
-import { display, humanize } from '../../forms'
+import { configFieldLabel, display } from '../../forms'
 import type { PluginIssue } from '../../types'
 
-const props = defineProps<{ schema: Record<string, unknown>; modelValue: Record<string, unknown>; disabled?: boolean; problem?: PluginIssue; problemLabel?: string; pluginId?: string }>()
+const props = defineProps<{ schema: Record<string, unknown>; modelValue: Record<string, unknown>; disabled?: boolean; problem?: PluginIssue; problemLabel?: string; pluginId?: string; refusal?: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Record<string, unknown>] }>()
 const state = ref<'pending' | 'failed' | 'ready'>('pending')
-const overrides = computed(() => {
-  const fields = props.schema.properties as Record<string, { title?: string }> | undefined
-  return Object.entries(props.modelValue).map(([key, value]) => ({
-    key, label: fields?.[key]?.title ?? humanize(key), value: value !== null && typeof value === 'object' ? JSON.stringify(value) : display(value),
-  }))
+const formSchema = computed(() => {
+  const fields = props.schema.properties
+  if (!fields || typeof fields !== 'object') return props.schema
+  return {
+    ...props.schema,
+    properties: Object.fromEntries(Object.entries(fields).map(([key, field]) => [
+      key, field && typeof field === 'object' ? { ...field, title: configFieldLabel(props.schema, key) } : field,
+    ])),
+  }
 })
+const overrides = computed(() => Object.entries(props.modelValue).map(([key, value]) => ({
+  key, label: configFieldLabel(props.schema, key), value: value !== null && typeof value === 'object' ? JSON.stringify(value) : display(value),
+})))
 async function load() {
   state.value = 'pending'
   state.value = await ensureTag('wc-schema-form') ? 'ready' : 'failed'
@@ -30,8 +37,9 @@ function change(event: Event) {
 </script>
 
 <template>
-  <Message v-if="problem" severity="warn" role="alert">
-    <template v-if="problemLabel">{{ problemLabel }} is required. Enter a value below.</template>
+  <Message v-if="refusal || problem" severity="warn" role="alert">
+    <template v-if="refusal">{{ refusal }}</template>
+    <template v-else-if="problemLabel">{{ problemLabel }} is required. Enter a value below.</template>
     <template v-else>The saved settings don’t meet the plugin’s requirements. Update the configuration below.</template>
   </Message>
   <Disclosure v-if="problem" class="small pim-error-code pim-ia-disclosure" label="Technical details">
@@ -47,7 +55,7 @@ function change(event: Event) {
     <span v-else class="muted small">No overrides</span>
   </template>
   <div v-else>
-    <wc-schema-form v-if="state === 'ready'" :schema="JSON.stringify(props.schema)" :config="JSON.stringify(modelValue)" @config-changed="change" />
+    <wc-schema-form v-if="state === 'ready'" :schema="JSON.stringify(formSchema)" :config="JSON.stringify(modelValue)" @config-changed="change" />
     <span v-else-if="state === 'pending'" class="muted small" role="status">Configuration form is loading.</span>
     <Message v-else role="alert" severity="error">Configuration form could not be loaded. <Button type="button" @click="load" severity="secondary" outlined size="small">Retry</Button></Message>
     <Button v-if="!problem" type="button" @click="emit('update:modelValue', {})" severity="secondary" outlined size="small"><Icon icon="tabler:restore" aria-hidden="true" /> Reset overrides</Button>

@@ -31,6 +31,11 @@ export function humanize(code: string): string {
   return words ? words[0].toUpperCase() + words.slice(1) : code
 }
 
+export function configFieldLabel(schema: Record<string, unknown>, field: string): string {
+  const properties = schema.properties as Record<string, { title?: string }> | undefined
+  return humanLabel(properties?.[field]?.title, humanLabel(humanize(field), 'This setting'))
+}
+
 export function termLabel(term: { code: string; labels: Record<string, string> }): string {
   return term.labels.en ?? Object.values(term.labels)[0] ?? term.code
 }

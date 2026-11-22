@@ -98,9 +98,6 @@ entries:
         type: boolean
         default: false
         description: Focus the first rail action when opening settings from the picker.
-      directory-count:
-        type: number
-        description: Catalog count in the embedded System picker.
   events:
     open-catalog-picker:
       type: object

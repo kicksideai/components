@@ -10,6 +10,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import ListRail from '@kickside/ui-kit/ListRail.vue'
+import EmptyState from '@kickside/ui-kit/EmptyState.vue'
 import SettingsDirectoryActions from '@kickside/ui-kit/SettingsDirectoryActions.vue'
 import AdminError from '../shared/AdminError.vue'
 import { presentError } from '../shared/transport'
@@ -170,15 +171,12 @@ onUnmounted(() => { unsubscribe(); clearTimeout(searchTimer); reads.begin() })
     </ListRail>
     <section ref="detail" class="pim-system-main" aria-label="Catalog settings detail" tabindex="-1">
       <kickside-pim-catalog-settings v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" :focus-back="String(focusBack)"
-        :directory-count="directoryCount ?? catalogs?.length"
         @open-catalog-picker="backToCatalogs" @dirty-changed="dirtyChanged" />
       <p v-else-if="selected && loadingSettings" class="kx-loading" role="status">Loading catalog settings…</p>
       <p v-else-if="selected" class="kx-err" role="alert">Catalog settings are unavailable.<Button label="Back to catalogs" severity="secondary" text @click="backToCatalogs" /><Button label="Retry" severity="secondary" outlined @click="loadSettings" /></p>
-      <div v-else-if="catalogs && !failed" class="kx-empty">
-        <Icon class="kx-empty-ico" icon="tabler:adjustments" aria-hidden="true" />
-        <h2 class="kx-empty-title">{{ directoryCount === 0 ? 'No catalogs yet' : 'Choose a catalog' }}</h2>
-        <p class="kx-empty-sub">{{ directoryCount === 0 ? 'Create a catalog to set up families, fields, channels and access.' : 'Select a catalog to manage its families, fields, channels and access.' }}</p>
-      </div>
+      <EmptyState v-else-if="catalogs && !failed" icon="tabler:adjustments"
+        :title="directoryCount === 0 ? 'No catalogs yet' : 'Choose a catalog'"
+        :hint="directoryCount === 0 ? 'Create a catalog to set up families, fields, channels and access.' : 'Select a catalog to manage its families, fields, channels and access.'" />
     </section>
     <CreateCatalog :visible="creating" @close="creating = false" @created="created" />
   </main>
