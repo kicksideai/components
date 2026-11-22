@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.17](https://github.com/kicksideai/components/compare/pim-admin-v0.1.16...pim-admin-v0.1.17) (2026-11-22)
+
+
+### Bug Fixes
+
+* clarify PIM catalog setup and discovery ([#348](https://github.com/kicksideai/components/issues/348)) ([6098f4b](https://github.com/kicksideai/components/commit/6098f4bc6133dbf601b04aa1854b2e576044a73f))
+
 ## [0.1.16](https://github.com/kicksideai/components/compare/pim-admin-v0.1.15...pim-admin-v0.1.16) (2026-11-22)
 
 
