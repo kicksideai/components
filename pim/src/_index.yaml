@@ -32,10 +32,10 @@ entries:
     component: kickside/jobs
 
   - name: dep.kickside.contract
-    version: "*"
+    version: ">=0.3.13"
     kind: ns.dependency
     meta:
-      comment: Shared component and deletable contracts.
+      comment: Shared lifecycle contracts and plugin schema resolution.
     component: kickside/contract
 
   - name: dep.kickside.execution

@@ -81,8 +81,9 @@ entries:
     meta:
       comment: PIM plugins - manifests, app-level values, effective config per catalog and the schema a plugin contributes.
     source: file://plugins.lua
-    modules: [registry, contract, security, hash]
+    modules: [registry, contract, security]
     imports:
+      plugin_schema: kickside.contract:plugin_schema
       failure: kickside.pim:failure
       shape: kickside.pim:shape
       values: kickside.pim.domain:values

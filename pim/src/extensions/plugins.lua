@@ -12,7 +12,7 @@
 -- declare, and every catalog's schema stays its own data. Manifests and app
 -- values are read here only.
 local contract = require("contract")
-local hash = require("hash")
+local plugin_schema = require("plugin_schema")
 local registry = require("registry")
 local worker = require("worker")
 local security = require("security")
@@ -27,8 +27,6 @@ local M = {}
 M.TYPE = "kickside.pim.plugin"
 M.PROVIDER = "kickside.pim:schema_provider"
 M.INTERFACE_VERSION = 1
-
-type Provider = { resolve: (self: Provider, request: types.ProviderRequest) -> (unknown, error?) }
 
 local function invalid_projection(plugin: string, message: string): error
     return errors.new({ kind = errors.INVALID, retryable = false, message = message, details = { code = "plugin_projection_invalid", plugin = plugin, field = "projections" } })
@@ -221,19 +219,6 @@ local function identities(id: string, field: string, raw: unknown): ({ string }?
     return list :: { string }, nil
 end
 
--- schema_source reads the manifest's schema source: exactly one of template
--- (an object) or provider (a binding id).
-local function schema_source(id: string, raw: unknown): (types.PluginSchemaSource?, error?)
-    if raw == nil then return nil, nil end
-    if type(raw) ~= "table" then return nil, invalid(id .. " schema must name a template or a provider") end
-    local s = raw :: { [string]: unknown }
-    local template, provider = s.template, s.provider
-    if (template ~= nil) == (provider ~= nil) then return nil, invalid(id .. " schema names exactly one of template or provider") end
-    if template ~= nil and type(template) ~= "table" then return nil, invalid(id .. " schema template must be an object") end
-    if provider ~= nil and (type(provider) ~= "string" or provider == "") then return nil, invalid(id .. " schema provider must be a binding id") end
-    return { template = template :: types.JsonObject?, provider = provider :: string? }, nil
-end
-
 -- load reads the manifest id.
 function M.load(id: string): (types.Plugin?, error?)
     local entry, err = registry.get(id)
@@ -268,7 +253,7 @@ function M.load(id: string): (types.Plugin?, error?)
     end
     local tools, tool_err = tool_declarations(id, m.tools)
     if tool_err then return nil, tool_err end
-    local source, serr = schema_source(id, m.schema)
+    local source, serr = plugin_schema.parse(id, m.schema)
     if serr then return nil, serr end
     local projections: { types.PluginProjection } = {}
     if m.projections ~= nil then
@@ -473,38 +458,10 @@ function M.admit(compiled: types.Compiled, previous: types.Compiled?): error?
     return nil
 end
 
-local function digest(fragment: types.JsonObject): string
-    return (tostring(hash.sha256(values.canonical(fragment))):gsub("[^a-fA-F0-9]", ""):lower())
-end
-
--- resolve_schema answers the plugin's schema for one catalog: a template as it
--- stands, or what the provider binding answers for the context, called as the
--- caller. A plugin without a schema source resolves to nothing.
+-- Resolve the schema for this catalog in the caller's context.
 function M.resolve_schema(p: types.Plugin, ctx: types.ResolveContext): (types.PluginSchema?, error?)
-    local source = p.schema
-    if not source then return nil, nil end
-    if source.template then
-        local fragment = source.template :: types.JsonObject
-        return { fragment = fragment, digest = digest(fragment) }, nil
-    end
-    local binding = source.provider :: string
-    local def, err = contract.get(M.PROVIDER)
-    if err then return nil, errors.wrap(err, "schema provider contract unavailable") end
-    if not def then return nil, errors.new({ kind = errors.UNAVAILABLE, message = "schema provider contract unavailable", details = { code = "contract_unavailable" } }) end
-    local instance, oerr = def:with_actor(security.actor()):with_scope(security.scope()):open(binding)
-    if oerr then return nil, errors.wrap(oerr, p.id .. " schema provider " .. binding .. " open failed") end
-    if not instance then return nil, errors.new({ kind = errors.UNAVAILABLE, message = p.id .. " schema provider " .. binding .. " open returned no client", details = { code = "contract_unavailable" } }) end
-    local provider = instance :: Provider
-    local answer, rerr = provider:resolve({ catalog_id = ctx.catalog_id, plugin = p.id, config = ctx.config, current = ctx.current })
-    if rerr then return nil, errors.wrap(rerr, p.id .. " schema provider") end
-    if type(answer) ~= "table" or type((answer :: types.ProviderResult).fragment) ~= "table" then
-        return nil, errors.new({ kind = errors.INTERNAL, message = p.id .. " schema provider answered without a fragment", details = { code = "internal" } })
-    end
-    local result = answer :: types.ProviderResult
-    if result.version ~= nil and type(result.version) ~= "string" then
-        return nil, errors.new({ kind = errors.INTERNAL, message = p.id .. " schema provider version must be a string", details = { code = "internal" } })
-    end
-    return { fragment = result.fragment, version = result.version, digest = digest(result.fragment) }, nil
+    return plugin_schema.resolve(p.id, p.schema, M.PROVIDER,
+        { catalog_id = ctx.catalog_id, plugin = p.id, config = ctx.config, current = ctx.current }, values.canonical)
 end
 
 -- resolve answers the schema a plugin contributes to catalog_id for the entry a
