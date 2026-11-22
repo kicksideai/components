@@ -21,7 +21,7 @@ import { ensureTag } from './mount'
 import CreateCatalog from './CreateCatalog.vue'
 
 const props = defineProps<{ route?: string }>()
-const emit = defineEmits<{ navigate: [route: string]; 'dirty-changed': [dirty: boolean] }>()
+const emit = defineEmits<{ navigate: [route: string]; 'dirty-change': [dirty: boolean] }>()
 const ready = ref(false), loadingSettings = ref(false), creating = ref(false)
 const confirming = ref(false), dirty = ref(false)
 const focusBack = ref(false)
@@ -45,7 +45,7 @@ async function created(id: string) {
   await load()
 }
 const detailRoute = ref('')
-watch(dirty, value => emit('dirty-changed', value), { flush: 'sync' })
+watch(dirty, value => emit('dirty-change', value), { flush: 'sync' })
 
 function navigate(route: string) {
   if (props.route !== undefined && route !== props.route) emit('navigate', route)
@@ -203,7 +203,7 @@ onUnmounted(() => { unsubscribe(); clearTimeout(searchTimer); reads.begin() })
     <section ref="detail" class="pim-system-main" aria-label="Catalog settings detail" tabindex="-1">
       <kickside-pim-catalog-settings :route="props.route === undefined ? undefined : detailRoute"
         @navigate.stop="navigateDetail($event.detail.route)" v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" :focus-back="String(focusBack)"
-        @open-catalog-picker="backToCatalogs" @dirty-changed="dirtyChanged" />
+        @open-catalog-picker="backToCatalogs" @dirty-change="dirtyChanged" />
       <p v-else-if="selected && loadingSettings" class="kx-loading" role="status">Loading catalog settings…</p>
       <p v-else-if="selected" class="kx-err" role="alert">Catalog settings are unavailable.<Button label="Back to catalogs" severity="secondary" text @click="backToCatalogs" /><Button label="Retry" severity="secondary" outlined @click="loadSettings" /></p>
       <EmptyState v-else-if="catalogs && !failed" icon="tabler:adjustments"

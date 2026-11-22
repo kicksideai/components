@@ -2,7 +2,11 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { parse } from 'yaml'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
+import { webComponent } from '../src/admin'
+import packageJson from '../package.json'
+
+vi.mock('@wippy-fe/webcomponent-vue', () => ({ WippyVueElement: class {}, define: vi.fn() }))
 
 type Entry = { name: string; meta?: Record<string, unknown>; events?: Record<string, unknown>; props?: { properties: Record<string, unknown> }; policy?: { resources: string[]; actions: string[] | string } }
 const root = resolve('..')
@@ -27,4 +31,13 @@ it('documents every published entry at the shared mount and points to the module
     expect(existsSync(resolve(root, 'static', String(view.meta!.entry_point)))).toBe(true)
   }
   expect(readme).toContain('make check')
+})
+
+it('publishes the runtime System route default and the registry description', async () => {
+  const admin = entries('src/_index.yaml').find(entry => entry.name === 'admin')!
+  const { propsSchema } = (await webComponent()).wippyConfig
+  const route = propsSchema?.properties?.route
+  expect(route).toStrictEqual({ type: 'string', default: '' })
+  expect(admin.props?.properties.route).toStrictEqual({ ...route, description: expect.stringMatching(/\S/) })
+  expect(packageJson.wippy.props.properties.route).toStrictEqual(admin.props?.properties.route)
 })

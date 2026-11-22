@@ -132,6 +132,6 @@ export interface HistoryResult { entries: HistoryEntry[]; next?: string; as_of: 
 
 export interface CatalogSettingsEvents {
   navigate: { route: string }
-  'dirty-changed': { dirty: boolean }
+  'dirty-change': { dirty: boolean }
   'open-catalog-picker': Record<string, never>
 }

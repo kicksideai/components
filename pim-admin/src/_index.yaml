@@ -73,6 +73,7 @@ entries:
     properties:
       route:
         type: string
+        default: ''
         description: System location relative to this tab, with a catalog ID, section and optional row.
   events:
     navigate:
@@ -81,7 +82,7 @@ entries:
         route:
           type: string
       required: [route]
-    dirty-changed:
+    dirty-change:
       type: object
       properties:
         dirty:
@@ -123,7 +124,7 @@ entries:
     open-catalog-picker:
       type: object
       description: Request the catalog picker from the embedded System surface.
-    dirty-changed:
+    dirty-change:
       type: object
       properties:
         dirty:

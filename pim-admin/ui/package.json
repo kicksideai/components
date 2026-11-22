@@ -45,7 +45,13 @@
     "description": "Mount kickside-pim-admin without props in KickSide System settings. The signed-in operator can search the catalogs they administer and load further result pages on demand. Selecting a catalog opens its overview and settings for products, values, channels, sharing and plugins. The operator reviews draft impact before applying changes. The host supplies the PIM API and loads the catalog settings component.",
     "props": {
       "type": "object",
-      "properties": { "route": { "type": "string" } }
+      "properties": {
+        "route": {
+          "type": "string",
+          "default": "",
+          "description": "System location relative to this tab, with a catalog ID, section and optional row."
+        }
+      }
     },
     "scripts": {
       "build": "build"
