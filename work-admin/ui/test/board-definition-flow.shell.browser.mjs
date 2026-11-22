@@ -8,6 +8,7 @@ const [session, board] = (await readFile('/dev/stdin', 'utf8')).trim().split('\n
 assert.ok(session && board, 'Provide a fresh session and scratch board on stdin')
 const origin = 'http://localhost:' + (process.env.WORK_ADMIN_FIRE_PORT || '18160')
 const candidatePort = process.env.WORK_ADMIN_ASSETS_PORT
+const baseline = !!process.env.WORK_ADMIN_BASELINE
 const browser = await chromium.launch()
 const button = (root, name) => root.getByRole('button', { name, exact: true })
 let failures = 0
@@ -140,6 +141,15 @@ async function run(width, colorScheme, walk) {
         console.log('STEPS change a local link target from General 5')
       }
     })
+    if (baseline) await check('baseline local target via raw ID', async () => {
+      const input = blocks.getByRole('textbox', { name: 'Target type ID' })
+      await button(blocks, 'Add target type').click()
+      await input.fill('support')
+      await input.press('Enter')
+      await apply(await review())
+      assert.deepEqual((await schema()).declaration.relation_types.find(link => link.id === 'blocks').to_types, ['support'])
+      console.log('STEPS baseline local link target from General 7')
+    })
     const targetPicker = blocks.locator('fieldset').filter({ hasText: 'Target item types' })
     if (await targetPicker.isVisible()) await targetPicker.scrollIntoViewIfNeeded()
     await shot('links')
@@ -166,7 +176,11 @@ async function run(width, colorScheme, walk) {
       const visibility = access.getByRole('combobox', { name: 'Visibility field' })
       assert.equal((await visibility.innerText()).trim(), 'No additional restriction')
     })
-    await access.getByRole('combobox', { name: 'Visibility field' }).evaluate(node => node.scrollIntoView({ block: 'center' }))
+    await access.getByRole('combobox', { name: 'Visibility field' }).evaluate(async node => {
+      const disclosure = node.closest('.work-visibility-disclosure')
+      await Promise.allSettled((disclosure?.getAnimations({ subtree: true }) ?? []).map(animation => animation.finished))
+      node.scrollIntoView({ block: 'center' })
+    })
     await shot('access')
 
     const types = await section('Item types')
@@ -183,7 +197,7 @@ async function run(width, colorScheme, walk) {
 }
 
 try {
-  if (process.env.WORK_ADMIN_BASELINE) await run(390, 'light', true)
+  if (baseline) await run(390, 'light', true)
   else for (const width of [1440, 390]) for (const theme of ['light', 'dark']) {
     await run(width, theme, !process.env.WORK_ADMIN_LAYOUT_ONLY && width === 1440 && theme === 'light')
   }
