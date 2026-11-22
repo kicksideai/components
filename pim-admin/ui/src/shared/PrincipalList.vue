@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, useId, watch } from 'vue'
 import { humanLabel, principalLabels } from './labels'
 import { loadByTagName } from '@wippy-fe/proxy'
 import Button from 'primevue/button'
@@ -10,6 +10,7 @@ import { Icon } from '@iconify/vue'
 const props = defineProps<{ modelValue: string[]; catalogId?: string; disabled?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>()
 const ready = ref(false), entry = ref('')
+const serviceInput = useId(), serviceHelp = useId()
 const names = ref<Record<string, string>>({})
 let generation = 0
 watch(() => props.modelValue, async ids => {
@@ -42,7 +43,11 @@ function remove(id: string) {
     <div v-if="modelValue.length" class="row wrap"><Tag v-for="id in modelValue" :key="id" severity="secondary"><span>{{ label(id) }}</span><Button text size="small" :disabled="disabled" :aria-label="'Remove ' + label(id)" @click="remove(id)"><Icon icon="tabler:x" /></Button></Tag></div>
     <wc-principal-picker v-if="ready" config="{}" kinds="user" placeholder="Add a person…" @config-changed.stop="pick" />
     <span v-else class="small muted">The person picker is unavailable.</span>
-    <label class="pim-principal-service"><span class="small muted">Service account</span><InputText v-model="entry" :disabled="disabled" placeholder="Service principal id" @keydown.enter.prevent="add(entry)" /></label>
-    <Button severity="secondary" outlined size="small" :disabled="disabled || !entry.trim()" @click="add(entry)"><Icon icon="tabler:plus" /> Add service account</Button>
+    <div class="pim-f">
+      <label :for="serviceInput" class="small muted">Service account ID</label>
+      <InputText v-model="entry" :id="serviceInput" :aria-describedby="serviceHelp" :disabled="disabled" @keydown.enter.prevent="add(entry)" />
+      <p :id="serviceHelp" class="small muted pim-axis-help">Ask whoever manages the service account for its principal ID.</p>
+    </div>
+    <Button type="button" severity="secondary" outlined size="small" class="pim-form-action" :disabled="disabled || !entry.trim()" @click="add(entry)"><Icon icon="tabler:plus" aria-hidden="true" /> Add service account</Button>
   </div>
 </template>

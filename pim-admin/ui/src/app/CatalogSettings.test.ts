@@ -92,6 +92,9 @@ it('associates field labels with their controls in each open row', async () => {
 it('names family field group, variation, and requirement controls', async () => {
   const schema = createSchema()
   schema.declaration.dimensions = [{ name: 'locale', members: ['en'] }]
+  const integer = { id: 'kickside.pim.types:integer', title: 'Integer', form: 'int', indexes: ['none'] }
+  schema.declaration.aspects![0].attributes!.push({ code: 'size', type: integer.id })
+  vi.mocked(pim.schemaOptions).mockResolvedValue({ ...options, types: [...options.types, integer] })
   schema.declaration.families = [{
     code: 'equipment', aspects: ['core'], variation: [{ axes: [] }],
     requirements: [{ id: 'published', require: [] }],
@@ -142,7 +145,7 @@ it('names the dimension, channel, and source controls with their visible labels'
       expect.soft(await page.getByRole('group', { name, exact: true }).count()).toBe(1)
     }
     expect.soft(await page.getByRole('combobox', { name: 'Handle incoming updates', exact: true }).count()).toBe(1)
-    expect.soft(await page.getByRole('switch', { name: 'Audit', exact: true }).count()).toBe(1)
+    expect.soft(await page.getByRole('switch', { name: 'Track value changes', exact: true }).count()).toBe(1)
   } finally {
     wrapper.unmount()
     await page.close()
