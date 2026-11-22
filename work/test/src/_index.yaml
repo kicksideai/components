@@ -22,11 +22,6 @@ entries:
   kind: process.host
   lifecycle:
     auto_start: true
-- name: gateway
-  kind: http.service
-  addr: :19239
-  lifecycle:
-    auto_start: true
 - name: api
   kind: http.router
   meta:
@@ -263,6 +258,7 @@ entries:
   imports:
     actors: app:actors
     fixture: app:fixture
+    gateway: app:gateway_url
 - name: rows
   kind: library.lua
   meta:

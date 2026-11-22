@@ -232,6 +232,7 @@ entries:
     rows: app:rows
     steps: app:steps
     composition: kickside.security:policy_composition
+    gateway: app:gateway_url
 - name: teardown_test
   kind: function.lua
   meta:

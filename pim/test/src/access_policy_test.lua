@@ -3,6 +3,7 @@ local test = require("test")
 local registry = require("registry")
 local security = require("security")
 local http_client = require("http_client")
+local gateway = require("gateway")
 
 local ENDPOINTS = {
     ["kickside.pim.api:configure_plugin.endpoint"] = true,
@@ -104,7 +105,7 @@ local function define()
         end)
 
         test.it("refuses unauthenticated HTTP calls on every endpoint", function()
-            local base = "http://127.0.0.1" .. assert(registry.get("app:gateway")).data.addr .. "/api/pim/catalogs"
+            local base = gateway.url("/api/pim/catalogs")
             local cases = { { "GET", base }, { "POST", base }, { "POST", base .. "/00000000-0000-0000-0000-000000000000/query" } }
             for _, c in ipairs(cases) do
                 local res, err = http_client.request(c[1], c[2], { body = "{}", headers = { ["Content-Type"] = "application/json" } })

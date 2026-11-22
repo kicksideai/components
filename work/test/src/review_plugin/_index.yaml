@@ -227,3 +227,4 @@ entries:
     steps: app:steps
     clock: kickside.work.domain:clock
     core_prune: kickside.core.retention:prune
+    gateway: app:gateway_url

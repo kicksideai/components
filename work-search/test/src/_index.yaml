@@ -22,11 +22,6 @@ entries:
   kind: process.host
   lifecycle:
     auto_start: true
-- name: gateway
-  kind: http.service
-  addr: :19243
-  lifecycle:
-    auto_start: true
 - name: api
   kind: http.router
   meta:

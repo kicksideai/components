@@ -7,12 +7,13 @@ local funcs = require("funcs")
 local uuid = require("uuid")
 local json = require("json")
 local http_client = require("http_client")
+local gateway = require("gateway")
 local actors = require("actors")
 local fixture = require("fixture")
 
 local M = {}
 
-local BASE = "http://127.0.0.1:19239/api/work/boards"
+local BOARD_PATH = "/api/work/boards"
 
 type Json = { [string]: unknown }
 type Reply = { status: number, body: Json, raw: string }
@@ -35,7 +36,8 @@ local function open(actor: security.Actor, scope: security.Scope): Session
     local token = assert(tokens:create(actor, scope, { expiration = "1h" }))
     tokens:close()
     local function request(method: string, path: string, body: string): Reply
-        local res, err = http_client.request(method, path:sub(1, 5) == "/api/" and ("http://127.0.0.1:19239" .. path) or (BASE .. path), {
+        local api_path = path:sub(1, 5) == "/api/" and path or BOARD_PATH .. path
+        local res, err = http_client.request(method, gateway.url(api_path), {
             body = body,
             headers = { ["Content-Type"] = "application/json", Authorization = "Bearer " .. token },
         })

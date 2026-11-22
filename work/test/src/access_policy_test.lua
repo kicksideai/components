@@ -7,6 +7,7 @@ local steps = require("steps")
 local registry = require("registry")
 local security = require("security")
 local http_client = require("http_client")
+local gateway = require("gateway")
 local composition = require("composition")
 local funcs = require("funcs")
 
@@ -273,13 +274,13 @@ local function define()
         end)
 
         test.it("refuses unauthenticated HTTP calls on every endpoint", function()
-            local base = "http://127.0.0.1:19239/api/work/boards"
+            local base = gateway.url("/api/work/boards")
             local cases = { { "GET", base }, { "POST", base } }
             local endpoints = assert(registry.find({ [".kind"] = "http.endpoint" }))
             for _, endpoint in ipairs(endpoints) do
                 if tostring(endpoint.id):match("^kickside%.work%.api:") then
                     local path = endpoint.data.path:gsub("{id}", "00000000-0000-0000-0000-000000000000")
-                    if path ~= "/work/boards" then cases[#cases + 1] = { endpoint.data.method, "http://127.0.0.1:19239/api" .. path } end
+                    if path ~= "/work/boards" then cases[#cases + 1] = { endpoint.data.method, gateway.url("/api" .. path) } end
                 end
             end
             for _, c in ipairs(cases) do
@@ -300,7 +301,7 @@ local function define()
                 { "POST", "/api/work/sprints/close" },
             }
             for _, c in ipairs(cases) do
-                local res, err = http_client.request(c[1], "http://127.0.0.1:19239" .. c[2], {
+                local res, err = http_client.request(c[1], gateway.url(c[2]), {
                     body = "{}", headers = { ["Content-Type"] = "application/json" },
                 })
                 test.is_nil(err, c[2])

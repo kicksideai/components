@@ -8,6 +8,7 @@ local registry = require("registry")
 local time = require("time")
 local mcp_migration_fault = require("mcp_migration_fault")
 local http_client = require("http_client")
+local gateway = require("gateway")
 local NS = "kickside.work.traits:"
 
 local function create(owner: session.Session, declaration: unknown?): string
@@ -29,7 +30,7 @@ local function credential(owner: session.Session, board_id: string, traits: { st
     test.eq(minted.status, 200, json.encode(minted.body))
     local token = assert(minted.body.credential.token, "credential did not include a bearer token")
     return function(method: string, params: unknown?): unknown
-        local response, err = http_client.request("POST", session.url("/mcp"), {
+        local response, err = http_client.request("POST", gateway.url("/mcp"), {
             headers = { Authorization = "Bearer " .. token, ["Content-Type"] = "application/json",
                 Accept = "application/json, text/event-stream" },
             body = json.encode({ jsonrpc = "2.0", id = uuid.v4(), method = method, params = params }),

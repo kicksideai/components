@@ -10,12 +10,11 @@ local funcs = require("funcs")
 local uuid = require("uuid")
 local json = require("json")
 local http_client = require("http_client")
+local gateway = require("gateway")
 local actors = require("actors")
 local test = require("test")
 
 local M = {}
-
-M.API = "http://127.0.0.1:19242/api/v1"
 
 type Json = { [string]: unknown }
 type Reply = { status: number, body: Json }
@@ -34,7 +33,7 @@ M.Reply = Reply
 function M.get(path: string, token: string?): Reply
     local headers: { [string]: string } = { ["Content-Type"] = "application/json" }
     if token then headers.Authorization = "Bearer " .. token end
-    local res, err = http_client.request("GET", M.API .. path, { headers = headers })
+    local res, err = http_client.request("GET", gateway.url("/api/v1" .. path), { headers = headers })
     assert(not err and res, tostring(err))
     local decoded: unknown = res.body ~= "" and json.decode(res.body) or {}
     return { status = res.status_code, body = decoded :: Json }
@@ -57,7 +56,7 @@ local function open(actor: security.Actor, scope: security.Scope): Session
         end,
         get = function(path: string): Reply return M.get(path, token) end,
         post = function(path: string, body: unknown): Reply
-            local res, err = http_client.request("POST", M.API .. path, { headers = { ["Content-Type"] = "application/json", Authorization = "Bearer " .. token }, body = json.encode(body) })
+            local res, err = http_client.request("POST", gateway.url("/api/v1" .. path), { headers = { ["Content-Type"] = "application/json", Authorization = "Bearer " .. token }, body = json.encode(body) })
             assert(not err and res, tostring(err))
             return { status = res.status_code, body = json.decode(res.body) :: Json }
         end,

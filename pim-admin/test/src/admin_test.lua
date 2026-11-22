@@ -7,6 +7,7 @@ local registry = require("registry")
 local fs = require("fs")
 local contract = require("contract")
 local http_client = require("http_client")
+local gateway = require("gateway")
 
 local function catalog(owner: session.Session): string
     local response = owner.post("/pim/catalogs", { title = "Administration", idempotency_key = uuid.v4(),
@@ -30,7 +31,7 @@ local function cases()
                 test.is_true(entry.meta.announced); test.is_true(entry.meta.auto_register)
                 test.is_true(member.allows("access", id)); test.is_false(outsider.allows("access", id))
                 test.is_true(bundle:exists(entry.meta.entry_point :: string))
-                local response, err = http_client.request("GET", "http://127.0.0.1:19242/kickside-pim-admin/" .. entry.meta.entry_point)
+                local response, err = http_client.request("GET", gateway.url("/kickside-pim-admin/" .. entry.meta.entry_point))
                 test.is_nil(err, tostring(err)); test.eq(response.status_code, 200)
                 test.is_true(#response.body > 100)
             end
@@ -390,7 +391,7 @@ local function cases()
             assert(owner.call("grant", { subject_id = reader.id, mask = 1 }, id))
             assert(owner.call("grant", { subject_id = writer.id, mask = 3 }, id))
             local request = { refs = { { type = "user", id = owner.id } } }
-            local anonymous, anonymous_err = http_client.request("POST", session.API .. names(id), {
+            local anonymous, anonymous_err = http_client.request("POST", gateway.url("/api/v1" .. names(id)), {
                 headers = { ["Content-Type"] = "application/json" }, body = json.encode(request) })
             test.is_nil(anonymous_err, tostring(anonymous_err)); test.eq(anonymous.status_code, 401)
             for _, denied in ipairs({ reader, writer, stranger, outsider }) do test.eq(denied.post(names(id), request).status, 403) end

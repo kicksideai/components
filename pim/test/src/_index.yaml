@@ -43,12 +43,6 @@ entries:
     lifecycle:
       auto_start: true
 
-  - name: gateway
-    kind: http.service
-    addr: :19319
-    lifecycle:
-      auto_start: true
-
   - name: api
     kind: http.router
     meta:
@@ -1108,8 +1102,9 @@ entries:
     kind: library.lua
     meta:
     source: file://scoped.lua
-    modules: [registry, security, funcs, uuid, json, http_client]
+    modules: [security, funcs, uuid, json, http_client]
     imports:
+      gateway: app:gateway_url
       member_scope: app:member_scope
       actors: app:actors
       fixture: app:fixture
@@ -1230,6 +1225,7 @@ entries:
     method: run
     modules: [registry, security, http_client]
     imports:
+      gateway: app:gateway_url
       test: wippy.test:test
 
   - name: ports_test
