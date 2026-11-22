@@ -7,9 +7,12 @@ local component = require("component")
 local execution_identity = require("execution_identity")
 local types = require("types")
 local defaults = require("defaults")
+local job_types = require("job_types")
 local M = {}
-type Job = { id: string, lease_token: string, execution_seq: integer, deadline: string? }
-function M.run(input: { job: Job?, payload: { catalog_id: string }? }): (unknown, error?)
+type Input = job_types.Input<{ catalog_id: string }>
+type BatchResult = job_types.BatchResult & { reconcile: boolean? }
+
+function M.run(input: Input): (job_types.SelfCompleted | job_types.BatchResult | nil, error?)
     local job, payload = input.job, input.payload
     if not job or not payload then return nil, errors.new({ kind = errors.INVALID, message = "plugin job is malformed", details = { code = "plugin_job_invalid" } }) end
     local deadline, derr = budget.deadline(job.deadline)
@@ -29,17 +32,18 @@ function M.run(input: { job: Job?, payload: { catalog_id: string }? }): (unknown
         local result, err = execution_identity.run_as(identity, "kickside.pim.extensions:plugin_batch", payload,
             { deferred_owner = "kickside.pim.jobs:plugins", execution_root = payload.catalog_id })
         if err then return nil, err :: error end
-        if (result :: {done: boolean}).done then
-            if (result :: {reconcile: boolean?}).reconcile then
+        local batch = result :: BatchResult
+        if batch.done then
+            if batch.reconcile then
                 local completed,cerr=jobs.complete(job.id,budget.lease(job),{rearm=clock.offset(300)})
                 if cerr then return nil,cerr end
-                return {self_completed=true,completion=completed},nil
+                return {self_completed=true,completion=completed :: job_types.Completion?},nil
             end
             return {done=true},nil
         end
     end
     local completed, err = jobs.complete(job.id, budget.lease(job), { rearm = clock.now() })
     if err then return nil, err :: error end
-    return { self_completed = true, completion = completed }, nil
+    return { self_completed = true, completion = completed :: job_types.Completion? }, nil
 end
 return M

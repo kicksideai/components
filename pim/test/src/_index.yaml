@@ -1923,6 +1923,7 @@ entries:
     kind: library.lua
     source: file://term_merge_boundary_probe.lua
     imports:
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       error_envelope: kickside.contract:error_envelope
       budget: kickside.pim.jobs:budget
@@ -2260,6 +2261,7 @@ entries:
     source: file://rebuild_progress_probe.lua
     modules: [funcs]
     imports:
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       jobs: app:job_boundary_fixture
       budget: kickside.pim.jobs:budget
@@ -2302,24 +2304,17 @@ entries:
       failure: kickside.pim:failure
       pipeline: app:conflict_fixture
       plugins: kickside.pim.extensions:plugins
-      attachments: kickside.pim.extensions:plugin_attachments
-      links: kickside.pim.extensions:links
-      scopes: kickside.pim.extensions:scopes
       types: kickside.pim:types
       component: kickside.component:component
       consts: kickside.pim:consts
-      seams: kickside.pim.extensions:seams
       proposal_rows: kickside.pim.persist:proposal_rows
       store: kickside.pim.persist:store
       threads: kickside.pim.command:threads
       jobs: kickside.core.jobs:jobs
       items: kickside.pim.command:items
-      terms: kickside.pim.command:terms
       releases: kickside.pim.command:releases
+      schema_plan: kickside.pim.command:schema_plan
       proposals: kickside.pim.command:proposals
-      schema: kickside.pim.schema:compile
-      declaration: kickside.pim.schema:merge
-      changes: kickside.pim.schema:classify
       defaults: kickside.pim.settings:defaults
       values: kickside.pim.domain:values
 
@@ -2371,6 +2366,7 @@ entries:
       policies:
         - kickside.pim.security:merge_defer
     imports:
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       error_envelope: kickside.contract:error_envelope
       budget: kickside.pim.jobs:budget

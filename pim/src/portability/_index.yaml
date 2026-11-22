@@ -78,6 +78,13 @@ entries:
       references: kickside.pim.domain:references
       clock: kickside.pim:clock
       types: kickside.pim:types
+      import_types: kickside.pim.portability:types
+
+  - name: types
+    kind: library.lua
+    source: file://types.lua
+    imports:
+      types: kickside.pim:types
 
   - name: input
     kind: library.lua

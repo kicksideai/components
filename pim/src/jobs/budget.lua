@@ -2,6 +2,7 @@
 -- Job batches reserve their command budget inside the enclosing deadline.
 local time = require("time")
 local clock = require("clock")
+local job_types = require("job_types")
 local M = {}
 function M.deadline(raw: string?): (clock.Deadline?, error?)
     if not raw then return nil, errors.new({ kind = errors.INVALID, message = "job deadline is required", details = { code = "job_deadline_required" } }) end
@@ -12,8 +13,7 @@ end
 function M.enough(deadline: clock.Deadline, milliseconds: integer): boolean
     return time.now():unix_nano() + milliseconds * time.MILLISECOND < deadline.ns
 end
-type Lease = { token: string, execution_seq: integer }
-function M.lease(job: { lease_token: string, execution_seq: integer }): Lease
+function M.lease(job: job_types.Job): job_types.Lease
     return { token = job.lease_token, execution_seq = job.execution_seq }
 end
 return M

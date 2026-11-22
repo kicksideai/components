@@ -3,6 +3,10 @@ version: "1.0"
 namespace: kickside.pim.jobs
 
 entries:
+  - name: types
+    kind: library.lua
+    source: file://types.lua
+
   - name: rebuild
     kind: function.lua
     meta:
@@ -14,6 +18,7 @@ entries:
       policies:
         - kickside.pim.security:rebuild_defer
     imports: &rebuild_imports
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       failure: kickside.pim:failure
       budget: kickside.pim.jobs:budget
@@ -48,6 +53,7 @@ entries:
       policies:
         - kickside.pim.security:merge_defer
     imports: &merge_imports
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       error_envelope: kickside.contract:error_envelope
       budget: kickside.pim.jobs:budget
@@ -76,6 +82,7 @@ entries:
     source: file://budget.lua
     modules: [time]
     imports:
+      job_types: kickside.pim.jobs:types
       clock: kickside.pim:clock
 
   - name: release_model
@@ -85,6 +92,7 @@ entries:
     security:
       policies: [kickside.pim.security:release_defer]
     imports: &release_imports
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       component: kickside.component:component
       failure: kickside.pim:failure
@@ -115,6 +123,7 @@ entries:
     security:
       policies: [kickside.pim.security:plugin_defer]
     imports:
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       jobs: kickside.core.jobs:jobs
       budget: kickside.pim.jobs:budget
@@ -130,6 +139,7 @@ entries:
     security:
       policies: [kickside.pim.security:import_defer]
     imports: &import_imports
+      job_types: kickside.pim.jobs:types
       defaults: kickside.pim.settings:defaults
       jobs: kickside.core.jobs:jobs
       work: kickside.pim.portability:import_work
@@ -138,7 +148,6 @@ entries:
       clock: kickside.pim:clock
       component: kickside.component:component
       execution_identity: kickside.execution:execution_identity
-      types: kickside.pim:types
   - name: import_batch
     kind: function.lua
     meta: {private: true}

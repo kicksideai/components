@@ -102,25 +102,37 @@ entries:
       failure: kickside.pim:failure
       pipeline: kickside.pim.command:pipeline
       plugins: kickside.pim.extensions:plugins
-      attachments: kickside.pim.extensions:plugin_attachments
-      links: kickside.pim.extensions:links
-      scopes: kickside.pim.extensions:scopes
       types: kickside.pim:types
       component: kickside.component:component
       consts: kickside.pim:consts
-      seams: kickside.pim.extensions:seams
       proposal_rows: kickside.pim.persist:proposal_rows
       store: kickside.pim.persist:store
       threads: kickside.pim.command:threads
       jobs: kickside.core.jobs:jobs
       items: kickside.pim.command:items
-      terms: kickside.pim.command:terms
       releases: kickside.pim.command:releases
+      schema_plan: kickside.pim.command:schema_plan
       proposals: kickside.pim.command:proposals
+      defaults: kickside.pim.settings:defaults
+      values: kickside.pim.domain:values
+
+  - name: schema_plan
+    kind: library.lua
+    source: file://schema_plan.lua
+    imports:
+      failure: kickside.pim:failure
+      plugins: kickside.pim.extensions:plugins
+      attachments: kickside.pim.extensions:plugin_attachments
+      links: kickside.pim.extensions:links
+      scopes: kickside.pim.extensions:scopes
+      types: kickside.pim:types
+      consts: kickside.pim:consts
+      seams: kickside.pim.extensions:seams
+      store: kickside.pim.persist:store
+      terms: kickside.pim.command:terms
       schema: kickside.pim.schema:compile
       declaration: kickside.pim.schema:merge
       changes: kickside.pim.schema:classify
-      defaults: kickside.pim.settings:defaults
       values: kickside.pim.domain:values
 
   - name: releases

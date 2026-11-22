@@ -6,11 +6,9 @@ local consts = require("consts")
 local values = require("values")
 local failure = require("failure")
 local types = require("types")
+local lookups_types = require("lookups_types")
 
 local M = {}
-
-type ScopeLookup = (string) -> (boolean, error?)
-type PluginCheck = (string, types.JsonObject) -> error?
 
 local L = consts.LIMITS
 local CODE = "^[a-z][a-z0-9_]*$"
@@ -110,7 +108,7 @@ function M.layout(attributes: { [string]: types.Attribute }, set_ids: { [string]
     return { columns = columns, sets = sets, search = search, flags = flags }, nil
 end
 
-function M.scopes(declaration: types.Declaration, scope_lookup: ScopeLookup?): ({ [string]: boolean }?, error?)
+function M.scopes(declaration: types.Declaration, scope_lookup: lookups_types.ScopeLookup?): ({ [string]: boolean }?, error?)
     local scopes: { [string]: boolean } = {}
     for _, id in ipairs(declaration.scopes or {}) do
         if type(id) ~= "string" or scopes[id] then return nil, invalid("scope " .. tostring(id) .. " adopted twice or malformed") end
@@ -123,13 +121,13 @@ function M.scopes(declaration: types.Declaration, scope_lookup: ScopeLookup?): (
     return scopes, nil
 end
 
-function M.plugins(declaration: types.Declaration, plugin_check: PluginCheck?): ({ [string]: types.PluginEntry }?, error?)
+function M.plugins(declaration: types.Declaration, plugin_lookup: lookups_types.PluginLookup?): ({ [string]: types.PluginEntry }?, error?)
     local plugins: { [string]: types.PluginEntry } = {}
     for _, entry in ipairs(declaration.plugins or {}) do
         local id = entry.use
         if type(id) ~= "string" or id == "" or plugins[id] then return nil, invalid("plugin membership requires distinct nonempty ids") end
-        if not plugin_check then return nil, invalid("plugin " .. id .. " cannot be checked here") end
-        local perr = plugin_check(id, {})
+        if not plugin_lookup then return nil, invalid("plugin " .. id .. " cannot be checked here") end
+        local perr = plugin_lookup(id)
         if perr then return nil, errors.wrap(perr, "plugin " .. id) end
         plugins[id] = { use = id, schema = entry.schema }
     end

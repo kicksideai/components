@@ -17,17 +17,15 @@ entries:
 
   - name: reader
     kind: library.lua
-    modules: [registry, base64, json]
+    modules: [base64, json]
     meta:
       comment: Product reads and item queries; every answer reports as_of.
     source: file://reader.lua
     imports:
       defaults: kickside.pim.settings:defaults
-      component: kickside.component:component
       failure: kickside.pim:failure
       layout: kickside.pim.persist:layout
-      plugins: kickside.pim.extensions:plugins
-      plugin_projections: kickside.pim.extensions:plugin_projection_state
+      plugin_reads: kickside.pim.read:plugins
       history: kickside.pim.persist:history
       consts: kickside.pim:consts
       store: kickside.pim.persist:store
@@ -41,6 +39,19 @@ entries:
       types: kickside.pim:types
       proposal_rows: kickside.pim.persist:proposal_rows
       read_model: kickside.pim.persist:read_model
+
+  - name: plugins
+    kind: library.lua
+    source: file://plugins.lua
+    modules: [registry]
+    imports:
+      access: kickside.pim.read:access
+      component: kickside.component:component
+      failure: kickside.pim:failure
+      plugins: kickside.pim.extensions:plugins
+      plugin_projections: kickside.pim.extensions:plugin_projection_state
+      store: kickside.pim.persist:store
+      types: kickside.pim:types
 
   - name: feeds
     kind: library.lua

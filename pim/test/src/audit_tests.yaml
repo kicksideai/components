@@ -152,6 +152,42 @@ entries:
       projection: app:projection_audit_probe
       test: wippy.test:test
 
+  - name: import_frozen_command_test
+    kind: function.lua
+    method: run
+    meta: {type: test, suite: kickside_pim}
+    imports:
+      test: wippy.test:test
+      work: kickside.pim.portability:import_work
+      types: kickside.pim:types
+    source: |
+      local test = require("test")
+      local work = require("work")
+      local types = require("types")
+
+      local function define()
+          test.describe("frozen import command", function()
+              test.it("rejects an unknown method before advancing the saved position", function()
+                  local tx = {
+                      query = function()
+                          return {{
+                              catalog_id = "catalog", request_id = "request", storage_id = "storage", path = "export",
+                              identity = "{}", position = '{"phase":"terms","file":1,"offset":1,"after":""}',
+                              batch = '{"method":"unknown","request":{},"mappings":[],"next":{"phase":"done","file":1,"offset":1,"after":""}}',
+                              job_id = "job", done = 0
+                          }}, nil
+                      end
+                  }
+                  local saved, err = work.get(tx :: types.Executor, "catalog")
+                  test.is_nil(saved)
+                  test.eq(assert(err):details().code, "row_corrupt")
+                  test.eq(err:details().field, "batch")
+              end)
+          end)
+      end
+
+      return { run = test.run_cases(define) }
+
   - name: import_work_probe
     kind: library.lua
     source: file://import_work_probe.lua
@@ -172,6 +208,7 @@ entries:
       references: kickside.pim.domain:references
       clock: kickside.pim:clock
       types: kickside.pim:types
+      import_types: kickside.pim.portability:types
 
   - name: import_storage_fixture
     kind: library.lua
