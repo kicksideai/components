@@ -8,13 +8,15 @@ entries:
     modules: [registry]
     imports:
       types: kickside.work.admin:types
+      ui_app: kickside.work.command:ui_app
   - name: options
     kind: function.lua
     source: file://options.lua
     method: get
-    modules: [http, contract, security]
+    modules: [http, security]
     imports:
       types: kickside.work.admin:types
+      board_client: kickside.work:client
       catalog: kickside.work.admin.api:catalog
       component: kickside.component:component
       http_errors: kickside.contract:http_errors
@@ -31,6 +33,7 @@ entries:
     modules: [http, contract, security, json]
     imports:
       types: kickside.work.admin:types
+      board_client: kickside.work:client
       component: kickside.component:component
       http_errors: kickside.contract:http_errors
   - name: principals.endpoint

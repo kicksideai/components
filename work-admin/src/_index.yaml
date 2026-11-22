@@ -8,7 +8,7 @@ entries:
     title: KickSide Work administration
     description: Board configuration on the platform System surface.
 - name: dep.kickside.work
-  version: '>=0.1.34'
+  version: '>=0.1.37'
   kind: ns.dependency
   component: kickside/work
 - name: dep.kickside.widgets
@@ -27,7 +27,7 @@ entries:
   kind: library.lua
   source: file://types.lua
   imports:
-    work: kickside.work:types
+    read: kickside.work.read:types
 - name: ui_server
   kind: ns.requirement
   meta:

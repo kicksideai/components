@@ -1,8 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Configuration discovery retains the caller's actor and scope at every boundary.
 local http = require("http")
-local contract = require("contract")
 local security = require("security")
+local board_client = require("board_client")
 local component = require("component")
 local http_errors = require("http_errors")
 local plugins = require("plugins")
@@ -23,14 +23,8 @@ function M.get()
     if not security.actor() then res:set_status(401); res:write_json({ success = false, error = "authentication required" }); return end
     local id = tostring(req:param("id") or "")
     if id == "" then return fail(res, errors.new({ kind = errors.INVALID, message = "board id required" })) end
-    local def, err = contract.get("kickside.work:board")
-    if err then return fail(res, err) end
-    local bound, bind_err = def:with_actor(security.actor())
-    if bind_err then return fail(res, bind_err) end
-    local scoped, scope_err = bound:with_scope(security.scope())
-    if scope_err then return fail(res, scope_err) end
-    local client, open_err = scoped:open()
-    if open_err then return fail(res, open_err) end
+    local client, err = board_client.open()
+    if err or not client then return fail(res, err :: error) end
     local board = client :: types.Board
     local granted: { [string]: boolean } = {}
     for level, mask in pairs({ read = component.ACCESS.READ, write = component.ACCESS.WRITE, admin = component.ACCESS.ADMIN }) do
@@ -38,7 +32,7 @@ function M.get()
         if access_err and access_err:kind() ~= errors.PERMISSION_DENIED then return fail(res, access_err) end
         granted[level] = access_err == nil
     end
-    local options: types.SchemaOptions = { plugins = {}, field_types = {} }
+    local options = { plugins = {}, field_types = {} } :: types.PluginOptions
     local choices = catalog.empty()
     if granted.admin then
         local found, options_err = board:schema_options({ board_id = id })
@@ -58,6 +52,6 @@ function M.get()
         if read_err and not schema_missing(read_err) then return fail(res, read_err) end
     end
     res:write_json({ success = true, data = { access = granted, schema_options = options, installed_types = options.field_types,
-        guards = choices.guards, filters = choices.filters, board_apps = choices.board_apps } })
+        guards = choices.guards, filters = choices.scopes, board_apps = choices.board_apps } })
 end
 return M
