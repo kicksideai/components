@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local peers = require("peers")
-local cursor_codec = require("cursor_codec")
+local reference_page = require("reference_page")
 local groups = require("groups")
 local window = require("window")
 local budget = require("budget")
@@ -219,11 +219,12 @@ local function read_page(tx: types.Executor, board: domain.Board, plan: types.Pl
     if budget.check(allowance) then return { items = {}, cursors = {}, reindexing = false, incomplete = true }, nil end
     local position, cursor_err = groups.position(board, request)
     if cursor_err then return nil, cursor_err end
-    local rows, qerr, inspected, stopped = select.rows(tx, plan)
-    if qerr or not rows then return nil, qerr end
+    local selected, qerr = select.rows(tx, plan)
+    if qerr or not selected then return nil, qerr end
+    local rows, stopped = selected.rows, selected.scan_cursor
     local clipped = #rows > plan.take
     local admitted = math.min(#rows, plan.take)
-    local scanned = inspected or admitted
+    local scanned = selected.inspected or admitted
     -- The seek budgets group candidates independently of the ordinary, capped item page.
     if not plan.group_seek then allowance.remaining = allowance.remaining - scanned end
 
@@ -297,79 +298,15 @@ function M.matching(tx: types.Executor, board: domain.Board, dialect: string, wh
     local plan, err = compile(tx, dialect, board, request, false, { read = true },
         { { sql = #ids == 0 and "1 = 0" or "i.item_id IN (" .. table.concat(marks, ",") .. ")", args = args } })
     if err or not plan then return nil, err end
-    local rows, read_err = select.rows(tx, plan)
-    if read_err then return nil, read_err end
+    local page, read_err = select.rows(tx, plan)
+    if read_err or not page then return nil, read_err end
     local selected: { [string]: boolean } = {}
-    for _, row in ipairs(rows or {}) do
+    for _, row in ipairs(page.rows) do
         local id, decode_err = store.need(row, "item_id")
         if decode_err then return nil, decode_err end
         selected[id :: string] = true
     end
     return selected, nil
-end
-
--- Reference order has two indexed passes. The first walks stored keys and
--- offers only readable targets. The second walks item IDs and offers the null
--- keys (missing and redacted references), in the same tie order.
-local NULL_START = "!"
-
-local function reference_context(board_id: string, admission: string, item_id: string): string
-    return "kickside.work.reference.v1\0" .. board_id .. "\0" .. admission .. "\0" .. item_id
-end
-
-local function reference_plan(board: domain.Board, request: types.QueryRequest, order: { domain.Sort },
-    position: types.ReferenceOrder): ({ domain.Condition }?, error?)
-    local held = position.after
-    if held and held.phase == "nulls" then
-        if held.id ~= NULL_START then request.after = { id = held.id } end
-        return {}, nil
-    end
-    local target, err = predicates.targets(board.compiled)(order[1].field)
-    if err or not target then return nil, err end
-    if held then
-        local key = held.v
-        if held.position then
-            local open_err: error?
-            key, open_err = cursor_codec.open(held.position, reference_context(board.board_id, position.admission, held.id))
-            if open_err then return nil, open_err end
-        end
-        if type(key) ~= "string" then return nil, access.invalid("reference order requires a position") end
-        request.after = { id = held.id, v = key }
-    end
-    return { { sql = "i." .. target.column .. " IS NOT NULL", args = {} } }, nil
-end
-
-local function reference_result(page: types.QueryPage, request: types.QueryRequest, field: string, nulls: boolean, admission: string): error?
-    local phase = nulls and "nulls" or "keys"
-    local items: { types.ItemView } = {}
-    local keys: { domain.Cursor } = {}
-    for i, item in ipairs(page.items) do
-        local value = item.values[field]
-        local available = type(value) == "table" and value.unavailable ~= true
-        if available ~= nulls then
-            local key = page.cursors[i]
-            key.phase = phase
-            items[#items + 1], keys[#keys + 1] = item, key
-        end
-    end
-    local raw = page.after
-    page.after = raw and { id = raw.id, phase = phase } or nil
-    if nulls then page.following = page.after
-    elseif raw then
-        local last = keys[#keys]
-        page.following = last
-        if last and last.id == raw.id then page.after = last
-        else
-            local token, err = cursor_codec.seal(raw.v :: string, reference_context(request.board_id, admission, raw.id))
-            if err or not token then return err end
-            page.after = { id = raw.id, phase = phase, position = token }
-        end
-    else
-        page.after = { id = NULL_START, phase = "nulls" }
-        page.following = page.after
-    end
-    page.items, page.cursors = items, keys
-    return nil
 end
 
 function M.page(request: types.QueryRequest, context: types.ReadContext?, check: types.PageCheck?, reference: types.ReferenceOrder?): (types.QueryPage?, error?)
@@ -394,7 +331,7 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
     if gerr or not grants then return nil, gerr end
     local order, serr = M.order(request.order)
     if serr or not order then return nil, serr end
-    local nulls = reference ~= nil and reference.after ~= nil and reference.after.phase == "nulls"
+    local nulls = reference_page.nulls(reference)
     local sort = nulls and {} or order
     local catalog: { [string]: domain.Field } = {}
     local result, read_err = with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): (types.QueryPage?, error?)
@@ -407,7 +344,7 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
         local extra: { domain.Condition }? = nil
         if reference then
             local ref_err: error?
-            extra, ref_err = reference_plan(board, request, order, reference)
+            extra, ref_err = reference_page.conditions(board, request, order, reference)
             if ref_err then return nil, ref_err end
         end
         local plan, err = compile(tx, dialect, board, request, false, grants, extra, scan, sort, nil, search_ids)
@@ -421,7 +358,7 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
     local err = peers.page(result, peers.redactor(catalog))
     if err then return nil, err end
     if reference and result.scanned ~= nil then
-        local err = reference_result(result, request, order[1].field, nulls, reference.admission)
+        local err = reference_page.filter(result, request.board_id, order[1].field, nulls, reference.admission)
         if err then return nil, err end
     end
     if budget.check(allowance) then
@@ -455,20 +392,21 @@ function M.select_for_edit(request: types.QueryRequest, scope: domain.Where, fie
             local all: types.QueryRequest = { board_id = board.board_id, where = scope }
             local raw, raw_err = compile(tx, dialect, board, all, true, nil, nil, nil, nil, nil, nil, true)
             if raw_err or not raw or not raw.count then return nil, raw_err end
-            local total, capped, total_err = select.total(tx, raw.count)
-            if total_err then return nil, total_err end
-            if capped then return nil, restricted() end
+            local total, total_err = select.total(tx, raw.count)
+            if total_err or not total then return nil, total_err end
+            if total.estimated then return nil, restricted() end
             local visible, visible_err = compile(tx, dialect, board, all, true)
             if visible_err or not visible or not visible.count then return nil, visible_err end
-            local admitted, _, count_err = select.total(tx, visible.count)
-            if count_err then return nil, count_err end
-            if total ~= admitted then return nil, restricted() end
+            local admitted, count_err = select.total(tx, visible.count)
+            if count_err or not admitted then return nil, count_err end
+            if total.total ~= admitted.total then return nil, restricted() end
         end
         local plan, plan_err = compile(tx, dialect, board, request, false)
         if plan_err or not plan then return nil, plan_err end
-        local rows, rows_err, _, stopped = select.rows(tx, plan)
-        if rows_err or not rows then return nil, rows_err end
-        if stopped then return nil, restricted() end
+        local page, rows_err = select.rows(tx, plan)
+        if rows_err or not page then return nil, rows_err end
+        if page.scan_cursor then return nil, restricted() end
+        local rows = page.rows
         if #rows > plan.take then return { members = {}, over_limit = true }, nil end
         local ids: { string } = {}
         for _, row in ipairs(rows) do ids[#ids + 1] = row.item_id :: string end
@@ -500,13 +438,13 @@ function M.freeze(request: types.QueryRequest): ({ string }?, error?)
         request.limit = BULK_SCAN_LIMIT
         local plan, cerr = compile(tx, dialect, board, request, false, grants, nil, BULK_SCAN_LIMIT, {}, nil, search_ids)
         if cerr or not plan then return nil, cerr end
-        local rows, rerr, _, more = select.rows(tx, plan)
-        if rerr then return nil, rerr end
-        if more or #(rows or {}) > BULK_SCAN_LIMIT then
+        local page, rerr = select.rows(tx, plan)
+        if rerr or not page then return nil, rerr end
+        if page.scan_cursor or #page.rows > BULK_SCAN_LIMIT then
             return nil, errors.new({ kind = errors.INVALID, message = "bulk selection exceeds its scan budget", details = { code = "bulk_selection_limit" } })
         end
         local ids: { string } = {}
-        for _, row in ipairs(rows or {}) do
+        for _, row in ipairs(page.rows) do
             local id, derr = store.need(row, "item_id")
             if derr then return nil, derr end
             ids[#ids + 1] = id :: string
@@ -539,10 +477,10 @@ function M.count(request: types.QueryRequest): (types.CountResult?, error?)
         local rebuilding, perr = pending(tx, board, request, true)
         if perr then return nil, perr end
         if rebuilding then return { reindexing = true }, nil end
-        local total, estimated, cerr = select.total(tx, plan.count)
-        if cerr then return nil, cerr end
-        local incomplete = estimated or budget.expired(allowance)
-        return { total = total, estimated = incomplete, incomplete = incomplete, reindexing = false }, nil
+        local count, cerr = select.total(tx, plan.count)
+        if cerr or not count then return nil, cerr end
+        local incomplete = count.estimated or budget.expired(allowance)
+        return { total = count.total, estimated = incomplete, incomplete = incomplete, reindexing = false }, nil
     end, { allowance = allowance, partial = true, admitted = {}, holders = {} })
 end
 

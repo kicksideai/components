@@ -152,6 +152,15 @@ entries:
     window: kickside.work.read:window
     domain: kickside.work:types
     types: kickside.work.read:types
+- name: reference_page
+  kind: library.lua
+  source: file://reference_page.lua
+  imports:
+    access: kickside.work.read:access
+    cursor_codec: kickside.work.read:cursor_codec
+    domain: kickside.work:types
+    predicates: kickside.work.domain:predicates
+    types: kickside.work.read:types
 - name: query
   kind: library.lua
   source: file://query.lua
@@ -159,7 +168,7 @@ entries:
   - security
   imports:
     groups: kickside.work.read:groups
-    cursor_codec: kickside.work.read:cursor_codec
+    reference_page: kickside.work.read:reference_page
     awaiting: kickside.work.read:awaiting
     principals: kickside.work.read:principals
     planner: kickside.work.read:planner

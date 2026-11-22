@@ -189,9 +189,9 @@ local function define()
             local t = fixture(h)
             local function counted(q: types.ItemQuery): (integer, boolean)
                 local plan = assert((select.items(READER, t, h:type(), q, resolve, {}, {}, 1)))
-                local total, estimated, err = select.total(h, plan.count :: reads.Count)
-                assert(total and estimated ~= nil, tostring(err))
-                return total :: integer, estimated :: boolean
+                local count, err = select.total(h, plan.count :: reads.Count)
+                local result = assert(count, tostring(err))
+                return result.total, result.estimated
             end
             local moss = leaf("color", "starts_with", "moss")
             local total, estimated = counted({ where = moss, count = 100 })

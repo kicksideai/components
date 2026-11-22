@@ -80,7 +80,8 @@ local function run(h: sql.DB, t: types.GeneratedTable, q: types.ItemQuery, opts:
     local plan, err = select.items(reader(o.level :: string? or "read"), t, h:type(), q, resolve,
         (o.admitted :: { types.AdmittedScope }?) or {}, (o.conditions :: { types.Condition }?) or {}, (o.limit :: integer?) or 50)
     if err or not plan then return nil, nil, err end
-    local rows = assert(select.rows(h, plan))
+    local page, err = select.rows(h, plan)
+    local rows = assert(page, tostring(err)).rows
     local limit: integer = (o.limit :: integer?) or 50
     local out: { string } = {}
     for i = 1, math.min(#rows, limit) do out[i] = tostring(rows[i].item_id) end
