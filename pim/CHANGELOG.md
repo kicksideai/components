@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21](https://github.com/kicksideai/components/compare/pim-v0.1.20...pim-v0.1.21) (2026-11-22)
+
+
+### Bug Fixes
+
+* **pim:** separate schema planning, plugin reads, and command types ([#388](https://github.com/kicksideai/components/issues/388)) ([b069528](https://github.com/kicksideai/components/commit/b0695287ae38dc86c5f706c47ae10e45c63db1e4))
+
 ## [0.1.20](https://github.com/kicksideai/components/compare/pim-v0.1.19...pim-v0.1.20) (2026-11-22)
 
 
