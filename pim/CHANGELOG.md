@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.23](https://github.com/kicksideai/components/compare/pim-v0.1.22...pim-v0.1.23) (2026-11-22)
+
+
+### Bug Fixes
+
+* share plugin schema resolution across Work and PIM ([#392](https://github.com/kicksideai/components/issues/392)) ([bc4fc6a](https://github.com/kicksideai/components/commit/bc4fc6aabf3fdce07483dded778b5d9bed0cca72))
+
 ## [0.1.22](https://github.com/kicksideai/components/compare/pim-v0.1.21...pim-v0.1.22) (2026-11-22)
 
 
