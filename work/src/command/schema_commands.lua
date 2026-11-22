@@ -149,9 +149,10 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     end
     local maps: { [string]: { [string]: string } } = {}
     for _, p in ipairs(request.declaration.processes or {}) do maps[p.id] = p.map or {} end
-    local delta = changes.changes(board and board.compiled or nil, compiled, usage, maps)
+    local delta, delta_err = changes.changes(board and board.compiled or nil, compiled, usage, maps)
+    if delta_err or not delta then return nil, delta_err end
     table.sort(config_changes, function(a, b) return a.code < b.code end)
-    for _, change in ipairs(config_changes) do delta[#delta + 1] = change end
+    for _, change in ipairs(config_changes) do table.insert(delta, change) end
     local refused: { domain.SchemaChange } = {}
     local narrowing: { types.ReferenceNarrowing } = {}
     local other_refusal = false

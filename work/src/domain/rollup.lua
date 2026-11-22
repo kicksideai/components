@@ -167,7 +167,7 @@ local function carriers(compiled: types.Compiled, code: string): types.JsonObjec
     return out
 end
 
-local function meaning(compiled: types.Compiled, f: types.Field): unknown
+local function meaning(compiled: types.Compiled, f: types.Field): (unknown, error?)
     local sources: { [integer]: types.Field } = {}
     for _, s in ipairs(compiled.fields) do sources[s.id] = s end
     local r = f.rollup :: types.Rollup
@@ -188,7 +188,8 @@ local function meaning(compiled: types.Compiled, f: types.Field): unknown
         end
     end
     local predicate_fields: { [string]: boolean } = {}
-    local _, _err = predicates.inspect(r.where, predicate_fields, 1)
+    local _, err = predicates.inspect(r.where, predicate_fields, 1)
+    if err then return nil, err end
     local dependencies: types.JsonObject = {}
     for _, field in ipairs(compiled.fields) do
         if predicate_fields[field.code] then
@@ -201,23 +202,27 @@ local function meaning(compiled: types.Compiled, f: types.Field): unknown
     end
     return { rollup = r, relation = relation, categories = categories, dependencies = dependencies,
         predicate_relations = r.where ~= nil and compiled.relation_types or nil, form = f.form, config = f.config, carriers = carried,
-        source = source and { type = source.type, form = source.form, cardinality = source.cardinality, config = source.config, orders = orders } }
+        source = source and { type = source.type, form = source.form, cardinality = source.cardinality, config = source.config, orders = orders } }, nil
 end
 
-function M.changed(prev: types.Compiled?, next: types.Compiled): boolean
-    if not prev then return false end
+function M.changed(prev: types.Compiled?, next: types.Compiled): (boolean, error?)
+    if not prev then return false, nil end
     local old: { [integer]: types.Field } = {}
     for _, f in ipairs(prev.fields) do old[f.id] = f end
     for _, f in ipairs(next.fields) do
         local previous = old[f.id]
         if f.formula and (not previous or not values.equal(previous.formula, f.formula) or previous.form ~= f.form or not values.equal(previous.config, f.config)
-            or not values.equal(carriers(prev, previous.code), carriers(next, f.code))) then return true end
+            or not values.equal(carriers(prev, previous.code), carriers(next, f.code))) then return true, nil end
         if f.rollup then
-            local before = old[f.id]
-            if not before or not before.rollup or not values.equal(meaning(prev, before), meaning(next, f)) then return true end
+            if not previous or not previous.rollup then return true, nil end
+            local before, before_err = meaning(prev, previous)
+            if before_err then return false, before_err end
+            local after, after_err = meaning(next, f)
+            if after_err then return false, after_err end
+            if not values.equal(before, after) then return true, nil end
         end
     end
-    return false
+    return false, nil
 end
 
 -- Closed rollup functions evaluate live source rows in deterministic order.

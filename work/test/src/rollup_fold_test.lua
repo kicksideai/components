@@ -21,8 +21,52 @@ local function board(): fixture.Handle
     } })
 end
 
+local function invalid_predicate(): Map
+    local predicate: Map = {}
+    for _ = 1, 17 do predicate = { ["not"] = predicate } end
+    return predicate
+end
+
 local function define()
     test.describe("rollup fold", function()
+        test.it("rejects a stored rollup predicate beyond the traversal limit during schema planning", function()
+            local h = board()
+            steps.create(h, "parent")
+            local db = assert(store.open())
+            local current = assert(store.board(db, h.id))
+            local original = store.encode(current.compiled)
+            local rollup = assert(current.model.fields.count.rollup)
+            rollup.where = invalid_predicate()
+            assert(db:execute("UPDATE kickside_work_board SET compiled = $1 WHERE board_id = $2", { store.encode(current.compiled), h.id }))
+            local out, err = h.call("plan_schema", { declaration = { fields = { { code = "points", form = "int", track = true, title = "Story points" } } } })
+            assert(db:execute("UPDATE kickside_work_board SET compiled = $1 WHERE board_id = $2", { original, h.id }))
+            db:release()
+            test.is_nil(out)
+            test.not_nil(err)
+            test.eq(err:details().code, "invalid_predicate")
+        end)
+
+        test.it("rejects a schema event with a rollup predicate beyond the traversal limit", function()
+            local h = board()
+            local db = assert(store.open())
+            local current = assert(store.board(db, h.id))
+            local next_seq = current.applied_seq + 1
+            local declaration = assert(store.generation(db, h.id, current.generation)).declaration
+            local rollup = assert(current.model.fields.count.rollup)
+            rollup.where = invalid_predicate()
+            local events: { domain.RawEvent } = {
+                { seq = next_seq, type = "kickside.work.events:schema.applied",
+                    body = { compiled = current.compiled, declaration = declaration, generation = current.generation + 1, digest = current.digest } },
+            }
+            local tx = assert(db:begin())
+            local result, err = materializer.fold(tx, db:type(), h.id, events, next_seq, 1)
+            tx:rollback()
+            db:release()
+            test.is_nil(result)
+            test.not_nil(err)
+            test.eq(err:details().code, "invalid_predicate")
+        end)
+
         test.it("counts recomputed parents toward the row budget and replays without usage or history changes", function()
             local h = board()
             local p, q = steps.create(h, "parent"), steps.create(h, "parent")
