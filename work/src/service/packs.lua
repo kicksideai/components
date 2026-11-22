@@ -16,10 +16,9 @@ end
 function M.pack_plan(input: unknown): (types.Plan?, error?)
     local err = requests.parse("pack_plan", input)
     if err then return nil, err end
-    local plan, perr = planner.plan(input :: types.Request)
-    if perr or not plan then return nil, perr end
-    plan.prepared, plan.plugin_configs = nil, nil
-    return plan, nil
+    local execution, perr = planner.plan(input :: types.Request)
+    if perr or not execution then return nil, perr end
+    return execution.plan, nil
 end
 function M.pack_apply(input: unknown): (types.Result?, error?)
     local err = requests.parse("pack_apply", input)

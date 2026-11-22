@@ -18,7 +18,7 @@ function M.batch(owner: commands.Owner): (boolean?, error?)
     if owner.status == "done" then return true, nil end
     local settings, settings_err = limits.read()
     if settings_err or not settings then return nil, settings_err end
-    local plan = owner.data.plan :: types.Plan
+    local plan = owner.data.plan :: types.StoredPlan
     local total = 1 + #plan.views + #plan.automations + 1 + (owner.data.starter and 1 or 0)
     local through = math.min(owner.processed + settings.pack_steps_per_run, total)
     while owner.processed < through do
