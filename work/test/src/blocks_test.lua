@@ -2,7 +2,6 @@
 local test = require("test")
 local blocks = require("blocks")
 local funcs = require("funcs")
-local time = require("time")
 local fixture = require("fixture")
 local scoped = require("scoped")
 local steps = require("steps")
@@ -49,7 +48,6 @@ local function define()
 
             input.state, input.cursor = "canceled", first.cursor
             local pending = assert(client:async("kickside.work.blocks:wait", { input = input, config = { timeout_ms = 5000 } }))
-            time.sleep("100ms")
             test.eq(steps.one(h, { op = "transition", item = other, transition = "cancel" }).status, "applied")
             test.eq(steps.one(h, { op = "transition", item = item, transition = "cancel" }).status, "applied")
             assert(pending:response():receive())

@@ -237,9 +237,25 @@ local function define()
             local id = steps.create(h, "task")
             steps.one(h, { op = "transition", item = id, transition = "start" })
             steps.wait_for("repeated escalation", function() return event_count(h, "timer.fired") >= 2 end)
-            steps.one(h, { op = "transition", item = id, transition = "finish" })
-            local count = event_count(h, "timer.fired")
-            time.sleep("150ms")
+            test.eq(steps.one(h, { op = "transition", item = id, transition = "finish" }).status, "applied")
+            local count, last = 0, nil
+            for _, event in ipairs(steps.events(h)) do
+                if event.type == "kickside.work.events:timer.fired" then
+                    count, last = count + 1, event.body :: Map
+                end
+            end
+            local fired = assert(last)
+            local scheduled = assert(time.parse(time.RFC3339, fired.scheduled_at :: string)):utc():add(50 * time.MILLISECOND)
+            local remaining = scheduled:unix_nano() - time.now():unix_nano()
+            if remaining > 0 then
+                local tick = time.after(remaining):receive()
+                assert(tick)
+            end
+            local result, err = h.call("worker_batch", { worker = "process", item = id, state = fired.state,
+                visit = fired.visit, timer = fired.timer, scheduled_at = scheduled:format("2006-01-02T15:04:05.000000000Z") })
+            assert(result, steps.detail(err))
+            test.eq(result.record.status, "completed")
+            test.is_nil(result.rearm)
             test.eq(view(h, id).state, "done")
             test.eq(event_count(h, "timer.fired"), count)
         end)

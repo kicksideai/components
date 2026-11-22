@@ -3,12 +3,9 @@ local fixture = require("fixture")
 local steps = require("steps")
 local sql = require("sql")
 local test = require("test")
-type Map = { [string]: unknown }
-local function call(h: fixture.Handle, method: string, input: Map): Map
-    local out, err = h.call(method, input)
-    assert(not err and out, steps.detail(err))
-    return out :: Map
-end
+type Map = steps.Map
+type Status = Map & { status: string, bulk_id: string?, move_id: string? }
+local call = steps.call
 local function grant(source: fixture.Handle, target: fixture.Handle)
     assert(target.call("grant", { subject_id = source.actor:id(), mask = 15 }))
 end
@@ -19,27 +16,30 @@ local function gate(h: fixture.Handle, release: boolean?)
         ON CONFLICT (board_id) DO UPDATE SET released = excluded.released]], { h.id, release and 1 or 0 }))
     db:release()
 end
-local function finished(h: fixture.Handle, id: unknown): Map
-    local status: Map = {}
+local function finished(h: fixture.Handle, id: unknown): Status
+    local status: Status?
     steps.wait_for("bulk completion", function(): boolean
-        status = call(h, "bulk_status", { bulk_id = id })
-        return status.status == "done" or status.status == "failed" or status.status == "cancelled"
+        local current = call(h, "bulk_status", { bulk_id = id }) :: Status
+        status = current
+        return current.status == "done" or current.status == "failed" or current.status == "cancelled"
     end)
-    return status
+    return assert(status)
 end
-local function bulk(h: fixture.Handle, key: string): Map
+local function bulk(h: fixture.Handle, key: string): Status
     return call(h, "bulk", { key = key, query = { where = { field = "estimate", op = "eq", value = 1 } },
-        ops_template = { { op = "set", values = { estimate = 2 } } } })
+        ops_template = { { op = "set", values = { estimate = 2 } } } }) :: Status
 end
-local function moved(h: fixture.Handle, request: Map): Map
-    local started = call(h, "move", request)
-    local status: Map = {}
+local function moved(h: fixture.Handle, request: Map): Status
+    local started = call(h, "move", request) :: Status
+    local status: Status?
     steps.wait_for("move completion", function(): boolean
-        status = call(h, "move_status", { board_id = request.board_id, move_id = started.move_id })
-        return status.status == "done" or status.status == "failed"
+        local current = call(h, "move_status", { board_id = request.board_id, move_id = started.move_id }) :: Status
+        status = current
+        return current.status == "done" or current.status == "failed"
     end)
-    test.eq(status.status, "done")
-    return status
+    local result = assert(status)
+    test.eq(result.status, "done")
+    return result
 end
 local function move_request(target: fixture.Handle, id: string, key: string): Map
     return { item = id, to_board = target.id, key = key, map = { type = {}, state = {}, fields = {}, relations = {} } }
