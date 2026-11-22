@@ -4,6 +4,7 @@ import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { computed, ref, useId, watch } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import { Icon } from '@iconify/vue'
 import { work } from '../../api'
 import { fieldTitle } from '../../forms'
 import type { BoardApp, BoardRow, Declaration, Schema } from '../../types'
@@ -15,7 +16,7 @@ const props = defineProps<{
   packTitle?: string; outdated?: boolean; upgradeReason?: string; canUpgrade: boolean; canInstall: boolean; packError?: string
 }>()
 const prefixId = useId()
-defineEmits<{ upgrade: []; install: []; retry: []; saved: []; 'dirty-change': [dirty: boolean] }>()
+defineEmits<{ upgrade: []; install: []; retry: []; saved: []; share: []; 'dirty-change': [dirty: boolean] }>()
 const overrides = {
   comments_per_item: 'Comments per item', audit: 'Change history', audit_days: 'Change history retention',
   interval_days: 'Time-in-state history retention', trash_days: 'Trash retention', tombstone_days: 'Deletion record retention',
@@ -85,6 +86,17 @@ const history = computed(() => {
 <template>
   <section class="work-ia-section work-ia-general">
     <section class="work-settings-list work-board-details" aria-label="Board details">
+      <div v-if="board" class="work-settings-row">
+        <div class="work-row-main">
+          <h3 class="work-row-title">Board access</h3>
+          <p class="work-muted work-small">Give people and groups access to this board.</p>
+        </div>
+        <div>
+          <Button label="Share board" type="button" severity="secondary" outlined @click="$emit('share')">
+            <template #icon><Icon icon="tabler:share" aria-hidden="true" /></template>
+          </Button>
+        </div>
+      </div>
       <BoardIdentity :key="board?.board_id" :board="board" :board-apps="boardApps" detail
         @dirty-change="$emit('dirty-change', $event)" @saved="$emit('saved')">
         <div class="work-settings-row">

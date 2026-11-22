@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { computed, nextTick, ref, useId } from 'vue'
+import { computed, nextTick, ref, useId, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -10,9 +10,10 @@ const props = defineProps<{
   label: string
   maxlength?: number
   regular?: boolean
+  openOnEntry?: boolean
   validate?: (value: string) => string | undefined
 }>()
-const emit = defineEmits<{ open: []; add: [value: string] }>()
+const emit = defineEmits<{ open: []; add: [value: string]; cancel: [] }>()
 const row = ref<HTMLElement>()
 const editing = ref(false)
 const input = ref('')
@@ -39,6 +40,16 @@ function add() {
   emit('add', value.value)
   void close()
 }
+
+function cancel() {
+  emit('cancel')
+  void close()
+}
+
+watch(() => props.openOnEntry, (active, previous) => {
+  if (active) void open()
+  else if (previous && editing.value) void close()
+}, { immediate: true })
 </script>
 
 <template>
@@ -47,7 +58,7 @@ function add() {
       severity="secondary" outlined :size="regular ? undefined : 'small'" @click="open">
       <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
     </Button>
-    <div v-else class="work-add-editor" @keydown.esc.stop.prevent="close">
+    <div v-else class="work-add-editor" @keydown.esc.stop.prevent="cancel">
       <label class="work-stack work-tight">{{ label }}
         <InputText v-model="input" :aria-label="label" :maxlength="maxlength"
           :invalid="!!issue" :aria-describedby="issue ? hintId : undefined" @keydown.enter.stop.prevent="add" />
@@ -55,7 +66,7 @@ function add() {
       <slot />
       <div class="work-row work-wrap">
         <Button type="button" :label="action" :size="regular ? undefined : 'small'" :disabled="!value || !!issue" @click="add" />
-        <Button type="button" label="Cancel" text severity="secondary" :size="regular ? undefined : 'small'" @click="close" />
+        <Button type="button" label="Cancel" text severity="secondary" :size="regular ? undefined : 'small'" @click="cancel" />
       </div>
       <p v-if="issue" :id="hintId" class="work-error work-small" role="status">{{ issue }}</p>
     </div>

@@ -22,8 +22,8 @@ import { move, renameField, removeEntry, type RemovalGuard, type SchemaChange, c
 import ConfigForm from './ConfigForm.vue'
 import JsonInput from './JsonInput.vue'
 import { configFields } from './config'
-const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string; installedTypes?: FieldTypeOption[]; itemType?: string }>()
-const emit = defineEmits<{ validity: [key: string, valid: boolean]; 'update:itemType': [type: string] }>()
+const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string; installedTypes?: FieldTypeOption[]; itemType?: string; createForItemType?: boolean }>()
+const emit = defineEmits<{ validity: [key: string, valid: boolean]; 'update:itemType': [type: string]; created: []; 'cancel-creation': [] }>()
 const fields = computed(() => props.draft.fields ?? [])
 const newKind = ref('text'), placement = ref<string[]>([])
 const typeChoices = computed(() => (props.draft.item_types ?? []).map(type => ({ value: type.id, label: type.title || humanize(type.id) })))
@@ -124,6 +124,7 @@ function add(title: string) {
   for (const type of props.draft.item_types ?? []) if (placement.value.includes(type.id)) type.fields.push(code)
   if (currentType.value && !placement.value.includes(currentType.value.id)) emit('update:itemType', '')
   openedField.value = code
+  emit('created')
 }
 const openedField = ref('')
 </script>
@@ -132,7 +133,8 @@ const openedField = ref('')
     <div class="work-form-actions work-wrap">
       <Select :model-value="currentType?.id ?? ''" aria-label="Filter fields by item type" placeholder="All item types" appendTo="self" optionLabel="label" optionValue="value"
         :options="[{ value: '', label: 'All item types' }, ...typeChoices]" @update:model-value="emit('update:itemType', $event)" />
-      <AddDefinitionRow action="Add field" label="Field name" :maxlength="255" regular @open="startAdd" @add="add">
+      <AddDefinitionRow action="Add field" label="Field name" :maxlength="255" regular :open-on-entry="createForItemType"
+        @open="startAdd" @add="add" @cancel="emit('cancel-creation')">
         <label class="work-stack work-tight">Kind<Select v-model="newKind" aria-label="New field kind" appendTo="self" :options="kindOptions" optionLabel="label" optionValue="value" /></label>
         <ChipPicker v-if="typeChoices.length" label="Show on item types" :options="typeChoices" v-model="placement" />
       </AddDefinitionRow>

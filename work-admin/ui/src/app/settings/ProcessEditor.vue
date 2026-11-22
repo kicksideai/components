@@ -17,11 +17,16 @@ import { type RemovalGuard, type SchemaChange, changeReason, removeEntry } from 
 import type { Declaration, InstalledRule, ItemType, Process, State, StateCounts, Transition } from '../../types'
 import { sectionRow } from './sectionRow'
 import StateSettings from './StateSettings.vue'
-const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string; counts?: StateCounts; countTypes?: ItemType[]; guards?: InstalledRule[] }>()
-const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
+const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string; counts?: StateCounts; countTypes?: ItemType[]; guards?: InstalledRule[]; createForItemType?: boolean; creationOpener?: HTMLElement }>()
+const emit = defineEmits<{ validity: [key: string, valid: boolean]; created: [id: string]; 'cancel-creation': [] }>()
 const location = inject(sectionRow, undefined)
 const processes = computed(() => props.draft.processes ?? [])
 const creating = ref(false), newName = ref(''), selected = ref(''), error = ref(''), mode = ref('Map'), target = ref('')
+watch(() => props.createForItemType, (active, previous) => {
+  if (!active && !previous) return
+  newName.value = ''
+  creating.value = !!active
+}, { immediate: true })
 const choosingTarget = ref(false)
 const selectedState = ref<State>(), selectedTransition = ref<Transition>(), graph = ref<InstanceType<typeof ProcessGraph>>()
 const editor = ref<HTMLElement>(), inspector = ref<HTMLElement>(), tools = ref<HTMLElement>(), editingName = ref(false)
@@ -129,6 +134,11 @@ function add() {
   const code = processes.value.some(p => p.id === prefix) ? uniqueId(prefix, processes.value) : prefix
   ;(props.draft.processes ??= []).push({ id: code, name, initial: 'todo', states: [{ id: 'todo', name: 'To do', category: 'unstarted' }], transitions: [] })
   selected.value = code; newName.value = ''; creating.value = false
+  emit('created', code)
+}
+function cancelCreate() {
+  creating.value = false
+  emit('cancel-creation')
 }
 async function addState(p: Process, opener: HTMLElement) {
   const state: State = { id: uniqueId('state', p.states), name: 'New state', category: 'started' }
@@ -450,14 +460,14 @@ async function remove(p: Process) {
         <Button label="Remove workflow" severity="danger" text size="small" @click="remove(process)" />
       </div>
     </Disclosure>
-    <NativeDialog :visible="creating" label="New process" @close="creating = false"
+    <NativeDialog :visible="creating" :return-focus="creationOpener" label="New process" @close="cancelCreate"
       ><form class="work-dialog-box" aria-label="New process" @submit.stop.prevent="add">
         <h2>New process</h2>
         <label class="work-stack work-tight"
           >Name<InputText v-model="newName" aria-label="New process name" autofocus required
         /></label>
         <div class="work-dialog-actions">
-          <Button label="Cancel" severity="secondary" outlined @click="creating = false" /><Button
+          <Button label="Cancel" severity="secondary" outlined @click="cancelCreate" /><Button
             label="Create process"
             type="submit"
             :disabled="!newName.trim()"

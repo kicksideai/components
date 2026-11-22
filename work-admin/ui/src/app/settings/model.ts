@@ -119,7 +119,10 @@ export function normalizeSchema(view: Schema): Schema {
 }
 
 export function processMigration(plan: SchemaPlan, declaration: Declaration): string[] {
-  return (declaration.processes ?? []).filter(process => effectiveMigration(process) !== 'pin' && plan.changes.some(change => change.code === 'process ' + process.id && change.class !== 'cosmetic' && change.class !== 'refused')).map(process => process.id)
+  return (declaration.processes ?? [])
+    .filter(process => effectiveMigration(process) !== 'pin' && plan.changes.some(change =>
+      change.code === 'process ' + process.id && change.what !== 'add' && change.class !== 'cosmetic' && change.class !== 'refused'))
+    .map(process => process.id)
 }
 
 export type RemovalKind = 'fields' | 'item_types' | 'processes' | 'relation_types'

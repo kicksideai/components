@@ -1,4 +1,4 @@
-import { defineComponent as ue, useId as Oe, openBlock as P, createElementBlock as W, unref as F, normalizeClass as Qe, createElementVNode as Q, createTextVNode as oe, toDisplayString as q, createCommentVNode as X, renderSlot as le, ref as Y, computed as ee, createBlock as K, withCtx as se, createVNode as te, withKeys as Te, withModifiers as Ae, nextTick as xe, useModel as Ze, mergeModels as et, watch as de, onBeforeUnmount as Ne, onUnmounted as tt, Fragment as Se, renderList as Me, onMounted as nt } from "vue";
+import { defineComponent as ue, useId as Oe, openBlock as P, createElementBlock as W, unref as F, normalizeClass as Qe, createElementVNode as Q, createTextVNode as le, toDisplayString as q, createCommentVNode as X, renderSlot as de, ref as Y, computed as ee, watch as re, createBlock as K, withCtx as oe, createVNode as te, withKeys as Te, withModifiers as Ae, nextTick as xe, useModel as Ze, mergeModels as et, onBeforeUnmount as Ne, onUnmounted as tt, Fragment as Se, renderList as Me, onMounted as nt } from "vue";
 import pe from "primevue/button";
 import Pe from "primevue/inputtext";
 import rt from "primevue/inputnumber";
@@ -31,21 +31,21 @@ const ht = ["aria-labelledby"], pt = { class: "kx-railhead" }, mt = ["id"], bt =
           id: F(o),
           class: "kx-railhead-title"
         }, [
-          oe(q(e.title), 1),
+          le(q(e.title), 1),
           e.count !== void 0 ? (P(), W("b", bt, q(e.count), 1)) : X("", !0)
         ], 8, mt),
         Q("div", gt, [
-          le(l.$slots, "actions")
+          de(l.$slots, "actions")
         ])
       ]),
-      le(l.$slots, "toolbar"),
+      de(l.$slots, "toolbar"),
       Q("div", yt, [
-        le(l.$slots, "default")
+        de(l.$slots, "default")
       ])
     ], 10, ht));
   }
 });
-class re extends Error {
+class ie extends Error {
   kind;
   details;
   retryable;
@@ -61,20 +61,20 @@ const Ve = {
   no_parked_migration: "There is no paused migration to resume."
 };
 function je(e, o) {
-  const l = e instanceof re ? e.details?.code : void 0, c = e instanceof Error && e.message || o;
+  const l = e instanceof ie ? e.details?.code : void 0, c = e instanceof Error && e.message || o;
   return typeof l != "string" || !l.trim() ? c : `${Object.hasOwn(Ve, l) ? Ve[l] : c}
 Error code: ${l}`;
 }
 function Ue(e, o) {
   const l = e;
-  if (l && typeof l == "object" && l.success === !1) throw new re(l, o);
+  if (l && typeof l == "object" && l.success === !1) throw new ie(l, o);
   if (l && typeof l == "object" && l.success === !0 && l.data !== void 0) return l.data;
-  throw new re({ kind: "INTERNAL", message: `${o}: invalid response envelope`, details: { code: "response_envelope_invalid" } }, o);
+  throw new ie({ kind: "INTERNAL", message: `${o}: invalid response envelope`, details: { code: "response_envelope_invalid" } }, o);
 }
 function Ge(e, o) {
-  if (e instanceof re) return e;
+  if (e instanceof ie) return e;
   const l = e?.response;
-  return l?.data ? new re(l.data, o, l.status) : e instanceof Error ? e : new re({ kind: "Unavailable" }, o);
+  return l?.data ? new ie(l.data, o, l.status) : e instanceof Error ? e : new ie({ kind: "Unavailable" }, o);
 }
 async function ke(e, o, l) {
   try {
@@ -83,7 +83,7 @@ async function ke(e, o, l) {
     throw Ge(c, o);
   }
 }
-async function ae(e, o, l) {
+async function se(e, o, l) {
   try {
     return Ue((await Fe.post(e, o)).data, l);
   } catch (c) {
@@ -93,16 +93,17 @@ async function ae(e, o, l) {
 function fe(e) {
   return e && typeof e == "object" && !Array.isArray(e) ? e : {};
 }
-const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|^[\w.]+:[\w.]+$/i.test(e), wt = ["onKeydown"], vt = { class: "work-stack work-tight" }, kt = { class: "work-row work-wrap" }, Et = ["id"], xt = /* @__PURE__ */ ue({
+const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|^[\w.]+:[\w.]+$/i.test(e), vt = ["onKeydown"], wt = { class: "work-stack work-tight" }, kt = { class: "work-row work-wrap" }, Et = ["id"], xt = /* @__PURE__ */ ue({
   __name: "AddDefinitionRow",
   props: {
     action: {},
     label: {},
     maxlength: {},
     regular: { type: Boolean },
+    openOnEntry: { type: Boolean },
     validate: { type: Function }
   },
-  emits: ["open", "add"],
+  emits: ["open", "add", "cancel"],
   setup(e, { emit: o }) {
     const l = e, c = o, f = Y(), p = Y(!1), s = Y(""), r = Oe(), n = ee(() => s.value.trim()), t = ee(() => n.value ? l.validate?.(n.value) : void 0);
     async function d() {
@@ -114,7 +115,12 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
     function h() {
       !n.value || t.value || (c("add", n.value), u());
     }
-    return (i, a) => (P(), W("div", {
+    function i() {
+      c("cancel"), u();
+    }
+    return re(() => l.openOnEntry, (a, m) => {
+      a ? d() : m && p.value && u();
+    }, { immediate: !0 }), (a, m) => (P(), W("div", {
       ref_key: "row",
       ref: f,
       class: "work-add-definition"
@@ -122,13 +128,13 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
       p.value ? (P(), W("div", {
         key: 1,
         class: "work-add-editor",
-        onKeydown: Te(Ae(u, ["stop", "prevent"]), ["esc"])
+        onKeydown: Te(Ae(i, ["stop", "prevent"]), ["esc"])
       }, [
-        Q("label", vt, [
-          oe(q(e.label) + " ", 1),
+        Q("label", wt, [
+          le(q(e.label) + " ", 1),
           te(F(Pe), {
             modelValue: s.value,
-            "onUpdate:modelValue": a[0] || (a[0] = (m) => s.value = m),
+            "onUpdate:modelValue": m[0] || (m[0] = (g) => s.value = g),
             "aria-label": e.label,
             maxlength: e.maxlength,
             invalid: !!t.value,
@@ -136,7 +142,7 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
             onKeydown: Te(Ae(h, ["stop", "prevent"]), ["enter"])
           }, null, 8, ["modelValue", "aria-label", "maxlength", "invalid", "aria-describedby", "onKeydown"])
         ]),
-        le(i.$slots, "default"),
+        de(a.$slots, "default"),
         Q("div", kt, [
           te(F(pe), {
             type: "button",
@@ -151,7 +157,7 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
             text: "",
             severity: "secondary",
             size: e.regular ? void 0 : "small",
-            onClick: u
+            onClick: i
           }, null, 8, ["size"])
         ]),
         t.value ? (P(), W("p", {
@@ -160,7 +166,7 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
           class: "work-error work-small",
           role: "status"
         }, q(t.value), 9, Et)) : X("", !0)
-      ], 40, wt)) : (P(), K(F(pe), {
+      ], 40, vt)) : (P(), K(F(pe), {
         key: 0,
         type: "button",
         label: e.action,
@@ -170,7 +176,7 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
         size: e.regular ? void 0 : "small",
         onClick: d
       }, {
-        icon: se(() => [
+        icon: oe(() => [
           te(F(st), {
             icon: "tabler:plus",
             "aria-hidden": "true"
@@ -196,15 +202,15 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
       value: o.value ? "content" : void 0,
       "onUpdate:value": c[0] || (c[0] = (f) => o.value = f === "content")
     }, {
-      default: se(() => [
+      default: oe(() => [
         te(F(ut), {
           class: "kx-disclosure-panel",
           value: "content"
         }, {
-          default: se(() => [
+          default: oe(() => [
             te(F(dt), { class: "kx-disclosure-toggle" }, {
-              default: se(() => [
-                oe(q(e.label), 1)
+              default: oe(() => [
+                le(q(e.label), 1)
               ]),
               _: 1
             }),
@@ -212,8 +218,8 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
               transition: { name: "kx-disclosure-motion" },
               contentWrapper: { class: "kx-disclosure-content" }
             } }, {
-              default: se(() => [
-                le(l.$slots, "default")
+              default: oe(() => [
+                de(l.$slots, "default")
               ]),
               _: 3
             })
@@ -243,7 +249,7 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
   emits: ["update:modelValue", "validity"],
   setup(e, { emit: o }) {
     const l = e, c = o, f = Y(""), p = Y("");
-    de(() => l.modelValue, (r) => {
+    re(() => l.modelValue, (r) => {
       f.value = r === void 0 ? "" : JSON.stringify(r, null, 2), p.value = "", c("validity", !0);
     }, { immediate: !0 }), Ne(() => c("validity", !0));
     function s(r) {
@@ -261,7 +267,7 @@ const ge = (e) => /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|
       class: "work-json-disclosure",
       label: `Edit as JSON · ${e.label}`
     }, {
-      default: se(() => [
+      default: oe(() => [
         Q("label", Ot, [
           Q("span", null, q(e.label), 1),
           e.hint ? (P(), W("span", Nt, q(e.hint), 1)) : X("", !0),
@@ -296,7 +302,7 @@ async function Lt(e, o) {
   const s = (async () => {
     const r = /* @__PURE__ */ new Map();
     for (let n = 0; n < l.length; n += 200) {
-      const t = await ae(`/api/v1/work-admin/boards/${encodeURIComponent(e)}/principal_labels`, { refs: l.slice(n, n + 200) }, "Display names");
+      const t = await se(`/api/v1/work-admin/boards/${encodeURIComponent(e)}/principal_labels`, { refs: l.slice(n, n + 200) }, "Display names");
       for (const d of t.principals) d.label.trim() && !ge(d.label) && d.label !== d.id && r.set(`${d.type}:${d.id}`, d.label.trim());
     }
     return r;
@@ -311,7 +317,7 @@ async function Lt(e, o) {
 function Tt(e, o) {
   const l = Y(/* @__PURE__ */ new Map()), c = Y("");
   let f = 0;
-  return de([e, o], async ([p, s]) => {
+  return re([e, o], async ([p, s]) => {
     const r = ++f;
     if (l.value = /* @__PURE__ */ new Map(), c.value = "", !(!p || !s.length))
       try {
@@ -437,40 +443,40 @@ const St = { class: "work-stack" }, Mt = ["inert", "schema", "config"], Rt = {
   },
   emits: ["update:modelValue", "validity", "validation-message"],
   setup(e, { emit: o }) {
-    const l = e, c = o, f = Y(/* @__PURE__ */ new Set()), p = Y(!1), s = Y(!1), r = Oe(), n = ee(() => We(l.schema)), t = ee(() => At(l.schema, l.modelValue, !l.suggestDefaults)), d = ee(() => n.value.filter((v) => typeof v.schema.picker == "string")), u = ee(() => n.value.filter((v) => typeof v.schema.picker != "string")), h = ee(() => ({ ...l.schema, properties: Object.fromEntries(d.value.map((v) => [v.key, { ...v.schema, title: v.title }])), required: Array.isArray(l.schema.required) ? l.schema.required.filter((v) => d.value.some((O) => O.key === v)) : [] })), i = ee(() => Object.fromEntries(d.value.map((v) => [v.key, l.modelValue[v.key]]))), a = ee(() => !Object.keys(t.value).length && !f.value.size && (!d.value.length || p.value)), m = ee(() => {
-      for (const v of n.value) {
-        if (t.value[v.key]) return v.title + ": " + t.value[v.key];
-        if (f.value.has(v.key)) return v.title + ": Enter valid JSON.";
+    const l = e, c = o, f = Y(/* @__PURE__ */ new Set()), p = Y(!1), s = Y(!1), r = Oe(), n = ee(() => We(l.schema)), t = ee(() => At(l.schema, l.modelValue, !l.suggestDefaults)), d = ee(() => n.value.filter((w) => typeof w.schema.picker == "string")), u = ee(() => n.value.filter((w) => typeof w.schema.picker != "string")), h = ee(() => ({ ...l.schema, properties: Object.fromEntries(d.value.map((w) => [w.key, { ...w.schema, title: w.title }])), required: Array.isArray(l.schema.required) ? l.schema.required.filter((w) => d.value.some((O) => O.key === w)) : [] })), i = ee(() => Object.fromEntries(d.value.map((w) => [w.key, l.modelValue[w.key]]))), a = ee(() => !Object.keys(t.value).length && !f.value.size && (!d.value.length || p.value)), m = ee(() => {
+      for (const w of n.value) {
+        if (t.value[w.key]) return w.title + ": " + t.value[w.key];
+        if (f.value.has(w.key)) return w.title + ": Enter valid JSON.";
       }
       return a.value ? "" : "Open plugin settings to check the configuration widget.";
     });
-    de(a, (v) => c("validity", v), { immediate: !0 }), de(m, (v) => c("validation-message", v), { immediate: !0 });
+    re(a, (w) => c("validity", w), { immediate: !0 }), re(m, (w) => c("validation-message", w), { immediate: !0 });
     async function g() {
       s.value = !0, p.value = await ft("wc-schema-form"), s.value = !1;
     }
-    de(() => d.value.length > 0, (v) => {
-      v && g();
+    re(() => d.value.length > 0, (w) => {
+      w && g();
     }, { immediate: !0 }), Ne(() => {
       c("validity", !0), c("validation-message", "");
     });
-    function _(v, O) {
-      return l.modelValue[v] ?? (l.suggestDefaults ? void 0 : O);
+    function _(w, O) {
+      return l.modelValue[w] ?? (l.suggestDefaults ? void 0 : O);
     }
-    function I(v, O) {
+    function I(w, O) {
       const b = { ...l.modelValue };
-      O == null ? delete b[v] : b[v] = O, c("update:modelValue", b);
+      O == null ? delete b[w] : b[w] = O, c("update:modelValue", b);
     }
-    function w(v) {
-      const O = l.modelValue[v];
+    function v(w) {
+      const O = l.modelValue[w];
       return Array.isArray(O) ? O.filter((b) => typeof b == "string") : [];
     }
-    function N(v, O) {
-      O ? f.value.delete(v) : f.value.add(v);
+    function N(w, O) {
+      O ? f.value.delete(w) : f.value.add(w);
     }
-    function k(v) {
-      c("update:modelValue", { ...l.modelValue, ...fe(v.detail) });
+    function k(w) {
+      c("update:modelValue", { ...l.modelValue, ...fe(w.detail) });
     }
-    return (v, O) => (P(), W("div", St, [
+    return (w, O) => (P(), W("div", St, [
       d.value.length && p.value ? (P(), W("wc-schema-form", {
         key: 0,
         class: "work-config-widget",
@@ -479,7 +485,7 @@ const St = { class: "work-stack" }, Mt = ["inert", "schema", "config"], Rt = {
         config: JSON.stringify(i.value),
         onConfigChanged: k
       }, null, 40, Mt)) : d.value.length && s.value ? (P(), W("p", Rt, "The configuration widget is loading.")) : d.value.length ? (P(), W("p", Vt, [
-        O[0] || (O[0] = oe("The configuration widget is unavailable.", -1)),
+        O[0] || (O[0] = le("The configuration widget is unavailable.", -1)),
         te(F(pe), {
           label: "Reload configuration widget",
           severity: "secondary",
@@ -493,14 +499,14 @@ const St = { class: "work-stack" }, Mt = ["inert", "schema", "config"], Rt = {
           class: "work-config-field"
         }, [
           F(_e)(b.schema) ? (P(), W("span", Dt, [
-            oe(q(b.title), 1),
+            le(q(b.title), 1),
             b.required ? (P(), W("span", Pt, " (required)")) : X("", !0)
           ])) : (P(), W("label", {
             key: 1,
             class: "work-config-label",
             for: F(r) + "-" + b.key
           }, [
-            oe(q(b.title), 1),
+            le(q(b.title), 1),
             b.required ? (P(), W("span", Ut, " (required)")) : X("", !0)
           ], 8, Ft)),
           Array.isArray(b.schema.enum) ? (P(), K(F(Re), {
@@ -514,17 +520,17 @@ const St = { class: "work-stack" }, Mt = ["inert", "schema", "config"], Rt = {
             disabled: e.disabled,
             "onUpdate:modelValue": (T) => I(b.key, T)
           }, null, 8, ["input-id", "model-value", "options", "aria-label", "aria-required", "disabled", "onUpdate:modelValue"])) : F(_e)(b.schema) ? (P(), W("div", Gt, [
-            (P(!0), W(Se, null, Me(w(b.key), (T, R) => (P(), K(F(at), {
+            (P(!0), W(Se, null, Me(v(b.key), (T, R) => (P(), K(F(at), {
               key: R,
               label: T,
               removable: !e.disabled,
-              onRemove: (y) => I(b.key, w(b.key).filter((E, j) => j !== R))
+              onRemove: (y) => I(b.key, v(b.key).filter((E, j) => j !== R))
             }, null, 8, ["label", "removable", "onRemove"]))), 128)),
             e.disabled ? X("", !0) : (P(), K(xt, {
               key: 0,
               action: "Add value",
               label: "Add " + b.title.toLocaleLowerCase(),
-              onAdd: (T) => I(b.key, [...w(b.key), T])
+              onAdd: (T) => I(b.key, [...v(b.key), T])
             }, null, 8, ["label", "onAdd"]))
           ])) : ["integer", "number"].includes(String(b.schema.type)) ? (P(), K(F(rt), {
             key: 4,
@@ -606,7 +612,7 @@ const St = { class: "work-stack" }, Mt = ["inert", "schema", "config"], Rt = {
     function r(n) {
       n.preventDefault(), l.busy || c("close");
     }
-    return de(() => l.visible, s), nt(s), Ne(() => {
+    return re(() => l.visible, s), nt(s), Ne(() => {
       f.value?.open && f.value.close(), p?.focus();
     }), (n, t) => (P(), W("dialog", {
       ref_key: "dialog",
@@ -620,7 +626,7 @@ const St = { class: "work-stack" }, Mt = ["inert", "schema", "config"], Rt = {
         e.visible && !e.busy && c("close");
       })
     }, [
-      le(n.$slots, "default")
+      de(n.$slots, "default")
     ], 40, qt));
   }
 }), me = "/api/v1/work", he = (e) => `${me}/boards/${encodeURIComponent(e)}`, ze = {
@@ -634,11 +640,11 @@ const St = { class: "work-stack" }, Mt = ["inert", "schema", "config"], Rt = {
     return e;
   },
   packs: () => ke(`${me}/packs`, "Packs").then((e) => e.packs),
-  createBoard: (e, o, l, c = {}) => ae(`${me}/boards`, { title: e, declaration: o, idempotency_key: l, ...c }, "Create board"),
-  updateBoard: (e, o) => ae(`${he(e)}/update`, o, "Update board"),
-  schema: (e, o, l) => ae(`${he(e)}/get_schema`, { generation: o, ...l ? { check_plugins: !0 } : {} }, "Schema"),
+  createBoard: (e, o, l, c = {}) => se(`${me}/boards`, { title: e, declaration: o, idempotency_key: l, ...c }, "Create board"),
+  updateBoard: (e, o) => se(`${he(e)}/update`, o, "Update board"),
+  schema: (e, o, l) => se(`${he(e)}/get_schema`, { generation: o, ...l ? { check_plugins: !0 } : {} }, "Schema"),
   // Typed operands in conditions and transition assignments can select an item.
-  query: (e, o) => ae(`${he(e)}/query`, o, "Item choices"),
+  query: (e, o) => se(`${he(e)}/query`, o, "Item choices"),
   async stateCounts(e) {
     const o = /* @__PURE__ */ Object.create(null);
     let l;
@@ -654,7 +660,7 @@ const St = { class: "work-stack" }, Mt = ["inert", "schema", "config"], Rt = {
     } while (l);
     return o;
   },
-  item: (e, o) => ae(`${he(e)}/get`, { item: o }, "Item choice"),
+  item: (e, o) => se(`${he(e)}/get`, { item: o }, "Item choice"),
   async options(e) {
     const o = await ke(`/api/v1/work-admin/boards/${encodeURIComponent(e)}/options`, "Configuration options");
     return {
@@ -857,8 +863,8 @@ const yn = (function() {
         for (; I = g.dequeue(); )
           n(h, i, a, I);
         if (h.nodeCount()) {
-          for (let w = i.length - 2; w > 0; --w)
-            if (I = i[w].dequeue(), I) {
+          for (let v = i.length - 2; v > 0; --v)
+            if (I = i[v].dequeue(), I) {
               m = m.concat(n(h, i, a, I, !0));
               break;
             }
@@ -869,24 +875,24 @@ const yn = (function() {
     function n(h, i, a, m, g) {
       let _ = g ? [] : void 0;
       return h.inEdges(m.v).forEach((I) => {
-        let w = h.edge(I), N = h.node(I.v);
-        g && _.push({ v: I.v, w: I.w }), N.out -= w, d(i, a, N);
+        let v = h.edge(I), N = h.node(I.v);
+        g && _.push({ v: I.v, w: I.w }), N.out -= v, d(i, a, N);
       }), h.outEdges(m.v).forEach((I) => {
-        let w = h.edge(I), N = I.w, k = h.node(N);
-        k.in -= w, d(i, a, k);
+        let v = h.edge(I), N = I.w, k = h.node(N);
+        k.in -= v, d(i, a, k);
       }), h.removeNode(m.v), _;
     }
     function t(h, i) {
       let a = new c(), m = 0, g = 0;
-      h.nodes().forEach((w) => {
-        a.setNode(w, { v: w, in: 0, out: 0 });
-      }), h.edges().forEach((w) => {
-        let N = a.edge(w.v, w.w) || 0, k = i(w), v = N + k;
-        a.setEdge(w.v, w.w, v), g = Math.max(g, a.node(w.v).out += k), m = Math.max(m, a.node(w.w).in += k);
+      h.nodes().forEach((v) => {
+        a.setNode(v, { v, in: 0, out: 0 });
+      }), h.edges().forEach((v) => {
+        let N = a.edge(v.v, v.w) || 0, k = i(v), w = N + k;
+        a.setEdge(v.v, v.w, w), g = Math.max(g, a.node(v.v).out += k), m = Math.max(m, a.node(v.w).in += k);
       });
       let _ = u(g + m + 3).map(() => new f()), I = m + 1;
-      return a.nodes().forEach((w) => {
-        d(_, I, a.node(w));
+      return a.nodes().forEach((v) => {
+        d(_, I, a.node(v));
       }), { graph: a, buckets: _, zeroIdx: I };
     }
     function d(h, i, a) {
@@ -920,18 +926,18 @@ const yn = (function() {
         M.points = D.points, Object.hasOwn(D, "x") && (M.x = D.x, M.y = D.y);
       }), x.graph().width = C.graph().width, x.graph().height = C.graph().height;
     }
-    let w = ["nodesep", "edgesep", "ranksep", "marginx", "marginy"], N = { ranksep: 50, edgesep: 20, nodesep: 50, rankdir: "tb" }, k = ["acyclicer", "ranker", "rankdir", "align"], v = ["width", "height", "rank"], O = { width: 0, height: 0 }, b = ["minlen", "weight", "width", "height", "labeloffset"], T = { minlen: 1, weight: 1, width: 0, height: 0, labeloffset: 10, labelpos: "r" }, R = ["labelpos"];
+    let v = ["nodesep", "edgesep", "ranksep", "marginx", "marginy"], N = { ranksep: 50, edgesep: 20, nodesep: 50, rankdir: "tb" }, k = ["acyclicer", "ranker", "rankdir", "align"], w = ["width", "height", "rank"], O = { width: 0, height: 0 }, b = ["minlen", "weight", "width", "height", "labeloffset"], T = { minlen: 1, weight: 1, width: 0, height: 0, labeloffset: 10, labelpos: "r" }, R = ["labelpos"];
     function y(x) {
-      let C = new m({ multigraph: !0, compound: !0 }), A = ve(x.graph());
-      return C.setGraph(Object.assign({}, N, we(A, w), a.pick(A, k))), x.nodes().forEach((M) => {
-        let D = ve(x.node(M));
-        const U = we(D, v);
+      let C = new m({ multigraph: !0, compound: !0 }), A = we(x.graph());
+      return C.setGraph(Object.assign({}, N, ve(A, v), a.pick(A, k))), x.nodes().forEach((M) => {
+        let D = we(x.node(M));
+        const U = ve(D, w);
         Object.keys(O).forEach((B) => {
           U[B] === void 0 && (U[B] = O[B]);
         }), C.setNode(M, U), C.setParent(M, x.parent(M));
       }), x.edges().forEach((M) => {
-        let D = ve(x.edge(M));
-        C.setEdge(M, Object.assign({}, T, we(D, b), a.pick(D, R)));
+        let D = we(x.edge(M));
+        C.setEdge(M, Object.assign({}, T, ve(D, b), a.pick(D, R)));
       }), C;
     }
     function E(x) {
@@ -1047,10 +1053,10 @@ const yn = (function() {
         }
       });
     }
-    function we(x, C) {
+    function ve(x, C) {
       return a.mapValues(a.pick(x, C), Number);
     }
-    function ve(x) {
+    function we(x) {
       var C = {};
       return x && Object.entries(x).forEach(([A, M]) => {
         typeof A == "string" && (A = A.toLowerCase()), C[A] = M;
@@ -1071,11 +1077,11 @@ const yn = (function() {
         m !== d && t.setEdge(d, m, { weight: 0, minlen: u });
         return;
       }
-      let _ = c.addBorderNode(t, "_bt"), I = c.addBorderNode(t, "_bb"), w = t.node(m);
-      t.setParent(_, m), w.borderTop = _, t.setParent(I, m), w.borderBottom = I, g.forEach((N) => {
+      let _ = c.addBorderNode(t, "_bt"), I = c.addBorderNode(t, "_bb"), v = t.node(m);
+      t.setParent(_, m), v.borderTop = _, t.setParent(I, m), v.borderBottom = I, g.forEach((N) => {
         p(t, d, u, h, i, a, N);
-        let k = t.node(N), v = k.borderTop ? k.borderTop : N, O = k.borderBottom ? k.borderBottom : N, b = k.borderTop ? h : 2 * h, T = v !== O ? 1 : i - a[m] + 1;
-        t.setEdge(_, v, { weight: b, minlen: T, nestingEdge: !0 }), t.setEdge(O, I, { weight: b, minlen: T, nestingEdge: !0 });
+        let k = t.node(N), w = k.borderTop ? k.borderTop : N, O = k.borderBottom ? k.borderBottom : N, b = k.borderTop ? h : 2 * h, T = w !== O ? 1 : i - a[m] + 1;
+        t.setEdge(_, w, { weight: b, minlen: T, nestingEdge: !0 }), t.setEdge(O, I, { weight: b, minlen: T, nestingEdge: !0 });
       }), t.parent(m) || t.setEdge(d, _, { weight: 0, minlen: i + a[m] });
     }
     function s(t) {
@@ -1157,8 +1163,8 @@ const yn = (function() {
       return d.forEach((i) => {
         let a = r.node(i), m = r.parent(i);
         (a.rank === n || a.minRank <= n && n <= a.maxRank) && (h.setNode(i), h.setParent(i, m || u), r[t](i).forEach((g) => {
-          let _ = g.v === i ? g.w : g.v, I = h.edge(_, i), w = I !== void 0 ? I.weight : 0;
-          h.setEdge(_, i, { weight: r.edge(g).weight + w });
+          let _ = g.v === i ? g.w : g.v, I = h.edge(_, i), v = I !== void 0 ? I.weight : 0;
+          h.setEdge(_, i, { weight: r.edge(g).weight + v });
         }), Object.hasOwn(a, "minRank") && h.setNode(i, { borderLeft: a.borderLeft[n], borderRight: a.borderRight[n] }));
       }), h;
     }
@@ -1198,36 +1204,36 @@ const yn = (function() {
         m.customOrder(a, d);
         return;
       }
-      let g = t.maxRank(a), _ = u(a, t.range(1, g + 1), "inEdges"), I = u(a, t.range(g - 1, -1, -1), "outEdges"), w = c(a);
-      if (i(a, w), m && m.disableOptimalOrderHeuristic)
+      let g = t.maxRank(a), _ = u(a, t.range(1, g + 1), "inEdges"), I = u(a, t.range(g - 1, -1, -1), "outEdges"), v = c(a);
+      if (i(a, v), m && m.disableOptimalOrderHeuristic)
         return;
       let N = Number.POSITIVE_INFINITY, k;
-      for (let v = 0, O = 0; O < 4; ++v, ++O) {
-        h(v % 2 ? _ : I, v % 4 >= 2), w = t.buildLayerMatrix(a);
-        let b = f(a, w);
-        b < N && (O = 0, k = Object.assign({}, w), N = b);
+      for (let w = 0, O = 0; O < 4; ++w, ++O) {
+        h(w % 2 ? _ : I, w % 4 >= 2), v = t.buildLayerMatrix(a);
+        let b = f(a, v);
+        b < N && (O = 0, k = Object.assign({}, v), N = b);
       }
       i(a, k);
     }
     function u(a, m, g) {
-      const _ = /* @__PURE__ */ new Map(), I = (w, N) => {
-        _.has(w) || _.set(w, []), _.get(w).push(N);
+      const _ = /* @__PURE__ */ new Map(), I = (v, N) => {
+        _.has(v) || _.set(v, []), _.get(v).push(N);
       };
-      for (const w of a.nodes()) {
-        const N = a.node(w);
-        if (typeof N.rank == "number" && I(N.rank, w), typeof N.minRank == "number" && typeof N.maxRank == "number")
+      for (const v of a.nodes()) {
+        const N = a.node(v);
+        if (typeof N.rank == "number" && I(N.rank, v), typeof N.minRank == "number" && typeof N.maxRank == "number")
           for (let k = N.minRank; k <= N.maxRank; k++)
-            k !== N.rank && I(k, w);
+            k !== N.rank && I(k, v);
       }
-      return m.map(function(w) {
-        return s(a, w, g, _.get(w) || []);
+      return m.map(function(v) {
+        return s(a, v, g, _.get(v) || []);
       });
     }
     function h(a, m) {
       let g = new n();
       a.forEach(function(_) {
-        let I = _.graph().root, w = p(_, I, g, m);
-        w.vs.forEach((N, k) => _.node(N).order = k), r(_, g, w.vs);
+        let I = _.graph().root, v = p(_, I, g, m);
+        v.vs.forEach((N, k) => _.node(N).order = k), r(_, g, v.vs);
       });
     }
     function i(a, m) {
@@ -1292,16 +1298,16 @@ const yn = (function() {
       let I = c(t, i);
       I.forEach((k) => {
         if (t.children(k.v).length) {
-          let v = s(t, k.v, u, h);
-          _[k.v] = v, Object.hasOwn(v, "barycenter") && n(k, v);
+          let w = s(t, k.v, u, h);
+          _[k.v] = w, Object.hasOwn(w, "barycenter") && n(k, w);
         }
       });
-      let w = f(I, u);
-      r(w, _);
-      let N = p(w, h);
+      let v = f(I, u);
+      r(v, _);
+      let N = p(v, h);
       if (m && (N.vs = [m, N.vs, g].flat(!0), t.predecessors(m).length)) {
-        let k = t.node(t.predecessors(m)[0]), v = t.node(t.predecessors(g)[0]);
-        Object.hasOwn(N, "barycenter") || (N.barycenter = 0, N.weight = 0), N.barycenter = (N.barycenter * N.weight + k.order + v.order) / (N.weight + 2), N.weight += 2;
+        let k = t.node(t.predecessors(m)[0]), w = t.node(t.predecessors(g)[0]);
+        Object.hasOwn(N, "barycenter") || (N.barycenter = 0, N.weight = 0), N.barycenter = (N.barycenter * N.weight + k.order + w.order) / (N.weight + 2), N.weight += 2;
       }
       return N;
     }
@@ -1375,29 +1381,29 @@ const yn = (function() {
   }, {}], 21: [function(e, o, l) {
     let c = e("@dagrejs/graphlib").Graph, f = e("../util");
     o.exports = { positionX: g, findType1Conflicts: p, findType2Conflicts: s, addConflict: n, hasConflict: t, verticalAlignment: d, horizontalCompaction: u, alignCoordinates: a, findSmallestWidthAlignment: i, balance: m };
-    function p(w, N) {
+    function p(v, N) {
       let k = {};
-      function v(O, b) {
+      function w(O, b) {
         let T = 0, R = 0, y = O.length, E = b[b.length - 1];
         return b.forEach((j, L) => {
-          let S = r(w, j), V = S ? w.node(S).order : y;
+          let S = r(v, j), V = S ? v.node(S).order : y;
           (S || j === E) && (b.slice(R, L + 1).forEach(($) => {
-            w.predecessors($).forEach((G) => {
-              let Z = w.node(G), ne = Z.order;
-              (ne < T || V < ne) && !(Z.dummy && w.node($).dummy) && n(k, G, $);
+            v.predecessors($).forEach((G) => {
+              let Z = v.node(G), ne = Z.order;
+              (ne < T || V < ne) && !(Z.dummy && v.node($).dummy) && n(k, G, $);
             });
           }), R = L + 1, T = V);
         }), b;
       }
-      return N.length && N.reduce(v), k;
+      return N.length && N.reduce(w), k;
     }
-    function s(w, N) {
+    function s(v, N) {
       let k = {};
-      function v(b, T, R, y, E) {
+      function w(b, T, R, y, E) {
         let j;
         f.range(T, R).forEach((L) => {
-          j = b[L], w.node(j).dummy && w.predecessors(j).forEach((S) => {
-            let V = w.node(S);
+          j = b[L], v.node(j).dummy && v.predecessors(j).forEach((S) => {
+            let V = v.node(S);
             V.dummy && (V.order < y || V.order > E) && n(k, S, j);
           });
         });
@@ -1405,35 +1411,35 @@ const yn = (function() {
       function O(b, T) {
         let R = -1, y, E = 0;
         return T.forEach((j, L) => {
-          if (w.node(j).dummy === "border") {
-            let S = w.predecessors(j);
-            S.length && (y = w.node(S[0]).order, v(T, E, L, R, y), E = L, R = y);
+          if (v.node(j).dummy === "border") {
+            let S = v.predecessors(j);
+            S.length && (y = v.node(S[0]).order, w(T, E, L, R, y), E = L, R = y);
           }
-          v(T, E, T.length, y, b.length);
+          w(T, E, T.length, y, b.length);
         }), T;
       }
       return N.length && N.reduce(O), k;
     }
-    function r(w, N) {
-      if (w.node(N).dummy)
-        return w.predecessors(N).find((k) => w.node(k).dummy);
+    function r(v, N) {
+      if (v.node(N).dummy)
+        return v.predecessors(N).find((k) => v.node(k).dummy);
     }
-    function n(w, N, k) {
+    function n(v, N, k) {
       if (N > k) {
         let O = N;
         N = k, k = O;
       }
-      let v = w[N];
-      v || (w[N] = v = {}), v[k] = !0;
+      let w = v[N];
+      w || (v[N] = w = {}), w[k] = !0;
     }
-    function t(w, N, k) {
+    function t(v, N, k) {
       if (N > k) {
-        let v = N;
-        N = k, k = v;
+        let w = N;
+        N = k, k = w;
       }
-      return !!w[N] && Object.hasOwn(w[N], k);
+      return !!v[N] && Object.hasOwn(v[N], k);
     }
-    function d(w, N, k, v) {
+    function d(v, N, k, w) {
       let O = {}, b = {}, T = {};
       return N.forEach((R) => {
         R.forEach((y, E) => {
@@ -1442,7 +1448,7 @@ const yn = (function() {
       }), N.forEach((R) => {
         let y = -1;
         R.forEach((E) => {
-          let j = v(E);
+          let j = w(E);
           if (j.length) {
             j = j.sort((S, V) => T[S] - T[V]);
             let L = (j.length - 1) / 2;
@@ -1454,8 +1460,8 @@ const yn = (function() {
         });
       }), { root: O, align: b };
     }
-    function u(w, N, k, v, O) {
-      let b = {}, T = h(w, N, k, O), R = O ? "borderLeft" : "borderRight";
+    function u(v, N, k, w, O) {
+      let b = {}, T = h(v, N, k, O), R = O ? "borderLeft" : "borderRight";
       function y(L, S) {
         let V = T.nodes(), $ = V.pop(), G = {};
         for (; $; )
@@ -1465,72 +1471,72 @@ const yn = (function() {
         b[L] = T.inEdges(L).reduce((S, V) => Math.max(S, b[V.v] + T.edge(V)), 0);
       }
       function j(L) {
-        let S = T.outEdges(L).reduce(($, G) => Math.min($, b[G.w] - T.edge(G)), Number.POSITIVE_INFINITY), V = w.node(L);
+        let S = T.outEdges(L).reduce(($, G) => Math.min($, b[G.w] - T.edge(G)), Number.POSITIVE_INFINITY), V = v.node(L);
         S !== Number.POSITIVE_INFINITY && V.borderType !== R && (b[L] = Math.max(b[L], S));
       }
-      return y(E, T.predecessors.bind(T)), y(j, T.successors.bind(T)), Object.keys(v).forEach((L) => b[L] = b[k[L]]), b;
+      return y(E, T.predecessors.bind(T)), y(j, T.successors.bind(T)), Object.keys(w).forEach((L) => b[L] = b[k[L]]), b;
     }
-    function h(w, N, k, v) {
-      let O = new c(), b = w.graph(), T = _(b.nodesep, b.edgesep, v);
+    function h(v, N, k, w) {
+      let O = new c(), b = v.graph(), T = _(b.nodesep, b.edgesep, w);
       return N.forEach((R) => {
         let y;
         R.forEach((E) => {
           let j = k[E];
           if (O.setNode(j), y) {
             var L = k[y], S = O.edge(L, j);
-            O.setEdge(L, j, Math.max(T(w, E, y), S || 0));
+            O.setEdge(L, j, Math.max(T(v, E, y), S || 0));
           }
           y = E;
         });
       }), O;
     }
-    function i(w, N) {
-      return Object.values(N).reduce((k, v) => {
+    function i(v, N) {
+      return Object.values(N).reduce((k, w) => {
         let O = Number.NEGATIVE_INFINITY, b = Number.POSITIVE_INFINITY;
-        Object.entries(v).forEach(([R, y]) => {
-          let E = I(w, R) / 2;
+        Object.entries(w).forEach(([R, y]) => {
+          let E = I(v, R) / 2;
           O = Math.max(y + E, O), b = Math.min(y - E, b);
         });
         const T = O - b;
-        return T < k[0] && (k = [T, v]), k;
+        return T < k[0] && (k = [T, w]), k;
       }, [Number.POSITIVE_INFINITY, null])[1];
     }
-    function a(w, N) {
-      let k = Object.values(N), v = f.applyWithChunking(Math.min, k), O = f.applyWithChunking(Math.max, k);
+    function a(v, N) {
+      let k = Object.values(N), w = f.applyWithChunking(Math.min, k), O = f.applyWithChunking(Math.max, k);
       ["u", "d"].forEach((b) => {
         ["l", "r"].forEach((T) => {
-          let R = b + T, y = w[R];
+          let R = b + T, y = v[R];
           if (y === N) return;
-          let E = Object.values(y), j = v - f.applyWithChunking(Math.min, E);
-          T !== "l" && (j = O - f.applyWithChunking(Math.max, E)), j && (w[R] = f.mapValues(y, (L) => L + j));
+          let E = Object.values(y), j = w - f.applyWithChunking(Math.min, E);
+          T !== "l" && (j = O - f.applyWithChunking(Math.max, E)), j && (v[R] = f.mapValues(y, (L) => L + j));
         });
       });
     }
-    function m(w, N) {
-      return f.mapValues(w.ul, (k, v) => {
+    function m(v, N) {
+      return f.mapValues(v.ul, (k, w) => {
         if (N)
-          return w[N.toLowerCase()][v];
+          return v[N.toLowerCase()][w];
         {
-          let O = Object.values(w).map((b) => b[v]).sort((b, T) => b - T);
+          let O = Object.values(v).map((b) => b[w]).sort((b, T) => b - T);
           return (O[1] + O[2]) / 2;
         }
       });
     }
-    function g(w) {
-      let N = f.buildLayerMatrix(w), k = Object.assign(p(w, N), s(w, N)), v = {}, O;
+    function g(v) {
+      let N = f.buildLayerMatrix(v), k = Object.assign(p(v, N), s(v, N)), w = {}, O;
       ["u", "d"].forEach((T) => {
         O = T === "u" ? N : Object.values(N).reverse(), ["l", "r"].forEach((R) => {
           R === "r" && (O = O.map((L) => Object.values(L).reverse()));
-          let y = (T === "u" ? w.predecessors : w.successors).bind(w), E = d(w, O, k, y), j = u(w, O, E.root, E.align, R === "r");
-          R === "r" && (j = f.mapValues(j, (L) => -L)), v[T + R] = j;
+          let y = (T === "u" ? v.predecessors : v.successors).bind(v), E = d(v, O, k, y), j = u(v, O, E.root, E.align, R === "r");
+          R === "r" && (j = f.mapValues(j, (L) => -L)), w[T + R] = j;
         });
       });
-      let b = i(w, v);
-      return a(v, b), m(v, w.graph().align);
+      let b = i(v, w);
+      return a(w, b), m(w, v.graph().align);
     }
-    function _(w, N, k) {
-      return (v, O, b) => {
-        let T = v.node(O), R = v.node(b), y = 0, E;
+    function _(v, N, k) {
+      return (w, O, b) => {
+        let T = w.node(O), R = w.node(b), y = 0, E;
         if (y += T.width / 2, Object.hasOwn(T, "labelpos"))
           switch (T.labelpos.toLowerCase()) {
             case "l":
@@ -1540,7 +1546,7 @@ const yn = (function() {
               E = T.width / 2;
               break;
           }
-        if (E && (y += k ? E : -E), E = 0, y += (T.dummy ? N : w) / 2, y += (R.dummy ? N : w) / 2, y += R.width / 2, Object.hasOwn(R, "labelpos"))
+        if (E && (y += k ? E : -E), E = 0, y += (T.dummy ? N : v) / 2, y += (R.dummy ? N : v) / 2, y += R.width / 2, Object.hasOwn(R, "labelpos"))
           switch (R.labelpos.toLowerCase()) {
             case "l":
               E = R.width / 2;
@@ -1552,8 +1558,8 @@ const yn = (function() {
         return E && (y += k ? E : -E), E = 0, y;
       };
     }
-    function I(w, N) {
-      return w.node(N).width;
+    function I(v, N) {
+      return v.node(N).width;
     }
   }, { "../util": 27, "@dagrejs/graphlib": 29 }], 22: [function(e, o, l) {
     let c = e("../util"), f = e("./bk").positionX;
@@ -1634,68 +1640,68 @@ const yn = (function() {
     o.exports = t, t.initLowLimValues = i, t.initCutValues = d, t.calcCutValue = h, t.leaveEdge = m, t.enterEdge = g, t.exchangeEdges = _;
     function t(k) {
       k = n(k), p(k);
-      var v = c(k);
-      i(v), d(v, k);
-      for (var O, b; O = m(v); )
-        b = g(v, k, O), _(v, k, O, b);
+      var w = c(k);
+      i(w), d(w, k);
+      for (var O, b; O = m(w); )
+        b = g(w, k, O), _(w, k, O, b);
     }
-    function d(k, v) {
+    function d(k, w) {
       var O = r(k, k.nodes());
-      O = O.slice(0, O.length - 1), O.forEach((b) => u(k, v, b));
+      O = O.slice(0, O.length - 1), O.forEach((b) => u(k, w, b));
     }
-    function u(k, v, O) {
+    function u(k, w, O) {
       var b = k.node(O), T = b.parent;
-      k.edge(O, T).cutvalue = h(k, v, O);
+      k.edge(O, T).cutvalue = h(k, w, O);
     }
-    function h(k, v, O) {
-      var b = k.node(O), T = b.parent, R = !0, y = v.edge(O, T), E = 0;
-      return y || (R = !1, y = v.edge(T, O)), E = y.weight, v.nodeEdges(O).forEach((j) => {
+    function h(k, w, O) {
+      var b = k.node(O), T = b.parent, R = !0, y = w.edge(O, T), E = 0;
+      return y || (R = !1, y = w.edge(T, O)), E = y.weight, w.nodeEdges(O).forEach((j) => {
         var L = j.v === O, S = L ? j.w : j.v;
         if (S !== T) {
-          var V = L === R, $ = v.edge(j).weight;
-          if (E += V ? $ : -$, w(k, O, S)) {
+          var V = L === R, $ = w.edge(j).weight;
+          if (E += V ? $ : -$, v(k, O, S)) {
             var G = k.edge(O, S).cutvalue;
             E += V ? -G : G;
           }
         }
       }), E;
     }
-    function i(k, v) {
-      arguments.length < 2 && (v = k.nodes()[0]), a(k, {}, 1, v);
+    function i(k, w) {
+      arguments.length < 2 && (w = k.nodes()[0]), a(k, {}, 1, w);
     }
-    function a(k, v, O, b, T) {
+    function a(k, w, O, b, T) {
       var R = O, y = k.node(b);
-      return v[b] = !0, k.neighbors(b).forEach((E) => {
-        Object.hasOwn(v, E) || (O = a(k, v, O, E, b));
+      return w[b] = !0, k.neighbors(b).forEach((E) => {
+        Object.hasOwn(w, E) || (O = a(k, w, O, E, b));
       }), y.low = R, y.lim = O++, T ? y.parent = T : delete y.parent, O;
     }
     function m(k) {
-      return k.edges().find((v) => k.edge(v).cutvalue < 0);
+      return k.edges().find((w) => k.edge(w).cutvalue < 0);
     }
-    function g(k, v, O) {
+    function g(k, w, O) {
       var b = O.v, T = O.w;
-      v.hasEdge(b, T) || (b = O.w, T = O.v);
+      w.hasEdge(b, T) || (b = O.w, T = O.v);
       var R = k.node(b), y = k.node(T), E = R, j = !1;
       R.lim > y.lim && (E = y, j = !0);
-      var L = v.edges().filter((S) => j === N(k, k.node(S.v), E) && j !== N(k, k.node(S.w), E));
-      return L.reduce((S, V) => f(v, V) < f(v, S) ? V : S);
+      var L = w.edges().filter((S) => j === N(k, k.node(S.v), E) && j !== N(k, k.node(S.w), E));
+      return L.reduce((S, V) => f(w, V) < f(w, S) ? V : S);
     }
-    function _(k, v, O, b) {
+    function _(k, w, O, b) {
       var T = O.v, R = O.w;
-      k.removeEdge(T, R), k.setEdge(b.v, b.w, {}), i(k), d(k, v), I(k, v);
+      k.removeEdge(T, R), k.setEdge(b.v, b.w, {}), i(k), d(k, w), I(k, w);
     }
-    function I(k, v) {
-      var O = k.nodes().find((T) => !v.node(T).parent), b = s(k, O);
+    function I(k, w) {
+      var O = k.nodes().find((T) => !w.node(T).parent), b = s(k, O);
       b = b.slice(1), b.forEach((T) => {
-        var R = k.node(T).parent, y = v.edge(T, R), E = !1;
-        y || (y = v.edge(R, T), E = !0), v.node(T).rank = v.node(R).rank + (E ? y.minlen : -y.minlen);
+        var R = k.node(T).parent, y = w.edge(T, R), E = !1;
+        y || (y = w.edge(R, T), E = !0), w.node(T).rank = w.node(R).rank + (E ? y.minlen : -y.minlen);
       });
     }
-    function w(k, v, O) {
-      return k.hasEdge(v, O);
+    function v(k, w, O) {
+      return k.hasEdge(w, O);
     }
-    function N(k, v, O) {
-      return O.low <= v.lim && v.lim <= O.lim;
+    function N(k, w, O) {
+      return O.low <= w.lim && w.lim <= O.lim;
     }
   }, { "../util": 27, "./feasible-tree": 23, "./util": 26, "@dagrejs/graphlib": 29 }], 26: [function(e, o, l) {
     const { applyWithChunking: c } = e("../util");
@@ -1718,10 +1724,10 @@ const yn = (function() {
     }
   }, { "../util": 27 }], 27: [function(e, o, l) {
     let c = e("@dagrejs/graphlib").Graph;
-    o.exports = { addBorderNode: i, addDummyNode: f, applyWithChunking: g, asNonCompoundGraph: s, buildLayerMatrix: d, intersectRect: t, mapValues: T, maxRank: _, normalizeRanks: u, notime: N, partition: I, pick: b, predecessorWeights: n, range: O, removeEmptyRanks: h, simplify: p, successorWeights: r, time: w, uniqueId: v, zipObject: R };
+    o.exports = { addBorderNode: i, addDummyNode: f, applyWithChunking: g, asNonCompoundGraph: s, buildLayerMatrix: d, intersectRect: t, mapValues: T, maxRank: _, normalizeRanks: u, notime: N, partition: I, pick: b, predecessorWeights: n, range: O, removeEmptyRanks: h, simplify: p, successorWeights: r, time: v, uniqueId: w, zipObject: R };
     function f(y, E, j, L) {
       for (var S = L; y.hasNode(S); )
-        S = v(L);
+        S = w(L);
       return j.dummy = E, y.setNode(S, j), S;
     }
     function p(y) {
@@ -1825,7 +1831,7 @@ const yn = (function() {
         E(L) ? j.lhs.push(L) : j.rhs.push(L);
       }), j;
     }
-    function w(y, E) {
+    function v(y, E) {
       let j = Date.now();
       try {
         return E();
@@ -1837,7 +1843,7 @@ const yn = (function() {
       return E();
     }
     let k = 0;
-    function v(y) {
+    function w(y) {
       var E = ++k;
       return y + ("" + E);
     }
@@ -1926,9 +1932,9 @@ const yn = (function() {
     }
     function s(r, n, t, d) {
       var u = {}, h = new c(), i, a, m = function(g) {
-        var _ = g.v !== i ? g.v : g.w, I = u[_], w = t(g), N = a.distance + w;
-        if (w < 0)
-          throw new Error("dijkstra does not allow negative edge weights. Bad edge: " + g + " Weight: " + w);
+        var _ = g.v !== i ? g.v : g.w, I = u[_], v = t(g), N = a.distance + v;
+        if (v < 0)
+          throw new Error("dijkstra does not allow negative edge weights. Bad edge: " + g + " Weight: " + v);
         N < I.distance && (I.distance = N, I.predecessor = i, h.decrease(_, N));
       };
       for (r.nodes().forEach(function(g) {
@@ -1968,8 +1974,8 @@ const yn = (function() {
         d.forEach(function(i) {
           var a = t[i];
           d.forEach(function(m) {
-            var g = a[u], _ = h[m], I = a[m], w = g.distance + _.distance;
-            w < I.distance && (I.distance = w, I.predecessor = _.predecessor);
+            var g = a[u], _ = h[m], I = a[m], v = g.distance + _.distance;
+            v < I.distance && (I.distance = v, I.predecessor = _.predecessor);
           });
         });
       }), t;
@@ -2419,15 +2425,15 @@ const yn = (function() {
         var a = new this.constructor({ directed: this._isDirected, multigraph: this._isMultigraph, compound: this._isCompound });
         a.setGraph(this.graph());
         var m = this;
-        Object.entries(this._nodes).forEach(function([I, w]) {
-          i(I) && a.setNode(I, w);
+        Object.entries(this._nodes).forEach(function([I, v]) {
+          i(I) && a.setNode(I, v);
         }), Object.values(this._edgeObjs).forEach(function(I) {
           a.hasNode(I.v) && a.hasNode(I.w) && a.setEdge(I, m.edge(I));
         });
         var g = {};
         function _(I) {
-          var w = m.parent(I);
-          return w === void 0 || a.hasNode(w) ? (g[I] = w, w) : w in g ? g[w] : _(w);
+          var v = m.parent(I);
+          return v === void 0 || a.hasNode(v) ? (g[I] = v, v) : v in g ? g[v] : _(v);
         }
         return this._isCompound && a.nodes().forEach((I) => a.setParent(I, _(I))), a;
       }
@@ -2477,14 +2483,14 @@ const yn = (function() {
       setEdge() {
         var i, a, m, g, _ = !1, I = arguments[0];
         typeof I == "object" && I !== null && "v" in I ? (i = I.v, a = I.w, m = I.name, arguments.length === 2 && (g = arguments[1], _ = !0)) : (i = I, a = arguments[1], m = arguments[3], arguments.length > 2 && (g = arguments[2], _ = !0)), i = "" + i, a = "" + a, m !== void 0 && (m = "" + m);
-        var w = t(this._isDirected, i, a, m);
-        if (Object.hasOwn(this._edgeLabels, w))
-          return _ && (this._edgeLabels[w] = g), this;
+        var v = t(this._isDirected, i, a, m);
+        if (Object.hasOwn(this._edgeLabels, v))
+          return _ && (this._edgeLabels[v] = g), this;
         if (m !== void 0 && !this._isMultigraph)
           throw new Error("Cannot set a named edge when isMultigraph = false");
-        this.setNode(i), this.setNode(a), this._edgeLabels[w] = _ ? g : this._defaultEdgeLabelFn(i, a, m);
+        this.setNode(i), this.setNode(a), this._edgeLabels[v] = _ ? g : this._defaultEdgeLabelFn(i, a, m);
         var N = d(this._isDirected, i, a, m);
-        return i = N.v, a = N.w, Object.freeze(N), this._edgeObjs[w] = N, r(this._preds[a], i), r(this._sucs[i], a), this._in[a][w] = N, this._out[i][w] = N, this._edgeCount++, this;
+        return i = N.v, a = N.w, Object.freeze(N), this._edgeObjs[v] = N, r(this._preds[a], i), r(this._sucs[i], a), this._in[a][v] = N, this._out[i][v] = N, this._edgeCount++, this;
       }
       /**
          * Gets the label for the specified edge.
@@ -2573,8 +2579,8 @@ const yn = (function() {
         var I = g;
         g = _, _ = I;
       }
-      var w = { v: g, w: _ };
-      return m && (w.name = m), w;
+      var v = { v: g, w: _ };
+      return m && (v.name = m), v;
     }
     function u(h, i) {
       return t(h, i.v, i.w, i.name);
@@ -2612,8 +2618,8 @@ const yn = (function() {
   }, { "./graph": 44 }], 47: [function(e, o, l) {
     o.exports = "2.2.4";
   }, {}] }, {}, [1])(1);
-})(), wn = ["unstarted", "started", "completed", "canceled"];
-function vn(e, o) {
+})(), vn = ["unstarted", "started", "completed", "canceled"];
+function wn(e, o) {
   let l = 1;
   const c = () => `${e.slice(0, 40 - String(l).length - 1)}_${l}`;
   for (; o.some((f) => f.id === c()); ) l++;
@@ -2665,7 +2671,7 @@ function Je(e) {
   const o = e.states.find((l) => l.id === e.initial);
   return e.migration ?? (o?.kind === "automated" || o?.kind === "parallel" ? "pin" : "follow");
 }
-const ie = (e) => JSON.parse(JSON.stringify(e));
+const ae = (e) => JSON.parse(JSON.stringify(e));
 function In(e) {
   return e?.admin === !0;
 }
@@ -2720,7 +2726,7 @@ function $e({ migration: e, map: o, ...l }) {
   return JSON.stringify(l);
 }
 function Tn(e, o) {
-  const l = ie(e);
+  const l = ae(e);
   for (const f of l.processes ?? []) {
     const p = o.processes?.find((s) => s.id === f.id);
     if (p && $e(f) !== $e(p) && (f.migration = "follow"), f.map) {
@@ -2749,14 +2755,14 @@ function Tn(e, o) {
 function An(e, o, l) {
   const c = JSON.stringify({ declaration: e, configs: l });
   return {
-    declaration: ie(e),
+    declaration: ae(e),
     expected_generation: o,
-    plugin_configs: ie(l),
+    plugin_configs: ae(l),
     matches: (f, p, s) => o === p && c === JSON.stringify({ declaration: f, configs: s })
   };
 }
 function Sn(e) {
-  const o = ie(e), l = [...new Set(o.declaration.item_types?.flatMap((f) => f.fields) ?? [])], c = (f) => {
+  const o = ae(e), l = [...new Set(o.declaration.item_types?.flatMap((f) => f.fields) ?? [])], c = (f) => {
     const p = l.indexOf(f);
     return p < 0 ? l.length : p;
   };
@@ -2769,7 +2775,7 @@ function Sn(e) {
   return o;
 }
 function Mn(e, o) {
-  return (o.processes ?? []).filter((l) => Je(l) !== "pin" && e.changes.some((c) => c.code === "process " + l.id && c.class !== "cosmetic" && c.class !== "refused")).map((l) => l.id);
+  return (o.processes ?? []).filter((l) => Je(l) !== "pin" && e.changes.some((c) => c.code === "process " + l.id && c.what !== "add" && c.class !== "cosmetic" && c.class !== "refused")).map((l) => l.id);
 }
 function Rn(e, o, l) {
   const c = [l, `item_type ${l}`, `relation ${l}`, `process ${l}`], f = e.refused.filter((p) => c.includes(p.code));
@@ -2786,7 +2792,7 @@ function Jt(e) {
   return e.what === "invalid" ? e.detail || "The definition is invalid." : [e.what === "removed" ? "Items still hold values in this field." : e.code.startsWith("item_type ") && e.what === "remove" ? "Items still use this item type." : e.code.startsWith("relation ") && e.what === "remove" ? "Links still use this relation type." : e.what === "options.remove" ? "Items still hold values in this option field." : e.what === "state.remove" ? "Items still occupy this state. Map them to a surviving state." : e.what === "process" ? "An existing item type cannot change process." : ["type", "form", "cardinality"].includes(e.what) || e.what.startsWith("config.") ? "This change alters the representation of stored values. Add a new field and migrate values first." : e.what === "state.kind" ? "An existing state cannot change kind. Create a new state and map existing items to it." : e.what === "shape" && e.code.startsWith("relation ") ? "Existing links prevent a cardinality or symmetry change." : "Stored data or a schema dependency prevents this change.", e.detail, e.count ? `${e.count} items` : ""].filter(Boolean).join(" ");
 }
 function $n(e, o) {
-  if (!(e instanceof re)) return [];
+  if (!(e instanceof ie)) return [];
   const l = e.details ?? {};
   let c = typeof l.field == "string" ? l.field : "";
   if (!c) {
@@ -2811,9 +2817,9 @@ function Fn(e, o) {
   return { pack: e.id, version: e.version, expected_generation: o };
 }
 async function Un(e, o) {
-  const l = { ...ie(e), resolutions: ie(e.resolutions ?? {}) };
+  const l = { ...ae(e), resolutions: ae(e.resolutions ?? {}) };
   let c = await o(l);
-  return l.maps || (l.maps = ie(c.maps), c = await o(l)), { request: l, plan: c };
+  return l.maps || (l.maps = ae(c.maps), c = await o(l)), { request: l, plan: c };
 }
 function Ht() {
   let e = 0;
@@ -2849,9 +2855,9 @@ export {
   Vn as E,
   Ln as F,
   _n as G,
-  re as H,
+  ie as H,
   Ge as I,
-  vn as J,
+  wn as J,
   Nn as K,
   En as L,
   kn as M,
@@ -2860,7 +2866,7 @@ export {
   Dn as P,
   Tn as Q,
   Mn as R,
-  ie as S,
+  ae as S,
   Fn as T,
   Un as U,
   Sn as V,
@@ -2877,7 +2883,7 @@ export {
   fn as g,
   yn as h,
   On as i,
-  ae as j,
+  se as j,
   Be as k,
   Ht as l,
   jn as m,
@@ -2893,6 +2899,6 @@ export {
   ze as w,
   ye as x,
   _t as y,
-  wn as z
+  vn as z
 };
-//# sourceMappingURL=usePackDiscovery-BCCFCjF1.js.map
+//# sourceMappingURL=usePackDiscovery-DxOnata5.js.map
