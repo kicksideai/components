@@ -11,9 +11,10 @@ function expand(value) {
   if (Array.isArray(value)) return value.map(expand)
   if (!value || typeof value !== 'object') return value
   if (value.$work_ref) {
-    const definition = vocabulary.definitions[value.$work_ref]
-    if (!definition) throw new Error(`Unknown schema ${value.$work_ref}`)
-    return expand(definition)
+    const { $work_ref, ...annotations } = value
+    const definition = vocabulary.definitions[$work_ref]
+    if (!definition) throw new Error(`Unknown schema ${$work_ref}`)
+    return { ...expand(definition), ...expand(annotations) }
   }
   return Object.fromEntries(Object.entries(value).map(([key, member]) => [key, expand(member)]))
 }
@@ -67,11 +68,12 @@ async function output(path, value) {
 }
 
 function adapterSchema(source) {
-  const schema = expand(source)
-  if (source.optional_board_id) {
+  const { optional_board_id, tool_output, ...reference } = source
+  const schema = expand(reference)
+  if (optional_board_id) {
     schema.required = schema.required.filter(key => key !== 'board_id')
   }
-  if (source.tool_output) {
+  if (tool_output) {
     schema.properties.success = expand({ $work_ref: 'tool_success' })
     schema.required = [...(schema.required ?? []), 'success']
   }
