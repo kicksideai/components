@@ -28,7 +28,7 @@ import { sectionRow } from '../../shared/sectionRow'
 import BuilderFamilies from './BuilderFamilies.vue'
 import BuilderChannels from './BuilderChannels.vue'
 import BuilderPlugins from './BuilderPlugins.vue'
-import { pluginPending } from './plugin-state'
+import { usePluginOperations } from './plugin-state'
 import BuilderPolicy from './BuilderPolicy.vue'
 import BuilderDeclaration from './BuilderDeclaration.vue'
 import { requestGeneration } from '../../shared/requests'
@@ -244,7 +244,6 @@ const reviewChanges = computed(() => plan.value
 
 
 const loads = requestGeneration()
-const pluginReads = requestGeneration()
 const loading = ref(false)
 let editRevision = 0
 watch([draft, removed, pluginConfigs], () => {
@@ -292,20 +291,13 @@ const visible = useHostVisibilityRefresh(async () => {
   if (!dirty.value && !busy.value) await load()
   else if (view.value === 'Plugins' && !busy.value) await refreshPluginStatus()
 })
-onUnmounted(() => { unsubscribe(); reviews.begin(); loads.begin(); pluginReads.begin() })
-const pollPlugins = computed(() => visible.value !== false && view.value === 'Plugins' && !busy.value &&
-  schema.value?.plugins.some(plugin => pluginPending(plugin, schema.value!.as_of)) === true)
-watch(pollPlugins, (pending, _, cleanup) => {
-  if (!pending) return
-  let timer: ReturnType<typeof setTimeout>
-  let active = true
-  const schedule = () => {
-    timer = setTimeout(async () => {
-      if (await refreshPluginStatus() && active && pollPlugins.value) schedule()
-    }, 2000)
-  }
-  schedule()
-  cleanup(() => { active = false; clearTimeout(timer) })
+onUnmounted(() => { unsubscribe(); reviews.begin(); loads.begin() })
+const { refreshPluginStatus, resetPlugin, resumePluginProjection, clearShellBinding } = usePluginOperations({
+  catalogId: () => props.catalogId,
+  shouldPoll: () => visible.value !== false && view.value === 'Plugins',
+  schema, options, busy, stale, editable, saved,
+  clearError: () => { error.value = undefined },
+  reportError: reportSchemaError,
 })
 watch(() => props.catalogId, () => { reviews.begin(); busy.value = false; stale.value = false; schema.value = null; options.value = null; discard(); void load() })
 
@@ -530,83 +522,6 @@ async function apply() {
   } finally {
     if (reviews.current(generation)) busy.value = false
   }
-}
-
-async function refreshPluginStatus(showError = false) {
-  const id = props.catalogId, current = schema.value, request = pluginReads.begin()
-  try {
-    const [updated, available] = await Promise.all([pim.schema(id), showError ? pim.schemaOptions(id) : undefined])
-    if (!current || !pluginReads.current(request) || id !== props.catalogId || schema.value !== current) return false
-    current.plugins = updated.plugins
-    current.as_of = updated.as_of
-    if (available) options.value = available
-    return true
-  } catch (cause) {
-    if (showError && pluginReads.current(request) && id === props.catalogId) reportSchemaError(cause, 'Could not check plugin status.')
-    return false
-  }
-}
-
-async function resetPlugin(plugin: string) {
-  const id = props.catalogId
-  const active = schema.value?.plugins.find(row => row.plugin === plugin && row.active && row.installed)
-  if (!active?.config || busy.value || stale.value || !editable.value) return
-  if (!await host.confirm({
-    header: 'Reset background updates?',
-    message: 'Background updates will start from a new catalog event. Current product data will be rebuilt into the plugin’s index. Earlier events will be skipped.',
-    acceptLabel: 'Reset background updates',
-    rejectLabel: 'Cancel',
-  }) || props.catalogId !== id) return
-  if (busy.value) return
-  const action = reviews.begin()
-  pluginReads.begin()
-  busy.value = true
-  error.value = undefined
-  saved.value = ''
-  try {
-    await pim.configurePlugin(id, plugin, clone(active.config), true)
-    if (reviews.current(action) && await refreshPluginStatus(true) && reviews.current(action)) {
-      saved.value = 'Background update reset requested.'
-    }
-  } catch (e) {
-    if (reviews.current(action)) reportSchemaError(e, 'Could not reset background updates.')
-  } finally { if (reviews.current(action)) busy.value = false }
-}
-
-async function resumePluginProjection(cursorId: string) {
-  const id = props.catalogId
-  if (busy.value || stale.value || !editable.value) return
-  busy.value = true
-  error.value = undefined
-  saved.value = ''
-  try {
-    await pim.resumePluginProjection(id, cursorId)
-    if (props.catalogId === id && await refreshPluginStatus(true)) saved.value = 'Background update resumed.'
-  } catch (cause) {
-    if (props.catalogId === id) reportSchemaError(cause, 'Could not resume the background update.')
-  } finally { if (props.catalogId === id) busy.value = false }
-}
-
-async function clearShellBinding(binding: string) {
-  const id = props.catalogId
-  if (busy.value || stale.value || !editable.value) return
-  if (!await host.confirm({
-    header: 'Clear catalog app binding?',
-    message: 'The catalog will use the default app after this setting is saved.',
-    acceptLabel: 'Clear binding',
-    rejectLabel: 'Cancel',
-  }) || props.catalogId !== id || busy.value || !editable.value ||
-    !schema.value?.plugins.some(plugin => plugin.references?.shell_bindings.includes(binding))) return
-  busy.value = true
-  error.value = undefined
-  saved.value = ''
-  try {
-    await pim.updateCatalogApp(id, '')
-    if (props.catalogId !== id) return
-    if (await refreshPluginStatus(true)) saved.value = 'Catalog app binding cleared.'
-  } catch (cause) {
-    if (props.catalogId === id) reportSchemaError(cause, 'Could not clear the catalog app binding.')
-  } finally { if (props.catalogId === id) busy.value = false }
 }
 
 async function openDefaults() {
