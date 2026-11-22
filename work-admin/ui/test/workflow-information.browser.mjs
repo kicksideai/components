@@ -29,7 +29,7 @@ async function run(width, colorScheme) {
   const admin = shell.locator('kickside-work-admin')
   const settings = admin.locator('kickside-work-board-settings')
   const rail = settings.getByRole('navigation', { name: 'Board settings sections' })
-  const workflow = settings.getByRole('region', { name: 'Process editor' })
+  const workflow = settings.getByRole('region', { name: 'Workflow editor' })
   const transition = workflow.getByRole('complementary', { name: 'Transition inspector' })
   const state = workflow.getByRole('complementary', { name: 'State inspector' })
   const approval = state.getByRole('region', { name: 'Approval sources' })

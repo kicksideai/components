@@ -89,10 +89,10 @@ it('guards referenced removal and edits a shared limit without seeding one on se
 })
 it('keeps the process selector conditional and uses one creation action', async () => {
   const { draft, w } = editor()
-  expect(w.find('[aria-label="Process"]').exists()).toBe(false)
+  expect(w.find('[aria-label="Workflow"]').exists()).toBe(false)
   draft.processes!.push({ id: 'other', name: 'Other flow', initial: 'ready', states: [{ id: 'ready', name: 'Ready', category: 'unstarted' }] })
   await flushPromises()
-  const picker = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Process')!
+  const picker = w.findAllComponents(Select).find(c => c.props('ariaLabel') === 'Workflow')!
   expect(picker.props('options')?.map(option => option.value)).toEqual(['delivery', 'other'])
   await w.get('button[aria-label="New process"]').trigger('click'); await flushPromises()
   expect(w.get('dialog').attributes('open')).toBeDefined()
