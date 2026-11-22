@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.35](https://github.com/kicksideai/components/compare/work-v0.1.34...work-v0.1.35) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work:** satisfy module conventions and refresh dependency notices ([#355](https://github.com/kicksideai/components/issues/355)) ([604a745](https://github.com/kicksideai/components/commit/604a745e711ffe4d38f506052bfc2b0fbcd6a896))
+
 ## [0.1.34](https://github.com/kicksideai/components/compare/work-v0.1.33...work-v0.1.34) (2026-11-22)
 
 
