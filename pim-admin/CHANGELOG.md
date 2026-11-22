@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.14](https://github.com/kicksideai/components/compare/pim-admin-v0.1.13...pim-admin-v0.1.14) (2026-11-22)
+
+
+### Bug Fixes
+
+* **pim-admin:** restore plugin recovery and align catalog settings ([#336](https://github.com/kicksideai/components/issues/336)) ([ffbe273](https://github.com/kicksideai/components/commit/ffbe273a73d4483b5520c4e8908f03aeadc7ce5e))
+
 ## [0.1.13](https://github.com/kicksideai/components/compare/pim-admin-v0.1.12...pim-admin-v0.1.13) (2026-11-21)
 
 
