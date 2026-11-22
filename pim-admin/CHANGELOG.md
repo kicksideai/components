@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.15](https://github.com/kicksideai/components/compare/pim-admin-v0.1.14...pim-admin-v0.1.15) (2026-11-22)
+
+
+### Bug Fixes
+
+* **pim-admin:** give filter set details the full list width ([#341](https://github.com/kicksideai/components/issues/341)) ([d22e1b5](https://github.com/kicksideai/components/commit/d22e1b51851875cb2326b31ae690157c93141ab0))
+* preserve admin locations and expose plugin identifiers ([#339](https://github.com/kicksideai/components/issues/339)) ([a26a9b2](https://github.com/kicksideai/components/commit/a26a9b235d5d0f9d84865a0dbcd4e4e21eb661eb))
+
 ## [0.1.14](https://github.com/kicksideai/components/compare/pim-admin-v0.1.13...pim-admin-v0.1.14) (2026-11-22)
 
 

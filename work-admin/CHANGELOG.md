@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.17](https://github.com/kicksideai/components/compare/work-admin-v0.1.16...work-admin-v0.1.17) (2026-11-22)
+
+
+### Bug Fixes
+
+* preserve admin locations and expose plugin identifiers ([#339](https://github.com/kicksideai/components/issues/339)) ([a26a9b2](https://github.com/kicksideai/components/commit/a26a9b235d5d0f9d84865a0dbcd4e4e21eb661eb))
+
 ## [0.1.16](https://github.com/kicksideai/components/compare/work-admin-v0.1.15...work-admin-v0.1.16) (2026-11-22)
 
 
