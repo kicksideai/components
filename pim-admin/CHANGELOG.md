@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.22](https://github.com/kicksideai/components/compare/pim-admin-v0.1.21...pim-admin-v0.1.22) (2026-11-22)
+
+
+### Bug Fixes
+
+* refine PIM catalog and administration boundaries ([#390](https://github.com/kicksideai/components/issues/390)) ([44ce6b3](https://github.com/kicksideai/components/commit/44ce6b31279a9f6d4446d735a64b723bc9e990d8))
+
 ## [0.1.21](https://github.com/kicksideai/components/compare/pim-admin-v0.1.20...pim-admin-v0.1.21) (2026-11-22)
 
 
