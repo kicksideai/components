@@ -5,10 +5,10 @@
   "sso": "0.1.46",
   "storage-s3": "0.2.4",
   "docscout": "0.1.18",
-  "work": "0.1.36",
+  "work": "0.1.37",
   "pim": "0.1.19",
-  "pim-admin": "0.1.20",
-  "work-admin": "0.1.24",
+  "pim-admin": "0.1.21",
+  "work-admin": "0.1.25",
   "work-search": "0.1.3",
   "work-planning": "0.1.4"
 }
