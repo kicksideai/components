@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.19](https://github.com/kicksideai/components/compare/work-admin-v0.1.18...work-admin-v0.1.19) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work-admin:** clarify approval routes and move requirements ([#345](https://github.com/kicksideai/components/issues/345)) ([e15400d](https://github.com/kicksideai/components/commit/e15400d7ff734dcabcb0131416b8dd88fd06a6e1))
+
 ## [0.1.18](https://github.com/kicksideai/components/compare/work-admin-v0.1.17...work-admin-v0.1.18) (2026-11-22)
 
 
