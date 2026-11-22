@@ -101,9 +101,9 @@ returns the operator to the board directory. The board name groups its General
 settings. A schema draft shows Unsaved changes, Discard and Review changes in
 the section header.
 Review changes keeps the active section behind the review. Schema changes use
-the existing plan/apply snapshot. Board identity,
-the opening-app binding, sharing and settings for already active plugins use
-their existing independent write endpoints. Board identity uses `wc-icon-picker`.
+the existing plan/apply snapshot, including plugin activation and configuration.
+Board identity, the opening-app binding and sharing use their existing independent
+write endpoints. Board identity uses `wc-icon-picker`.
 The administrator can choose a registered opening app by title where the Work
 binding contract is available. Clearing the selection uses the installation
 default. General presents the board name, app and key prefix as inline controls.
@@ -129,12 +129,14 @@ Workflow shows caller-visible item counts for the committed workflow and edits
 limits and requirements on the state where they apply. Map and List use the
 same transition inspector. Installed checks and query filters come from Work
 registry metadata. Each plugin row places its title and description beside the
-activation switch. A badge signals a pending change, configuration needed, or a
-health issue. An invalid configuration shows its first field error in the row
-summary. Required fields are marked, and manifest suggestions appear beside the
-control. Only entered overrides are sent for newly activated plugins, so Work can
-apply deployment settings to omitted optional fields. Reset projection explains
-the effect and asks for confirmation before starting recovery.
+activation switch. Turning on a plugin opens its row. A badge below the description
+signals a pending change, configuration needed, or a health issue. An invalid
+configuration shows its first field error even when the row is collapsed. Required
+fields are marked, and manifest suggestions appear beside the control. Only entered
+overrides are sent for newly activated plugins, so Work can apply deployment
+settings to omitted optional fields. Technical details shows projection health and
+indexed progress. Reset projection explains the effect and asks for confirmation
+before starting recovery.
 
 Access is an ADMIN-only section. The board header and Access open the same shared
 `kickside-share` widget for the board component’s grants and share routes.
