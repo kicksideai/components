@@ -34,7 +34,7 @@ local function cases()
                 local exists, exists_err = bundle:exists(entry.meta.entry_point :: string)
                 test.is_nil(exists_err)
                 test.is_true(exists)
-                local response, err = http_client.request("GET", "http://127.0.0.1:19241/kickside-work-admin/" .. entry.meta.entry_point)
+                local response, err = http_client.request("GET", session.url("/kickside-work-admin/" .. entry.meta.entry_point))
                 test.is_nil(err, tostring(err)); test.eq(response.status_code, 200)
                 test.is_true(#response.body > 100)
             end
