@@ -86,9 +86,10 @@
   cursor: default;
 }
 .pim-overview-card .kx-head-icon { grid-column: 1; align-self: center; }
-.pim-overview-card .kx-card-id, .pim-overview-card .kx-card-desc, .pim-overview-action { grid-column: 2; }
-.pim-overview-action.p-button { justify-self: start; padding-inline: 0; font-size: 13px; }
-.pim-overview-action::after { content: ""; position: absolute; inset: 0; }
+.pim-overview-card .kx-card-id, .pim-overview-card .kx-card-desc, .pim-overview-actions { grid-column: 2; }
+.pim-overview-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0 16px; }
+.pim-overview-action { padding-inline: 0; font-size: 13px; }
+.pim-overview-action:only-child::after { content: ""; position: absolute; inset: 0; }
 .pim-ia-action h3, .pim-access-card h3 { font-size: 14px; font-weight: 600; }
 .pim-ia-action { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pim-plugin-recovery > button { justify-self: start; }

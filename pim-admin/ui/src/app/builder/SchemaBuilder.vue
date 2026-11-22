@@ -33,7 +33,7 @@ import BuilderPolicy from './BuilderPolicy.vue'
 import BuilderDeclaration from './BuilderDeclaration.vue'
 import { requestGeneration } from '../../shared/requests'
 import { reconcileRemovals, reviewedRequest } from '../../state'
-import { humanize } from '../../forms'
+import { configFieldLabel, display, humanize } from '../../forms'
 import { humanLabel } from '../../shared/labels'
 import { presentError, SCHEMA_CONFLICT, type PluginConfigRefusal } from '../../shared/transport'
 
@@ -41,7 +41,7 @@ const props = defineProps<{ catalogId: string; embedded?: boolean; title?: strin
 const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean]; navigate: [route: string] }>()
 
 const navigation = {
-  General: { question: 'What is this catalog for?', items: [
+  General: { question: 'Catalog setup', items: [
     { label: 'Overview', icon: 'tabler:layout-dashboard' },
     { label: 'History', icon: 'tabler:history' },
   ] },
@@ -76,6 +76,7 @@ const handoffDestination = computed(() => handoff.value?.from === 'Channels' ? '
 const advanced = ref<'defaults' | 'declaration'>()
 const advancedVisible = ref(false)
 const content = ref<HTMLElement>()
+const saved = ref('')
 const sectionOptions = (Object.keys(navigation) as Section[]).map(name => ({
   heading: name === 'Channels' ? 'Publishing and imports' : name,
   items: navigation[name].items.map(item => ({ ...item, value: item.label, section: name })),
@@ -106,7 +107,10 @@ function openRoute(next: Section, nextView: string, row = '') {
   section.value = next
   view.value = nextView
   selectedRow.value = row ? sectionKeys[nextView] + '/' + row : ''
-  if (changed && content.value) content.value.scrollTop = 0
+  if (changed) {
+    saved.value = ''
+    if (content.value) content.value.scrollTop = 0
+  }
 }
 function setLocation(next: Section, nextView: string, row = '') {
   openRoute(next, nextView, row)
@@ -189,7 +193,6 @@ const stale = ref(false)
 const errorPanel = ref<ComponentPublicInstance | null>(null)
 const busy = ref(false)
 const editable = computed(() => schema.value?.access.admin === true)
-const saved = ref('')
 const plan = ref<SchemaPlan | null>(null)
 const showReview = ref(false)
 const acknowledgeRemoval = ref(false)
@@ -227,10 +230,14 @@ const changeLabels: Record<string, string> = {
   unique: 'Unique values',
   width: 'Change the width on product forms',
 }
-const reviewed = ref<ReturnType<typeof reviewedRequest> | null>(null)
+const reviewed = ref<(ReturnType<typeof reviewedRequest> & {
+  schemaChanges: boolean
+  initialConfigs: PluginConfigs
+  activeConfigs: PluginConfigs
+}) | null>(null)
 const valid = ref(true)
 const reviews = requestGeneration()
-const canApply = computed(() => showReview.value && schemaDirty.value && (!destructive.value.length || acknowledgeRemoval.value) && !stale.value && valid.value && !!plan.value && plan.value.class !== 'refused' && !!reviewed.value?.matches(request.value, schema.value?.schema_generation ?? -1, initialConfigs.value))
+const canApply = computed(() => showReview.value && dirty.value && (!destructive.value.length || acknowledgeRemoval.value) && !stale.value && valid.value && !!plan.value && plan.value.class !== 'refused' && !!reviewed.value?.matches(request.value, schema.value?.schema_generation ?? -1, pluginConfigs.value))
 const reviewChanges = computed(() => plan.value
   ? [...plan.value.refused, ...plan.value.changes.filter(change => change.class !== 'refused')]
   : [])
@@ -240,7 +247,11 @@ const loads = requestGeneration()
 const pluginReads = requestGeneration()
 const loading = ref(false)
 let editRevision = 0
-watch([draft, removed, pluginConfigs], () => { editRevision++; closeReview() }, { deep: true, flush: 'sync' })
+watch([draft, removed, pluginConfigs], () => {
+  editRevision++
+  saved.value = ''
+  closeReview()
+}, { deep: true, flush: 'sync' })
 async function load(replaceDraft = false, preserveActiveConfigs = false) {
   if (dirty.value && !replaceDraft) return
   const generation = loads.begin(), revision = editRevision, id = props.catalogId
@@ -250,7 +261,8 @@ async function load(replaceDraft = false, preserveActiveConfigs = false) {
   pluginRefusal.value = undefined
   try {
     const [view, opts] = await Promise.all([pim.schema(id), pim.schemaOptions(id)])
-    if (!loads.current(generation) || revision !== editRevision || id !== props.catalogId) return
+    if (!loads.current(generation) || revision !== editRevision || id !== props.catalogId) return false
+    const notice = saved.value
     schema.value = view
     options.value = opts
     draft.value = clone(view.declaration)
@@ -259,8 +271,11 @@ async function load(replaceDraft = false, preserveActiveConfigs = false) {
     closeReview()
     valid.value = true
     stale.value = false
+    saved.value = notice
+    return true
   } catch (e) {
     if (loads.current(generation)) error.value = presentError(e, 'Could not load settings.')
+    return false
   } finally {
     if (loads.current(generation)) loading.value = false
   }
@@ -322,7 +337,7 @@ const overview = computed(() => [
     detail: draft.value.dimensions?.map(dimension => humanize(dimension.name)).join(', ') || 'Add dimensions when values vary by language, region or another context.' },
   { section: 'Channels' as const, label: 'Publishing and imports', icon: 'tabler:arrows-exchange',
     summary: [count(channels.value.length, 'channel'), count(sources.value.length, 'source')].join(' · '),
-    detail: channels.value.map(channel => humanize(channel.id)).join(', ') || 'Add a release destination when products are ready to publish.' },
+    detail: 'Publish products to channels and control incoming updates through sources.' },
   { section: 'Plugins' as const, label: 'Catalog tools', icon: 'tabler:puzzle',
     summary: count(activePlugins.value.length, 'plugin') + ' enabled',
     detail: activePlugins.value.map(plugin => humanLabel(plugin.title, 'Catalog plugin')).join(', ') || 'Open Plugins to see which tools you can enable.' },
@@ -350,9 +365,6 @@ const request = computed<Declaration>(() => {
   }
   return out
 })
-
-watch(schemaDirty, (d) => { if (!d) closeReview() })
-watch([request, initialConfigs], closeReview, { deep: true })
 
 function changeSubject(code: string): string {
   const [kind, id] = code.split(' ', 2)
@@ -397,6 +409,26 @@ const localChanges = computed(() => {
   ]
 })
 
+const reviewedPluginConfigs = computed(() => {
+  const snapshot = reviewed.value
+  if (!snapshot) return []
+  const activated = snapshot.declaration.plugins?.filter(entry => !schema.value?.plugins.some(plugin => plugin.plugin === entry.use && plugin.active)) ?? []
+  const ids = new Set([...activated.map(entry => entry.use), ...Object.keys(snapshot.activeConfigs)])
+  return [...ids].flatMap(id => {
+    const option = options.value?.plugins.find(plugin => plugin.plugin === id)
+    if (!option || !Object.keys(option.config_schema.properties ?? {}).length) return []
+    const values = snapshot.pluginConfigs[id] ?? {}
+    const fields = Object.entries(values).map(([key, value]) => configFieldLabel(option.config_schema, key) + ' · ' + display(value))
+    if (id in snapshot.activeConfigs) {
+      const previous = schema.value?.plugins.find(plugin => plugin.plugin === id)?.config ?? {}
+      for (const key of Object.keys(previous)) {
+        if (!(key in values)) fields.push(configFieldLabel(option.config_schema, key) + ' · Uses default')
+      }
+    }
+    return [{ id, title: humanLabel(option.title, 'Plugin'), fields: fields.length ? fields : ['Uses defaults'] }]
+  })
+})
+
 function reportSchemaError(cause: unknown, fallback: string) {
   const presented = presentError(cause, fallback)
   const rejection = presented.pluginConfig
@@ -425,14 +457,22 @@ async function reloadSettings() {
 }
 
 async function review() {
-  if (!schema.value || !schemaDirty.value || !valid.value || stale.value) return
+  if (!schema.value || !dirty.value || !valid.value || stale.value || busy.value) return
   const generation = reviews.begin()
-  const snapshot = reviewedRequest(request.value, schema.value.schema_generation, initialConfigs.value)
+  const snapshot = {
+    ...reviewedRequest(request.value, schema.value.schema_generation, pluginConfigs.value),
+    schemaChanges: schemaDirty.value,
+    initialConfigs: clone(initialConfigs.value),
+    activeConfigs: clone(Object.fromEntries(Object.entries(pluginConfigs.value).filter(([id]) =>
+      schema.value?.plugins.some(plugin => plugin.plugin === id && plugin.active) && !request.value.remove?.plugins?.includes(id)))),
+  }
   busy.value = true
   error.value = undefined
   try {
-    const response = await pim.planSchema(props.catalogId, snapshot.declaration, snapshot.generation, snapshot.pluginConfigs)
-    if (!reviews.current(generation) || !snapshot.matches(request.value, schema.value.schema_generation, initialConfigs.value) || !valid.value) return
+    const response = snapshot.schemaChanges
+      ? await pim.planSchema(props.catalogId, snapshot.declaration, snapshot.generation, snapshot.initialConfigs)
+      : { generation: snapshot.generation, class: 'configuration', changes: [], refused: [] }
+    if (!reviews.current(generation) || !snapshot.matches(request.value, schema.value.schema_generation, pluginConfigs.value) || !valid.value) return
     reviewed.value = snapshot
     acknowledgeRemoval.value = false
     plan.value = response
@@ -453,18 +493,36 @@ async function review() {
 async function apply() {
   if (!schema.value || !dirty.value || !canApply.value || !reviewed.value) return
   const id = props.catalogId, generation = reviews.begin()
+  const snapshot = reviewed.value
+  const current = () => id === props.catalogId && reviews.current(generation)
   busy.value = true
   error.value = undefined
   saved.value = ''
+  let configurationWritten = false
   try {
-    const out = await pim.applySchema(id, reviewed.value.declaration, reviewed.value.generation, reviewed.value.pluginConfigs)
-    if (id !== props.catalogId || !reviews.current(generation)) return
-    await load(true, true)
-    if (id !== props.catalogId || !reviews.current(generation)) return
+    if (snapshot.schemaChanges) {
+      const out = await pim.applySchema(id, snapshot.declaration, snapshot.generation, snapshot.initialConfigs)
+      if (!current()) return
+      const loaded = await load(true, true)
+      if (!current()) return
+      emit('applied', out.generation)
+      if (!loaded) return
+    }
+    try {
+      for (const [plugin, config] of Object.entries(snapshot.activeConfigs)) {
+        await pim.configurePlugin(id, plugin, config)
+        if (!current()) return
+        configurationWritten = true
+        delete pluginConfigs.value[plugin]
+      }
+    } finally {
+      if (configurationWritten && current()) await refreshPluginStatus(true)
+    }
+    if (!current() || error.value) return
+    pluginRefusal.value = undefined
     saved.value = 'Catalog changes applied.'
-    emit('applied', out.generation)
   } catch (e) {
-    if (id !== props.catalogId || !reviews.current(generation)) return
+    if (!current()) return
     closeReview()
     reportSchemaError(e, 'Could not apply the change.')
     await nextTick()
@@ -489,27 +547,6 @@ async function refreshPluginStatus(showError = false) {
   }
 }
 
-async function configure(plugin: string, config: Record<string, unknown>, reset = false) {
-  if (busy.value || stale.value || !editable.value) return
-  const id = props.catalogId, generation = loads.begin(), action = reviews.begin()
-  pluginReads.begin()
-  busy.value = true
-  error.value = undefined
-  saved.value = ''
-  try {
-    const snapshot = JSON.stringify(config)
-    if (reset) await pim.configurePlugin(id, plugin, clone(config), true)
-    else await pim.configurePlugin(id, plugin, clone(config))
-    if (id !== props.catalogId || !loads.current(generation)) return
-    if (!await refreshPluginStatus(true) || id !== props.catalogId || !loads.current(generation)) return
-    if (!reset && JSON.stringify(pluginConfigs.value[plugin]) === snapshot) delete pluginConfigs.value[plugin]
-    if (pluginRefusal.value?.plugin === plugin) pluginRefusal.value = undefined
-    saved.value = reset ? 'Background update reset requested.' : 'Configuration saved'
-  } catch (e) {
-    if (id === props.catalogId && reviews.current(action)) reportSchemaError(e, reset ? 'Could not reset background updates.' : 'Could not save configuration.')
-  } finally { if (reviews.current(action)) busy.value = false }
-}
-
 async function resetPlugin(plugin: string) {
   const id = props.catalogId
   const active = schema.value?.plugins.find(row => row.plugin === plugin && row.active && row.installed)
@@ -520,7 +557,20 @@ async function resetPlugin(plugin: string) {
     acceptLabel: 'Reset background updates',
     rejectLabel: 'Cancel',
   }) || props.catalogId !== id) return
-  await configure(plugin, active.config, true)
+  if (busy.value) return
+  const action = reviews.begin()
+  pluginReads.begin()
+  busy.value = true
+  error.value = undefined
+  saved.value = ''
+  try {
+    await pim.configurePlugin(id, plugin, clone(active.config), true)
+    if (reviews.current(action) && await refreshPluginStatus(true) && reviews.current(action)) {
+      saved.value = 'Background update reset requested.'
+    }
+  } catch (e) {
+    if (reviews.current(action)) reportSchemaError(e, 'Could not reset background updates.')
+  } finally { if (reviews.current(action)) busy.value = false }
 }
 
 async function resumePluginProjection(cursorId: string) {
@@ -603,7 +653,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
         <section ref="content" class="kx-main-scroll" :aria-label="view" tabindex="-1">
           <SettingsSectionHead v-if="schema && options" :title="view" :description="questions[view]">
             <template v-if="editable && dirty" #actions>
-              <SettingsDraftActions :busy="busy" :review-disabled="!valid || stale || !schemaDirty"
+              <SettingsDraftActions :busy="busy" :review-disabled="!valid || stale"
                 @discard="discard" @review="review" />
             </template>
           </SettingsSectionHead>
@@ -638,10 +688,16 @@ function remove(kind: keyof RemoveDecl, id: string) {
                         <p class="kx-card-meta">{{ card.summary }}</p>
                       </div>
                       <p class="kx-card-desc">{{ card.detail }}</p>
-                      <Button type="button" text class="pim-overview-action" @click="selectSection(card.section)">
-                        {{ card.section === 'Products' ? (setupEmpty ? 'Set up products' : 'View families') : 'View ' + card.section.toLowerCase() }}
-                        <Icon icon="tabler:arrow-right" aria-hidden="true" />
-                      </Button>
+                      <div class="pim-overview-actions">
+                        <Button type="button" text class="pim-overview-action" @click="selectSection(card.section)">
+                          {{ card.section === 'Products' ? (setupEmpty ? 'Set up products' : 'View families') : 'View ' + card.section.toLowerCase() }}
+                          <Icon icon="tabler:arrow-right" aria-hidden="true" />
+                        </Button>
+                        <Button v-if="card.section === 'Channels'" type="button" text class="pim-overview-action" @click="selectSection('Channels', 'Sources')">
+                          Manage sources
+                          <Icon icon="tabler:arrow-right" aria-hidden="true" />
+                        </Button>
+                      </div>
                     </section>
                   </div>
                   <Disclosure label="Advanced"><div class="pim-advanced-actions">
@@ -658,8 +714,9 @@ function remove(kind: keyof RemoveDecl, id: string) {
 
                 <template v-else-if="section === 'Products'">
                   <BuilderFamilies v-if="view === 'Families'" :draft="draft" :schema="schema" :options="options" @remove="remove" @fields="showFields" @variant-field="createVariantField" />
-                  <BuilderFields v-else-if="view === 'Fields'" v-model:family="familyFilter" :draft="draft" :schema="schema" :options="options" @remove="remove" />
-                  <LayoutEditor v-else :draft="draft" :schema="schema" :types="options.types" />
+                  <BuilderFields v-else-if="view === 'Fields'" v-model:family="familyFilter" :draft="draft" :schema="schema" :options="options"
+                    @remove="remove" @layout="selectSection('Products', 'Form layout')" />
+                  <LayoutEditor v-else :draft="draft" :schema="schema" :types="options.types" @families="selectSection('Products', 'Families')" />
                 </template>
                 <template v-else-if="section === 'Values'">
                   <BuilderDimensions v-if="view === 'Dimensions'" :draft="draft" :schema="schema" @remove="remove" />
@@ -668,7 +725,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
                 <BuilderChannels v-else-if="section === 'Channels'" :catalog-id="catalogId" :draft="draft" :schema="schema" :view="view === 'Sources' ? 'sources' : 'channels'" @remove="remove" @requirements="showRequirements" />
                 <CatalogShare v-else-if="section === 'Access'" :catalog-id="catalogId" :title="title || 'Catalog'" :access="schema.access" />
                 <BuilderPlugins v-else :draft="draft" :schema="schema" :options="options" :plugin-configs="pluginConfigs" :refusal="pluginRefusal" :stale="stale"
-                  @configure="configure" @remove="remove" @reset="resetPlugin" @clear-refusal="pluginRefusal = undefined"
+                  @remove="remove" @reset="resetPlugin" @clear-refusal="pluginRefusal = undefined"
                   @refresh="refreshPluginStatus(true)" @resume="resumePluginProjection" @review="review" @clear-shell-binding="clearShellBinding" />
               </div>
 
@@ -700,8 +757,9 @@ function remove(kind: keyof RemoveDecl, id: string) {
                   <Button type="button" aria-label="Close review" :disabled="busy" text severity="secondary" @click="closeReview"><Icon icon="tabler:x" aria-hidden="true" /></Button>
                 </header>
                 <div class="pim-ia-review-impact">
-                  <h3>{{ reviewLabels[plan.class] || 'Catalog changes' }}</h3>
-                  <p v-if="plan.class === 'unchanged'">The catalog already matches this draft.</p>
+                  <h3>{{ plan.class === 'configuration' ? 'Plugin configuration' : reviewLabels[plan.class] || 'Catalog changes' }}</h3>
+                  <p v-if="plan.class === 'configuration'">These settings will apply to the enabled plugins in this catalog.</p>
+                  <p v-else-if="plan.class === 'unchanged'">The catalog already matches this draft.</p>
                   <p v-else-if="plan.class === 'initial'">Product editors will use these settings for new products.</p>
                   <p v-else-if="plan.class === 'cosmetic'">Catalog settings will update. Stored product values are kept.</p>
                   <p v-else-if="plan.class === 'additive'">The new options become available. Existing product values are kept.</p>
@@ -722,6 +780,12 @@ function remove(kind: keyof RemoveDecl, id: string) {
                   </li>
                   <li v-for="change in localChanges" :key="change.subject + change.effect">
                     <strong>{{ change.subject }}</strong><span>{{ change.effect }}</span>
+                  </li>
+                </ul>
+                <ul v-if="reviewedPluginConfigs.length" class="pim-plan-list">
+                  <li v-for="config in reviewedPluginConfigs" :key="config.id">
+                    <strong>{{ config.title }}</strong>
+                    <div><p v-for="(field, index) in config.fields" :key="index">{{ field }}</p></div>
                   </li>
                 </ul>
                 <div v-if="destructive.length" class="pim-ia-review-impact">

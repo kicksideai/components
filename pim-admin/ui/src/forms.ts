@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { humanLabel } from './shared/labels'
-import type { AttributeDecl, SchemaView, Width } from './types'
+import type { AttributeDecl, Declaration, SchemaView, Width } from './types'
 
 export const FIELD_WIDTHS: { value: Width; label: string; span: number }[] = [
   { value: 'quarter', label: '¼', span: 3 },
@@ -38,6 +38,19 @@ export function configFieldLabel(schema: Record<string, unknown>, field: string)
 
 export function termLabel(term: { code: string; labels: Record<string, string> }): string {
   return term.labels.en ?? Object.values(term.labels)[0] ?? term.code
+}
+
+export function groupFamilyUsage(families: Declaration['families']): Map<string, string> {
+  const groups = new Map<string, string[]>()
+  for (const family of families ?? []) {
+    if (family.code === 'generic') continue
+    for (const group of family.aspects ?? []) {
+      const names = groups.get(group) ?? []
+      names.push(humanize(family.code))
+      groups.set(group, names)
+    }
+  }
+  return new Map([...groups].map(([group, names]) => [group, 'Used by ' + names.join(', ')]))
 }
 
 // display renders a canonical value for a cell or a history row.

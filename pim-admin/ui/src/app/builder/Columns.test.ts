@@ -26,8 +26,10 @@ for (const [name, component] of [
         expect(row.get('.pim-definition-toggle').classes()).not.toContain('p-button')
       }
       if (name === 'fields') {
-        expect(columns).toEqual(['lead', 'name', 'kind', 'details', 'usage', 'actions'])
-        expect(rows[0].get('[data-column=usage]').text()).toBe('4 families')
+        expect(columns).toEqual(['lead', 'name', 'kind', 'details', 'actions'])
+        expect(list.findAll('.pim-list-header p').map(item => item.text())).toEqual([
+          'Used by A, A much longer definition title, Third, Fourth',
+        ])
       }
     }
     expect(w.findAll('.pim-definition-list').length).toBeGreaterThan(0)

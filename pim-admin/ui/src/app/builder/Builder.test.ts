@@ -74,50 +74,85 @@ it('sends initial plugin configuration with the reviewed activation', async () =
   expect(pim.applySchema).toHaveBeenLastCalledWith('cat', expect.objectContaining({plugins:[{use:'stock'}]}), schema.schema_generation, {stock:{hold_seconds:120}})
   w.unmount()
 })
-it('configures an active plugin without applying its schema draft', async () => {
+const pluginOptions = {
+  types: [], scopes: [], link_kinds: [],
+  plugins: [{
+    ...pluginFixture('stock'), title: 'Inventory',
+    config_schema: { type: 'object', properties: { hold_seconds: { type: 'integer' } } },
+  }],
+}
+
+function activePlugins(...ids: string[]) {
   const active = structuredClone(schema)
-  active.plugins = [{...pluginFixture('stock'),active:true,config:{hold_seconds:60}}]
-  active.declaration.plugins = [{use:'stock'}]
+  active.plugins = ids.map(id => ({ ...pluginFixture(id), active: true, config: { hold_seconds: 60 } }))
+  active.declaration.plugins = ids.map(use => ({ use }))
   vi.mocked(pim.schema).mockResolvedValue(active)
-  vi.mocked(pim.schemaOptions).mockResolvedValue({ types: [], scopes: [], link_kinds: [], plugins: [{...pluginFixture('stock'),active:true}] })
-  vi.mocked(pim.configurePlugin).mockResolvedValue({seq:3})
-  const w=mount(SchemaBuilder,{props:{catalogId:'cat'}})
+  vi.mocked(pim.schemaOptions).mockResolvedValue(pluginOptions)
+}
+
+it('reviews an active plugin configuration without applying an unchanged declaration', async () => {
+  vi.clearAllMocks()
+  activePlugins('stock')
+  vi.mocked(pim.configurePlugin).mockResolvedValue({ seq: 3 })
+  const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } })
   await flushPromises()
   await settingsTab(w, 'Plugins')
-  const plugins=w.getComponent(BuilderPlugins)
-  plugins.props('draft').policy={trash_days:45}
-  plugins.vm.$emit('configure','stock',{hold_seconds:180})
+  const plugins = w.getComponent(BuilderPlugins)
+  plugins.props('pluginConfigs')!.stock = { hold_seconds: 180 }
   await flushPromises()
-  expect(pim.configurePlugin).toHaveBeenLastCalledWith('cat','stock',{hold_seconds:180})
-  expect(plugins.props('draft').policy).toEqual({trash_days:45})
+  await w.findAll('button').find(b => b.text() === 'Review changes')!.trigger('click')
+  await flushPromises()
+  expect(w.text()).toContain('Hold seconds · 180')
+  expect(pim.configurePlugin).not.toHaveBeenCalled()
+  await w.findAll('button').find(b => b.text() === 'Apply changes')!.trigger('click')
+  await flushPromises()
+  expect(pim.configurePlugin).toHaveBeenCalledWith('cat', 'stock', { hold_seconds: 180 })
+  expect(pim.planSchema).not.toHaveBeenCalled()
+  expect(pim.applySchema).not.toHaveBeenCalled()
+  expect(plugins.props('pluginConfigs')).toEqual({})
   w.unmount()
 })
 
 it('does not clear a new catalog configuration draft when an old save returns', async () => {
+  activePlugins('stock')
   let finish!: (value: { seq: number }) => void
-  vi.mocked(pim.configurePlugin).mockReturnValue(new Promise(resolve => { finish = resolve }))
-  const w = mount(SchemaBuilder, { props: { catalogId: 'first' } }); await flushPromises()
-  const vm = w.vm as unknown as { configure: (plugin: string, config: Record<string, unknown>) => Promise<void>; pluginConfigs: Record<string, unknown> }
-  const save = vm.configure('stock', { enabled: true })
-  await w.setProps({ catalogId: 'second' }); await flushPromises()
-  vm.pluginConfigs.stock = { enabled: true }
-  finish({ seq: 1 }); await save; await flushPromises()
-  expect(vm.pluginConfigs.stock).toEqual({ enabled: true })
+  vi.mocked(pim.configurePlugin).mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  const w = mount(SchemaBuilder, { props: { catalogId: 'first' } })
+  await flushPromises()
+  const vm = w.vm as unknown as { review: () => Promise<void>; apply: () => Promise<void>; pluginConfigs: Record<string, unknown> }
+  vm.pluginConfigs.stock = { hold_seconds: 180 }
+  await vm.review()
+  const save = vm.apply()
+  await w.setProps({ catalogId: 'second' })
+  await flushPromises()
+  vm.pluginConfigs.stock = { hold_seconds: 240 }
+  finish({ seq: 1 })
+  await save
+  expect(vm.pluginConfigs.stock).toEqual({ hold_seconds: 240 })
   w.unmount()
 })
 
-it('preserves unsaved active configuration when applying a schema review', async () => {
-  vi.mocked(pim.schema).mockResolvedValue({ ...schema, plugins: [{ ...pluginFixture('stock'), active: true }] })
-  vi.mocked(pim.planSchema).mockResolvedValue({ generation: 1, class: 'unchanged', changes: [], refused: [] })
-  vi.mocked(pim.applySchema).mockResolvedValue({ generation: 1, class: 'unchanged' })
-  const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } }); await flushPromises()
+it('applies the reviewed declaration and keeps only failed active configuration in the draft', async () => {
+  vi.clearAllMocks()
+  activePlugins('stock', 'pricing')
+  vi.mocked(pim.planSchema).mockResolvedValue({ generation: 2, class: 'cosmetic', changes: [], refused: [] })
+  vi.mocked(pim.applySchema).mockResolvedValue({ generation: 2, class: 'cosmetic' })
+  vi.mocked(pim.configurePlugin).mockResolvedValueOnce({ seq: 3 }).mockRejectedValueOnce(new Error('Pricing validation failed'))
+  const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } })
+  await flushPromises()
   const vm = w.vm as unknown as { review: () => Promise<void>; apply: () => Promise<void>; pluginConfigs: Record<string, unknown> }
   await settingsTab(w, 'Plugins')
   w.getComponent(BuilderPlugins).props('draft').aspects![0].attributes![0].width = 'half'
-  vm.pluginConfigs.stock = { enabled: false }; await flushPromises()
-  await vm.review(); await vm.apply(); await flushPromises()
-  expect(pim.applySchema).toHaveBeenLastCalledWith('cat', expect.objectContaining({ aspects: expect.any(Array) }), 1, {})
-  expect(vm.pluginConfigs.stock).toEqual({ enabled: false })
+  vm.pluginConfigs.stock = { hold_seconds: 180 }
+  vm.pluginConfigs.pricing = { enabled: false }
+  await vm.review()
+  await vm.apply()
+  await flushPromises()
+  expect(pim.applySchema).toHaveBeenCalledWith('cat', expect.objectContaining({ aspects: expect.any(Array) }), 1, {})
+  expect(pim.configurePlugin).toHaveBeenNthCalledWith(1, 'cat', 'stock', { hold_seconds: 180 })
+  expect(pim.configurePlugin).toHaveBeenNthCalledWith(2, 'cat', 'pricing', { enabled: false })
+  expect(vm.pluginConfigs).toEqual({ pricing: { enabled: false } })
+  expect(w.text()).toContain('Pricing validation failed')
   w.unmount()
 })
 

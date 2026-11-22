@@ -9,7 +9,8 @@ selected catalog share a rail frame with the same title and count. Create
 catalog and Application defaults are available from the directory.
 A draft shows Unsaved changes, Discard and Review changes in the section header.
 Catalog creation selects General for the new catalog. Creation without a
-declaration opens the setup summary with Set up products. The first definitions
+declaration opens the setup summary with Set up products. Overview offers both
+Channels and Sources from Publishing and imports. The first definitions
 use the same Review changes flow as later edits. The standalone settings
 component accepts `catalog-id` and `embedded`.
 Each component instance owns its draft and requests; it does not share routing
@@ -18,8 +19,8 @@ or selection state with other instances.
 Products groups families, fields and form layout. Values groups dimensions and
 vocabularies. Channels groups release destinations and sources. Plugins and
 product filter sets are adjacent. Technical schema edits share the same draft. Reading a section must not create
-absent fields in the draft. A review snapshots the declaration, removals, initial
-plugin configuration and schema generation. Editing any reviewed input invalidates
+absent fields in the draft. A review snapshots the declaration, removals, plugin configuration and schema
+generation. It lists the configuration values included in the draft. Editing any reviewed input invalidates
 the review. Apply sends that snapshot with its expected generation; backend
 validation and access errors show their messages and offer typed codes in a
 technical disclosure. Review opens a dialog and moves focus to its heading.
@@ -46,9 +47,12 @@ Schema definition add forms use the same validation for typed input, the
 button and Enter. A duplicate shows an inline message within its definition
 list. Field codes are unique within their field group and requirement codes
 within their family.
-Term writes use PIM's apply endpoint and only term-shaped requests. Active plugin
-configuration saves separately and must preserve unrelated schema drafts and
-other unsaved plugin configuration. Deployment policy defaults are read through
+Term writes use PIM's apply endpoint and only term-shaped requests. Plugin
+activation and edits to enabled plugins use the catalog's Review changes and
+Apply changes actions. Apply submits schema changes with initial plugin
+configuration, then writes changes to enabled plugins through the existing
+configuration endpoint. An interrupted apply leaves unapplied settings in the
+draft. Deployment policy defaults are read through
 a catalog ADMIN endpoint using Settings' public read contract, without global
 listing or write authority; an explicit false resets a catalog override to
 inheritance. Global controls remain deployment settings.
@@ -101,8 +105,10 @@ name, with muted group text when options share a name.
 Fields uses keyboard-operable arrow buttons to reorder fields within a group.
 The actions column shows only moves that are available. Focus stays on the
 moved field. The family filter sits beside Add field group when space allows.
-Each group header opens its settings dialog for source write permissions and
-group removal. Form layout is a Products view. History is a General view.
+Each group header shows which named families use the group and opens its
+settings dialog for source write permissions and removal. Fields links to
+Form layout for placement. Layout repeats usage at the group level and links
+unassigned groups to Families. Form layout is a Products view. History is a General view.
 Form layout edits the same declaration as Fields. In Form layout, arrow
 controls and drag/drop reorder fields within their own field group, and
 widths are full, half, third or quarter, using compiled defaults until explicitly edited.
@@ -135,7 +141,8 @@ review and never changes the schema draft.
 
 ### Plugin recovery
 
-Plugins show one status in the row. The expanded row gives the cause and
+Plugins show installed and enabled counts, and one status per row. Turning on
+a plugin expands its pending configuration. The expanded row gives the cause and
 the next action. An incompatible package outside the catalog's active setup
 shows Unavailable and stays collapsed until opened. A paused cursor can resume
 at its current position. A stopped worker or pruned registration can reset after

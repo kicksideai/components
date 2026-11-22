@@ -1520,8 +1520,11 @@ caller. The HTTP reads `GET /pim/catalogs` and
 `GET /pim/catalogs/{id}/schema` preserve that shape in `data`. Each boolean
 reports its own component grant: ADMIN does not imply WRITE. `list` reads one
 page of the actor-scoped directory and uses committed state for its summaries.
+Components marked for deletion are excluded. The cursor advances over the
+directory entries read, so a page may contain fewer catalogs than requested.
 Implicit lookup selects the caller's sole readable catalog with one directory
-query. Catalog creation validates the first schema before registering, so a
+query and requires an explicit ID when deletion leaves that page inconclusive.
+Catalog creation validates the first schema before registering, so a
 validation rejection leaves the creation key available for a corrected request.
 `get_schema`, including a past generation, requires
 current READ and reports current caller access. The shell consumes these

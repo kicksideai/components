@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
-import { FIELD_WIDTHS, fieldWidth, humanize } from '../../forms'
+import { FIELD_WIDTHS, fieldWidth, groupFamilyUsage, humanize } from '../../forms'
 import { moveField as move } from '../../state'
 import AddSchemaCode from './AddSchemaCode.vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
@@ -27,7 +27,7 @@ import DefaultValue from './DefaultValue.vue'
 
 const props = defineProps<{ draft: Declaration; schema: SchemaView; options: SchemaOptions }>()
 const family = defineModel<string>('family', { default: '' })
-const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string] }>()
+const emit = defineEmits<{ remove: [kind: keyof RemoveDecl, id: string]; layout: [] }>()
 
 const WIDTHS = FIELD_WIDTHS.map(width => width.value)
 const CARDINALITIES = [{ value: 'one', label: 'Single value' }, { value: 'list', label: 'Ordered list' }, { value: 'set', label: 'Unique set' }]
@@ -62,13 +62,7 @@ function isLink(attr: AttributeDecl): boolean {
   const t = typeOf(attr)
   return !!t && t.form === 'ref' && !t.target
 }
-function usedBy(namespace: string): string[] {
-  return families.value.filter(f => f.aspects?.includes(namespace)).map(f => humanize(f.code))
-}
-function usage(namespace: string) {
-  const users = usedBy(namespace)
-  return !users.length ? 'Unused by families' : users.length === 1 ? users[0] : users.length + ' families'
-}
+const usage = computed(() => groupFamilyUsage(props.draft.families))
 const indexes: Record<string, string> = { none: 'None', key: 'Exact match', number: 'Number range', text: 'Text search' }
 
 
@@ -176,18 +170,19 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
 
 <template>
   <div class="pim-stack">
-    <div v-if="families.length || (canEdit && !family)" class="pim-ia-action">
+    <div v-if="families.length || (canEdit && !family) || aspects.length" class="pim-ia-action">
       <Select v-if="families.length" v-model="family" class="pim-family-filter" aria-label="Show fields for a family" placeholder="All families" :options="familyOptions" option-label="label" option-value="value" append-to="self" />
       <AddSchemaCode v-if="canEdit && !family" label="Field group name" action="Add field group" from-name regular
         :existing="aspects.map(a => a.namespace)" @add="addAspect" />
+      <Button v-if="aspects.length" label="Open form layout" type="button" text size="small" @click="emit('layout')" />
     </div>
     <p v-if="family && !visibleAspects.length" class="form pim-card-body pad muted">This family has no field groups yet. Open the family to choose which groups it uses.</p>
-    <DefinitionList v-for="a in visibleAspects" :key="a.namespace" :count="a.attributes?.length ?? 0" :columns="['kind', 'details', 'usage']" :show-actions="canEdit">
+    <DefinitionList v-for="a in visibleAspects" :key="a.namespace" :count="a.attributes?.length ?? 0" :columns="['kind', 'details']" :show-actions="canEdit">
       <template #head>
         <header class="pim-bsection-head pim-list-header">
           <div>
             <h3>{{ humanize(a.namespace) }}</h3>
-            <p class="small muted">{{ usedBy(a.namespace).length ? 'Used by ' + usedBy(a.namespace).join(', ') : 'Unused by families' }}</p>
+            <p class="small muted">{{ usage.get(a.namespace) ?? 'Unused by families' }}</p>
           </div>
           <div class="row pim-list-actions">
             <AddSchemaCode v-if="canEdit" label="Field name" action="Add field" from-name :existing="a.attributes?.map(field => field.code)" @add="addAttribute(a, $event)" />
@@ -200,7 +195,7 @@ function removeAttribute(a: AspectDecl, attr: AttributeDecl) {
       </template>
       <DefinitionRow route-section="fields" :route-id="attr.id === undefined ? undefined : key(a.namespace, attr)" v-for="(attr, i) in a.attributes ?? []" :key="key(a.namespace, attr)"
         v-model:open="open[key(a.namespace, attr)]" :title="humanize(attr.code)"
-        :kind="fieldTypeTitle(typeOf(attr))" :usage="usage(a.namespace)"
+        :kind="fieldTypeTitle(typeOf(attr))"
         class="pim-attr" head-class="pim-attr-row" toggle-class="field-toggle">
         <template #details>
           <Tag v-if="attr.cardinality && attr.cardinality !== 'one'" class="kx-tag-sm" severity="secondary">{{ CARDINALITIES.find(c => c.value === attr.cardinality)?.label }}</Tag>

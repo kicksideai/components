@@ -477,7 +477,7 @@ type ListRequest = { limit: integer?, after: integer?, text: string?, admin_only
 type ListResult = { catalogs: { CatalogSummary },after:integer? }
 -- ComponentRow is the part of a component query row PIM reads.
 type ComponentMeta = { title: string?, pim_ui_app: string?, product_count: number?, item_count: number?, generation: number?, status: string? }
-type ComponentRow = { access_level: unknown, component_id: string?, impl_id: string?, parent_id: string?, meta: ComponentMeta? }
+type ComponentRow = { access_level: unknown, component_id: string?, impl_id: string?, parent_id: string?, meta: ComponentMeta?, deleting_at: string? }
 
 -- Portable catalog export (spec 12): data/schema.json, terms.jsonl, products-NNNNNN.jsonl.
 type ExportedValue = { attr: string, ctx: Ctx, source: string?, cleared: boolean?, value: Value? }
