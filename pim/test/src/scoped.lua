@@ -1,5 +1,4 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local registry = require("registry")
 -- Sessions that hold exactly the scope an installation composes for a role: the
 -- Members group's composed policies, or only the signed-in baseline. A session
 -- reaches the catalog contract through the harness caller and the HTTP
@@ -9,6 +8,7 @@ local funcs = require("funcs")
 local uuid = require("uuid")
 local json = require("json")
 local http_client = require("http_client")
+local gateway = require("gateway")
 local actors = require("actors")
 local fixture = require("fixture")
 local access_cases = require("access_cases")
@@ -17,7 +17,7 @@ local member_scope = require("member_scope")
 local M = {}
 
 function M.api_url(): string
-    return "http://127.0.0.1" .. assert(registry.get("app:gateway")).data.addr .. "/api"
+    return gateway.url("/api")
 end
 function M.base_url(): string return M.api_url() .. "/pim/catalogs" end
 

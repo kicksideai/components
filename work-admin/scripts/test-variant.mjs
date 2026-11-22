@@ -37,7 +37,8 @@ try {
     host.entries.find(entry => entry.component === work).version = minimum
     writeFileSync(join(cwd, hostPath), stringify(host))
     const lockedWork = () => readYaml(join(cwd, 'wippy.lock')).modules.find(module => module.name === work)
-    if (lockedWork()?.version !== minimum) execFileSync(wippy, ['update'], options)
+    const sourceLock = lockedWork()
+    if (sourceLock?.version !== minimum || !sourceLock.hash) execFileSync(wippy, ['update'], options)
     const locked = lockedWork()
     if (locked?.version !== minimum || !/^[a-f0-9]{64}$/.test(locked.hash)) {
       throw new Error(`Published harness requires the released Work ${minimum} artifact`)

@@ -10,4 +10,5 @@ entries:
     modules: [json, uuid, registry, fs, http_client, contract]
     imports:
       test: wippy.test:test
+      gateway: app:gateway_url
       session: app:session

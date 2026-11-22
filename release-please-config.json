@@ -108,6 +108,7 @@
       "initial-version": "0.1.0",
       "exclude-paths": [
         "work-admin/test",
+        "work-admin/scripts",
         "work-admin/.wippy",
         "work-admin/wippy.lock",
         "work-admin/ui/node_modules",

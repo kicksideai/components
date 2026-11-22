@@ -9,6 +9,7 @@ entries:
     method: run
     modules: [json, uuid, registry, fs, http_client]
     imports: &admin_imports
+      gateway: app:gateway_url
       test: wippy.test:test
       session: app:session
       fixture: app:fixture

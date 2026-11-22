@@ -29,6 +29,7 @@ entries:
     imports:
       test: wippy.test:test
       session: app:session
+      gateway: app:gateway_url
       fixture: app:fixture
       mcp_migration_fault: app:mcp_migration_fault
   - name: mcp_public_url_access
