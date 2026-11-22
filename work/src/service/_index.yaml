@@ -450,7 +450,7 @@ entries:
     planner: kickside.work.command:pack_plan
     packs: kickside.work.command:packs
     component: kickside.component:component
-    store: kickside.work.persist:store
+    board_meta: kickside.work.persist:board_meta
     consts: kickside.work:consts
     types: kickside.work.domain:types
 - name: pack_plan

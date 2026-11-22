@@ -12,6 +12,7 @@ type Plugin = domain.PluginView
 type Summary = { id: string, title: string?, version: string?, icon: string?, description: string?, digest: string?, requires: { string }?, plugins: { Plugin }?, problem: { code: string, message: string }? }
 type Pack = { id: string, title: string, version: string, icon: string, description: string, digest: string, requires: { string }, plugins: { Plugin }, data: Data }
 type Discovery = { packs: { Summary } }
+type Revision = { version: string, digest: string }
 type FleetRow = { board_id: string, pack: string, version: string, digest: string, outdated: boolean }
 type Fleet = { boards: { FleetRow }, next: integer? }
 type Request = { plugin_configs: { [string]: domain.JsonObject }?, board_id: string, pack: string, version: string?, expected_generation: integer, key: string?, starter: boolean?,
@@ -25,5 +26,5 @@ type StoredPlan = Plan & { prepared: commands.SchemaPlan?, plugin_configs: { [st
 type Result = { operation_id: string, job_id: string, status: string, generation: integer, replayed: boolean? }
 
 
-return { Map = Map, View = View, PackView = PackView, Automation = Automation, Data = Data, Plugin = Plugin, Pack = Pack, Summary = Summary, Discovery = Discovery, FleetRow = FleetRow, Fleet = Fleet,
+return { Map = Map, View = View, PackView = PackView, Automation = Automation, Data = Data, Plugin = Plugin, Pack = Pack, Summary = Summary, Discovery = Discovery, Revision = Revision, FleetRow = FleetRow, Fleet = Fleet,
     Request = Request, Conflict = Conflict, Plan = Plan, Execution = Execution, StoredPlan = StoredPlan, Result = Result }

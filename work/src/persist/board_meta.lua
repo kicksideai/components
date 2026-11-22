@@ -22,6 +22,32 @@ function M.get(db: storage.Executor, board_id: string): (types.BoardMeta?, error
     return { title = title :: string, description = description :: string, icon = icon :: string, ui_app = ui_app :: string, applied_seq = seq }, nil
 end
 
+function M.packs(ids: { unknown }, pack_filter: string?): ({ { board_id: string, pack: string, version: string, digest: string } }?, error?)
+    if #ids == 0 then return {}, nil end
+    local placeholders: { string } = {}
+    for i = 1, #ids do placeholders[i] = "$" .. i end
+    local db, derr = store.open()
+    if not db then return nil, derr end
+    local rows, err = db:query("SELECT board_id,pack,pack_version,pack_digest FROM kickside_work_board WHERE board_id IN (" ..
+        table.concat(placeholders, ",") .. ") ORDER BY board_id", ids)
+    db:release()
+    if err then return nil, err end
+    local packs = {}
+    for _, row in ipairs(rows or {}) do
+        local pack = store.text(row.pack)
+        if pack and (not pack_filter or pack_filter == pack) then
+            local board_id, ierr = store.need(row, "board_id")
+            if ierr then return nil, ierr end
+            local version, verr = store.need(row, "pack_version")
+            if verr then return nil, verr end
+            local digest, digest_err = store.need(row, "pack_digest")
+            if digest_err then return nil, digest_err end
+            packs[#packs + 1] = { board_id = board_id :: string, pack = pack, version = version :: string, digest = digest :: string }
+        end
+    end
+    return packs, nil
+end
+
 function M.fold(tx: storage.Executor, board_id: string, event: types.FoldEvent): error?
     local body = event.body
     local _, err = tx:execute([[INSERT INTO kickside_work_board_meta (board_id, title, description, icon, ui_app, applied_seq)
