@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.23](https://github.com/kicksideai/components/compare/work-admin-v0.1.22...work-admin-v0.1.23) (2026-11-22)
+
+
+### Bug Fixes
+
+* **admin:** align HTTP, event, and build contracts ([#366](https://github.com/kicksideai/components/issues/366)) ([0aa050f](https://github.com/kicksideai/components/commit/0aa050f4ebca219d65ba38de1890d881f86c124f))
+
 ## [0.1.22](https://github.com/kicksideai/components/compare/work-admin-v0.1.21...work-admin-v0.1.22) (2026-11-22)
 
 
