@@ -170,9 +170,9 @@ end
 
 -- changes lists how next differs from prev, each classified against usage:
 -- cosmetic, additive, semantic, or refused when stored values would change meaning.
-function M.changes(prev: types.Compiled?, next: types.Compiled, usage: types.Usage, maps: { [string]: { [string]: string } }): { types.SchemaChange }
+function M.changes(prev: types.Compiled?, next: types.Compiled, usage: types.Usage, maps: { [string]: { [string]: string } }): ({ types.SchemaChange }?, error?)
     local out: { types.SchemaChange } = {}
-    if not prev then return out end
+    if not prev then return out, nil end
     if not same(prev.visibility, next.visibility) then change(out, "schema", "visibility", nil, "semantic") end
     if prev.key_prefix ~= next.key_prefix then change(out, "schema", "key_prefix", nil, "semantic", prev.key_prefix) end
     if not same(prev.policy, next.policy) then change(out, "schema", "policy", nil, "cosmetic") end
@@ -195,14 +195,16 @@ function M.changes(prev: types.Compiled?, next: types.Compiled, usage: types.Usa
             if old.id == new.id and old.type == "option" and new.type == "option" then diff_options(out, old, new, usage) end
         end
     end
-    if usage.items > 0 and rollup.changed(prev, next) then
-        change(out, "schema", "rollup.recompute", nil, "semantic")
+    if usage.items > 0 then
+        local recompute, err = rollup.changed(prev, next)
+        if err then return nil, err end
+        if recompute then change(out, "schema", "rollup.recompute", nil, "semantic") end
     end
     diff_item_types(out, prev, next, usage)
     process_changes.changes(out, prev, next, usage, maps)
     diff_relations(out, prev, next, usage)
     table.sort(out, function(a, b) return a.code .. a.what < b.code .. b.what end)
-    return out
+    return out, nil
 end
 
 -- classify returns the strongest class among changes. A compiled difference no change names is semantic.

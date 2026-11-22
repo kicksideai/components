@@ -41,6 +41,8 @@ local function apply_schema(tx: sql.Transaction, dialect: string, board: types.B
     local declaration = body.declaration
     if not compiled or not declaration or not body.generation or not body.digest then return nil, fold_batch.corrupt("schema event is incomplete") end
     local previous = board and board.compiled
+    local needs_recompute, recompute_err = rollup.changed(previous, compiled)
+    if recompute_err then return nil, recompute_err end
     local before = board and board.layout or nil
     local after = tables.layout(compiled)
     local lerr: error?
@@ -48,7 +50,6 @@ local function apply_schema(tx: sql.Transaction, dialect: string, board: types.B
     elseif not values.equal(before, after) then lerr = generated.alter(tx, dialect, tables.of(board_id, after), before) end
     if lerr then return nil, lerr end
     local needs_reindex = not before or not previous or tables.signature(previous) ~= tables.signature(compiled)
-    local needs_recompute = rollup.changed(board and board.compiled, compiled)
     local at = body.at or ""
     local err: error?
     local encoded = json.encode(compiled)
