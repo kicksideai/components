@@ -74,6 +74,7 @@ entries:
     store: kickside.work.persist:store
     policy: kickside.work.domain:policy
     apply: kickside.work.command:apply_ops
+    receipts: kickside.work.command:receipts
     outcomes: kickside.work.domain:outcomes
     peers: kickside.work.read:peers
     limits: kickside.work.settings:limits

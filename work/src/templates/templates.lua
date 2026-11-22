@@ -14,6 +14,7 @@ local presets = require("presets")
 local store = require("store")
 local policy = require("policy")
 local apply = require("apply")
+local receipts = require("receipts")
 local outcomes = require("outcomes")
 local values = require("values")
 local peers = require("peers")
@@ -23,20 +24,26 @@ local M = {}
 local function version_of(input: types.Pinned, min_window: integer?): (types.Version?, string?, error?)
     local db, err = store.open()
     if err or not db then return nil, nil, err end
-    local attachment, cerr = catalog.attachment(db, input.board_id)
-    if cerr or not attachment then db:release(); return nil, nil, cerr end
+    local attachment, failure = catalog.attachment(db, input.board_id)
+    if failure or not attachment then
+        local _, release_err = db:release()
+        return nil, nil, failure or release_err
+    end
     if min_window then
         local window, werr = policy.event_window(db, input.board_id)
-        if werr or not window then db:release(); return nil, nil, werr end
+        if werr or not window then
+            local _, release_err = db:release()
+            return nil, nil, werr or release_err
+        end
         if window.ms and window.ms < min_window then
-            db:release()
-            return nil, nil, catalog.problem(errors.INVALID, "template_replay_window_short",
+            failure = catalog.problem(errors.INVALID, "template_replay_window_short",
                 "Work board event retention must cover Automation history and delivery retention")
         end
     end
-    local version, verr = catalog.get(db, attachment, input.template_id, input.version)
-    db:release()
-    return version, attachment, verr
+    local version: types.Version?
+    if not failure then version, failure = catalog.get(db, attachment, input.template_id, input.version) end
+    local _, release_err = db:release()
+    return version, attachment, failure or release_err
 end
 
 local function redact(db: reads.Executor, board: domain.Board, version: types.Version): (types.Record?, error?)
@@ -129,8 +136,8 @@ function M.archive(input: unknown): (types.Archive?, error?)
     local db, derr = store.open()
     if derr or not db then return nil, derr end
     local window, werr = policy.event_window(db, req.board_id)
-    db:release()
-    if werr or not window then return nil, werr end
+    local _, release_err = db:release()
+    if werr or release_err or not window then return nil, werr or release_err end
     return catalog.archive(attachment, version, window.ms and window.ms + limits.DEFINITIONS.command_deadline_ms.max)
 end
 
@@ -166,8 +173,8 @@ local function instantiate(input: unknown, replay_window: integer?, replay_only:
             return nil, verr
         end
         if not version then return nil, nil end
-        local preset = presets.merge(version, req.overrides)
-        if not preset then return nil, nil end
+        local preset, merge_err = presets.merge(version, req.overrides)
+        if merge_err or not preset then return nil, receipts.conflict_of() end
         return { preset :: commands.Op }, nil
     end
     local result, aerr = apply.apply(request, nil, {

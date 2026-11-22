@@ -17,17 +17,17 @@ local function invalid(code: string, message: string): error
     return catalog.problem(errors.INVALID, code, message)
 end
 
-function M.write(input: unknown): unknown
+function M.write(input: unknown): types.WriteResult
     if type(input) ~= "table" then return data_error.failure(invalid("invalid_request", "write requires an object")) end
     local req = input :: types.Write
     local origin, failure = writable.origin(req)
-    if not origin then return failure end
+    if not origin then return failure :: types.WriteResult end
     if req.sink_op ~= "upsert" then return data_error.failure(invalid("unsupported_operation", "template action requires upsert")) end
     local identity, delivery = req.identity_key, req.idempotency_key
     if type(identity) ~= "string" or #identity == 0 or #identity > 2048 or type(delivery) ~= "string" or #delivery > 8192 then
         return data_error.failure(invalid("template_delivery_invalid", "occurrence and delivery identities are required"))
     end
-    local generation, delivery_error = delivery_identity.attempt_generation(delivery, identity, req.sink_op)
+    local generation, delivery_error = delivery_identity.attempt_generation(delivery, identity, "upsert")
     if not generation then
         local message = delivery_error == "malformed" and "Automation delivery identity is malformed"
             or "Automation delivery does not match the occurrence"
