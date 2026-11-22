@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.20](https://github.com/kicksideai/components/compare/work-admin-v0.1.19...work-admin-v0.1.20) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work-admin:** isolate harness HTTP listeners ([#349](https://github.com/kicksideai/components/issues/349)) ([1e00d77](https://github.com/kicksideai/components/commit/1e00d77d4dc1a7edb4bd4aa2f48cf214c409e5ca))
+
 ## [0.1.19](https://github.com/kicksideai/components/compare/work-admin-v0.1.18...work-admin-v0.1.19) (2026-11-22)
 
 
