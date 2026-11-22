@@ -5,17 +5,18 @@ import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ToggleSwitch from 'primevue/toggleswitch'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
 import NativeDialog from '../../shared/NativeDialog.vue'
 import { humanLabel } from '../../shared/labels'
-import { humanize } from '../../forms'
-import type { Declaration, PluginOption, PluginView, RemoveDecl, SchemaOptions, SchemaView, ScopeOption } from '../../types'
+import type { PluginConfigRefusal } from '../../shared/transport'
+import { configFieldLabel, humanize } from '../../forms'
+import type { Declaration, PluginView, RemoveDecl, SchemaOptions, SchemaView, ScopeOption } from '../../types'
 import { installedInterfaceProblem, pluginStatus } from './plugin-state'
 import ConfigForm from './ConfigForm.vue'
 
-const props = withDefaults(defineProps<{ draft: Declaration; schema: SchemaView; options: SchemaOptions; pluginConfigs?: Record<string, Record<string, unknown>>; stale?: boolean }>(), { pluginConfigs: () => ({}) })
+const props = withDefaults(defineProps<{ draft: Declaration; schema: SchemaView; options: SchemaOptions; pluginConfigs?: Record<string, Record<string, unknown>>; refusal?: PluginConfigRefusal; stale?: boolean }>(), { pluginConfigs: () => ({}) })
 const emit = defineEmits<{
   remove: [kind: keyof RemoveDecl, id: string]
   configure: [plugin: string, config: Record<string, unknown>]
@@ -24,6 +25,7 @@ const emit = defineEmits<{
   refresh: []
   review: []
   clearShellBinding: [binding: string]
+  clearRefusal: []
 }>()
 const filterOperators = new Map([
   ['eq', 'Equals'],
@@ -34,6 +36,9 @@ const filterOperators = new Map([
   ['lte', 'At most'],
 ])
 const expanded = ref<Record<string, boolean>>({})
+watch(() => props.refusal, refusal => {
+  if (refusal) expanded.value[refusal.plugin] = true
+}, { immediate: true })
 const referenceId = ref<string>()
 const referenceRow = computed(() => rows.value.find(row => row.plugin.plugin === referenceId.value))
 const referencePlugin = computed(() => referenceRow.value?.plugin)
@@ -55,13 +60,14 @@ const rows = computed(() => props.options.plugins.map(option => {
   const plugin = current.value.get(option.plugin) ?? option
   const status = pluginStatus(plugin, props.schema.as_of)
   const chosen = chosenPlugins.value.some(entry => entry.use === plugin.plugin)
+  const refusal = props.refusal?.plugin === plugin.plugin ? props.refusal : undefined
   return {
-    option, plugin, status, chosen,
+    option, plugin, status, chosen, refusal,
     title: humanLabel(plugin.title ?? option.title, plugin.installed ? 'Plugin' : 'Unavailable plugin'),
-    label: !plugin.active && status?.kind === 'failed' ? 'Unavailable' : status?.label ?? (chosen
+    label: refusal ? 'Configuration needed' : !plugin.active && status?.kind === 'failed' ? 'Unavailable' : status?.label ?? (chosen
       ? plugin.active ? 'Enabled' : 'Will enable on apply'
       : plugin.active ? 'Will disable on apply' : 'Disabled'),
-    severity: status?.severity ?? (chosen ? 'success' : 'secondary'),
+    severity: refusal ? 'warn' as const : status?.severity ?? (chosen ? 'success' : 'secondary'),
   }
 }))
 
@@ -75,6 +81,7 @@ function choose(id: string, on: boolean) {
   if (!on) {
     props.draft.plugins = chosenPlugins.value.filter(entry => entry.use !== id)
     delete props.pluginConfigs[id]
+    if (props.refusal?.plugin === id) emit('clearRefusal')
     if (current.value.get(id)?.active) emit('remove', 'plugins', id)
   }
 }
@@ -82,11 +89,7 @@ function choose(id: string, on: boolean) {
 function setConfig(id: string, value: Record<string, unknown>) {
   expanded.value[id] = true
   props.pluginConfigs[id] = value
-}
-
-function fieldLabel(option: PluginOption, name: string) {
-  const properties = option.config_schema.properties as Record<string, { title?: string }> | undefined
-  return humanLabel(properties?.[name]?.title ?? humanize(name), 'this setting')
+  if (props.refusal?.plugin === id) emit('clearRefusal')
 }
 
 const scopes = computed(() => props.draft.scopes ?? [])
@@ -137,7 +140,7 @@ function reviewRemoval(plugin: PluginView) {
     <DefinitionList :count="rows.length" :columns="['details']">
       <template #head><header class="pim-bsection-head"><h3>Plugins</h3><span class="muted small">{{ installedCount }} installed</span></header></template>
       <div v-if="rows.length === 0" class="pim-aspect muted">No plugin is installed.</div>
-      <DefinitionRow v-for="{ option, plugin, status, chosen, title, label, severity } in rows" :key="plugin.plugin"
+      <DefinitionRow v-for="{ option, plugin, status, chosen, title, label, severity, refusal } in rows" :key="plugin.plugin"
         :title="title" :open="expanded[plugin.plugin] ?? !!(plugin.active && status && status.kind !== 'pending')"
         @update:open="expanded[plugin.plugin] = $event">
         <template #details>
@@ -204,11 +207,12 @@ function reviewRemoval(plugin: PluginView) {
             <Button label="Review references" severity="secondary" outlined size="small" @click="referenceId = plugin.plugin" />
           </template>
 
-          <template v-else-if="chosen">
+          <template v-if="chosen && plugin.installed && status?.kind !== 'failed' && status?.kind !== 'uninstalled'">
             <ConfigForm :disabled="!canEdit" :schema="option.config_schema" :model-value="pluginConfigs[plugin.plugin] ?? plugin.config ?? {}"
               :problem="status?.kind === 'config' ? status.error : undefined"
               :plugin-id="status?.kind === 'config' ? plugin.plugin : undefined"
-              :problem-label="status?.error?.field && status.error.field !== 'config' ? fieldLabel(option, status.error.field) : undefined"
+              :problem-label="status?.error?.field && status.error.field !== 'config' ? configFieldLabel(option.config_schema, status.error.field) : undefined"
+              :refusal="refusal ? configFieldLabel(option.config_schema, refusal.field) + ': ' + refusal.message : undefined"
               @update:model-value="setConfig(plugin.plugin, $event)" />
             <div v-if="canEdit && plugin.active && (pluginConfigs[plugin.plugin] || status?.kind === 'config')" class="pim-ia-action">
               <Button :disabled="stale || !pluginConfigs[plugin.plugin]" label="Save configuration" size="small" @click="emit('configure', plugin.plugin, pluginConfigs[plugin.plugin])" />

@@ -6,7 +6,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import { CODE, keyFromName } from '../../state'
 
-const props = defineProps<{ label: string; action: string; existing?: string[]; fromName?: boolean }>()
+const props = defineProps<{ label: string; action: string; existing?: string[]; fromName?: boolean; regular?: boolean }>()
 const emit = defineEmits<{ add: [code: string] }>()
 
 const input = ref('')
@@ -49,14 +49,16 @@ function add() {
 
 <template>
   <div ref="row" class="row pim-add-row">
-    <Button v-if="!editing" type="button" aria-expanded="false" severity="secondary" outlined size="small" @click="start">
+    <Button v-if="!editing" type="button" aria-expanded="false" severity="secondary" outlined :size="regular ? undefined : 'small'" @click="start">
       <Icon icon="tabler:plus" aria-hidden="true" /> {{ action }}
     </Button>
     <div v-else class="row pim-add-editor" @keydown.esc.stop.prevent="close">
       <InputText v-model="input" type="text" :placeholder="label" :aria-label="label" :invalid="!!issue"
         :aria-describedby="issue ? hintId : undefined" :class="{ mono: !fromName }" @keydown.enter.prevent="add" />
-      <Button type="button" :disabled="!canAdd" size="small" @click="add">{{ action }}</Button>
-      <Button type="button" label="Cancel" text severity="secondary" size="small" @click="close" />
+      <div class="row pim-add-actions">
+        <Button type="button" :disabled="!canAdd" @click="add">{{ action }}</Button>
+        <Button type="button" label="Cancel" outlined severity="secondary" @click="close" />
+      </div>
       <p v-if="issue" :id="hintId" role="status" class="pim-add-code-error small">{{ issue }}</p>
     </div>
     <slot />

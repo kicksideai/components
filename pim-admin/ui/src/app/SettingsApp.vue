@@ -6,7 +6,7 @@ import SchemaBuilder from './builder/SchemaBuilder.vue'
 import { requestGeneration } from '../shared/requests'
 import { pim } from '../api'
 import type { CatalogRow, CatalogSettingsEvents } from '../types'
-const props = useProps<{ catalogId?: string; embedded?: boolean; focusBack?: boolean; directoryCount?: number }>()
+const props = useProps<{ catalogId?: string; embedded?: boolean; focusBack?: boolean }>()
 const emit = useEvents<CatalogSettingsEvents>()
 const catalog = ref<CatalogRow>()
 const catalogId = computed(() => props.value.catalogId ?? '')
@@ -27,5 +27,5 @@ function leaveSettings() {
 }
 </script>
 <template>
-  <SchemaBuilder v-if="catalogId" :key="catalogId" :catalog-id="catalogId" :title="catalog?.title || 'Catalog'" :catalog="catalog" :embedded="props.embedded" :focus-back="props.focusBack" :directory-count="props.directoryCount" :back-label="props.embedded ? 'Back to catalogs' : 'Back to catalog settings'" @back="leaveSettings" @dirty-changed="emit('dirty-changed', { dirty: $event })" />
+  <SchemaBuilder v-if="catalogId" :key="catalogId" :catalog-id="catalogId" :title="catalog?.title || 'Catalog'" :catalog="catalog" :embedded="props.embedded" :focus-back="props.focusBack" :back-label="props.embedded ? 'Back to catalogs' : 'Back to catalog settings'" @back="leaveSettings" @dirty-changed="emit('dirty-changed', { dirty: $event })" />
 </template>

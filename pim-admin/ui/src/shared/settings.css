@@ -67,7 +67,7 @@
 @media (max-width: 720px) { .pim-policy-row { flex-wrap: wrap; } .pim-definition-body .pim-fields { grid-template-columns: minmax(0, 1fr); } }
 
 
-.pim-definition-list > .pim-add-row { border-top: 1px solid var(--p-content-border-color); }
+.pim-definition-scroll + .pim-add-row { border-top: 1px solid var(--p-content-border-color); }
 
 .pim-definition-grid > .pim-aspect { grid-column: 1 / -1; }
 
@@ -78,15 +78,24 @@
 .pim-builder { container: pim-builder / inline-size; overflow: hidden; }
 .pim-ia-content { display: grid; gap: 14px; min-width: 0; }
 .pim-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.pim-overview-card { cursor: default; }
-.pim-overview-action { align-self: flex-start; margin-top: auto; }
+.pim-overview-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  gap: 9px 10px;
+  cursor: default;
+}
+.pim-overview-card .kx-head-icon { grid-column: 1; align-self: center; }
+.pim-overview-card .kx-card-id, .pim-overview-card .kx-card-desc, .pim-overview-action { grid-column: 2; }
+.pim-overview-action.p-button { justify-self: start; padding-inline: 0; font-size: 13px; }
 .pim-overview-action::after { content: ""; position: absolute; inset: 0; }
-.pim-ia-action h3 { font-size: 14px; font-weight: 600; }
+.pim-ia-action h3, .pim-access-card h3 { font-size: 14px; font-weight: 600; }
 .pim-ia-action { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pim-plugin-recovery > button { justify-self: start; }
 .pim-ia-action > div:first-child { flex: 1 0 min(220px, 100%); min-width: 0; }
 .pim-ia-action > .pim-family-filter:first-child { flex: 0 1 192px; }
 .pim-ia-action > .pim-add-row, .pim-list-header .pim-add-row, .pim-aspect .pim-add-row { padding: 0; }
+.pim-ia-action > .pim-add-row:has(.pim-add-editor) { flex-grow: 1; }
 .pim-list-header { align-items: center; border-bottom: 1px solid var(--p-content-border-color); }
 .pim-list-header p { margin: 0; }
 .pim-list-actions { flex-wrap: wrap; }
@@ -123,6 +132,8 @@
   outline: var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color);
   outline-offset: var(--p-focus-ring-offset);
 }
+.pim-access-card { padding: 16px; }
+.pim-access-summary { margin: 3px 0 0; font-size: 12px; color: var(--p-text-muted-color); }
 .pim-access-roles { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 14px 20px; }
 .pim-access-roles dt { font-weight: 600; }
 .pim-access-roles dd { margin: 4px 0 0; color: var(--p-text-muted-color); }
@@ -148,9 +159,9 @@
 .pim-section-layout .system-section-head { margin-bottom: 4px; }
 
 @media (max-width: 760px) {
-  .pim-section-layout { flex-direction: column; }
   .pim-section-layout .kx-main-scroll { padding: 14px 16px 28px; }
 }
+@media (max-width: 640px) { .pim-section-layout { flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) {
   .pim-overview-card { transition: none; }
   .pim-overview-card:hover { transform: none; }
