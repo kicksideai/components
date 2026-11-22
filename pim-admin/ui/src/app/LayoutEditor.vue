@@ -6,14 +6,16 @@ import Button from 'primevue/button'
 import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { AspectDecl, AttributeDecl, Declaration, SchemaView, TypeOption } from '../types'
-import { humanize, FIELD_WIDTHS as WIDTHS, fieldWidth } from '../forms'
+import { humanize, FIELD_WIDTHS as WIDTHS, fieldWidth, groupFamilyUsage } from '../forms'
 import { fieldTypeTitle } from '../shared/labels'
 
 // The builder owns the draft, review and apply. This canvas edits only order and width.
 const props = defineProps<{ draft: Declaration; schema: SchemaView; types: TypeOption[] }>()
+const emit = defineEmits<{ families: [] }>()
 const canEdit = computed(() => props.schema.access.admin)
 const aspects = computed<AspectDecl[]>(() => props.draft?.aspects ?? [])
 const typeTitles = computed(() => new Map(props.types.map(type => [type.id, fieldTypeTitle(type)])))
+const usage = computed(() => groupFamilyUsage(props.draft.families))
 
 // pluginAspects are contributed by plugins and laid out by their manifests.
 const pluginAspects = computed(() => {
@@ -66,7 +68,13 @@ function dragEnd() {
     <p v-if="canEdit" class="pim-layout-help muted">Arrange fields within each group and choose their widths. Review changes before applying the layout.</p>
     <div v-if="aspects.length === 0" class="kx-empty">This catalog has no field groups yet.<template v-if="canEdit"> Add a field group in Fields.</template></div>
     <section v-for="aspect in aspects" :key="aspect.namespace" class="pim-aspect">
-      <header class="pim-aspect-head"><h3>{{ humanize(aspect.namespace) }}</h3><span v-if="canEdit" class="muted small">drag a field, or use its arrows</span></header>
+      <header class="pim-aspect-head pim-list-header">
+        <div>
+          <h3>{{ humanize(aspect.namespace) }}</h3>
+          <p class="muted small">{{ usage.get(aspect.namespace) ?? 'No named family uses this group yet.' }}</p>
+        </div>
+        <Button v-if="canEdit && !usage.has(aspect.namespace)" label="Open families" type="button" text size="small" @click="emit('families')" />
+      </header>
       <div class="pim-canvas" @dragover.prevent>
         <div
           v-for="(attr, index) in aspect.attributes ?? []"
@@ -94,7 +102,13 @@ function dragEnd() {
       </div>
     </section>
     <section v-for="p in pluginAspects" :key="p.aspect" class="pim-aspect">
-      <header class="pim-aspect-head"><h3>{{ humanize(p.aspect) }}</h3><span class="muted small">Provided by a plugin</span></header>
+      <header class="pim-aspect-head">
+        <div>
+          <h3>{{ humanize(p.aspect) }}</h3>
+          <p class="muted small">{{ usage.get(p.aspect) ?? 'No named family uses this group yet.' }}</p>
+        </div>
+        <span class="muted small">Provided by a plugin</span>
+      </header>
       <div class="pim-canvas">
         <div v-for="code in p.codes" :key="code" class="pim-lcard fixed" :style="{ gridColumn: 'span ' + (WIDTHS.find((w) => w.value === schema!.attributes[code].width)?.span ?? 6) }">
           <div class="pim-lcard-top"><span class="pim-lcard-name">{{ humanize(code) }}</span><span class="pim-lcard-type">{{ typeTitles.get(schema.attributes[code].type) ?? fieldTypeTitle(undefined) }}</span></div>

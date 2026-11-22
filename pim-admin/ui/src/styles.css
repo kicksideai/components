@@ -33,8 +33,9 @@
 
 .pim-aspect { padding: 14px 20px 18px; border-top: 1px solid var(--p-content-border-color); }
 .pim-aspect:first-child { border-top: 0; }
-.pim-aspect-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.pim-aspect-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 12px; margin-bottom: 12px; }
 .pim-aspect-head h3 { margin: 0; }
+.pim-aspect-head p { margin: 4px 0 0; overflow-wrap: anywhere; }
 .pim-fields { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px 16px; }
 .pim-f { grid-column: span 6; display: grid; gap: 4px; align-content: start; min-width: 0; position: relative; }
 .pim-f.pim-w-full { grid-column: 1 / -1; }

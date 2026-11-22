@@ -19,7 +19,6 @@ import ConfigForm from './ConfigForm.vue'
 const props = withDefaults(defineProps<{ draft: Declaration; schema: SchemaView; options: SchemaOptions; pluginConfigs?: Record<string, Record<string, unknown>>; refusal?: PluginConfigRefusal; stale?: boolean }>(), { pluginConfigs: () => ({}) })
 const emit = defineEmits<{
   remove: [kind: keyof RemoveDecl, id: string]
-  configure: [plugin: string, config: Record<string, unknown>]
   reset: [plugin: string]
   resume: [cursorId: string]
   refresh: []
@@ -43,6 +42,7 @@ const referenceId = ref<string>()
 const referenceRow = computed(() => rows.value.find(row => row.plugin.plugin === referenceId.value))
 const referencePlugin = computed(() => referenceRow.value?.plugin)
 const installedCount = computed(() => props.options.plugins.filter(plugin => plugin.installed).length)
+const enabledCount = computed(() => props.schema.plugins.filter(plugin => plugin.active).length)
 const canEdit = computed(() => props.schema.access.admin)
 const chosenPlugins = computed(() => props.draft.plugins ?? [])
 const current = computed(() => new Map(props.schema.plugins.map(plugin => [plugin.plugin, plugin])))
@@ -77,8 +77,12 @@ function filterLabel(name: string, operators: string[]): string {
 }
 
 function choose(id: string, on: boolean) {
-  if (on && !chosenPlugins.value.some(entry => entry.use === id)) (props.draft.plugins ??= []).push({ use: id })
+  if (on && !chosenPlugins.value.some(entry => entry.use === id)) {
+    (props.draft.plugins ??= []).push({ use: id })
+    expanded.value[id] = true
+  }
   if (!on) {
+    expanded.value[id] = false
     props.draft.plugins = chosenPlugins.value.filter(entry => entry.use !== id)
     delete props.pluginConfigs[id]
     if (props.refusal?.plugin === id) emit('clearRefusal')
@@ -138,10 +142,10 @@ function reviewRemoval(plugin: PluginView) {
 <template>
   <div class="pim-stack">
     <DefinitionList :count="rows.length" :columns="['details']">
-      <template #head><header class="pim-bsection-head"><h3>Plugins</h3><span class="muted small">{{ installedCount }} installed</span></header></template>
+      <template #head><header class="pim-bsection-head"><h3>{{ installedCount }} installed · {{ enabledCount }} enabled here</h3></header></template>
       <div v-if="rows.length === 0" class="pim-aspect muted">No plugin is installed.</div>
       <DefinitionRow route-section="plugins" :route-id="plugin.plugin" v-for="{ option, plugin, status, chosen, title, label, severity, refusal } in rows" :key="plugin.plugin"
-        :title="title" :open="expanded[plugin.plugin] ?? !!(plugin.active && status && status.kind !== 'pending')"
+        :title="title" :open="expanded[plugin.plugin] ?? (chosen && (!plugin.active || !!pluginConfigs[plugin.plugin]) || !!(plugin.active && status && status.kind !== 'pending'))"
         @update:open="expanded[plugin.plugin] = $event">
         <template #details>
           <Tag :severity="severity" :value="label" />
@@ -218,15 +222,19 @@ function reviewRemoval(plugin: PluginView) {
             </dl>
           </Disclosure>
           <template v-if="chosen && plugin.installed && status?.kind !== 'failed' && status?.kind !== 'uninstalled'">
+            <template v-if="canEdit && option.config_schema.properties && Object.keys(option.config_schema.properties).length">
+              <p v-if="plugin.plugin === 'kickside.pim.inventory:plugin'" class="muted small">
+                Hold seconds sets the default and maximum time stock stays set aside after an inventory reservation starts.
+                Leave it empty to use the deployment default.
+              </p>
+              <p class="muted small">Choose Review changes, then Apply changes to save this configuration.</p>
+            </template>
             <ConfigForm :disabled="!canEdit" :schema="option.config_schema" :model-value="pluginConfigs[plugin.plugin] ?? plugin.config ?? {}"
               :problem="status?.kind === 'config' ? status.error : undefined"
               :plugin-id="status?.kind === 'config' ? plugin.plugin : undefined"
               :problem-label="status?.error?.field && status.error.field !== 'config' ? configFieldLabel(option.config_schema, status.error.field) : undefined"
               :refusal="refusal ? configFieldLabel(option.config_schema, refusal.field) + ': ' + refusal.message : undefined"
               @update:model-value="setConfig(plugin.plugin, $event)" />
-            <div v-if="canEdit && plugin.active && (pluginConfigs[plugin.plugin] || status?.kind === 'config')" class="pim-ia-action">
-              <Button :disabled="stale || !pluginConfigs[plugin.plugin]" label="Save configuration" size="small" @click="emit('configure', plugin.plugin, pluginConfigs[plugin.plugin])" />
-            </div>
           </template>
         </div>
       </DefinitionRow>

@@ -16,7 +16,7 @@ const cases = [
   { key: 'degraded', catalog: 'Certificate checks', title: 'Certificate checks', status: 'Background update paused',
     cause: /background worker stopped/i, action: 'Reset background updates', manifest: 'degraded', projection: 'degraded_replica' },
   { key: 'misconfigured', catalog: 'Supplier validation', title: 'Supplier validation', status: 'Configuration needed',
-    cause: /certificate issuer is required/i, action: 'Save configuration', manifest: 'configuration' },
+    cause: /certificate issuer is required/i, manifest: 'configuration' },
   { key: 'history-pruned', catalog: 'Supplier audit', title: 'Supplier audit', status: 'Reset required',
     cause: /history this background update needs was removed/i, action: 'Reset background updates', manifest: 'history', projection: 'history_replica' },
   { key: 'uninstalled', catalog: 'Supplier directory', title: 'Supplier directory', status: 'Uninstalled · still referenced',
@@ -123,14 +123,14 @@ async function verifyState(page, shell, scenario, layout, exercise) {
     assert.equal(await unavailable.locator('button[aria-expanded]').getAttribute('aria-expanded'), 'false')
   }
   await row.getByText(scenario.cause).waitFor()
-  const action = button(row, scenario.action)
+  const action = scenario.action ? button(row, scenario.action) : row.getByRole('textbox', { name: /certificate issuer/i })
   await action.waitFor()
   assert.equal(await row.getByText('Enabled', { exact: true }).count(), 0)
   const width = await action.evaluate(element => ({
     row: element.closest('.pim-definition-body').getBoundingClientRect().width,
     action: element.getBoundingClientRect().width,
   }))
-  assert.ok(width.action < width.row - 16, JSON.stringify(width))
+  if (scenario.action) assert.ok(width.action < width.row - 16, JSON.stringify(width))
   if (layout.startsWith('390-')) {
     const review = button(settings, 'Review changes')
     const compact = await review.evaluate(node =>
@@ -223,7 +223,8 @@ async function verifyState(page, shell, scenario, layout, exercise) {
     }
     if (scenario.key === 'misconfigured' && exercise) {
       await row.getByRole('textbox', { name: /certificate issuer/i }).fill('Northstar')
-      await action.click()
+      await button(settings, 'Review changes').click()
+      await button(settings.getByRole('dialog', { name: 'Review changes' }), 'Apply changes').click()
       await row.getByText('Enabled', { exact: true }).waitFor()
       assert.equal(await row.getByRole('textbox', { name: /certificate issuer/i }).inputValue(), 'Northstar')
       console.log('PASS real configuration repair returned the plugin to Enabled')

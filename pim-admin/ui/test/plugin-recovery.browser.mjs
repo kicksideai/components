@@ -26,6 +26,12 @@ const missingRefs = {
   shell_bindings: ['fixture.supplier:catalog_ui'],
   checks: [], plugins: [],
 }
+async function applyConfiguration(page, button) {
+  await button(page, 'Review changes').click()
+  const review = page.getByRole('dialog', { name: 'Review changes' })
+  await button(review, 'Apply changes').click()
+}
+
 const cases = [
   {
     name: 'failed', status: 'Setup failed', action: 'Check status',
@@ -72,12 +78,12 @@ const cases = [
       config: { region: 'EU', crash: true },
       projections: { [projection]: cursor({ parked: true, error: 'Supplier mapping crashed.' }) },
     },
-    async verify({ row, requests, button }) {
+    async verify({ row, requests, button, page }) {
       const crash = row.getByRole('checkbox', { name: 'Crash on update' })
       await crash.waitFor()
       assert.equal(await crash.isChecked(), true)
       await crash.uncheck()
-      await button(row, 'Save configuration').click()
+      await applyConfiguration(page, button)
       await row.getByText('Enabled', { exact: true }).waitFor()
       assert.deepEqual(requests.configure, [{ plugin: manifest, config: { region: 'EU', crash: false } }])
     },
@@ -122,7 +128,7 @@ const cases = [
     },
   },
   {
-    name: 'misconfigured', status: 'Configuration needed', action: 'Save configuration',
+    name: 'misconfigured', status: 'Configuration needed',
     state: {
       config: {}, problem: issue('plugin_config_invalid', manifest + ' config: missing required property issuer.', { field: 'issuer' }),
       lifecycle: { state: 'failed', error: issue('plugin_config_invalid', manifest + ' config: missing required property issuer.', { field: 'issuer' }) },
@@ -133,13 +139,13 @@ const cases = [
       await diagnostics(row, manifest).getByText(/missing required property issuer/).waitFor()
       const field = row.getByRole('textbox', { name: /certificate issuer/i })
       await field.fill('Reject me')
-      await button(row, 'Save configuration').click()
+      await applyConfiguration(page, button)
       await page.getByText(/Choose an approved certificate issuer/).waitFor()
       await capture('save-refusal')
       await row.getByRole('alert').getByText('Certificate issuer: Choose an approved certificate issuer.').waitFor()
       assert.equal(await field.inputValue(), 'Reject me')
       await field.fill('Approved issuer')
-      await button(row, 'Save configuration').click()
+      await applyConfiguration(page, button)
       await row.getByText('Enabled', { exact: true }).waitFor()
       assert.equal(await field.inputValue(), 'Approved issuer')
       assert.deepEqual(requests.configure, ['Reject me', 'Approved issuer'].map(issuer => ({ plugin: manifest, config: { issuer } })))
@@ -370,7 +376,7 @@ try {
         await row.getByText(test.status, { exact: true }).waitFor({ timeout: 3000 })
         const toggle = row.getByRole('button', { name: new RegExp(title) })
         if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click()
-        if (test.state.active !== false) {
+        if (test.action && test.state.active !== false) {
           await button(row, test.action).waitFor()
           assert.ok(await button(row, test.action).evaluate(element => {
             const body = element.closest('.pim-definition-body')
