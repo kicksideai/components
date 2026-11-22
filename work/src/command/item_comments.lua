@@ -7,7 +7,6 @@ local uuid = require("uuid")
 
 local M = require("prepare_context")
 local EV = consts.EVENTS
--- Prepare of comments: add, edit and delete.
 
 local function mentions_of(raw: unknown): ({ domain.PrincipalDecl }?, types.OpPlan?)
     if raw == nil then return {}, nil end

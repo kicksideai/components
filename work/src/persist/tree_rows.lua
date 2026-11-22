@@ -94,6 +94,13 @@ function M.descendants(db: sql.DB | sql.Transaction, board_id: string, moves: { 
     return store.items(db, board_id, ids)
 end
 
+function M.link_endpoints(board_id: string, from: string, target: domain.Target, symmetric: boolean): (string, string, string)
+    if symmetric and target.board == board_id and target.item < from then
+        return target.item, target.board, from
+    end
+    return from, target.board, target.item
+end
+
 function M.link(db: sql.DB | sql.Transaction, board_id: string, from: string, type_id: string, to_board: string, to_id: string): ({ domain.Row }?, error?)
     return db:query([[SELECT 1 AS present FROM kickside_work_link WHERE board_id = $1 AND from_id = $2 AND type = $3
         AND to_board_id = $4 AND to_id = $5]], { board_id, from, type_id, to_board, to_id })

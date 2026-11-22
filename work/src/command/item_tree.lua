@@ -12,8 +12,6 @@ local M = require("prepare_context")
 local EV = consts.EVENTS
 -- Prepare of hierarchy, relations and trash: parent moves, links, deletion and restoration.
 
--- subtree sees the paths produced by earlier parent ops in the prepare run.
-
 local function plan_parent(ctx: types.PrepareContext, op: types.Op): types.OpPlan
     local item, perr = M.locate(ctx, op.item)
     if perr or not item then return perr or M.invalid("item_required", "item required", "item") end
@@ -104,8 +102,7 @@ local function plan_link(ctx: types.PrepareContext, op: types.Op, linking: boole
     if target.board == ctx.board.board_id and target.item == item.item_id then
         return M.result("invalid", group, "invalid_target", "an item cannot relate to itself", "target")
     end
-    local from, to_board, to_id = item.item_id, target.board, target.item
-    if relation.symmetric and to_board == ctx.board.board_id and to_id < from then from, to_id = to_id, from end
+    local from, to_board, to_id = tree_rows.link_endpoints(ctx.board.board_id, item.item_id, target, relation.symmetric)
     local key = link_key(ctx.board.board_id, from, relation.id, { board = to_board, item = to_id })
     local existing = ctx.links[key]
     if existing == nil then

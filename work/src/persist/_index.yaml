@@ -124,6 +124,7 @@ entries:
     consts: kickside.work:consts
     rank: kickside.work.domain:rank
     store: kickside.work.persist:store
+    tree_rows: kickside.work.persist:tree_rows
     types: kickside.work:types
     fold_batch: kickside.work.persist:fold_batch
     document: kickside.work.domain:document
