@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.20](https://github.com/kicksideai/components/compare/pim-v0.1.19...pim-v0.1.20) (2026-11-22)
+
+
+### Bug Fixes
+
+* **pim:** align receipt handling and fault probes with production ([#384](https://github.com/kicksideai/components/issues/384)) ([0817e74](https://github.com/kicksideai/components/commit/0817e74101b8516868cf7bf9cae406140596b9ff))
+
 ## [0.1.19](https://github.com/kicksideai/components/compare/pim-v0.1.18...pim-v0.1.19) (2026-11-22)
 
 
