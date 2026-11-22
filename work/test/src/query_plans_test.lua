@@ -7,13 +7,31 @@ local tables = require("tables")
 local read_rows = require("read_rows")
 local tree_rows = require("tree_rows")
 
-local function explain(db, statement: string, args, tx: any?)
+type Database = typeof(assert(store.open()))
+type Transaction = typeof(assert(assert(store.open()):begin()))
+type Params = { unknown }
+type QueryRecorder = { query: (self: QueryRecorder, statement: string, params: Params) -> ({ { [string]: unknown } }, error?) }
+
+local function query_recorder(tx: Transaction, record: (string, Params) -> ()): Transaction
+    local recorder: QueryRecorder = {
+        query = function(_, statement, params)
+            record(statement, params)
+            return tx:query(statement, params)
+        end,
+    }
+    -- The readers under test only call query.
+    return (recorder :: unknown) :: Transaction
+end
+
+local function explain(db: Database, statement: string, args: Params, tx: Transaction?)
     local pg = db:type() == "postgres"
     local prefix = pg and "EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF) " or "EXPLAIN QUERY PLAN "
     local executor = tx or db
     local result = assert(executor:query(prefix .. statement, args))
-    local lines = {}
-    for _, row in ipairs(result) do lines[#lines + 1] = pg and row["QUERY PLAN"] or row.detail end
+    local lines: { string } = {}
+    for _, row in ipairs(result) do
+        lines[#lines + 1] = (pg and row["QUERY PLAN"] or row.detail) :: string
+    end
     return table.concat(lines, "\n")
 end
 
@@ -29,11 +47,10 @@ local function define()
             assert(tx:execute("ANALYZE kickside_work_stage_run", {}))
 
             local plan = ""
-            local probe = { query = function(_, statement, params)
+            local probe = query_recorder(tx, function(statement, params)
                 plan = explain(db, statement, params, tx)
-                return tx:query(statement, params)
-            end }
-            local deep = assert(read_rows.stage_runs(probe :: any, "stage-plan", "item", 4, 10, 2))
+            end)
+            local deep = assert(read_rows.stage_runs(probe, "stage-plan", "item", 4, 10, 2))
             local current = assert(read_rows.stage_runs(tx, "stage-plan", "item", 10, nil, nil, { 15, 4 }))
             assert(tx:rollback())
             db:release()
@@ -77,12 +94,11 @@ local function define()
             assert(tx:execute("ANALYZE kickside_work_item", {}))
             assert(tx:execute("ANALYZE " .. ancestors, {}))
             local plan = ""
-            local probe = { query = function(_, statement, params)
+            local probe = query_recorder(tx, function(statement, params)
                 plan = explain(db, statement, params, tx)
-                return tx:query(statement, params)
-            end }
+            end)
             local root = assert(store.item(tx, board.id, "root"))
-            local rows = assert(tree_rows.live_subtree(probe :: any, root, 5001, db:type()))
+            local rows = assert(tree_rows.live_subtree(probe, root, 5001, db:type()))
             local capped = assert(tree_rows.live_subtree(tx, root, 3, db:type()))
             assert(tx:rollback())
             db:release()
@@ -124,12 +140,11 @@ local function define()
                 UNION ALL SELECT 'child-missing','path_under','root']], { board.id }))
 
             local plan = ""
-            local probe = { query = function(_, statement, params)
+            local probe = query_recorder(tx, function(statement, params)
                 plan = explain(db, statement, params, tx)
-                return tx:query(statement, params)
-            end }
+            end)
             local root = assert(store.item(tx, board.id, "root"))
-            local rows = assert(tree_rows.live_subtree(probe :: any, root, 5002, db:type()))
+            local rows = assert(tree_rows.live_subtree(probe, root, 5002, db:type()))
             assert(tx:rollback())
             db:release()
 
@@ -148,11 +163,10 @@ local function define()
                 SELECT 'alias-plan','AL-' || n,'origin-' || n,'target-board','target-' || n,'2026' FROM numbers]], {}))
             assert(tx:execute("ANALYZE kickside_work_key_alias", {}))
             local plan = ""
-            local probe = { query = function(_, statement, params)
+            local probe = query_recorder(tx, function(statement, params)
                 plan = explain(db, statement, params, tx)
-                return tx:query(statement, params)
-            end }
-            local endpoint = assert(store.endpoint(probe :: any, { board = "alias-plan", item = "missing" }))
+            end)
+            local endpoint = assert(store.endpoint(probe, { board = "alias-plan", item = "missing" }))
             local incoming = explain(db, [[SELECT key FROM kickside_work_key_alias WHERE to_board_id=$1 AND to_item_id=$2]],
                 { "target-board", "target-24999" }, tx)
             assert(tx:rollback())
@@ -169,11 +183,10 @@ local function define()
                 INSERT INTO kickside_work_key_alias (board_id,key,item_id,to_board_id,to_item_id,at)
                 SELECT 'alias-chain','CHAIN-' || n,'item-' || n,'alias-chain','item-' || (n+1),'2026' FROM numbers]], {}))
             local probes = 0
-            local counter = { query = function(_, statement, params)
+            local counter = query_recorder(tx, function()
                 probes = probes + 1
-                return tx:query(statement, params)
-            end }
-            local endpoint, err = store.endpoint(counter :: any, { board = "alias-chain", item = "item-1" })
+            end)
+            local endpoint, err = store.endpoint(counter, { board = "alias-chain", item = "item-1" })
             local over_limit_probes = probes
             local last = assert(store.endpoint(tx, { board = "alias-chain", item = "item-2" }))
             assert(tx:rollback())
