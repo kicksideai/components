@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21](https://github.com/kicksideai/components/compare/pim-admin-v0.1.20...pim-admin-v0.1.21) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work-admin:** consolidate admin validation and stabilize queue tests ([#365](https://github.com/kicksideai/components/issues/365)) ([33e9876](https://github.com/kicksideai/components/commit/33e98763b0e73ef2114940c7581f1e504468430f))
+
 ## [0.1.20](https://github.com/kicksideai/components/compare/pim-admin-v0.1.19...pim-admin-v0.1.20) (2026-11-22)
 
 
