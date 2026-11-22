@@ -200,7 +200,7 @@ entries:
     types: kickside.work:types
 - name: dep.kickside.automation
   kind: ns.dependency
-  version: '*'
+  version: '>=0.2.44'
   component: kickside/automation
 
 - name: text

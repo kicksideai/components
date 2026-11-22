@@ -166,6 +166,7 @@ entries:
     schemas: kickside.work.templates:schemas
     writable: kickside.data:writable_sink
     automation_policy: kickside.automation:runtime_policy
+    delivery_identity: kickside.automation:delivery_identity
     values: kickside.work.domain:values
     data_error: kickside.work.source:data_error
 - name: schemas

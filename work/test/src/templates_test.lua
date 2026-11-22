@@ -7,6 +7,7 @@ local uuid = require("uuid")
 local sql = require("sql")
 local time = require("time")
 local hash = require("hash")
+local delivery_identity = require("delivery_identity")
 
 local CONTRACT = "kickside.work.templates:templates"
 local PLUGIN = "kickside.work.templates:plugin"
@@ -59,14 +60,14 @@ local function automation(h: fixture.Handle, input: Map): Map
     return result :: Map
 end
 
-local function deliver(h: fixture.Handle, template: Map, identity: string, attempt: string, caller: Call?): Map
-    local parts = { identity, "occurrence", "upsert", "1", attempt }
-    for i, part in ipairs(parts) do parts[i] = tostring(#part) .. ":" .. part end
-    local key = table.concat(parts)
+local function deliver(h: fixture.Handle, template: Map, occurrence: string, attempt: integer, caller: Call?): Map
+    local origin = "fixture-automation"
+    local keys = delivery_identity.keys({ automation_id = origin, drive_key = "weekly" },
+        { item_key = occurrence, dedup_key = occurrence, op = "upsert", attempt_generation = attempt })
     local result, err = (caller or h.call)("contract_request", { contract = "kickside.data:writable", binding = ACTION, method = "write",
         value = { config = { board_id = h.id, template_id = "weekly", version = template.version },
             input = { overrides = { title = "Recurring result" } }, sink_op = "upsert",
-            identity_key = identity, idempotency_key = key, origin = "fixture-automation" } })
+            identity_key = keys.identity_key, idempotency_key = keys.idempotency_key, origin = origin } })
     assert(result, steps.detail(err))
     return result :: Map
 end
@@ -232,21 +233,21 @@ return { run = test.run_cases(function()
             local first = publish(h, "First")
             publish(h, "Second")
             local occurrence = uuid.v4()
-            local short_window = deliver(h, first, occurrence, "0")
+            local short_window = deliver(h, first, occurrence, 0)
             test.eq(short_window.error.code, "template_replay_window_short")
             event_window(h, 90)
-            local created = deliver(h, first, occurrence, "0")
+            local created = deliver(h, first, occurrence, 0)
             test.is_true(created.success, tostring(created.error))
-            local replay = deliver(h, first, occurrence, "1")
+            local replay = deliver(h, first, occurrence, 1)
             test.is_true(replay.success)
             test.eq(replay.dest_ref.item_id, created.dest_ref.item_id)
-            local next_occurrence = deliver(h, first, uuid.v4(), "0")
+            local next_occurrence = deliver(h, first, uuid.v4(), 0)
             test.is_true(next_occurrence.success)
             test.is_true(next_occurrence.dest_ref.item_id ~= created.dest_ref.item_id)
-            local expired = deliver(h, first, uuid.v4(), "1")
+            local expired = deliver(h, first, uuid.v4(), 1)
             test.eq(expired.error.code, "template_replay_unavailable")
             assert(invoke(h.call, "archive", { board_id = h.id, template_id = "weekly", version = first.version }))
-            local blocked = deliver(h, first, uuid.v4(), "0")
+            local blocked = deliver(h, first, uuid.v4(), 0)
             test.eq(blocked.success, false)
             test.eq(blocked.error.code, "template_archived")
         end)
@@ -259,10 +260,10 @@ return { run = test.run_cases(function()
             local writer, writer_id = fixture.user(h, nil, true)
             assert(h.call("grant", { subject_id = writer_id, mask = 2 }))
             local occurrence = uuid.v4()
-            local created = deliver(h, first, occurrence, "0", writer)
+            local created = deliver(h, first, occurrence, 0, writer)
             test.is_true(created.success, tostring(created.error))
             assert(h.call("revoke", { subject_id = writer_id }))
-            local refused = deliver(h, first, occurrence, "1", writer)
+            local refused = deliver(h, first, occurrence, 1, writer)
             test.eq(refused.success, false)
             test.eq(refused.error.kind, errors.PERMISSION_DENIED)
             test.eq(#assert(h.call("query", {})).items, 1)
@@ -309,16 +310,16 @@ return { run = test.run_cases(function()
             event_window(h, 90)
             local first = publish(h, "First")
             local identity = uuid.v4()
-            test.is_true(deliver(h, first, identity, "0").success)
+            test.is_true(deliver(h, first, identity, 0).success)
             assert(h.call("apply_schema", { declaration = { plugins = {} } }))
             steps.deleted(attachment)
-            local replay = deliver(h, first, identity, "1")
+            local replay = deliver(h, first, identity, 1)
             test.is_true(replay.success, tostring(replay.error and replay.error.code))
             local db = assert(sql.get("app:db"))
             assert(db:execute("UPDATE kickside_work_receipt SET at = $1 WHERE board_id = $2",
                 { "2000-01-01T00:00:00.000000000Z", h.id }))
             db:release()
-            local expired = deliver(h, first, identity, "2")
+            local expired = deliver(h, first, identity, 2)
             test.is_false(expired.success)
             test.eq(expired.error.code, "template_replay_unavailable")
             test.eq(#assert(h.call("query", {})).items, 1)
