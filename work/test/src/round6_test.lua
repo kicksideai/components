@@ -10,7 +10,7 @@ local job_deadline = require("job_deadline")
 local clock = require("clock")
 local operations = require("operations")
 local function define()
-    test.describe("final backend review", function()
+    test.describe("retention, board policy and operation limits", function()
         local setting_owner: fixture.Handle?
         test.after_each(function()
             if setting_owner then

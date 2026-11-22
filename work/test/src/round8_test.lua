@@ -12,7 +12,7 @@ local clock=require("clock")
 local plugin_batch=require("plugin_batch")
 local probe=require("probe")
 local function define()
-    test.describe("round 8 classes",function()
+    test.describe("retired items, protected reads and projection budgets",function()
         local held: fixture.Handle?
         test.after_each(function()
             if held then

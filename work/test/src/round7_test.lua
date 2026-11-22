@@ -9,7 +9,7 @@ local rows=require("rows")
 local defaults=require("defaults")
 local limits=require("limits")
 local function define()
-    test.describe("round 7 backend",function()
+    test.describe("visibility retention, projection and pack budgets",function()
         local held: fixture.Handle?
         test.after_each(function()
             if held then
