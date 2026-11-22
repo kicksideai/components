@@ -3,31 +3,28 @@ local test = require("test")
 local fixture = require("fixture")
 local scoped = require("scoped")
 local steps = require("steps")
-local funcs = require("funcs")
-local json = require("json")
-local security = require("security")
 local time = require("time")
 
 local function expiry(duration: string): string
     return time.now():add(assert(time.parse_duration(duration))):utc():format("2006-01-02T15:04:05.000000000Z")
 end
 
+local function queue(admin: scoped.Session): fixture.Handle
+    return scoped.board(admin, { key_prefix = fixture.fresh_prefix() }, "kickside.work.packs:agent_queue")
+end
+
 local function define()
     test.describe("Agent Queue pack", function()
         test.it("owns the lease fields through claim and renew", function()
             local admin = scoped.admin()
-            local created = assert(admin.call("create", { title = "Agent Queue", idempotency_key = "lease-ownership",
-                pack = "kickside.work.packs:agent_queue", declaration = { key_prefix = fixture.fresh_prefix() } }))
-            local board = created.board_id :: string
-            local h: fixture.Handle = { id = board, prefix = "", actor = admin.actor, executor = admin,
-                call = function(method: string, request: unknown): (unknown, error?) return admin.call(method, request, board) end }
+            local h = queue(admin)
             local claimant = { kind = "user", id = admin.id }
             local item = steps.create(h, "task", { title = "Run job" })
             local past = "2000-01-01T00:00:00Z"
             local missed = steps.one(h, { op = "transition", item = item, transition = "claim",
                 values = { claimant = claimant, claim_expires_at = past } })
             test.eq(missed.findings and missed.findings[1].code, "timer_deadline_not_future")
-            local initial = expiry("30s")
+            local initial = expiry("5m")
             test.eq(steps.one(h, { op = "transition", item = item, transition = "claim",
                 values = { claimant = claimant, claim_expires_at = initial } }).status, "applied")
             local claimed = assert(steps.get(h, item)).item
@@ -43,7 +40,7 @@ local function define()
             local missed_renewal = steps.one(h, { op = "transition", item = item, transition = "renew",
                 values = { claim_expires_at = past } })
             test.eq(missed_renewal.findings[1].code, "timer_deadline_not_future")
-            local extended = expiry("1m")
+            local extended = expiry("10m")
             test.eq(steps.one(h, { op = "transition", item = item, transition = "renew",
                 values = { claim_expires_at = extended } }).status, "applied")
             local stale = steps.one(h, { op = "timer", item = item, state = "claimed", timer = "claim_expiry",
@@ -53,85 +50,82 @@ local function define()
             test.is_true(renewed.visit > claimed.visit)
             test.eq(renewed.values.claim_expires_at, extended)
             test.eq(renewed.values.claimant.id, admin.id)
+            local early = steps.one(h, { op = "timer", item = item, state = "claimed", timer = "claim_expiry",
+                visit = renewed.visit, scheduled_at = extended })
+            test.eq(early.findings[1].code, "timer_not_due")
         end)
 
-        test.it("admits exactly one claimant, releases a crashed claim and fences the old winner", function()
-            local admin = scoped.admin()
-            local created, err = admin.call("create", { title = "Agent Queue", idempotency_key = "queue",
-                pack = "kickside.work.packs:agent_queue", declaration = { key_prefix = fixture.fresh_prefix() } })
-            assert(created, steps.detail(err))
-            local board = created.board_id
-            local function call(op, args) return admin.call(op, args, board) end
-            local item = assert(call("apply", { ops = { { op = "create", type = "task", values = { title = "Run job" } } } })).outcomes[1]
-            test.eq(item.status, "applied")
+        test.it("admits one concurrent claimant and fences the previous winner after reclaim", function()
+            local h = queue(scoped.admin())
+            local item = steps.create(h, "task", { title = "Run job" })
+            local version = steps.version(h, item)
             local workers = { scoped.member(), scoped.member() }
-            local writers = {}
-            for i, worker in ipairs(workers) do
-                assert(call("grant", { subject_id = worker.id, mask = 3 }))
-                writers[i] = funcs.new():with_actor(worker.actor):with_scope(worker.scope:with(assert(security.policy("app:caller_only"))))
+            for _, worker in ipairs(workers) do
+                assert(h.call("grant", { subject_id = worker.id, mask = 3 }))
             end
             local commands = {}
-            local expires_at = expiry("3s")
-            for i, writer in ipairs(writers) do
-                commands[i] = assert(writer:async("app:work_call", { op = "apply", board_id = board, request = {
-                    key = "claim-" .. i, ops = { { op = "transition", item = item.item, transition = "claim",
-                        expect_version = item.version, values = { claimant = { kind = "user", id = workers[i].id },
-                            claim_expires_at = expires_at } } },
-                } }))
+            local expires_at = expiry("5m")
+            for i, worker in ipairs(workers) do
+                commands[i] = assert(worker.async_call("apply", { key = "claim-" .. i, ops = {
+                    { op = "transition", item = item, transition = "claim", expect_version = version,
+                        values = { claimant = { kind = "user", id = worker.id }, claim_expires_at = expires_at } },
+                } }, h.id))
             end
-            local winner, loser, claimed_version
-            local applied, conflicts = 0, 0
+            local winner, loser
             for i, command in ipairs(commands) do
                 assert(command:response():receive())
-                local result = assert(command:result()):data().outcomes[1]
-                if result.status == "applied" then
-                    winner, claimed_version = i, result.version
-                    applied = applied + 1
-                elseif result.status == "conflict" then
-                    test.eq(result.findings[1].code, "version_mismatch")
-                    loser = i
-                    conflicts = conflicts + 1
+                local outcome = assert(command:result()):data().outcomes[1]
+                if outcome.status == "applied" then
+                    winner = workers[i]
+                else
+                    test.eq(outcome.status, "conflict")
+                    test.eq(outcome.findings[1].code, "version_mismatch")
+                    loser = workers[i]
                 end
             end
-            test.eq(applied, 1); test.eq(conflicts, 1)
-            local function read() return assert(call("get", { item = { id = item.item } })).item end
-            local claimed = read()
+            assert(winner and loser, "expected one applied claim and one conflict")
+            local claimed = assert(steps.get(h, item)).item
             test.eq(claimed.state, "claimed")
-            test.eq(claimed.values.claimant.id, workers[winner].id)
+            test.eq(claimed.values.claimant.id, winner.id)
 
-            steps.wait_for("crashed claim to expire", function() return read().state == "queued" end)
-            local released = read()
-            test.is_nil(released.values.claimant); test.is_nil(released.values.claim_expires_at)
-            local reclaimed = assert(workers[loser].call("apply", { key = "reclaim", ops = {
-                { op = "transition", item = item.item, expect_version = released.version, transition = "claim",
-                    values = { claimant = { kind = "user", id = workers[loser].id }, claim_expires_at = expiry("3s") } },
-            } }, board)).outcomes[1]
+            local released = steps.one(h, { op = "transition", item = item, transition = "release",
+                expect_version = claimed.version })
+            test.eq(released.status, "applied")
+            local reclaimed = assert(loser.call("apply", { key = "reclaim", ops = {
+                { op = "transition", item = item, expect_version = released.version, transition = "claim",
+                    values = { claimant = { kind = "user", id = loser.id }, claim_expires_at = expires_at } },
+            } }, h.id)).outcomes[1]
             test.eq(reclaimed.status, "applied")
-            local stale = assert(workers[winner].call("apply", { key = "stale-complete", ops = {
-                { op = "transition", item = item.item, expect_version = claimed_version, transition = "complete" },
-            } }, board)).outcomes[1]
+            local stale = assert(winner.call("apply", { key = "stale-complete", ops = {
+                { op = "transition", item = item, expect_version = claimed.version, transition = "complete" },
+            } }, h.id)).outcomes[1]
             test.eq(stale.status, "conflict")
             test.eq(stale.findings[1].code, "version_mismatch")
-            test.eq(read().values.claimant.id, workers[loser].id)
+            test.eq(assert(steps.get(h, item)).item.values.claimant.id, loser.id)
+        end)
 
-            local extended_expiry = expiry("6s")
-            local renewed = assert(workers[loser].call("apply", { key = "renew", ops = {
-                { op = "transition", item = item.item, expect_version = reclaimed.version, transition = "renew",
-                    values = { claim_expires_at = extended_expiry } },
-            } }, board)).outcomes[1]
-            test.eq(renewed.status, "applied")
-            local renewed_visit = read().visit
-            steps.wait_for("renewed claim to expire", function() return read().state == "queued" end)
+        test.it("releases a crashed claim when the scheduler fires", function()
+            local admin = scoped.admin()
+            local h = queue(admin)
+            local item = steps.create(h, "task", { title = "Run job" })
+            local expires_at = expiry("3s")
+            test.eq(steps.one(h, { op = "transition", item = item, transition = "claim",
+                values = { claimant = { kind = "user", id = admin.id }, claim_expires_at = expires_at } }).status, "applied")
+            local function read() return assert(steps.get(h, item)).item end
+            local visit = read().visit
+            steps.wait_for("crashed claim to expire", function() return read().state == "queued" end)
+            local released = read()
+            test.is_nil(released.values.claimant)
+            test.is_nil(released.values.claim_expires_at)
             local expirations = {}
-            for _, event in ipairs(assert(call("events", {})).events) do
+            for _, event in ipairs(steps.events(h)) do
                 if event.type == "kickside.work.events:timer.fired" then
-                    local body = event.body
-                    expirations[#expirations + 1] = type(body) == "string" and assert(json.decode(body)) or body
+                    expirations[#expirations + 1] = event.body
                 end
             end
-            test.eq(#expirations, 2)
-            test.eq(expirations[2].visit, renewed_visit)
-            test.eq(expirations[2].scheduled_at, extended_expiry)
+            test.eq(#expirations, 1)
+            test.eq(expirations[1].visit, visit)
+            test.eq(expirations[1].scheduled_at, expires_at)
         end)
     end)
 end

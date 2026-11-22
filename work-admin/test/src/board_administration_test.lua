@@ -158,7 +158,15 @@ local function cases()
             test.eq(applied.status, 200, json.encode(applied.body))
             local loaded = owner.post(path .. "/get_schema", {})
             test.eq(loaded.status, 200, json.encode(loaded.body))
-            test.eq(loaded.body.data.compiled.fields[2].form, "int")
+            local compiled
+            for _, candidate in ipairs(loaded.body.data.compiled.fields) do
+                if candidate.code == "quantity" then
+                    compiled = candidate
+                    break
+                end
+            end
+            assert(compiled, "expected the compiled quantity field")
+            test.eq(compiled.form, "int")
         end)
 
         test.it("advertises the configuration for installed reference and measurement fields", function()
