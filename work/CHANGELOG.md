@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.36](https://github.com/kicksideai/components/compare/work-v0.1.35...work-v0.1.36) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work:** keep move subtree lookups on the item primary key ([#357](https://github.com/kicksideai/components/issues/357)) ([ee3d91a](https://github.com/kicksideai/components/commit/ee3d91a95a39323c1060c723fd05618e5eab03d6))
+
 ## [0.1.35](https://github.com/kicksideai/components/compare/work-v0.1.34...work-v0.1.35) (2026-11-22)
 
 
