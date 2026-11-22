@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import assert from 'node:assert/strict'
 import { mkdir } from 'node:fs/promises'
-import { setTimeout as delay } from 'node:timers/promises'
 import { chromium } from 'playwright'
 
 const origin = process.env.PIM_TEST_ORIGIN ?? 'http://localhost:19382'
@@ -56,15 +55,19 @@ const cases = [
       await row.getByText(/last applied position 81/i).waitFor()
       await button(row, 'Technical details').click()
       await diagnostics(row, projection).getByText(/Supplier mapping crashed/).waitFor()
+      await page.clock.pauseAt(await page.evaluate(() => Date.now()) + 1_000)
       await button(row, 'Reset background updates').click()
       const dialog = page.getByRole('dialog')
       await button(dialog, 'Reset background updates').click()
       await row.getByText('Catching up', { exact: true }).waitFor()
       assert.deepEqual(requests.configure, [{ plugin: manifest, config: ready.config, reset: true }])
+      const catchingUp = requests.schema
       state.plugin = { ...ready, projections: { [projection]: cursor({ last_seq: 100 }) } }
-      await row.getByText('Enabled', { exact: true }).waitFor({ timeout: 8000 })
+      await page.clock.runFor(10_000)
+      await row.getByText('Enabled', { exact: true }).waitFor()
+      assert.equal(requests.schema, catchingUp + 1, 'a pending projection should be polled')
       const settled = requests.schema
-      await delay(2600)
+      await page.clock.runFor(10_000)
       assert.equal(requests.schema, settled, 'settled projections should stop polling')
     },
   },
@@ -252,6 +255,7 @@ try {
   for (const [width, theme] of layouts) {
     for (const test of cases.filter(test => !process.env.PIM_TEST_CASE || test.name === process.env.PIM_TEST_CASE)) {
       const page = await browser.newPage({ viewport: { width, height: width === 390 ? 844 : 960 }, colorScheme: theme })
+      if (test.name === 'degraded') await page.clock.install()
       page.setDefaultTimeout(9000)
       const pageErrors = []
       page.on('pageerror', error => pageErrors.push(error.message))
