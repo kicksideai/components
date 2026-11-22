@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.42](https://github.com/kicksideai/components/compare/work-v0.1.41...work-v0.1.42) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work:** separate pack and service boundaries ([#382](https://github.com/kicksideai/components/issues/382)) ([94e4fc5](https://github.com/kicksideai/components/commit/94e4fc59b4a64ba781a23f80c12f83e782b92dab))
+
 ## [0.1.41](https://github.com/kicksideai/components/compare/work-v0.1.40...work-v0.1.41) (2026-11-22)
 
 
