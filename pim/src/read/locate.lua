@@ -43,11 +43,15 @@ function M.readable(maximum: integer?, offset: integer?, exact: string?, filters
         order_by = { field = "component_id", direction = "ASC" }, limit = exact and 1 or limit + 1, offset = start })
     if err then return nil, errors.wrap(err, "catalog lookup failed") end
     local ids: { string } = {}
-    for i, raw in ipairs(rows or {}) do
+    local live: { types.ComponentRow } = {}
+    for i, raw in ipairs((rows or {}) :: { types.ComponentRow }) do
         if i > limit then break end
         local id = type(raw) == "table" and raw.component_id or nil
         if not id or id == "" then return nil, failure.corrupt("catalog component row is malformed") end
-        ids[i] = id
+        if raw.deleting_at == nil then
+            ids[#ids + 1] = id
+            live[#live + 1] = raw
+        end
     end
     local by_id, cerr = committed(ids)
     if cerr or not by_id then return nil, cerr end
@@ -55,7 +59,7 @@ function M.readable(maximum: integer?, offset: integer?, exact: string?, filters
     for i, id in ipairs(ids) do
         local state = by_id[id]
         if not state then return nil, failure.catalog_not_initialized() end
-        local row = (rows :: { types.ComponentRow })[i]
+        local row = live[i]
         local granted, gerr = access.describe(row.access_level)
         if gerr or not granted then return nil, gerr end
         local meta = row.meta or {}
@@ -79,13 +83,17 @@ end
 function M.resolve(explicit: string?): (string?, error?)
     local id = trim(explicit)
     if id ~= "" then return id, nil end
-    local page, err = M.readable(2)
+    local page, err, after = M.readable(2)
     if err or not page then return nil, err end
     local first, second = page[1], page[2]
     if first and second then
         return nil, errors.new({ kind = errors.CONFLICT,
             message = "several catalogs are available; pass catalog_id as one of: "
                 .. first.catalog_id .. " (" .. first.title .. "), " .. second.catalog_id .. " (" .. second.title .. ")",
+            details = { code = "catalog_ambiguous" } })
+    end
+    if after then
+        return nil, errors.new({ kind = errors.CONFLICT, message = "pass catalog_id while catalog deletion is in progress",
             details = { code = "catalog_ambiguous" } })
     end
     if first then return first.catalog_id, nil end

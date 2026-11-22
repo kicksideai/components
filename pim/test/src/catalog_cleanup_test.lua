@@ -61,6 +61,28 @@ end
 
 local function define()
     test.describe("bounded catalog teardown", function()
+        test.it("lists live catalogs while a deletion-marked catalog awaits unregister", function()
+            local owner = scoped.member()
+            local removing, live = scoped.catalog(owner), scoped.catalog(owner)
+            local _, err = store.transaction("directory teardown fixture", function(tx: types.Executor, dialect: string): (boolean?, error?)
+                local _, mark_err = tx:execute("UPDATE kickside_components SET deleting_at = $1 WHERE component_id = $2",
+                    { time.now():utc():format_rfc3339(), removing.id })
+                if mark_err then return nil, mark_err end
+                return cleanup_rows.catalog(tx, dialect, removing.id, 500)
+            end)
+            assert(not err, tostring(err))
+            local first, list_err = live.call("list", { limit = 1 })
+            assert(not list_err, tostring(list_err))
+            test.eq(first.after, 1)
+            local second = assert(live.call("list", { limit = 1, after = first.after }))
+            test.eq(#first.catalogs + #second.catalogs, 1)
+            test.eq((first.catalogs[1] or second.catalogs[1]).catalog_id, live.id)
+            test.is_nil(second.after)
+            local gone, summary_err = removing.call("get_catalog", {})
+            test.is_nil(gone)
+            test.eq(summary_err:details().code, "catalog_not_found")
+        end)
+
         test.it("refuses direct teardown with a forged catalog context without DELETE access", function()
             for _, mask in ipairs({ 1, 11 }) do
                 local owner, caller = scoped.member(), scoped.member()
