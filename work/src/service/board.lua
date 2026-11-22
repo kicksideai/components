@@ -70,7 +70,7 @@ function M.get_schema(input: unknown): (reads.SchemaView?, error?)
     return reader.get_schema(request)
 end
 
-function M.plugin_context(input: unknown): (unknown, error?)
+function M.plugin_context(input: unknown): (reads.PluginContext?, error?)
     local err = requests.parse("plugin_context", input)
     if err then return nil, err end
     return plugin_access.context(input :: reads.PluginContextRequest)
@@ -85,7 +85,7 @@ function M.plugin_feed(input: unknown): (reads.PluginFeed?, error?)
     return plugin_feed.page(request, admission)
 end
 
-function M.schema_options(input: unknown): (unknown, error?)
+function M.schema_options(input: unknown): (reads.PluginOptions?, error?)
     local err = requests.parse("schema_options", input)
     if err then return nil, err end
     return plugin_access.options(input :: reads.SchemaGetRequest)
