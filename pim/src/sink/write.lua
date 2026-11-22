@@ -26,7 +26,7 @@ type Result = { success: boolean, result: string?, dest_ref: { product_id: strin
 
 type Details = { findings: { types.Finding } }
 
-local function fail(message: string, code: string?, retriable: boolean?, scope: string?, details: Details?): Result
+local function fail(message: string, code: data_error.CodeOverride?, retriable: boolean?, scope: string?, details: Details?): Result
     local kind = errors.INVALID
     if code == "permission_denied" then kind = errors.PERMISSION_DENIED
     elseif code == "conflict" or code == "idempotency_conflict" then kind = errors.CONFLICT
@@ -79,11 +79,7 @@ function M.write(req: Request): Result
     local perr = requests.parse("apply", request)
     if perr then return data_error.failure(perr, "invalid_request") end
     local out, err = writer.apply(catalog_id, request)
-    if err then
-        local code: string? = nil
-        if err:kind() == errors.CONFLICT and err:details().code == "idempotency_conflict" then code = "idempotency_conflict" end
-        return data_error.failure(err, code)
-    end
+    if err then return data_error.write(err) end
     if not out then return fail("apply returned no result", "contract_unavailable", true) end
     local o = out.outcomes[1]
     if o.outcome == "created" then return { success = true, result = "created", dest_ref = { product_id = o.product_id } } end
