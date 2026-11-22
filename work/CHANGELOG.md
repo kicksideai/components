@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.41](https://github.com/kicksideai/components/compare/work-v0.1.40...work-v0.1.41) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work:** prepare plugin schemas and propagate rollup errors ([#375](https://github.com/kicksideai/components/issues/375)) ([9f7a8d5](https://github.com/kicksideai/components/commit/9f7a8d53abd570816af0b7863461607ca2305eb7))
+
 ## [0.1.40](https://github.com/kicksideai/components/compare/work-v0.1.39...work-v0.1.40) (2026-11-22)
 
 
