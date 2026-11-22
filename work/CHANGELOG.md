@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.40](https://github.com/kicksideai/components/compare/work-v0.1.39...work-v0.1.40) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work:** consolidate template vocabulary, delivery and receipts ([#379](https://github.com/kicksideai/components/issues/379)) ([c50fa98](https://github.com/kicksideai/components/commit/c50fa98c94ea7efad0ba25acde17c2790f6af5d7))
+
 ## [0.1.39](https://github.com/kicksideai/components/compare/work-v0.1.38...work-v0.1.39) (2026-11-22)
 
 
