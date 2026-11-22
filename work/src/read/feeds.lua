@@ -121,7 +121,7 @@ local function list_changes(request: types.ChangesRequest, context: types.ReadCo
                     item.rank = view.rank
                     item.visit, item.process_generation = view.visit, view.process_generation
                     item.value_states, item.gate, item.awaiting = view.value_states, view.gate, view.awaiting
-                    local comments, cerr = store.comment_page(tx, board.board_id, held.item_id, "", 10001)
+                    local comments, cerr = read_rows.comment_page(tx, board.board_id, held.item_id, "", 10001)
                     if cerr then return nil, cerr end
                     if #(comments or {}) > 10000 then
                         table.remove(comments :: { domain.CommentRow })

@@ -36,6 +36,7 @@ function M.open(): (sql.DB?, error?)
 end
 
 local codec = require("row_decode")
+local read_rows = require("read_rows")
 local int, text, need, need_int, stored = codec.int, codec.text, codec.need, codec.need_int, codec.stored
 M.int, M.text, M.need, M.need_int, M.stored = int, text, need, need_int, stored
 
@@ -149,7 +150,7 @@ function M.process(db: storage.Executor, board: types.Board, item: { type: strin
     return model.processes[model.item_types[item.type].process], nil, model
 end
 
-local function item_rows(db: storage.Executor, rows: { types.Row }): ({ types.Item }?, error?)
+local function item_rows(rows: { types.Row }): ({ types.Item }?, error?)
     local items: { types.Item } = {}
     for _, row in ipairs(rows) do
         local item, err = codec.item(row)
@@ -159,23 +160,10 @@ local function item_rows(db: storage.Executor, rows: { types.Row }): ({ types.It
     return items, nil
 end
 
-function M.comment_page(db: storage.Executor, board_id: string, item_id: string, after: string, limit: integer): ({ types.CommentRow }?, error?)
-    local rows, err = db:query([[SELECT * FROM kickside_work_comment WHERE board_id=$1 AND item_id=$2
-        AND deleted=0 AND comment_id > $3 ORDER BY comment_id LIMIT $4]], { board_id,item_id,after,limit })
-    if err then return nil, err end
-    local out: { types.CommentRow } = {}
-    for _, row in ipairs(rows or {}) do
-        local comment, cerr = codec.comment(row)
-        if cerr or not comment then return nil, cerr end
-        out[#out+1] = comment
-    end
-    return out,nil
-end
-
 function M.item(db: storage.Executor, board_id: string, item_id: string): (types.Item?, error?)
     local rows, err = db:query("SELECT * FROM kickside_work_item WHERE board_id = $1 AND item_id = $2", { board_id, item_id })
     if err then return nil, errors.wrap(err, "item read failed") end
-    local items, ierr = item_rows(db, rows or {})
+    local items, ierr = item_rows(rows or {})
     if ierr or not items then return nil, ierr end
     return items[1], nil
 end
@@ -204,7 +192,7 @@ function M.item_by_key(db: storage.Executor, key: string, board_id: string?): (t
     local row = rows and rows[1]
     local item: types.Item? = nil
     if row then
-        local decoded, derr = item_rows(db, { row })
+        local decoded, derr = item_rows({ row })
         if derr or not decoded then return nil, derr end
         item = decoded[1]
     else
@@ -275,7 +263,7 @@ function M.items(db: storage.Executor, board_id: string, ids: { string }): ({ ty
         end
         local rows, err = db:query("SELECT * FROM kickside_work_item WHERE board_id = $1 AND item_id IN (" .. table.concat(marks, ", ") .. ")", params)
         if err then return nil, errors.wrap(err, "item read failed") end
-        local items, ierr = item_rows(db, rows or {})
+        local items, ierr = item_rows(rows or {})
         if ierr then return nil, ierr end
         for _, item in ipairs(items or {}) do out[#out + 1] = item end
     end
@@ -296,39 +284,10 @@ function M.children(db: storage.Executor, board_id: string, parent_id: string, l
     local rows, err = db:query("SELECT * FROM kickside_work_item WHERE board_id = $1 AND parent_id = $2 ORDER BY rank, item_id LIMIT $3",
         { board_id, parent_id, limit })
     if err then return nil, errors.wrap(err, "children read failed") end
-    return item_rows(db, rows or {})
+    return item_rows(rows or {})
 end
 
-local comment_row = codec.comment
-
-function M.comment(db: storage.Executor, board_id: string, comment_id: string): (types.CommentRow?, error?)
-    local rows, err = db:query("SELECT * FROM kickside_work_comment WHERE board_id = $1 AND comment_id = $2", { board_id, comment_id })
-    if err then return nil, errors.wrap(err, "comment read failed") end
-    local row = rows and rows[1]
-    if not row then return nil, nil end
-    return comment_row(row)
-end
-
--- comments lists an item's live comments, oldest first.
-function M.comments(db: storage.Executor, board_id: string, item_id: string, limit: integer, after: types.CommentPosition?): ({ types.CommentRow }?, error?)
-    local params: types.SqlParams = { board_id, item_id }
-    local seek = ""
-    if after then
-        params[3], params[4] = after.created_at, after.comment_id
-        seek = " AND (created_at, comment_id) > ($3, $4)"
-    end
-    params[#params + 1] = limit
-    local rows, err = db:query("SELECT * FROM kickside_work_comment WHERE board_id = $1 AND item_id = $2 AND deleted = 0"
-        .. seek .. " ORDER BY created_at, comment_id LIMIT $" .. #params, params)
-    if err then return nil, errors.wrap(err, "comment read failed") end
-    local out: { types.CommentRow } = {}
-    for _, row in ipairs(rows or {}) do
-        local comment, derr = comment_row(row)
-        if derr or not comment then return nil, derr end
-        out[#out + 1] = comment
-    end
-    return out, nil
-end
+M.comment, M.comments = read_rows.comment, read_rows.comments
 
 -- intervals lists the periods an item held values of one interval field ("state", "category" or a field id),
 -- or of every field when interval is nil, oldest first.

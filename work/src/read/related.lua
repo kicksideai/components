@@ -120,7 +120,7 @@ local function list_comments(request: types.CommentsRequest, context: types.Read
         local item, ierr = reader.find(tx, board, request.item)
         if ierr then return nil, ierr end
         if not item then return nil, errors.new({ kind = errors.NOT_FOUND, message = "item not found", details = { code = "item_not_found" } }) end
-        local rows, rerr = store.comments(tx, board.board_id, item.item_id, limit + 1, after)
+        local rows, rerr = read_rows.comments(tx, board.board_id, item.item_id, limit + 1, after)
         if rerr or not rows then return nil, rerr end
         local comments: { types.CommentView } = {}
         for i = 1, math.min(#rows, limit) do

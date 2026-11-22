@@ -55,6 +55,7 @@ entries:
     values: kickside.work.domain:values
     types: kickside.work:types
     storage: kickside.work.persist:types
+    read_rows: kickside.work.persist:read_rows
     row_decode: kickside.work.persist:row_decode
     tables: kickside.work.domain:layout
 - name: intervals
@@ -327,6 +328,7 @@ entries:
   modules:
   - sql
   imports:
+    row_decode: kickside.work.persist:row_decode
     domain: kickside.work:types
 - name: tree_rows
   kind: library.lua
