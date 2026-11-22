@@ -11,6 +11,7 @@ import NativeDialog from '../../NativeDialog.vue'
 import ContentAction from '../ContentAction.vue'
 import ProcessGraph from './ProcessGraph.vue'
 import ProcessList from './ProcessList.vue'
+import TransitionRules from './TransitionRules.vue'
 import TransitionSettings from './TransitionSettings.vue'
 import { categories, categoryTitle, uniqueId, stateUses, transitionUses, stateTitle, transitionTitle, stateMeaning, mainPath } from './process'
 import { type RemovalGuard, type SchemaChange, changeReason, removeEntry } from './model'
@@ -30,10 +31,27 @@ watch(() => props.createForItemType, (active, previous) => {
 const choosingTarget = ref(false)
 const selectedState = ref<State>(), selectedTransition = ref<Transition>(), graph = ref<InstanceType<typeof ProcessGraph>>()
 const editor = ref<HTMLElement>(), inspector = ref<HTMLElement>(), tools = ref<HTMLElement>(), editingName = ref(false)
+const insertions = new WeakMap<State, { entry: Transition; continuation?: Transition; automatic: boolean }>()
 type InspectorOpener = HTMLElement | SVGElement
 let inspectorOpener: InspectorOpener | undefined
 async function editName() { editingName.value = true; await nextTick(); inspector.value?.querySelector<HTMLInputElement>('[aria-label="State name"]')?.focus() }
 const process = computed(() => processes.value.find(p => p.id === selected.value) ?? processes.value[0])
+const insertedRoute = computed(() => {
+  const state = selectedState.value
+  const workflow = process.value
+  const insertion = state && insertions.get(state)
+  if (!state || !workflow || !insertion) return
+  const { entry, continuation } = insertion
+  if (!workflow.transitions?.includes(entry) || entry.to !== state.id) return
+  const names = [
+    entry.from === 'any' ? 'Any state' : entry.from.map(id => stateTitle(workflow.states.find(s => s.id === id))).join(', '),
+    stateTitle(state),
+  ]
+  if (continuation && workflow.transitions.includes(continuation) && (continuation.from === 'any' || continuation.from.includes(state.id))) {
+    names.push(stateTitle(workflow.states.find(s => s.id === continuation.to)))
+  }
+  return names.join(' → ')
+})
 const modeChosen = ref(false)
 function setMode(value: string) {
   modeChosen.value = true
@@ -144,17 +162,43 @@ async function addState(p: Process, opener: HTMLElement) {
   const state: State = { id: uniqueId('state', p.states), name: 'New state', category: 'started' }
   const main = mainPath(p), last = main.at(-1)
   const after = selectedState.value ?? (last?.category === 'completed' ? main.at(-2) : last)
-  const outgoing = after && (p.transitions?.find(t => t.default && t.from !== 'any' && t.from.includes(after.id)) ?? p.transitions?.find(t => t.from !== 'any' && t.from.includes(after.id) && p.states.findIndex(s => s.id === t.to) > p.states.indexOf(after)))
-  p.states.splice(after ? p.states.indexOf(after) + 1 : p.states.length, 0, state)
+  const afterIndex = after ? p.states.indexOf(after) : -1
+  const index = after ? afterIndex + 1 : p.states.length
+  const outgoing = after && p.transitions?.filter(t =>
+    t.from !== 'any' && t.from.length === 1 && t.from[0] === after.id && !transitionUses(p, t).length)
+  const entry = outgoing?.find(t => t.default) ?? outgoing?.find(t => p.states.findIndex(s => s.id === t.to) > afterIndex)
+  p.states.splice(index, 0, state)
+  const inserted = p.states[index]
   if (after && after.category !== 'completed' && after.category !== 'canceled') {
-    if (outgoing) {
-      const target = outgoing.to
-      outgoing.to = state.id
-      ;(p.transitions ??= []).push({ id: uniqueId('transition', p.transitions ?? []), name: 'Continue', from: [state.id], to: target, ...(outgoing.auto && outgoing.default ? { auto: true, default: true } : {}) })
-    } else (p.transitions ??= []).push({ id: uniqueId('transition', p.transitions ?? []), name: 'Continue', from: [after.id], to: state.id })
+    const transitions = (p.transitions ??= [])
+    const automatic = entry?.auto === true && entry.default === true
+    const continuation: Transition = {
+      id: uniqueId('transition', transitions),
+      name: 'Continue',
+      from: [entry ? inserted.id : after.id],
+      to: entry?.to ?? inserted.id,
+      ...(automatic ? { auto: true, default: true } : {}),
+    }
+    if (entry) entry.to = inserted.id
+    transitions.push(continuation)
+    const added = transitions[transitions.length - 1]
+    insertions.set(inserted, { entry: entry ?? added, continuation: entry ? added : undefined, automatic })
   }
-  chooseState(state, opener)
+  chooseState(inserted, opener)
   await editName()
+}
+function setInsertionKind(state: State, kind: string) {
+  const insertion = insertions.get(state)
+  const continuation = insertion?.continuation
+  if (!continuation || insertion.automatic || continuation.from === 'any' ||
+      continuation.from.length !== 1 || continuation.from[0] !== state.id) return
+  if (kind === 'gate') {
+    continuation.auto = true
+    continuation.default = true
+  } else {
+    delete continuation.auto
+    delete continuation.default
+  }
 }
 function connect(from: string, to: string, opener = inspectorOpener) {
   const p = process.value
@@ -311,6 +355,8 @@ async function remove(p: Process) {
       <ProcessList
         v-else
         :process="process"
+        :draft="draft"
+        :guards="visibleGuards"
         :selected-state="selectedState"
         :selected-transition="selectedTransition"
         :counts="processCounts"
@@ -348,6 +394,10 @@ async function remove(p: Process) {
               ><Icon icon="tabler:x"
             /></Button>
           </header>
+          <div v-if="insertedRoute" class="work-stack work-tight">
+            <p class="work-field-label">New route</p>
+            <p>{{ insertedRoute }}</p>
+          </div>
           <p class="work-process-meaning">{{ stateMeaning(state, draft) }}</p>
           <p v-if="processCounts" class="work-muted">{{ processCounts[state.id] ?? 0 }} {{ processCounts[state.id] === 1 ? 'item' : 'items' }} currently here</p>
 
@@ -356,6 +406,7 @@ async function remove(p: Process) {
             :process="process"
             :draft="draft"
             :board-id="boardId"
+            @kind="setInsertionKind(state, $event)"
             @validity="(key, valid) => emit('validity', key.includes('duration:') ? key : process!.id + ':' + state!.id + ':' + key, valid)"
           />
           <label class="work-stack work-tight"
@@ -424,6 +475,7 @@ async function remove(p: Process) {
             }}
             → {{ stateTitle(process.states.find((s) => s.id === transition!.to)) }}
           </p>
+          <TransitionRules :transition="transition" :process="process" :draft="draft" :guards="visibleGuards" />
           <p v-if="error" class="kx-err" role="alert">{{ error }}</p>
           <label class="work-stack work-tight"
             >Name<InputText

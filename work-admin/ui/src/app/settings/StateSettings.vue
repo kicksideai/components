@@ -22,7 +22,7 @@ import { uniqueId, stateTitle, kindTitle, transitionTitle } from './process'
 import PrincipalSourceEditor from './PrincipalSourceEditor.vue'
 import ApproversEditor from './ApproversEditor.vue'
 const props = defineProps<{ state: State & { stage?: string }; process: Process; draft: Declaration; boardId?: string }>()
-const emit = defineEmits<{ validity: [key: string, valid: boolean] }>()
+const emit = defineEmits<{ validity: [key: string, valid: boolean]; kind: [kind: string] }>()
 const outcomeTransitions = computed(() => (props.process.transitions ?? []).filter(t => t.from === 'any' || t.from.includes(props.state.id)))
 const kinds = [{ value: 'human', icon: 'user' }, { value: 'gate', icon: 'shield-check' }, { value: 'automated', icon: 'bolt' }, { value: 'parallel', icon: 'arrows-split' }]
 function changeKind(value: string) {
@@ -31,6 +31,7 @@ function changeKind(value: string) {
   if (value === 'automated') s.run = { stage: s.id, retry: { max: 1, backoff: 'PT1M' } }
   if (value === 'gate') s.release_when = { approvals: { min: 1, from: { group: '' }, prevent_self: true } }
   if (value === 'parallel') { s.regions = [{ id: 'region_1', initial: props.process.states.find(state => state.id !== s.id)?.id ?? '' }]; s.join = 'all' }
+  emit('kind', value)
 }
 function failure(value: string | null) { if (!props.state.run) return; if (value) props.state.run.on_fail = value; else delete props.state.run.on_fail }
 
@@ -61,22 +62,6 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
       >
     </SelectButton>
 
-    <h4 class="work-process-group">Limit</h4>
-    <label class="work-row"
-      ><span class="work-spacer">Items allowed here</span
-      ><CapacityControl :draft="draft" :state="state.id" label="Items allowed here" /></label>
-    <label class="work-row"
-      ><span class="work-spacer"
-        >Refuse moves over the limit<small class="work-muted work-block">Off only warns</small></span
-      ><CapacityControl :draft="draft" :state="state.id" label="Refuse moves over the limit" hard /></label>
-    <h4 class="work-process-group">Required on entry</h4>
-    <ChipPicker
-      label="Required fields"
-      :options="draft.fields?.map((f) => ({ value: f.code, label: f.title || f.code })) ?? []"
-      v-model="state.require"
-    />
-    <DurationControl v-if="!state.kind || state.kind === 'human'" v-model="state.due" label="Time allowed in this state" @validity="(valid, key) => emit('validity', key, valid)" />
-
     <template v-if="state.kind === 'gate' && state.release_when">
       <h4 class="work-process-group">Approval</h4>
       <ApproversEditor
@@ -101,6 +86,22 @@ function failure(value: string | null) { if (!props.state.run) return; if (value
         </div>
       </Disclosure>
     </template>
+    <h4 class="work-process-group">Limit</h4>
+    <label class="work-row"
+      ><span class="work-spacer">Items allowed here</span
+      ><CapacityControl :draft="draft" :state="state.id" label="Items allowed here" /></label>
+    <label class="work-row"
+      ><span class="work-spacer"
+        >Refuse moves over the limit<small class="work-muted work-block">Off only warns</small></span
+      ><CapacityControl :draft="draft" :state="state.id" label="Refuse moves over the limit" hard /></label>
+    <h4 class="work-process-group">Required on entry</h4>
+    <ChipPicker
+      label="Required fields"
+      :options="draft.fields?.map((f) => ({ value: f.code, label: f.title || f.code })) ?? []"
+      v-model="state.require"
+    />
+    <DurationControl v-if="!state.kind || state.kind === 'human'" v-model="state.due" label="Time allowed in this state" @validity="(valid, key) => emit('validity', key, valid)" />
+
     <template v-if="state.kind === 'automated' && state.run">
       <h4 class="work-process-group">Automation</h4>
       <label class="work-stack work-tight"
