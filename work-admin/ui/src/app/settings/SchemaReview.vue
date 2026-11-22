@@ -3,20 +3,39 @@
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { computed, ref, watch } from 'vue'
 import type { Declaration, Holder, PluginOption } from '../../types'
-import { fieldTitle } from '../../forms'
+import { fieldTitle, humanize } from '../../forms'
 import { usePrincipalNames } from '../../principals'
 import { opaque } from '../../values'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
-import { classDescription, changeReason, type SchemaPlan, type SchemaChange } from './model'
+import { classDescription, changeReason, type PluginConfigs, type SchemaPlan, type SchemaChange } from './model'
 import { flows } from './flows'
 import { stateTitle } from './process'
 import { reviewCopy } from './reviewCopy'
+import { configFields } from './config'
 
-const props = defineProps<{ boardId?: string; original?: Declaration; declaration?: Declaration; plan?: SchemaPlan; generation?: number; follows: string[]; configCount: number; packReview?: boolean; plugins?: PluginOption[] }>()
+const props = defineProps<{ boardId?: string; original?: Declaration; declaration?: Declaration; plan?: SchemaPlan; generation?: number; follows: string[]; configCount: number; packReview?: boolean; plugins?: PluginOption[]; pluginConfigs?: PluginConfigs }>()
 const empty: Declaration = {}
 const original = computed(() => props.original ?? empty)
 const draft = computed(() => props.declaration ?? empty)
+const configSummary = computed(() => (props.plugins ?? []).flatMap(plugin => {
+  if (!plugin.config_schema) return []
+  const config = props.pluginConfigs?.[plugin.plugin]
+  const enabling = !original.value.plugins?.some(entry => entry.use === plugin.plugin) &&
+    draft.value.plugins?.some(entry => entry.use === plugin.plugin)
+  if (!config && !enabling) return []
+  const fields = configFields(plugin.config_schema).map(field => {
+    const value = config?.[field.key]
+    if (plugin.plugin === 'kickside.work.planning:plugin' && field.key === 'issue_types') {
+      const labels = Array.isArray(value) ? value.map(id => draft.value.item_types?.find(type => type.id === id)?.title || humanize(id)) : []
+      return { title: 'Plan these item types', value: labels.join(', ') || 'Uses default' }
+    }
+    if (value === undefined) return { title: field.title, value: 'Uses default' }
+    if (field.schema.writeOnly || field.schema.format === 'password' || typeof value === 'object') return { title: field.title, value: 'Set' }
+    return { title: field.title, value: typeof value === 'boolean' ? value ? 'On' : 'Off' : String(value) }
+  })
+  return fields.length ? [{ id: plugin.plugin, title: plugin.title || plugin.plugin, fields }] : []
+}))
 const bindings = computed(() => (draft.value.processes ?? []).flatMap(process => process.states.flatMap(state => {
   const reference = state.run?.flow_ref
   return reference ? [{ key: process.id + ':' + state.id, process: process.name || 'Untitled process', state: stateTitle(state), reference }] : []
@@ -58,6 +77,10 @@ const rows = (changes: SchemaChange[]) => changes.map(change => {
       copy.details.push((after.has(plugin.plugin) ? 'Enable ' : 'Turn off ') + (plugin.title || 'an available plugin'))
     }
   }
+  if (change.what === 'plugin.config') {
+    const plugin = props.plugins?.find(option => option.plugin === change.code)
+    return { change, title: (plugin?.title || 'Plugin') + ' settings changed', details: [] }
+  }
   return { change, ...copy }
 })
 const changes = computed(() => rows(props.plan?.changes.filter(change => change.class !== 'refused') ?? []))
@@ -90,6 +113,13 @@ function refusalReason(change: SchemaChange) {
         <Tag class="kx-tag-sm" :severity="severity(plan.class)">{{ label(plan.class) }}</Tag>
       </header>
       <p class="work-muted">{{ classDescription[plan.class] || 'Review the changes below.' }}</p>
+      <section v-if="configSummary.length" class="work-stack work-tight" aria-label="Plugin configuration">
+        <h3>Plugin configuration</h3>
+        <div v-for="plugin in configSummary" :key="plugin.id">
+          <strong>{{ plugin.title }}</strong>
+          <p v-for="field in plugin.fields" :key="field.title">{{ field.title }} · {{ field.value }}</p>
+        </div>
+      </section>
       <p v-if="migrationAdvice" class="work-notice">{{ migrationAdvice }}</p>
       <p v-else-if="follows.length" class="work-notice">Existing items in {{ follows.join(', ') }} will follow the updated workflow.</p>
       <section v-if="bindings.length" class="work-stack work-tight" aria-label="Reviewed Flow bindings">

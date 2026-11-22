@@ -33,6 +33,7 @@ function update(id: string, holders: Holder[] | undefined) { const level = visib
     <p class="work-small work-muted">Restrict items by their visibility level. People still need access to the board.</p>
     <label class="work-stack work-tight">Visibility field
       <Select aria-label="Visibility field" :model-value="visibility?.field ?? ''"
+        placeholder="No additional restriction"
         :options="[{ label: 'No additional restriction', value: '' }, ...fields.map(f => ({ label: fieldTitle(f), value: f.code }))]"
         optionLabel="label" optionValue="value" appendTo="self" @update:model-value="choose" />
     </label>

@@ -82,7 +82,7 @@ watch(() => [props.active, props.boardId], () => { if (props.active) void load()
       </div>
       <p v-else-if="!grants" class="work-settings-row work-muted" role="status">Loading members…</p>
     </section>
-    <Disclosure class="work-disclosure" :label="draft.visibility ? 'Advanced · Item visibility rules set' : 'Advanced · Item visibility'">
+    <Disclosure class="work-disclosure work-visibility-disclosure" :label="draft.visibility ? 'Advanced · Item visibility rules set' : 'Advanced · Item visibility'">
       <VisibilityEditor :board-id="boardId" :draft="draft" @validity="$emit('validity', $event)" />
     </Disclosure>
   </section>

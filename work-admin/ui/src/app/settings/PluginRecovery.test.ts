@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+import { reactive } from 'vue'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { host } from '@wippy-fe/proxy'
@@ -69,7 +70,7 @@ it.each(states)('$name has a clear status and an available recovery action', asy
     schema: { ...schema(), as_of: 10, plugins: [plugin] },
     draft: { plugins: [{ use: id }] },
     options: [plugin],
-    configs: {},
+    configs: reactive({}),
   } })
   try {
     await wrapper.get('[aria-expanded]').trigger('click')
@@ -88,7 +89,7 @@ function renderPlugin(plugin: PluginOption) {
     schema: { ...schema(), as_of: 10, plugins: [plugin] },
     draft: { plugins: [{ use: id }] },
     options: [plugin],
-    configs: {},
+    configs: reactive({}),
   } })
 }
 
@@ -123,11 +124,12 @@ it('shows the degraded worker error and its last acknowledged sequence together'
   try {
     await wrapper.get('.work-definition-toggle').trigger('click')
     expect(wrapper.get('.work-definition-kind').text()).toBe('Degraded')
-    const progress = wrapper.get('.work-plugin-status')
+    await getButton(wrapper, 'Technical details').trigger('click')
+    const progress = wrapper.get('dl')
     expect(progress.text()).toContain('Worker unavailable')
     expect(progress.text()).toContain('Indexed through 3 of 10 events.')
     await getButton(wrapper, 'Inspect worker').trigger('click')
-    expect(progress.text()).toContain('index')
+    expect(progress.text()).toContain('Index')
     expect(settings.configure).not.toHaveBeenCalled()
   } finally { wrapper.unmount() }
 })
@@ -142,9 +144,9 @@ it('repairs invalid effective config through Work and disables editing without b
     await wrapper.setProps({ disabled: false })
     await getButton(wrapper, 'Edit configuration').trigger('click')
     await wrapper.getComponent(InputNumber).setValue(4)
-    await getButton(wrapper, 'Save plugin settings').trigger('click')
     await flushPromises()
-    expect(settings.configure).toHaveBeenCalledExactlyOnceWith('board', id, { threshold: 4 })
+    expect(wrapper.props('configs')).toEqual({ [id]: { threshold: 4 } })
+    expect(settings.configure).not.toHaveBeenCalled()
   } finally { wrapper.unmount() }
 })
 
@@ -204,8 +206,8 @@ it('keeps installed plugin settings editable when a worker needs attention', asy
     await wrapper.get('.work-definition-toggle').trigger('click')
     await getButton(wrapper, 'Plugin settings').trigger('click')
     await wrapper.getComponent(InputNumber).setValue(6)
-    await getButton(wrapper, 'Save plugin settings').trigger('click')
     await flushPromises()
-    expect(settings.configure).toHaveBeenCalledExactlyOnceWith('board', id, { threshold: 6 })
+    expect(wrapper.props('configs')).toEqual({ [id]: { threshold: 6 } })
+    expect(settings.configure).not.toHaveBeenCalled()
   } finally { wrapper.unmount() }
 })

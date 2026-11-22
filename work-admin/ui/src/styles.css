@@ -133,6 +133,16 @@ label.work-stack, .work-settings-grid label, .work-chip-picker legend { font-siz
   .work-definition-usage, .work-definition-meta { text-align: left; justify-content: flex-start; }
   .work-definition-actions { grid-area: 2 / 3; }
   .work-definition-description { padding-left: 0; overflow-wrap: anywhere; }
+  .work-definitions-types .work-definition-head { grid-template-columns: minmax(0, 1fr); row-gap: 2px; padding-block: 8px; }
+  .work-definitions-types .work-definition-toggle .work-row-title { white-space: nowrap; }
+  .work-definitions-types .work-definition-details { grid-area: 2 / 1; flex-wrap: nowrap; margin-inline-start: 24px; }
+  .work-definitions-types :is(.work-definition-kind, .work-definition-meta) { white-space: nowrap; }
+  .work-definitions-types .work-definition-kind { flex: none; max-inline-size: 55%; }
+  .work-definitions-types :is(.work-definition-usage, .work-definition-meta, .work-definition-meta > :last-child) { min-width: 0; }
+  .work-definitions-types .work-definition-meta { flex-wrap: nowrap; }
+  .work-definitions-types .work-definition-meta > :first-child { flex: none; }
+  .work-definitions-types :is(.work-definition-kind-value, .work-definition-meta > :last-child > .p-tag-label) { overflow: hidden; text-overflow: ellipsis; }
+  .work-definitions-types .work-definition-actions:empty { display: none; }
 }
 .work-definitions-plugins .work-definition-head {
   grid-template: "lead control" auto "status control" auto / minmax(0, 1fr) auto;
@@ -407,6 +417,7 @@ button.work-content-action { padding: 0; border: 0; background: transparent; }
 .work-member-preview svg { color: var(--p-text-muted-color); flex: none; }
 .work-member-preview strong { min-width: 120px; overflow-wrap: anywhere; }
 .work-disclosure { min-width: 0; }
+.work-visibility-disclosure > .kx-disclosure-panel { border-bottom-width: 0; }
 .work-settings-row .work-row-main > p { margin-top: 3px; }
 .work-ia .work-definition-code { display: none; }
 .work-ia .work-definition-body label, .work-ia .work-process-sideform label { min-width: 0; overflow-wrap: anywhere; }

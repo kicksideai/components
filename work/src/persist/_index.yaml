@@ -349,6 +349,7 @@ entries:
   - sql
   - json
   imports:
+    values: kickside.work.domain:values
     store: kickside.work.persist:store
     row_decode: kickside.work.persist:row_decode
     domain: kickside.work:types
