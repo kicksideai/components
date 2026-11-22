@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.39](https://github.com/kicksideai/components/compare/work-v0.1.38...work-v0.1.39) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work:** consolidate apply receipts, relation ordering and comment reads ([#374](https://github.com/kicksideai/components/issues/374)) ([0f05a13](https://github.com/kicksideai/components/commit/0f05a138dc4ef029f64f199ec5baa6ec26f95dc3))
+
 ## [0.1.38](https://github.com/kicksideai/components/compare/work-v0.1.37...work-v0.1.38) (2026-11-22)
 
 
