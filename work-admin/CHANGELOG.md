@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.24](https://github.com/kicksideai/components/compare/work-admin-v0.1.23...work-admin-v0.1.24) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work-admin:** align plugin activation controls ([#370](https://github.com/kicksideai/components/issues/370)) ([21569b6](https://github.com/kicksideai/components/commit/21569b6269d92eab4deca67eecd4947ff643659d))
+
 ## [0.1.23](https://github.com/kicksideai/components/compare/work-admin-v0.1.22...work-admin-v0.1.23) (2026-11-22)
 
 
