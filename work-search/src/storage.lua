@@ -9,7 +9,7 @@ type State = { revision: integer?, active: Generation?, building: Generation?, r
 type Candidate = { item_id: string, item_key: string, source_seq: integer }
 type Document = Candidate & { content: string }
 
-local M = { Generation = Generation, State = State, Candidate = Candidate, Document = Document }
+local M = { Generation = Generation, State = State, Document = Document }
 
 function M.open(): (sql.DB?, error?)
     local entry, err = registry.get("kickside.work_search:storage_config")
@@ -27,6 +27,57 @@ function M.load(db: sql.DB | sql.Transaction, attachment_id: string): (State?, e
     if err or not rows or not rows[1] then return nil, err end
     local state, decode_err = json.decode(rows[1].state :: string)
     return state :: State?, decode_err
+end
+
+function M.delete_state(tx: sql.Transaction, attachment_id: string): error?
+    local _, err = tx:execute("DELETE FROM kickside_work_search_state WHERE attachment_id=$1", { attachment_id })
+    return err
+end
+
+-- Competing fold and teardown pages serialize on the attachment's state row.
+function M.write<T>(attachment_id: string, board_id: string, operation: (sql.Transaction, boolean, State) -> (T?, error?)): (T?, error?)
+    local db, err = M.open()
+    if err or not db then return nil, err end
+    local sqlite = db:type() == sql.type.SQLITE
+    local tx, begin_err = db:begin()
+    if begin_err or not tx then
+        local _, release_err = db:release()
+        return nil, begin_err or release_err
+    end
+    local locked, lock_err = tx:query([[INSERT INTO kickside_work_search_state (attachment_id, board_id, state)
+        VALUES ($1,$2,'{}') ON CONFLICT (attachment_id) DO UPDATE SET board_id=excluded.board_id
+        WHERE kickside_work_search_state.board_id=excluded.board_id RETURNING state]], { attachment_id, board_id })
+    local result: T?
+    local failure = lock_err
+    if not failure then
+        if not locked or not locked[1] then
+            failure = errors.new({ kind = errors.CONFLICT, message = "search attachment belongs to a different board",
+                details = { code = "search_attachment_mismatch" } })
+        else
+            local decoded, decode_err = json.decode(locked[1].state :: string)
+            failure = decode_err
+            if not failure then result, failure = operation(tx, sqlite, decoded :: State) end
+        end
+    end
+    local finish_err: error?
+    if failure then
+        local _, rollback_err = tx:rollback()
+        finish_err = rollback_err
+    else
+        local _, commit_err = tx:commit()
+        finish_err = commit_err
+    end
+    local _, release_err = db:release()
+    if failure or finish_err or release_err then return nil, failure or finish_err or release_err end
+    return result, nil
+end
+
+function M.save(tx: sql.Transaction, attachment_id: string, state: State): error?
+    state.revision = (state.revision or 0) + 1
+    local encoded, err = json.encode(state)
+    if err or not encoded then return err end
+    local _, save_err = tx:execute("UPDATE kickside_work_search_state SET state=$1 WHERE attachment_id=$2", { encoded, attachment_id })
+    return save_err
 end
 
 local function lookup(tx: sql.Transaction, dialect: string, attachment_id: string, schema: integer, scope: string, text: string, limit: integer): ({ Candidate }?, error?)
@@ -83,58 +134,22 @@ function M.candidates(attachment_id: string, schema: integer, scope: string, tex
     if err or not db then return nil, err end
     local dialect = db:type()
     local tx, begin_err = db:begin()
-    if begin_err or not tx then db:release(); return nil, begin_err end
+    if begin_err or not tx then
+        local _, release_err = db:release()
+        return nil, begin_err or release_err
+    end
     -- The serving pointer and its rows belong to the same snapshot during retirement.
+    local rows: { Candidate }?
+    local read_err: error?
     if dialect == sql.type.POSTGRES then
         local _, snapshot_err = tx:execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY", {})
-        if snapshot_err then tx:rollback(); db:release(); return nil, snapshot_err end
+        read_err = snapshot_err
     end
-    local rows, read_err = lookup(tx, dialect, attachment_id, schema, scope, text, limit)
+    if not read_err then rows, read_err = lookup(tx, dialect, attachment_id, schema, scope, text, limit) end
     local _, rollback_err = tx:rollback()
     local _, release_err = db:release()
     if read_err or rollback_err or release_err then return nil, read_err or rollback_err or release_err end
     return rows, nil
-end
-
--- Competing fold and teardown pages serialize on the attachment's state row.
-function M.write<T>(attachment_id: string, board_id: string, operation: (sql.Transaction, boolean, State) -> (T?, error?)): (T?, error?)
-    local db, err = M.open()
-    if err or not db then return nil, err end
-    local sqlite = db:type() == sql.type.SQLITE
-    local tx, begin_err = db:begin()
-    if begin_err or not tx then db:release(); return nil, begin_err end
-    local locked, lock_err = tx:query([[INSERT INTO kickside_work_search_state (attachment_id, board_id, state)
-        VALUES ($1,$2,'{}') ON CONFLICT (attachment_id) DO UPDATE SET board_id=excluded.board_id
-        WHERE kickside_work_search_state.board_id=excluded.board_id RETURNING state]], { attachment_id, board_id })
-    local result: T?
-    local failure = lock_err
-    if not failure then
-        if not locked or not locked[1] then
-            failure = errors.new({ kind = errors.CONFLICT, message = "search attachment belongs to a different board",
-                details = { code = "search_attachment_mismatch" } })
-        else
-            local decoded, decode_err = json.decode(locked[1].state :: string)
-            failure = decode_err
-            if not failure then result, failure = operation(tx, sqlite, decoded :: State) end
-        end
-    end
-    if failure then
-        tx:rollback()
-    else
-        local _, commit_err = tx:commit()
-        failure = commit_err
-    end
-    local _, release_err = db:release()
-    if failure or release_err then return nil, failure or release_err end
-    return result, nil
-end
-
-function M.save(tx: sql.Transaction, attachment_id: string, state: State): error?
-    state.revision = (state.revision or 0) + 1
-    local encoded, err = json.encode(state)
-    if err or not encoded then return err end
-    local _, save_err = tx:execute("UPDATE kickside_work_search_state SET state=$1 WHERE attachment_id=$2", { encoded, attachment_id })
-    return save_err
 end
 
 local function put(tx: sql.Transaction, sqlite: boolean, generation: string, item: Document): error?

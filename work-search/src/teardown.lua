@@ -24,8 +24,7 @@ local function delete(): ({ success: boolean }?, error?)
         if state.retired or state.building or state.active then
             return false, storage.save(tx, attachment, state)
         end
-        local _, delete_err = tx:execute("DELETE FROM kickside_work_search_state WHERE attachment_id=$1", { attachment })
-        return true, delete_err
+        return true, storage.delete_state(tx, attachment)
     end)
     if cleanup_err then return nil, cleanup_err end
     if not done then

@@ -121,6 +121,19 @@ local function define()
         end)
     end)
 
+    test.describe("sprint close contract", function()
+        test.it("declares the same signed preview in plan output and close input", function()
+            local owner = scoped.admin()
+            local contract = assert(owner.call("declaration", { id = SPRINTS })).data
+            local output = assert(find(contract.methods, "plan_close", "name")).output_schemas[1].definition :: string
+            local input = assert(find(contract.methods, "close", "name")).input_schemas[1].definition :: string
+            for _, field in ipairs({ "snapshot", "token" }) do
+                local property = '"' .. field .. '"%s*:%s*(%b{})'
+                test.eq(assert(input:match(property)), assert(output:match(property)), field)
+            end
+        end)
+    end)
+
     test.describe("planning pack", function()
         test.it("discovers and installs sprint, milestone, and tracked issue references", function()
             local admin = scoped.admin()
@@ -350,6 +363,27 @@ local function define()
     end)
 
     test.describe("close sprint commit", function()
+        test.it("previews the prepared close of a sprint pinned to an earlier process", function()
+            local owner = scoped.admin()
+            local declaration = assert(create_board(owner).call("get_schema", {})).declaration
+            declaration.key_prefix = fixture.fresh_prefix()
+            declaration.plugins = { { use = PLUGIN } }
+            for _, field in ipairs(declaration.fields) do field.id = nil end
+            local process = assert(find(declaration.processes, "planning_sprint", "id"))
+            process.migration = "pin"
+            local board = scoped.board(owner, declaration)
+            local source = sprint(board, "sprint", true)
+            local held = assert(steps.get(board, source)).item.process_generation
+
+            assert(find(process.transitions, "close", "id")).prepare_command = nil
+            assert(board.call("apply_schema", { declaration = { processes = { process } } }))
+            local schema = assert(board.call("get_schema", {}))
+            test.is_true(assert(find(schema.compiled.processes, process.id, "id")).generation > held)
+            test.eq(assert(steps.get(board, source)).item.process_generation, held)
+            close_sprint(owner, board, source)
+            test.eq(assert(steps.get(board, source)).item.state, "closed")
+        end)
+
         test.it("closes a retained sprint using its Work transition and honors its predicate", function()
             local owner = scoped.admin()
             local declaration = assert(create_board(owner).call("get_schema", {})).declaration

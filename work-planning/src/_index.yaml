@@ -10,6 +10,12 @@ entries:
   kind: ns.dependency
   component: kickside/work
   version: '>=0.1.33'
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  imports:
+    reads: kickside.work.read:types
+    work: kickside.work:types
 - name: pack
   kind: registry.entry
   meta:
@@ -96,6 +102,9 @@ entries:
     enforce: write
   source: file://pack.lua
   method: date_order
+  imports: &pack_imports
+    types: kickside.work.planning:types
+    work: kickside.work:types
 - name: schema_provider
   kind: contract.binding
   contracts:
@@ -105,6 +114,7 @@ entries:
   kind: function.lua
   source: file://pack.lua
   method: adopt_fields
+  imports: *pack_imports
 - name: attachment
   kind: contract.binding
   meta:
@@ -122,3 +132,4 @@ entries:
   kind: function.lua
   source: file://pack.lua
   method: delete
+  imports: *pack_imports
