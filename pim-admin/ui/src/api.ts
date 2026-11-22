@@ -1,12 +1,23 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-// One client over the kickside/pim catalog endpoints, through the host proxy.
-// Every call runs as the signed-in user; errors surface as thrown Errors with
-// the server's message, never as silently empty data.
-import { get, post, put } from './shared/transport'
+import { api } from '@wippy-fe/proxy'
+import { request, type AdminFailure } from '../../../admin-http'
+import { get, post } from './shared/transport'
 import type { ApplyItem, ApplyResult, HistoryResult, CatalogRow, Declaration, PluginConfigs, ListTermsResult, SchemaOptions, SchemaPlan, SchemaView } from './types'
 
 const BASE = '/api/v1/pim/catalogs'
 const termPages = new Map<string, Promise<ListTermsResult>>()
+
+type ProjectionResume = { success: true; status: string } | AdminFailure
+
+function resumePluginProjection(id: string, cursorId: string): Promise<{ status: string }> {
+  return request<{ status: string }>(async () => {
+    const { data }: { data: ProjectionResume } = await api.put(
+      `/api/v1/threads/${encodeURIComponent(id)}/projections/resume`, { cursor_id: cursorId },
+    )
+    if (data?.success !== true) return { data }
+    return { data: typeof data.status === 'string' ? { success: true, data } : undefined }
+  }, 'resume background update')
+}
 
 export const pim = {
   catalogSummary: (id: string) => get<CatalogRow>(`${BASE}/${encodeURIComponent(id)}/summary`, 'catalog summary'),
@@ -24,8 +35,7 @@ export const pim = {
     post<{ generation: number; class: string }>(`${BASE}/${encodeURIComponent(id)}/schema`, { declaration, expected_generation: expectedGeneration, plugin_configs: pluginConfigs }, 'schema apply'),
   planSchema: (id: string, declaration: Declaration, expectedGeneration: number, pluginConfigs: PluginConfigs = {}) =>
     post<SchemaPlan>(`${BASE}/${encodeURIComponent(id)}/schema/plan`, { declaration, expected_generation: expectedGeneration, plugin_configs: pluginConfigs }, 'schema plan'),
-  resumePluginProjection: (id: string, cursorId: string) =>
-    put<{ status: string }>(`/api/v1/threads/${encodeURIComponent(id)}/projections/resume`, { cursor_id: cursorId }, 'resume background update'),
+  resumePluginProjection,
   updateCatalogApp: (id: string, uiApp: string) =>
     post<{ catalog_id: string; ui_app?: string }>(`${BASE}/${encodeURIComponent(id)}/settings`, { ui_app: uiApp }, 'catalog app settings'),
   configurePlugin: (id: string, plugin: string, config: Record<string, unknown>, reset = false) =>

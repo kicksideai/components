@@ -293,7 +293,7 @@ try {
             ...(data === undefined ? {} : { body: JSON.stringify(data) }),
           })
           const json = await response.json()
-          if (!response.ok) throw Object.assign(new Error(json.message), { response: { status: response.status, data: json } })
+          if (!response.ok) throw Object.assign(new Error(json.error), { response: { status: response.status, data: json } })
           return { data: json }
         }
         window.__WIPPY_APP_CONFIG__ = {}
@@ -319,59 +319,61 @@ try {
         }
       })
       await page.route(origin + '/api/v1/threads/recovery/projections/resume', route => {
-        requests.resume.push(route.request().postDataJSON())
+        const body = route.request().postDataJSON()
+        requests.resume.push(body)
         state.plugin = ready
-        return route.fulfill({ json: { success: true, status: 'active' } })
+        return route.fulfill({ json: { success: true, cursor_id: body.cursor_id, status: 'active' } })
       })
       await page.route(origin + endpoint + '/**', async route => {
         const path = new URL(route.request().url()).pathname.slice(endpoint.length)
+        const reply = data => route.fulfill({ json: { success: true, data } })
         const declaration = { plugins: test.state.active === false ? [] : [{ use: manifest }], ...(test.state.references ? { scopes: test.state.references.scopes } : {}) }
-        if (path === '/summary') return route.fulfill({ json: { title: 'Plugin recovery catalog' } })
+        if (path === '/summary') return reply({ catalog_id: 'recovery', title: 'Plugin recovery catalog', access: { read: true, write: true, admin: true } })
         if (path === '/schema') {
           requests.schema++
-          return route.fulfill({ json: {
+          return reply({
             declaration, schema_generation: 2, generation: 2, as_of: 100,
             access: { read: true, write: true, admin: true }, plugins: [state.plugin],
             attributes: {}, families: {}, channels: {}, dimensions: [], vocabularies: {}, sources: {},
-          } })
+          })
         }
-        if (path === '/schema/options') return route.fulfill({ json: {
+        if (path === '/schema/options') return reply({
           plugins: [state.plugin], scopes: test.name === 'uninstalled' ? [{ id: missingRefs.scopes[0], title: 'Region', access: 'read', filters: {} }] : [],
           types: [], link_kinds: [],
-        } })
+        })
         if (path === '/plugins/configure') {
           const body = route.request().postDataJSON()
           requests.configure.push(body)
           if (body.config.issuer === 'Reject me') return route.fulfill({
             status: 400, json: {
-              details: { code: 'plugin_config_invalid', plugin: manifest, field: 'issuer' },
-              message: 'Choose an approved certificate issuer.',
+              success: false, details: { code: 'plugin_config_invalid', plugin: manifest, field: 'issuer' },
+              error: 'Choose an approved certificate issuer.',
             },
           })
           state.plugin = { ...ready, config: body.config, ...(body.reset ? { projections: { [projection]: cursor({ bootstrapping: true }) } } : {}) }
-          return route.fulfill({ json: { seq: 100 } })
+          return reply({ seq: 100 })
         }
         if (path === '/settings') {
           requests.settings.push(route.request().postDataJSON())
           state.plugin = { ...state.plugin, references: { ...state.plugin.references, shell_bindings: [] } }
-          return route.fulfill({ json: { catalog_id: 'recovery' } })
+          return reply({ catalog_id: 'recovery' })
         }
         if (path === '/schema/plan') {
           const body = route.request().postDataJSON()
           requests.plan.push(body)
           if (test.name === 'activation-configuration-refusal' && !body.plugin_configs?.[manifest]) return route.fulfill({
             status: 400, json: {
-              details: { code: 'plugin_config_invalid', plugin: manifest, field: 'issuer' },
-              message: 'A required plugin setting is missing.',
+              success: false, details: { code: 'plugin_config_invalid', plugin: manifest, field: 'issuer' },
+              error: 'A required plugin setting is missing.',
             },
           })
           if (test.name === 'attachment-binding-absent') return route.fulfill({
-            status: 503, json: { details: { code: 'plugin_cleanup_unavailable' },
-              message: 'Restore the package that provides the attachment deletion binding before deactivating this plugin.' },
+            status: 503, json: { success: false, details: { code: 'plugin_cleanup_unavailable' },
+              error: 'Restore the package that provides the attachment deletion binding before deactivating this plugin.' },
           })
-          return route.fulfill({ json: { generation: 2, class: 'semantic', changes: [{ code: 'plugin ' + manifest, what: 'removed', class: 'semantic' }], refused: [] } })
+          return reply({ generation: 2, class: 'semantic', changes: [{ code: 'plugin ' + manifest, what: 'removed', class: 'semantic' }], refused: [] })
         }
-        return route.fulfill({ status: 404, json: { message: 'Unknown fixture path' } })
+        return route.fulfill({ status: 404, json: { success: false, error: 'Unknown fixture path' } })
       })
       try {
         await page.goto(origin + '/recovery')
