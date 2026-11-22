@@ -16,7 +16,7 @@ import { removeEntry, type RemovalGuard } from './model'
 import AddDefinitionRow from './AddDefinitionRow.vue'
 const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard }>()
 const relations = computed(() => props.draft.relation_types ?? [])
-const sourceTypes = computed(() => (props.draft.item_types ?? []).map(type => ({ value: type.id, label: type.title || humanize(type.id) })))
+const itemTypes = computed(() => (props.draft.item_types ?? []).map(type => ({ value: type.id, label: type.title || humanize(type.id) })))
 function setEndpoints(relation: RelationType, field: 'from_types' | 'to_types', ids: string[]) {
   if (ids.length) relation[field] = ids
   else delete relation[field]
@@ -27,6 +27,12 @@ function targetIssue(relation: RelationType, id: string) {
 }
 function addTarget(relation: RelationType, id: string) {
   setEndpoints(relation, 'to_types', [...(relation.to_types ?? []), id])
+}
+function localTargets(relation: RelationType) {
+  return (relation.to_types ?? []).filter(id => itemTypes.value.some(option => option.value === id))
+}
+function peerTargets(relation: RelationType) {
+  return (relation.to_types ?? []).filter(id => !itemTypes.value.some(option => option.value === id))
 }
 const error = ref(''), busy = ref(false)
 function newId(title: string) {
@@ -65,7 +71,10 @@ async function remove(id: string) {
       :key="index"
       class="work-stack"
     >
-      <template #usage><span class="work-definition-meta work-muted work-small">{{ relation.outward || 'Related work' }} · {{ relation.inward || 'Reverse relation' }}</span></template><template #actions>
+      <template v-if="!relation.symmetric && relation.inward && relation.inward !== relation.outward" #usage>
+        <span class="work-definition-meta work-muted work-small">{{ relation.inward }}</span>
+      </template>
+      <template #actions>
         <Button
 
           severity="secondary"
@@ -80,7 +89,7 @@ async function remove(id: string) {
             aria-label="Shown on this item"
           />
         </label>
-        <label class="work-stack work-tight">Shown on the other item
+        <label v-if="!relation.symmetric" class="work-stack work-tight">Shown on the other item
           <InputText
             v-model="relation.inward"
             aria-label="Shown on the other item"
@@ -103,19 +112,24 @@ async function remove(id: string) {
       <p v-if="relation.from_types?.length || relation.to_types?.length" class="work-muted work-small">
         Clear the source and target types to use the same meaning in both directions.
       </p>
-      <div v-if="!relation.symmetric" class="work-settings-grid">
-        <ChipPicker label="Source item types" :options="sourceTypes" :model-value="relation.from_types"
-          @update:model-value="setEndpoints(relation, 'from_types', $event)" />
-        <div class="work-stack work-tight">
-          <p class="work-muted work-small">Use the type ID from this board or a peer board. Leave either end empty to allow any type there.</p>
-          <div v-if="relation.to_types?.length" class="work-chips">
-            <Button v-for="type in relation.to_types" :key="type" severity="secondary" text size="small"
+      <div v-if="!relation.symmetric" class="work-stack work-tight">
+        <p class="work-muted work-small">Leave either end empty to allow any item type there.</p>
+        <div class="work-settings-grid">
+          <ChipPicker label="Source item types" :options="itemTypes" :model-value="relation.from_types"
+            @update:model-value="setEndpoints(relation, 'from_types', $event)" />
+          <ChipPicker label="Target item types" :options="itemTypes" :model-value="localTargets(relation)"
+            @update:model-value="setEndpoints(relation, 'to_types', [...$event, ...peerTargets(relation)])" />
+        </div>
+        <Disclosure class="work-disclosure" label="Peer board target types">
+          <p class="work-muted work-small">Enter a type ID to allow that type from a peer board.</p>
+          <div v-if="peerTargets(relation).length" class="work-chips">
+            <Button v-for="type in peerTargets(relation)" :key="type" severity="secondary" text size="small"
               :label="type + ' ×'" :aria-label="'Remove target type ' + type"
-              @click="setEndpoints(relation, 'to_types', relation.to_types.filter(id => id !== type))" />
+              @click="setEndpoints(relation, 'to_types', relation.to_types?.filter(id => id !== type) ?? [])" />
           </div>
           <AddDefinitionRow action="Add target type" label="Target type ID" :maxlength="40"
             :validate="id => targetIssue(relation, id)" @add="id => addTarget(relation, id)" />
-        </div>
+        </Disclosure>
       </div>
       <Disclosure class="work-disclosure" label="Advanced link settings">
         <label class="work-stack work-tight">Identifier
@@ -130,7 +144,7 @@ async function remove(id: string) {
       <p class="work-relation-preview work-small">
         <strong>This item</strong> {{ relation.outward || 'relates to' }}
         <strong>another item</strong>
-        <span class="work-muted"> · reverse: {{ relation.symmetric ? relation.outward : relation.inward }}</span>
+        <span v-if="!relation.symmetric && relation.inward && relation.inward !== relation.outward" class="work-muted"> · reverse: {{ relation.inward }}</span>
       </p>
     </DefinitionRow>
     <p

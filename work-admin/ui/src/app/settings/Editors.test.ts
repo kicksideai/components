@@ -118,7 +118,7 @@ it('edits transition source, target, auto, default and effect values through the
   expect(w.findAllComponents(StateSettings)).toHaveLength(0)
   w.unmount()
 })
-it('activates declarations in the draft and configures an active plugin through Work', async () => {
+it('stages an active plugin configuration and clears it when deactivating', async () => {
   const view = schema(); view.plugins = [{ plugin: 'app:plugin', installed: true, active: true, requires: [], tools: [], lifecycle: { state: 'ready' }, projections: {}, config: { threshold: 1 } }]
   view.declaration.plugins = [{ use: 'app:plugin' }]
   const draft = reactive(view.declaration), configs = reactive({})
@@ -126,8 +126,8 @@ it('activates declarations in the draft and configures an active plugin through 
   const w = mount(PluginsEditor, { props: { boardId: 'b', draft, schema: view, options: [{ plugin: 'app:plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, title: 'Enhancement', config_schema: { type: 'object', properties: { threshold: { type: 'integer' } } } }], configs } })
   await flushPromises()
   await w.getComponent(InputNumber).setValue(3)
-  await button(w, 'Save plugin settings').trigger('click'); await flushPromises()
-  expect(settings.configure).toHaveBeenCalledWith('b', 'app:plugin', { threshold: 3 })
+  expect(configs).toEqual({ 'app:plugin': { threshold: 3 } })
+  expect(settings.configure).not.toHaveBeenCalled()
   await w.get('input[type=checkbox]').setValue(false)
   expect(draft.plugins).toEqual([]); expect(configs).toEqual({}); w.unmount()
 })
@@ -145,7 +145,7 @@ it('shows host lifecycle and per-kind projection progress', async () => {
   expect(w.text()).toContain('23'); expect(w.text()).toContain('Stopped: Projection paused'); expect(w.text()).toContain('Projection paused')
   expect(w.find('.work-config-fields').exists()).toBe(false)
   await w.setProps({ schema: { ...view, plugins: [{ ...view.plugins![0], lifecycle: { state: 'pending' }, projections: {} }] } })
-  expect(w.text()).toContain('Getting ready')
+  expect(w.text()).toContain('Setting up')
   expect(w.text()).not.toContain('Last sequence')
   w.unmount()
 })
@@ -157,7 +157,7 @@ it('uses the supplied host lifecycle without fetching historical schemas', async
   vi.mocked(work.schema).mockImplementation(async (_id, generation) => ({ ...view, generation: generation ?? 7, plugins: generation && generation < 3 ? [] : view.plugins }))
   const w = mount(PluginsEditor, { props: { boardId: 'b', draft: view.declaration, schema: view, options: [{ plugin: 'app:plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, title: 'Enhancement', config_schema: {} }], configs: {} } })
   await flushPromises()
-  expect(w.text()).toContain('Ready to use')
+  expect(w.get('.work-definition-kind').text()).toBe('Enabled')
   expect(work.schema).not.toHaveBeenCalled()
   w.unmount()
 })
@@ -165,9 +165,9 @@ it('keeps an attachment pending until Work reports lifecycle completion', async 
   const view = schema(); view.declaration.plugins = [{ use: 'app:plugin' }]
   view.plugins = [{ plugin: 'app:plugin', installed: true, active: true, requires: [], tools: [], lifecycle: { state: 'pending' }, projections: {}, attachment_id: 'attachment' }]
   const w = mount(PluginsEditor, { props: { boardId: 'b', draft: view.declaration, schema: view, options: [{ plugin: 'app:plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, title: 'Enhancement', config_schema: {} }], configs: {} } })
-  await flushPromises(); expect(w.text()).toContain('Getting ready')
+  await flushPromises(); expect(w.text()).toContain('Setting up')
   await w.setProps({ schema: { ...view, plugins: [{ ...view.plugins![0], lifecycle: { state: 'ready' } }] } })
-  expect(w.text()).toContain('Ready to use'); w.unmount()
+  expect(w.get('.work-definition-kind').text()).toBe('Enabled'); w.unmount()
 })
 
 it('edits stage safety limits and their board defaults', async () => {

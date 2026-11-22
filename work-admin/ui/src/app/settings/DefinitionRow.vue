@@ -1,12 +1,13 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { inject, ref, useSlots, watch } from 'vue'
+import { inject, useSlots, watch } from 'vue'
 import ContentAction from '../ContentAction.vue'
 import Tag from 'primevue/tag'
 import { Icon } from '@iconify/vue'
 import { sectionRow } from './sectionRow'
 const props = defineProps<{ title: string; code?: string; kind?: string; kindLabel?: string; description?: string; initialOpen?: boolean; routeSection?: string; routeId?: string }>()
-const open = ref(!!props.initialOpen)
+const open = defineModel<boolean>('open', { default: false })
+if (props.initialOpen) open.value = true
 const slots = useSlots()
 const location = inject(sectionRow, undefined)
 function matches(row: string | undefined) {

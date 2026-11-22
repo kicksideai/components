@@ -105,7 +105,7 @@ const sectionDescriptions: Record<Section, string> = {
   General: 'Manage the board name, item key prefix and app.',
   'Item types': 'Choose the fields, parent relationships and workflow for each kind of work.',
   Fields: 'Choose what information people can capture on items.',
-  Links: 'Show relationships on both items, such as “Blocks” and “Blocked by.”',
+  Links: 'Configure link types and how they appear on related items.',
   Workflow: 'Select a state or transition to edit how work moves.',
   Access: 'Who can use this board?',
   Plugins: 'Choose which plugins this board uses.',
@@ -181,8 +181,7 @@ const beginRead = latestRequest(), beginReview = latestRequest()
 const request = computed(() => requestDeclaration(draft.value, schema.value?.declaration ?? {}))
 const dirty = computed(() => invalid.value.size > 0 || !!packRequest.value || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(requestDeclaration(schema.value.declaration, schema.value.declaration)) || Object.keys(configs.value).length > 0))
 const metadataDirty = ref(false)
-const activePluginConfigs = ref<PluginConfigs>({})
-const unsaved = computed(() => dirty.value || metadataDirty.value || Object.keys(activePluginConfigs.value).length > 0)
+const unsaved = computed(() => dirty.value || metadataDirty.value)
 watch(unsaved, value => emit('dirty-change', value), { immediate: true, flush: 'sync' })
 const stale = computed(() => !!schema.value && !!latest.value && schema.value.generation !== latest.value.generation)
 const canSchemaApply = computed(() => (!occupiedChanges.value.renamed.length || confirmedRenames.value) && authorized.value && !busy.value && !checkingRemoval.value && !migrationPending.value && !stale.value && !invalid.value.size && plan.value && (plan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && plan.value.class !== 'refused' && !plan.value.refused.length && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value))
@@ -255,6 +254,7 @@ const follows = computed(() => {
 const migrationPending = computed(() => !!latest.value?.migration_error || board.value?.status === 'migrating')
 function invalidate() { serverIssues.value = []; beginReview(); plan.value = undefined; reviewed.value = undefined; packReviewed.value = undefined; applyKey.value = '' }
 watch([request, configs], invalidate, { deep: true, flush: 'sync' })
+watch(dirty, value => { if (value) saved.value = '' })
 watch(configs, value => { if (packRequest.value) { if (Object.keys(value).length) packRequest.value.plugin_configs = clone(value); else delete packRequest.value.plugin_configs } }, { deep: true, flush: 'sync' })
 function validity(key: string, valid: boolean) { if (valid) invalid.value.delete(key); else invalid.value.add(key); invalidate() }
 function reset(view: Schema) { clearPack(); creation.value = undefined; editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); invalidate() }
@@ -393,9 +393,9 @@ async function back() {
   if (unsaved.value && !await host.confirm({ header: 'Discard changes?', message: 'Your unsaved board settings will be discarded.', acceptLabel: 'Discard', rejectLabel: 'Keep editing' })) return
   go({ name: 'board', board: props.boardId })
 }
-function discard() { resetGeneration = undefined; activePluginConfigs.value = {}; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
+function discard() { resetGeneration = undefined; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
 
-watch(() => props.boardId, () => { metadataDirty.value = false; activePluginConfigs.value = {}; resetGeneration = undefined; clearPack(); resetPacks(); packOperation.value = undefined; packOperationError.value = ''; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; creation.value = undefined; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; clearPack(); resetPacks(); packOperation.value = undefined; packOperationError.value = ''; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; creation.value = undefined; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
 watch([() => props.route, () => props.boardId], ([route]) => {
   if (route === undefined) return
   const [key, row] = route.split('/')
@@ -486,7 +486,6 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
 
                 <section v-if="visited.has('Plugins')" v-show="tab === 'Plugins'" class="work-ia-section">
                   <PluginsEditor :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"
-                    v-model:active-configs="activePluginConfigs"
                     :filters="options?.filters" :configs="configs" :disabled="busy" @configured="invalidate(); load()" @refresh="load()" @review="openReview"
                     @validity="(key, valid) => validity('plugin:' + key, valid)" />
                 </section>
@@ -507,7 +506,8 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
                     :options="options?.schema_options.plugins.filter(plugin => packPlugins.some(selected => selected.use === plugin.plugin)) ?? []"
                     :configs="configs" :disabled="busy" activation-locked @validity="(key, valid) => validity('pack-plugin:' + key, valid)" />
                   <SchemaReview v-if="reviewOpen" :board-id="boardId" :original="schema.declaration" :declaration="reviewedDeclaration" :plan="plan"
-                    :follows="follows" :config-count="Object.keys(configs).length" :pack-review="!!packPlan" :plugins="options?.schema_options.plugins">
+                    :follows="follows" :config-count="Object.keys(configs).length" :plugin-configs="reviewed?.plugin_configs"
+                    :pack-review="!!packPlan" :plugins="options?.schema_options.plugins">
                     <PackReview v-if="packPlan && packRequest" :plan="packPlan" :request="packRequest" :original="schema.declaration"
                       :plugins="options?.schema_options.plugins" :disabled="busy" @change="packReviewed = undefined; applyKey = ''" />
                   </SchemaReview>

@@ -334,17 +334,44 @@ it('clears option validity after an earlier field is removed and the duplicate i
 
 it('keeps the open plugin status visible when a refresh changes only lifecycle progress', async () => {
   const plugin = { plugin: 'app:plugin', installed: true, active: true, requires: [], tools: [], lifecycle: { state: 'pending' as const }, projections: {} }
-  const view = { ...schema(), plugins: [plugin] }
+  const view = schema()
+  view.plugins = [plugin]
+  view.declaration.plugins = [{ use: plugin.plugin }]
   vi.mocked(work.schema).mockResolvedValue(view)
   vi.mocked(work.options).mockResolvedValue({ ...emptyOptions(), access: { read: true, write: true, admin: true }, schema_options: { plugins: [{ ...plugin, title: 'Search', config_schema: {} }] } })
   const w = await render(); await section(w, 'Plugins').trigger('click')
   await w.get('[aria-label="Plugins editor"] .work-definition-toggle').trigger('click')
-  expect(w.get('.work-plugin-status').isVisible()).toBe(true)
+  expect(w.get('.work-definition-kind').isVisible()).toBe(true)
   vi.mocked(work.schema).mockResolvedValue({ ...view, plugins: [{ ...plugin, lifecycle: { state: 'ready' as const } }] })
   await getButton(w, 'Refresh status').trigger('click'); await flushPromises()
-  expect(w.get('.work-plugin-status').isVisible()).toBe(true)
-  expect(w.get('.work-plugin-status').text()).toContain('Ready to use')
+  expect(w.get('.work-definition-kind').isVisible()).toBe(true)
+  expect(w.get('.work-definition-kind').text()).toBe('Enabled')
   expect(w.get('[aria-label="Plugins editor"] .work-definition-toggle').attributes('aria-expanded')).toBe('true')
+})
+
+it('keeps a plugin draft and readable error when its configuration fails review', async () => {
+  const plugin = { plugin: 'app:plugin', title: 'Files', installed: true, active: true,
+    lifecycle: { state: 'ready' as const }, projections: {}, requires: [], tools: [], config: { limit: 2 },
+    config_schema: { properties: { limit: { type: 'integer' } } } }
+  const view = schema()
+  view.plugins = [plugin]
+  view.declaration.plugins = [{ use: plugin.plugin }]
+  vi.mocked(work.schema).mockResolvedValue(view)
+  vi.mocked(work.options).mockResolvedValue({ ...emptyOptions(), access: { read: true, write: true, admin: true }, schema_options: { plugins: [plugin] } })
+  vi.mocked(settings.plan).mockRejectedValueOnce(new ApiError({ message: 'app:plugin effective config is malformed', details: { code: 'plugin_config_invalid' } }, 'Schema plan', 400))
+  const w = await render()
+  await section(w, 'Plugins').trigger('click')
+  await w.get('[aria-label="Plugins editor"] .work-definition-toggle').trigger('click')
+  await w.getComponent(InputNumber).setValue(4)
+  await getButton(w, 'Review changes').trigger('click')
+  await flushPromises()
+  const alert = w.get('[role="alert"]').text()
+  expect(alert).toContain('The plugin rejected this configuration. Check its settings and try again.')
+  expect(alert).toMatch(/Error code:\s*plugin_config_invalid/)
+  expect(alert).not.toContain('app:plugin')
+  expect(settings.plan).toHaveBeenCalledWith('b', expect.objectContaining({ plugin_configs: { [plugin.plugin]: { limit: 4 } } }))
+  expect(w.getComponent(InputNumber).props('modelValue')).toBe(4)
+  expect(settings.configure).not.toHaveBeenCalled()
 })
 
 it('reviews the exact Flow and version, preserves permission failures and invalidates a replaced binding', async () => {

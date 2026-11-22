@@ -107,6 +107,8 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
       return reply(view)
     }
     if (path.endsWith('/plan_schema')) {
+      const configs = body.plugin_configs as Record<string, Record<string, unknown>> | undefined
+      if (configs?.[plugin.plugin]?.threshold === 99) return route.fulfill({ status: 422, json: { success: false, error: 'Threshold rejected' } })
       const declaration = body.declaration as typeof view.declaration
       const changes = mode === 'process-editing'
         ? view.declaration.processes![0].transitions!.filter(edge => !declaration.processes![0].transitions!.some(current => current.id === edge.id))
@@ -116,7 +118,10 @@ async function fixture(mode: string, missing = false, width = 1500, input: { has
     }
     if (path.endsWith('/apply_schema')) {
       view = { ...view, generation: view.generation + 1, declaration: body.declaration as typeof view.declaration }
-      hold = true
+      if (mode === 'admin-plugin-draft') {
+        const configs = body.plugin_configs as Record<string, Record<string, unknown>>
+        view.plugins![0].config = configs[plugin.plugin]
+      } else hold = true
       return reply({ generation: view.generation, class: 'cosmetic' })
     }
     if (path.endsWith('/update')) {
@@ -198,7 +203,7 @@ it('shows plugin activation on the switch and marks a pending change', async () 
     expect(await toggle.getAttribute('aria-checked')).toBe('true')
     await toggle.press('Space')
     expect(await toggle.getAttribute('aria-checked')).toBe('false')
-    await panel.getByText('Pending review', { exact: true }).waitFor()
+    await panel.getByText('Will disable on apply', { exact: true }).waitFor()
   } finally { await page.close() }
 }, 30000)
 
@@ -286,6 +291,7 @@ it('adds a link target, visibility level and plugin value on demand', async () =
     await page.getByRole('button', { name: 'blocks', exact: true }).click()
     const target = page.getByRole('textbox', { name: 'Target type ID' })
     expect(await target.isVisible()).toBe(false)
+    await page.getByRole('button', { name: 'Peer board target types', exact: true }).click()
     await page.getByRole('button', { name: 'Add target type', exact: true }).click()
     await target.fill('release')
     await target.press('Enter')
@@ -691,13 +697,14 @@ it('asks before discarding a board draft and preserves it when the operator canc
   } finally { await page.close() }
 }, 30000)
 
-it('guards unsaved active plugin settings until saved or discarded', async () => {
+it('guards unsaved plugin settings through review, apply and discard', async () => {
   const { page, requests } = await fixture('admin-plugin-draft')
   try {
     const delivery = page.getByRole('button', { name: 'Settings for Delivery', exact: true })
     const back = page.getByRole('button', { name: 'All boards', exact: true })
     const threshold = page.getByRole('spinbutton', { name: 'Threshold', exact: true })
-    const save = page.getByRole('button', { name: 'Save plugin settings' })
+    const review = page.getByRole('button', { name: 'Review changes', exact: true })
+    const apply = page.getByRole('dialog', { name: 'Review changes' }).getByRole('button', { name: 'Apply changes', exact: true })
     async function openPlugin() {
       await delivery.click()
       await boardSection(page, 'Plugins').click()
@@ -715,18 +722,20 @@ it('guards unsaved active plugin settings until saved or discarded', async () =>
     await keepEditing()
     await boardSection(page, 'Plugins').click()
     expect(await threshold.inputValue()).toBe('7')
-    expect(await page.getByRole('button', { name: 'Review changes', exact: true }).count()).toBe(0)
+    await review.waitFor()
 
     await threshold.fill('99')
-    await save.click()
-    await expect.poll(() => requests.find(r => r.path.endsWith('/configure_plugin'))?.body.config).toEqual({ threshold: 99 })
-    await page.getByRole('alert').filter({ hasText: /Threshold rejected|Could not configure plugin/ }).waitFor()
+    await review.click()
+    await expect.poll(() => requests.find(r => r.path.endsWith('/plan_schema'))?.body.plugin_configs)
+      .toEqual({ 'fixture:enhancements': { threshold: 99 } })
+    await page.getByRole('alert').filter({ hasText: /Threshold rejected|Could not review changes/ }).waitFor()
     await keepEditing()
     expect(await threshold.inputValue()).toBe('99')
 
     await threshold.fill('8')
-    await save.click()
-    await page.getByText('Plugin configuration saved.').waitFor()
+    await review.click()
+    await apply.click()
+    await page.getByText('Board changes applied.').waitFor()
     await back.click()
     await delivery.waitFor()
     expect(await page.locator('#confirm').isVisible()).toBe(false)
@@ -736,7 +745,7 @@ it('guards unsaved active plugin settings until saved or discarded', async () =>
     await threshold.fill('10')
     await page.getByRole('button', { name: 'Reset', exact: true }).click()
     expect(await threshold.inputValue()).toBe('8')
-    expect(await save.isEnabled()).toBe(false)
+    expect(await review.count()).toBe(0)
     await back.click()
     await delivery.waitFor()
 
@@ -747,7 +756,8 @@ it('guards unsaved active plugin settings until saved or discarded', async () =>
     await page.locator('#discard').click()
     await openPlugin()
     expect(await threshold.inputValue()).toBe('8')
-    expect(requests.filter(r => r.path.endsWith('/configure_plugin'))).toHaveLength(2)
+    expect(requests.filter(r => r.path.endsWith('/plan_schema'))).toHaveLength(2)
+    expect(requests.filter(r => r.path.endsWith('/apply_schema'))).toHaveLength(1)
   } finally { await page.close() }
 }, 30000)
 

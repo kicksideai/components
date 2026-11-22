@@ -7,7 +7,7 @@ import { host } from '@wippy-fe/proxy'
 import DefinitionRow from './DefinitionRow.vue'
 import DefinitionList from './DefinitionList.vue'
 import ToggleSwitch from 'primevue/toggleswitch'
-import { computed, ref } from 'vue'
+import { computed, inject, ref } from 'vue'
 import ChipPicker from './ChipPicker.vue'
 import { humanize } from '../../forms'
 import { configFields } from './config'
@@ -17,16 +17,24 @@ import type { PluginConfigs } from './model'
 import { pluginIssue, projectionHealth } from './plugin-state'
 import { settings } from './api'
 import ConfigForm from './ConfigForm.vue'
+import { sectionRow } from './sectionRow'
 const props = defineProps<{ boardId: string; draft: Declaration; schema: Schema; options: PluginOption[]; configs: PluginConfigs; disabled?: boolean; activationLocked?: boolean; filters?: InstalledRule[] }>()
 const emit = defineEmits<{ configured: []; refresh: []; review: [opener?: HTMLElement]; validity: [key: string, valid: boolean] }>()
-const edit = defineModel<PluginConfigs>('activeConfigs', { default: () => ({}) })
 const busy = ref(''), error = ref(''), saved = ref('')
+const expanded = ref<Record<string, boolean>>({})
+const location = inject(sectionRow, undefined)
 const invalid = ref(new Set<string>())
 const validationMessages = ref<Record<string, string>>({})
 const repairing = ref(new Set<string>())
 const rows = computed(() => props.options.map(plugin => {
   const current = state(plugin.plugin)
-  return { plugin, current, issue: pluginIssue(plugin, current) }
+  const issue = pluginIssue(plugin, current)
+  const chosen = selected(plugin.plugin)
+  const enabled = current?.active === true
+  const status = chosen && invalid.value.has(plugin.plugin) ? 'Configuration needed'
+    : chosen !== enabled ? chosen ? 'Will enable on apply' : 'Will disable on apply'
+    : issue?.status ?? (enabled ? current.lifecycle.state === 'ready' ? 'Enabled' : 'Setting up' : 'Disabled')
+  return { plugin, current, issue, chosen, status }
 }))
 const readOnly = computed(() => !!busy.value || props.disabled)
 const activationDisabled = computed(() => readOnly.value || props.activationLocked)
@@ -60,7 +68,11 @@ function active(id: string) { return state(id)?.active === true }
 function selected(id: string) { return props.draft.plugins?.some(p => p.use === id) === true }
 function toggle(id: string, enabled: boolean) {
   const plugins = props.draft.plugins ?? []
-  if (enabled && !selected(id)) props.draft.plugins = [...plugins, { use: id }]
+  if (enabled && !selected(id)) {
+    props.draft.plugins = [...plugins, { use: id }]
+    expanded.value[id] = true
+    location?.choose('plugins', id, true)
+  }
   if (!enabled) { props.draft.plugins = plugins.filter(p => p.use !== id); delete props.configs[id]; invalid.value.delete(id); emit('validity', id, true); setFilters(id, []) }
 }
 function reviewRemoval(id: string, event: MouseEvent) {
@@ -68,21 +80,20 @@ function reviewRemoval(id: string, event: MouseEvent) {
   emit('review', event.currentTarget as HTMLElement)
 }
 function config(id: string): Record<string, unknown> {
-  if (active(id)) return edit.value[id] ?? state(id)?.config ?? emptyConfig
-  return props.configs[id] ?? emptyConfig
+  return props.configs[id] ?? state(id)?.config ?? emptyConfig
 }
 function update(id: string, value: Record<string, unknown>) {
-  if (active(id)) edit.value = { ...edit.value, [id]: value }
-  else props.configs[id] = value
+  saved.value = ''
+  props.configs[id] = value
 }
 function resetConfig(id: string) {
-  if (active(id)) {
-    const next = { ...edit.value }
-    delete next[id]
-    edit.value = next
-  } else delete props.configs[id]
+  delete props.configs[id]
 }
-function validity(id: string, valid: boolean) { if (valid) invalid.value.delete(id); else invalid.value.add(id); if (!active(id)) emit('validity', id, valid) }
+function validity(id: string, valid: boolean) {
+  if (valid) invalid.value.delete(id)
+  else invalid.value.add(id)
+  emit('validity', id, valid || !selected(id) || (active(id) && !props.configs[id]))
+}
 async function resetProjection(id: string) {
   const confirmed = await host.confirm({
     header: 'Reset projection?',
@@ -90,24 +101,19 @@ async function resetProjection(id: string) {
     acceptLabel: 'Reset projection',
     rejectLabel: 'Cancel',
   })
-  if (confirmed) await submit(id, true)
+  if (confirmed) await recover(id)
 }
-async function submit(id: string, retry = false) {
-  if (readOnly.value || (!retry && invalid.value.has(id))) return
+async function recover(id: string) {
+  if (readOnly.value) return
   busy.value = id
   error.value = ''
   saved.value = ''
   try {
-    if (retry) await settings.configure(props.boardId, id)
-    else {
-      await settings.configure(props.boardId, id, config(id))
-      resetConfig(id)
-      repairing.value.delete(id)
-    }
-    saved.value = retry ? 'Plugin recovery started.' : 'Plugin configuration saved.'
+    await settings.configure(props.boardId, id)
+    saved.value = 'Plugin recovery started.'
     emit('configured')
   } catch (e) {
-    error.value = formatApiError(e, retry ? 'Could not recover the plugin.' : 'Could not configure plugin.')
+    error.value = formatApiError(e, 'Could not recover the plugin.')
   } finally {
     busy.value = ''
   }
@@ -118,10 +124,11 @@ async function submit(id: string, retry = false) {
     <p v-if="!options.length" class="kx-loading">No installed plugins are visible to you.</p>
     <div v-if="error" class="kx-err" role="alert">{{ error }}</div><p v-if="saved" class="work-notice" role="status">{{ saved }}</p>
     <DefinitionList columns="plugins" :count="options.length">
-      <DefinitionRow route-section="plugins" :route-id="plugin.plugin" v-for="{ plugin, current, issue } in rows" :key="plugin.plugin"
+      <DefinitionRow route-section="plugins" :route-id="plugin.plugin" v-for="{ plugin, current, issue, chosen, status } in rows" :key="plugin.plugin"
+        v-model:open="expanded[plugin.plugin]"
         :title="plugin.installed === false ? plugin.plugin : plugin.title || plugin.plugin"
         :description="plugin.description"
-        :kind="selected(plugin.plugin) && invalid.has(plugin.plugin) ? 'Configuration needed' : selected(plugin.plugin) !== active(plugin.plugin) ? 'Pending review' : issue?.status"
+        :kind="status"
         class="work-stack">
         <template v-if="selected(plugin.plugin) && validationMessages[plugin.plugin]" #status>
           <span class="work-block work-small work-error">{{ validationMessages[plugin.plugin] }}</span>
@@ -134,14 +141,10 @@ async function submit(id: string, retry = false) {
         </template>
         <p v-if="plugin.requires.length" class="work-muted work-small">Requires {{ plugin.requires.map(id => options.find(p => p.plugin === id)?.title || 'Another capability').join(', ') }}</p>
         <p v-if="current?.outdated" class="work-notice">The stored declaration differs from the installed plugin. Review activation to update it.</p>
-        <div v-if="issue || current?.active" class="work-stack work-tight work-plugin-status">
+        <div v-if="issue" class="work-stack work-tight">
           <p v-if="issue && 'cause' in issue" class="work-muted">{{ issue.cause }}</p>
-          <p v-else-if="!issue">{{ current?.lifecycle.state === 'ready' ? 'Ready to use' : 'Getting ready' }}</p>
-          <div v-for="(projection, kind) in current?.projections" :key="kind" class="work-stack work-tight">
-            <p>{{ projectionHealth(projection, schema.as_of) }} · Indexed through {{ projection.last_seq }} of {{ schema.as_of }} events.</p>
-          </div>
           <div v-if="issue?.kind === 'setup' && current?.active" class="work-row">
-            <Button label="Retry setup" severity="secondary" outlined :disabled="readOnly" @click="submit(plugin.plugin, true)" />
+            <Button label="Retry setup" severity="secondary" outlined :disabled="readOnly" @click="recover(plugin.plugin)" />
           </div>
           <div v-else-if="issue?.kind === 'provider'" class="work-row">
             <Button label="Retry schema check" severity="secondary" outlined :disabled="readOnly" @click="emit('refresh')" />
@@ -178,6 +181,10 @@ async function submit(id: string, retry = false) {
             <div v-if="current?.version"><dt>Active schema version</dt><dd>{{ current.version }}</dd></div>
             <div><dt>Configuration tool</dt><dd><code>WorkConfigurePlugin</code></dd></div>
             <div v-if="plugin.tools.length"><dt>Plugin tools</dt><dd><code v-for="tool in plugin.tools" :key="tool" class="work-block">{{ tool }}</code></dd></div>
+            <div v-for="(projection, kind) in current?.projections" :key="kind">
+              <dt>{{ humanize(kind) }}</dt>
+              <dd>{{ projectionHealth(projection, schema.as_of) }} · Indexed through {{ projection.last_seq }} of {{ schema.as_of }} events.</dd>
+            </div>
           </dl>
         </Disclosure>
         <section v-if="pluginFilters(plugin.plugin).length && (selected(plugin.plugin) || active(plugin.plugin))" class="work-stack work-tight">
@@ -203,9 +210,11 @@ async function submit(id: string, retry = false) {
             @validation-message="validationMessages[plugin.plugin] = $event" />
           <div class="work-form-actions">
             <Button :label="issue ? 'Reset form values' : 'Reset'" severity="secondary" outlined :disabled="!!busy || disabled" @click="resetConfig(plugin.plugin)" />
-            <Button v-if="active(plugin.plugin)" label="Save plugin settings" :disabled="!!busy || disabled || invalid.has(plugin.plugin) || !edit[plugin.plugin]" :loading="busy === plugin.plugin" @click="submit(plugin.plugin)" />
           </div>
         </component>
+        <p v-if="!activationLocked && (chosen !== active(plugin.plugin) || chosen && (hasConfig(plugin) || pluginFilters(plugin.plugin).length))" class="work-muted work-small">
+          Use Review changes, then Apply changes to save.
+        </p>
       </DefinitionRow>
     </DefinitionList>
     <Disclosure v-if="orphanedFilters.length" class="work-settings-card work-disclosure" label="Unavailable query filters">
