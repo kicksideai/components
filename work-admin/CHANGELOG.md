@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.16](https://github.com/kicksideai/components/compare/work-admin-v0.1.15...work-admin-v0.1.16) (2026-11-22)
+
+
+### Bug Fixes
+
+* **work-admin:** address board settings audit findings ([#337](https://github.com/kicksideai/components/issues/337)) ([bc04492](https://github.com/kicksideai/components/commit/bc0449226cabafe84fd5cc95d569ca8359ac9387))
+
 ## [0.1.15](https://github.com/kicksideai/components/compare/work-admin-v0.1.14...work-admin-v0.1.15) (2026-11-21)
 
 
