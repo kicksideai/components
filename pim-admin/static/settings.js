@@ -4167,7 +4167,7 @@ const da = {
   role: "status"
 }, Id = ["disabled", "inert"], Rd = {
   key: 0,
-  class: "kx-card pim-ia-action"
+  class: "form pim-card-body pad pim-ia-action"
 }, Od = {
   key: 0,
   class: "muted small"

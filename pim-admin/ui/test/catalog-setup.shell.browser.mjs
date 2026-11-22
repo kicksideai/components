@@ -102,6 +102,14 @@ async function visit({ id, title, width, theme }) {
     const section = name => settings.getByRole('region', { name, exact: true })
     const visitSection = async name => { await button(rail, name).click(); return section(name) }
     const root = '/pim/catalogs/' + encodeURIComponent(id)
+    async function returnButton(panel, label) {
+      const control = button(panel, label)
+      assert.ok(await control.evaluate(element => {
+        const { left, right } = element.getBoundingClientRect()
+        return left >= 0 && right <= element.ownerDocument.documentElement.clientWidth
+      }), label + ' fits within the viewport')
+      return control
+    }
     async function apply() {
       await button(settings, 'Review changes').click()
       const dialog = settings.getByRole('dialog')
@@ -168,7 +176,7 @@ async function visit({ id, title, width, theme }) {
       await required.click()
       await option(family, 'Care').click()
       await shot('channel-requirement', families)
-      await button(families, 'Back to Online store').click()
+      await (await returnButton(families, 'Back to Online store')).click()
       await button(channel, 'Store ready · Apparel').click()
       await button(channel, 'Apparel').click()
       await shot('channel-configured', channels)
@@ -194,7 +202,7 @@ async function visit({ id, title, width, theme }) {
       await group.getByRole('combobox', { name: 'Type', exact: true }).click()
       await option(group, 'Integer').click()
       await shot('variant-field', fields)
-      await button(fields, 'Back to Footwear').click()
+      await (await returnButton(fields, 'Back to Footwear')).click()
       const groups = family.locator('.p-multiselect-dropdown')
       await groups.click()
       await option(family, 'Sizes').click()

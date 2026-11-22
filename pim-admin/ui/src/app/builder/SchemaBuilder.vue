@@ -619,7 +619,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
               <Message v-if="!editable" severity="info">You can view this catalog’s settings.</Message>
 
               <div :key="view" class="pim-ia-content">
-                <div v-if="handoff && view === handoffDestination" class="kx-card pim-ia-action">
+                <div v-if="handoff && view === handoffDestination" class="form pim-card-body pad pim-ia-action">
                   <div>
                     <p v-if="handoff.from === 'Channels'" class="muted small">Open the family that defines what products need before release, then add a release requirement.</p>
                     <p v-else class="muted small">Add a field with a single value and no dimensions, such as Integer. When you return, select its group under Field groups.</p>
