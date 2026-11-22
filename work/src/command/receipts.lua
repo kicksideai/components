@@ -109,4 +109,111 @@ function M.mark(events: { domain.Event }, marker: string, receipt: domain.Receip
     end
 end
 
+function M.apply_outcomes(found: types.Durable): { types.Outcome }
+    local result = found.receipt.result :: { outcomes: { types.Outcome }? }
+    return result.outcomes or {}
+end
+
+function M.apply_hash(request: types.ApplyRequest, mode: string, ops: { types.Op }, source: string): string
+    return M.request_hash({ op = "apply", mode, ops, source, origin = request.origin, expected_head = request.expected_head })
+end
+
+function M.legacy_apply(ctx: types.ApplyContext, provider: types.AtomicProvider?): (types.Durable?, error?)
+    local key = ctx.request.key
+    if not provider or not provider.legacy_ops or not key then return nil, nil end
+    local hit, err = M.command(ctx.board_id, "apply/" .. provider.namespace .. "/" .. key)
+    if err or not hit then return nil, err end
+    -- Legacy keys share the WorkApply namespace, so validate the resolved operation.
+    local ops, oerr = provider.legacy_ops()
+    if oerr then return nil, oerr end
+    if not ops or hit.receipt.request_hash ~= M.apply_hash(ctx.request, "atomic", ops, ctx.source) then
+        return nil, M.conflict_of()
+    end
+    local outcomes = M.apply_outcomes(hit)
+    if #outcomes ~= 1 or outcomes[1].status ~= "applied" then return nil, M.conflict_of() end
+    return hit, nil
+end
+
+local function read_claim(reads: { command: (string, string) -> (types.Durable?, error?) }, ctx: types.ApplyContext, key: string): (types.Durable?, error?)
+    local command, err = reads.command(ctx.board_id, key)
+    if err then return nil, err end
+    if command and command.receipt.request_hash ~= ctx.hashed then return nil, M.conflict_of() end
+    return command, nil
+end
+
+function M.atomic_apply(ctx: types.ApplyContext, reads: {
+    version: (string, string, domain.Deadline) -> (integer?, error?),
+    command: (string, string) -> (types.Durable?, error?),
+    covered: (string, domain.Deadline, integer?) -> (integer?, error?),
+}?): (types.Durable?, error?)
+    local key = ctx.base
+    if not key then return nil, nil end
+    local lookup = reads or M
+    local version, version_err = lookup.version(ctx.board_id, key, ctx.until_at)
+    if version_err or not version then return nil, version_err end
+    ctx.claim_version = version
+    local command, err = read_claim(lookup, ctx, key)
+    if err or command then return command, err end
+    local _, cover_err = lookup.covered(ctx.board_id, ctx.until_at)
+    if cover_err then return nil, cover_err end
+    return read_claim(lookup, ctx, key)
+end
+
+-- Independent commands leave one receipt per committed group.
+local function read_groups(ctx: types.ApplyContext, key: string, groups: { string }): ({ [string]: types.Durable }?, boolean, error?)
+    local found: { [string]: types.Durable } = {}
+    local command, err = read_claim(M, ctx, key)
+    if err then return nil, false, err end
+    ctx.claimed = command ~= nil
+    if not command then return found, false, nil end
+    ctx.generation = command.receipt.result.generation :: string
+    local complete = true
+    for _, group in ipairs(groups) do
+        local hit, ferr = M.command(ctx.board_id, key .. "/" .. ctx.generation .. "/" .. group)
+        if ferr then return nil, false, ferr end
+        if hit then found[group] = hit else complete = false end
+    end
+    return found, complete, nil
+end
+
+function M.group_receipts(ctx: types.ApplyContext, groups: { string }): ({ [string]: types.Durable }?, error?)
+    local key = ctx.base
+    if not key then return {}, nil end
+    local version, version_err = M.version(ctx.board_id, key, ctx.until_at)
+    if version_err or not version then return nil, version_err end
+    ctx.claim_version = version
+    local found, complete, err = read_groups(ctx, key, groups)
+    if err or complete then return found, err end
+    -- Cover commits that could have advanced the shard before we sampled its guard.
+    local _, cover_err = M.covered(ctx.board_id, ctx.until_at)
+    if cover_err then return nil, cover_err end
+    local covered, _, read_err = read_groups(ctx, key, groups)
+    return covered, read_err
+end
+
+local function claim_write(ctx: types.ApplyContext, result: domain.JsonObject): types.Write
+    local write = M.claim(ctx.board_id, ctx.base :: string, ctx.hashed, result, nil, ctx.claim_version)
+    M.decorate(write.events[1], guard.actor_id(), guard.stamp_now(), ctx.source, ctx.request.origin, ctx.request.trace_context)
+    return write
+end
+
+function M.seal_group(ctx: types.ApplyContext, write: types.Write, outcomes: { types.Outcome }, free: boolean): ({ types.Write }, boolean)
+    if not ctx.base then return { write }, false end
+    M.mark(write.events, ctx.base .. "/" .. write.group, {
+        request_hash = ctx.hashed, result = { outcomes = outcomes } :: domain.JsonObject,
+    }, ctx.base .. "/" .. ctx.generation .. "/" .. write.group)
+    -- Free groups still need the claim because they have no subject guard.
+    if not ctx.claimed or free then return { claim_write(ctx, { generation = ctx.generation }), write }, true end
+    return { write }, false
+end
+
+function M.seal_atomic(ctx: types.ApplyContext, writes: { types.Write }, outcomes: { types.Outcome })
+    if not ctx.base then return end
+    for _, write in ipairs(writes) do
+        M.mark(write.events, ctx.base .. "/" .. write.group)
+    end
+    -- The claim is the only receipt. Projection can publish it only after every group.
+    writes[#writes + 1] = claim_write(ctx, { outcomes = outcomes } :: domain.JsonObject)
+end
+
 return M
