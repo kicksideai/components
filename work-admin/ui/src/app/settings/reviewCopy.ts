@@ -99,6 +99,16 @@ function processChange(change: SchemaChange, before?: Process, after?: Process):
   else if (what === 'state.category' && oldState && state) value = `${stateTitle(state)} · ${pair(categoryTitle(oldState.category), categoryTitle(state.category))}`
   else if (state || oldState) value = stateTitle(state ?? oldState)
   else if (what === 'transition.name' && oldTransition && transition) value = pair(transitionTitle(oldTransition), transitionTitle(transition))
+  else if (transition && oldTransition && transition.to !== oldTransition.to) {
+    const oldDestination = stateTitle(before?.states.find(state => state.id === oldTransition.to))
+    const destination = stateTitle(after?.states.find(state => state.id === transition.to))
+    return { title, details: [transitionTitle(transition), `Destination changes from ${oldDestination} to ${destination}.`] }
+  }
+  else if (what === 'transition.add' && transition && after) {
+    const source = transition.from === 'any' ? 'Any state' : transition.from.map(id => stateTitle(after.states.find(state => state.id === id))).join(', ')
+    const destination = stateTitle(after.states.find(state => state.id === transition.to))
+    return { title, details: [transitionTitle(transition), pair(source, destination), ...(transition.auto ? ['Runs automatically.'] : [])] }
+  }
   else if (transition) value = transitionTitle(transition)
   else if (oldTransition) value = transitionTitle(oldTransition)
   else if (what === 'initial') value = pair(stateTitle(before?.states.find(state => state.id === before.initial)), stateTitle(after?.states.find(state => state.id === after.initial)))

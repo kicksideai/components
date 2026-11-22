@@ -7,6 +7,7 @@ import SelectButton from 'primevue/selectbutton'
 import InputNumber from 'primevue/inputnumber'
 import ProcessEditor from './ProcessEditor.vue'
 import ProcessMigration from './ProcessMigration.vue'
+import StateSettings from './StateSettings.vue'
 import { schema } from '../../test/fixtures'
 import type { Declaration } from '../../types'
 const wrappers: ReturnType<typeof mount>[] = []
@@ -28,6 +29,31 @@ it('adds after the selected stop and focuses its name without mutating other sta
   expect(draft.processes![0].transitions!.at(-1)).toMatchObject({ from: [draft.processes![0].states[1].id], to: 'doing' })
   expect(document.activeElement).toBe(w.get('[aria-label="State name"]').element)
   host.remove()
+})
+it('updates the displayed route as the state is named and makes its new continuation automatic for approval', async () => {
+  const { draft, w } = editor()
+  await w.get('.work-graph-node').trigger('click')
+  await w.get('button[aria-label="Add state"]').trigger('click')
+  await w.get('[aria-label="State name"]').setValue('Approval check')
+  const state = w.getComponent(StateSettings)
+  await state.getComponent(SelectButton).setValue('gate')
+  expect(w.text()).toContain('To do → Approval check → In progress')
+  const continuation = draft.processes![0].transitions!.at(-1)!
+  expect(continuation).toMatchObject({ to: 'doing', auto: true, default: true })
+  await state.getComponent(SelectButton).setValue('human')
+  expect(continuation.auto).toBeUndefined()
+})
+it('leaves a transition shared by two source states in place when adding a state', async () => {
+  const draft = reactive(schema().declaration)
+  const workflow = draft.processes![0]
+  const shared = workflow.transitions![0]
+  shared.from = ['todo', 'done']
+  const w = mount(ProcessEditor, { props: { draft } }); wrappers.push(w)
+  await w.get('.work-graph-node').trigger('click')
+  await w.get('button[aria-label="Add state"]').trigger('click')
+  expect(shared).toMatchObject({ from: ['todo', 'done'], to: 'doing' })
+  expect(workflow.transitions!.at(-1)).toMatchObject({ from: ['todo'], to: workflow.states[1].id })
+  expect(w.text()).toContain('To do → New state')
 })
 it('edits the same draft through List and Map and provides the keyboard connection path', async () => {
   const { draft, w } = editor()

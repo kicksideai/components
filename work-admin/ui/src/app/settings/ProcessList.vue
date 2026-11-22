@@ -4,9 +4,10 @@ import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Tag from 'primevue/tag'
-import type { Process, State, Transition } from '../../types'
+import type { Declaration, InstalledRule, Process, State, Transition } from '../../types'
 import { categoryTitle, kindTitle, stateTitle, transitionTitle } from './process'
-defineProps<{ process: Process; selectedState?: State; selectedTransition?: Transition; counts?: Record<string, number> }>()
+import TransitionRules from './TransitionRules.vue'
+defineProps<{ process: Process; draft: Declaration; guards?: InstalledRule[]; selectedState?: State; selectedTransition?: Transition; counts?: Record<string, number> }>()
 defineEmits<{ state: [state: State, opener: HTMLElement]; transition: [transition: Transition, opener: HTMLElement]; removeState: [state: State]; removeTransition: [transition: Transition] }>()
 </script>
 <template>
@@ -75,7 +76,7 @@ defineEmits<{ state: [state: State, opener: HTMLElement]; transition: [transitio
             <td role="cell">
               <InputText v-model="transition.name" :placeholder="transitionTitle(transition)"
                 :aria-label="'Name of ' + transitionTitle(transition)" />
-              <p v-if="transition.when || transition.require?.length || transition.guards?.length" class="work-muted">Has requirements</p>
+              <TransitionRules :transition="transition" :process="process" :draft="draft" :guards="guards" />
             </td>
             <td role="cell">
               <span class="work-process-cell-label" aria-hidden="true">From</span>
