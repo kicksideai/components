@@ -13,7 +13,6 @@ local failure=require("failure")
 local M = {}
 type Token = { projection_id: string, start_seq: integer, cursor: types.ChangesCursor?, bootstrapping: boolean }
 type Body = { worker_config: { start_seq: integer }, token: string? }
-type Pair = { projection: { id: string, body: string } }
 local TOKEN_SCHEMA = { type = "object", required = { "projection_id", "start_seq", "bootstrapping" }, additionalProperties = false,
     properties = { projection_id = { type = "string" }, start_seq = { type = "integer" }, bootstrapping = { type = "boolean" },
         cursor = { type = "object", required = { "seq", "product_id" }, additionalProperties = false,
@@ -41,14 +40,14 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
     if plugin then
         for _,p in ipairs(plugin.projections or {}) do if p.kind==request.kind and p.input=="state" then declared=p end end
     end
-    local pair: Pair?=nil
+    local pair: threads.ProjectionCursor?=nil
     local registration_error: error?=nil
     local body: Body?=nil
     local host_position = 0
     if declared then
         local raw,rerr=client:get_projection_cursor({thread_id=catalog_id,kind=request.kind,projection_key="kickside.pim.plugin:"..request.plugin})
         registration_error=rerr
-        pair=raw :: Pair?
+        pair=raw
         if pair then
             local decoded: unknown=pair.projection.body
             if type(decoded)=="string" then
@@ -65,7 +64,7 @@ function M.page(catalog_id: string, request: types.PluginFeedRequest): (types.Pl
         if err then
             registration_error = err
         else
-            local cursor = native and (native :: { cursor: { last_seq: integer } }).cursor
+            local cursor = native and native.cursor
             local position = cursor and math.tointeger(cursor.last_seq)
             if position then host_position = position
             else registration_error = failure.corrupt("catalog cursor position is malformed", "last_seq") end

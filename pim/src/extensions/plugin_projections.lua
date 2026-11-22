@@ -64,7 +64,7 @@ local function converge(catalog_id: string, id: string, intent: types.PluginInte
         local pair, perr = client:get_projection_cursor({thread_id=catalog_id,kind=p.kind,projection_key=key})
         if perr and perr:kind() ~= errors.NOT_FOUND then return nil, perr end
         if pair then
-            local body = pair.projection.body
+            local body: unknown = pair.projection.body
             if type(body) == "string" then
                 local decoded, jerr = json.decode(body)
                 if jerr then return nil, jerr end

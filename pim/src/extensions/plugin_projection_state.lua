@@ -8,11 +8,14 @@ local values=require("values")
 local failure=require("failure")
 local M = {}
 local PREFIX = "kickside.pim.plugin:"
-type Pair = { projection: { body: types.JsonObject }, cursor: { id: string, last_seq: integer, status: string, last_error: string? } }
-
-local function current(pair: Pair, projection: types.PluginProjection, intent: types.PluginIntent?): (types.PluginProjectionState?, error?)
-    local decoded, err = json.decode(pair.projection.body :: string)
-    if err then return nil, failure.corrupt("stored projection body is malformed", "body") end
+local function current(pair: threads.ProjectionCursor, projection: types.PluginProjection, intent: types.PluginIntent?): (types.PluginProjectionState?, error?)
+    local decoded: unknown = pair.projection.body
+    if type(decoded) == "string" then
+        local err: error?
+        decoded, err = json.decode(decoded)
+        if err then return nil, failure.corrupt("stored projection body is malformed", "body") end
+    end
+    if type(decoded) ~= "table" then return nil, failure.corrupt("stored projection body is malformed", "body") end
     local body = decoded :: types.JsonObject
     local config = body.worker_config :: types.JsonObject
     if type(config) ~= "table" then return nil, failure.corrupt("stored projection config is malformed", "worker_config") end
@@ -37,10 +40,10 @@ function M.states(catalog_id: string, plugin: types.Plugin, intent: types.Plugin
     if err or not client then return nil, err end
     local states: { [string]: types.PluginProjectionState } = {}
     for _, p in ipairs(plugin.projections or {}) do
-        local raw, rerr = client:get_projection_cursor({ thread_id = catalog_id, kind = p.kind, projection_key = PREFIX .. plugin.id })
+        local pair, rerr = client:get_projection_cursor({ thread_id = catalog_id, kind = p.kind, projection_key = PREFIX .. plugin.id })
         if rerr and rerr:kind() ~= errors.NOT_FOUND then return nil, rerr end
-        if raw then
-            local state, serr = current(raw :: Pair, p, intent)
+        if pair then
+            local state, serr = current(pair, p, intent)
             if serr then return nil, serr end
             states[p.kind] = state
         end

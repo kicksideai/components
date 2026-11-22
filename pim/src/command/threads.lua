@@ -11,6 +11,11 @@ local types = require("types")
 local THREADS = "kickside.core:threads"
 
 type Request = { [string]: unknown }
+type ProjectionAddress = { thread_id: string, kind: string, projection_key: string?, cursor_key: string? }
+type ProjectionCursor = {
+    projection: { id: string, body: string | types.JsonObject },
+    cursor: { id: string, last_seq: integer, status: string, last_error: string? },
+}
 type Client = {
     retire_subjects: (self: Client, request: {thread_id: string, subjects: {string}}) -> ({thread_id: string, retired: integer}?, error?),
     find: (self: Client, request: Request) -> ({ event_count: integer }?, error?),
@@ -18,7 +23,7 @@ type Client = {
     register_projection: (self: Client, request: Request) -> (unknown, error?),
     remove_projection: (self: Client, request: Request) -> (unknown, error?),
     list_projections: (self: Client, request: Request) -> (unknown, error?),
-    get_projection_cursor: (self: Client, request: Request) -> (unknown, error?),
+    get_projection_cursor: (self: Client, request: ProjectionAddress) -> (ProjectionCursor?, error?),
     create: (self: Client, request: Request) -> (unknown, error?),
     ensure_thread: (self: Client, request: Request) -> (unknown, error?),
     catch_up_projection: (self: Client, request: Request) -> (unknown, error?),
@@ -37,6 +42,7 @@ local M = {}
 M.Client = Client
 M.CatchUp = CatchUp
 M.Expect = Expect
+M.ProjectionCursor = ProjectionCursor
 
 local function field(v: unknown, name: string): unknown
     if type(v) ~= "table" then return nil end
