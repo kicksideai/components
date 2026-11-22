@@ -15,7 +15,9 @@ import { removeEntry, type RemovalGuard, type SchemaChange, changeReason } from 
 import ChipPicker from './ChipPicker.vue'
 import AddDefinitionRow from './AddDefinitionRow.vue'
 const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[] }>()
+const emit = defineEmits<{ 'create-field': [type: ItemType, event: MouseEvent]; 'create-workflow': [type: ItemType, event: MouseEvent] }>()
 const types = computed(() => props.draft.item_types ?? [])
+const openedType = ref('')
 const error = ref(''), removing = ref('')
 function newId(title: string) {
   const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
@@ -28,7 +30,9 @@ function newId(title: string) {
   return key
 }
 function add(title: string) {
-  (props.draft.item_types ??= []).push({ id: newId(title), title, process: props.draft.processes?.[0]?.id ?? '', fields: [] })
+  const id = newId(title)
+  ;(props.draft.item_types ??= []).push({ id, title, process: props.draft.processes?.[0]?.id ?? '', fields: [] })
+  openedType.value = id
 }
 function rename(type: ItemType, id: string) {
   const before = type.id
@@ -55,10 +59,25 @@ async function remove(type: ItemType) {
   <section class="work-stack" aria-label="Item types editor">
     <p v-if="error" class="kx-err" role="alert">{{ error }}</p>
     <DefinitionList columns="types" :count="types.length">
-    <DefinitionRow route-section="items" :route-id="type.id" :title="type.title || humanize(type.id)" kind-label="Workflow" :kind="draft.processes?.find(p => p.id === type.process)?.name || humanize(type.process)" v-for="(type, index) in types" :key="index" class="work-type-card">
+    <DefinitionRow route-section="items" :route-id="type.id" :initial-open="openedType === type.id" :title="type.title || humanize(type.id)" kind-label="Workflow" :kind="draft.processes?.find(p => p.id === type.process)?.name || humanize(type.process)" v-for="(type, index) in types" :key="index" class="work-type-card">
       <template #usage><span class="work-definition-meta"><Tag class="kx-tag-sm" severity="secondary">{{ type.fields.length }} {{ type.fields.length === 1 ? 'field' : 'fields' }}</Tag><Tag v-if="usedBy(type).length" class="kx-tag-sm" severity="secondary">Parent of {{ usedBy(type).join(', ') }}</Tag></span></template>
-      <p v-for="issue in issues?.filter(i => i.code === 'item_type ' + type.id) ?? []" :key="issue.what" class="work-error work-small" role="alert">{{ changeReason(issue) }}</p><div class="work-settings-grid"><label class="work-stack work-tight">Title<InputText v-model="type.title" :placeholder="humanize(type.id)" /></label><label class="work-stack work-tight">Workflow<Select v-model="type.process" aria-label="Workflow" required appendTo="self" optionLabel="label" optionValue="value" optionDisabled="disabled" :options="[...(draft.processes ?? []).map((process) => ({ label: (process.name || humanize(process.id)), value: process.id, disabled: false }))]" /></label></div>
-      <ChipPicker label="Fields" :options="(draft.fields ?? []).map(f => ({ value: f.code, label: fieldTitle(f) }))" :model-value="type.fields" @update:model-value="setFields(type, $event)" />
+      <p v-for="issue in issues?.filter(i => i.code === 'item_type ' + type.id) ?? []" :key="issue.what" class="work-error work-small" role="alert">{{ changeReason(issue) }}</p>
+      <div class="work-settings-grid">
+        <label class="work-stack work-tight">Title<InputText v-model="type.title" :placeholder="humanize(type.id)" /></label>
+        <div class="work-stack work-tight">
+          <label v-if="draft.processes?.length" class="work-stack work-tight">
+            Workflow
+            <Select v-model="type.process" aria-label="Workflow" required appendTo="self" optionLabel="label" optionValue="value"
+              :options="draft.processes.map(process => ({ label: process.name || humanize(process.id), value: process.id }))" />
+          </label>
+          <span v-else>Workflow</span>
+          <div><Button label="Create a workflow" type="button" text size="small" @click="emit('create-workflow', type, $event)" /></div>
+        </div>
+      </div>
+      <div class="work-stack work-tight">
+        <ChipPicker label="Fields" :options="(draft.fields ?? []).map(f => ({ value: f.code, label: fieldTitle(f) }))" :model-value="type.fields" @update:model-value="setFields(type, $event)" />
+        <div><Button label="Create a field" type="button" text size="small" @click="emit('create-field', type, $event)" /></div>
+      </div>
       <Disclosure class="work-disclosure" label="Advanced item type settings"><div class="work-stack">
         <label class="work-stack work-tight">Identifier<InputText :value="type.id" @change="rename(type, ($event.target as HTMLInputElement).value)" required pattern="[a-z][a-z0-9_]*" /></label>      <ChipPicker label="Parent types" :options="types.map(t => ({ value: t.id, label: t.title || humanize(t.id) }))" :model-value="parentTypes(type)" @update:model-value="setParents(type, $event, !!type.parent_types?.includes(false))" />
       <label v-if="parentTypes(type).length" class="work-row work-wrap"><ToggleSwitch :model-value="!!type.parent_types?.includes(false)" aria-label="Allow top-level items" @update:model-value="setParents(type, parentTypes(type), $event)" />Allow top-level items</label>

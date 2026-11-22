@@ -16,7 +16,7 @@ pending state on save or explicit discard.
 The board directory frames its count, Create board and Application defaults.
 An opened board uses the standalone settings rail. All boards returns focus to
 the selected directory row. All sections use the shared UI Kit rail and
-scrolling pane. Access contains Share board. The section header shows draft
+scrolling pane. General links to the Share board action in Access. The section header shows draft
 actions when board settings have unsaved changes. Board titles wrap in both
 surfaces, and the definition lists place metadata and row actions below the title
 when the available space cannot fit the desktop columns. Field controls have
@@ -112,10 +112,15 @@ app, description and icon save together through the metadata action.
 Item counts and pack status share one line above the recent changes disclosure.
 
 Item types show a Workflow column on wide panels and a Workflow label on narrow
-panels. Expand an item type to edit the fields it uses. Fields defines fields shared by
-the board and can filter by item type. Links defines relationships that appear
+panels. Expand an item type to edit the fields it uses. Newly added item types
+open automatically. The field and workflow creation actions open the existing
+editors and return to the same item type. The field editor preselects the
+originating type for placement, and the workflow editor assigns the created
+workflow to it. The existing-item review message covers changes to saved
+workflows. Fields defines fields shared by the board and can filter by item type.
+Links defines relationships that appear
 on both items. Add actions open the corresponding editor on demand. Cancel and
-Escape close the inline name editor and return focus to its Add action. Field
+Escape close the inline name editor and return focus to the initiating action. Field
 choices wrap within the available width, including when an individual label is
 long. Item reference fields can choose a named target type. Top-level
 placement beside named parents uses Work’s boolean marker. Integration

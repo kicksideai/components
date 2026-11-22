@@ -47,6 +47,9 @@ it('identifies follow process migrations from the returned change classes', asyn
   expect(processMigration(plan, { processes: [{ id: 'delivery', initial: 'todo', states: [] }] })).toEqual(['delivery'])
   expect(processMigration(plan, { processes: [{ id: 'delivery', initial: 'todo', states: [], migration: 'pin' }] })).toEqual([])
   expect(processMigration({ ...plan, changes: [{ ...plan.changes[0], class: 'cosmetic' }] }, { processes: [{ id: 'delivery', initial: 'todo', states: [] }] })).toEqual([])
+  expect(processMigration({
+    ...plan, changes: [...plan.changes, { code: 'process intake', class: 'additive', what: 'add' }],
+  }, { processes: [{ id: 'delivery', initial: 'todo', states: [] }, { id: 'intake', initial: 'todo', states: [] }] })).toEqual(['delivery'])
 })
 it('round trips the board settings route with encoded board IDs', async () => {
   const { parse, pathOf } = await import('../route')

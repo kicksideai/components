@@ -12,7 +12,7 @@ import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { ApiError, formatApiError } from '../../transport'
 import { work } from '../../api'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
-import type { BoardRow, Declaration, AdminOptions, Process, Schema, State } from '../../types'
+import type { BoardRow, Declaration, AdminOptions, ItemType, Process, Schema, State } from '../../types'
 import { useNavigate } from '../route'
 import { usePackDiscovery } from '../usePackDiscovery'
 import { humanize } from '../../forms'
@@ -96,6 +96,11 @@ function selectSection(section: string) {
     setLocation(section as Section)
   }
 }
+async function openAccess() {
+  setLocation('Access')
+  await nextTick()
+  pane.value?.focus()
+}
 const sectionDescriptions: Record<Section, string> = {
   General: 'Manage the board name, item key prefix and app.',
   'Item types': 'Choose the fields, parent relationships and workflow for each kind of work.',
@@ -106,8 +111,28 @@ const sectionDescriptions: Record<Section, string> = {
   Plugins: 'Choose which plugins this board uses.',
 }
 const fieldType = ref('')
+const creation = ref<{ section: 'Fields' | 'Workflow'; type: ItemType; opener: HTMLElement }>()
+function startCreation(section: 'Fields' | 'Workflow', type: ItemType, event: MouseEvent) {
+  if (!(event.currentTarget instanceof HTMLElement)) return
+  creation.value = { section, type, opener: event.currentTarget }
+  if (section === 'Fields') fieldType.value = type.id
+  setLocation(section)
+}
+function finishCreation(processId?: string) {
+  const active = creation.value
+  if (!active) return
+  if (processId !== undefined) active.type.process = processId
+  const id = active.type.id
+  const savedType = schema.value?.declaration.item_types?.some(type => type.id === id)
+  setLocation('Item types', savedType ? id : '')
+  creation.value = undefined
+  if (active.section === 'Fields') void nextTick(() => active.opener.focus())
+}
 const reviewOpen = ref(false), reviewError = ref(''), reviewOpener = ref<HTMLElement>()
-watch(tab, () => pane.value?.scrollTo({ top: 0 }))
+watch(tab, section => {
+  pane.value?.scrollTo({ top: 0 })
+  if (creation.value && section !== creation.value.section) creation.value = undefined
+})
 function closeReview() { reviewOpen.value = false; reviewError.value = ''; confirmedRenames.value = false }
 function openReview(opener?: HTMLElement) {
   if (!showDraftActions.value || !validForm() || invalid.value.size) return
@@ -232,7 +257,7 @@ function invalidate() { serverIssues.value = []; beginReview(); plan.value = und
 watch([request, configs], invalidate, { deep: true, flush: 'sync' })
 watch(configs, value => { if (packRequest.value) { if (Object.keys(value).length) packRequest.value.plugin_configs = clone(value); else delete packRequest.value.plugin_configs } }, { deep: true, flush: 'sync' })
 function validity(key: string, valid: boolean) { if (valid) invalid.value.delete(key); else invalid.value.add(key); invalidate() }
-function reset(view: Schema) { clearPack(); editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); invalidate() }
+function reset(view: Schema) { clearPack(); creation.value = undefined; editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); invalidate() }
 async function load(force = false) {
   const current = beginRead()
   try {
@@ -370,7 +395,7 @@ async function back() {
 }
 function discard() { resetGeneration = undefined; activePluginConfigs.value = {}; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
 
-watch(() => props.boardId, () => { metadataDirty.value = false; activePluginConfigs.value = {}; resetGeneration = undefined; clearPack(); resetPacks(); packOperation.value = undefined; packOperationError.value = ''; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { metadataDirty.value = false; activePluginConfigs.value = {}; resetGeneration = undefined; clearPack(); resetPacks(); packOperation.value = undefined; packOperationError.value = ''; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; creation.value = undefined; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
 watch([() => props.route, () => props.boardId], ([route]) => {
   if (route === undefined) return
   const [key, row] = route.split('/')
@@ -392,7 +417,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
       <SettingsRail ref="rail" label="Board settings sections" :value="tab"
         :groups="settingsGroups" :leading-item="allBoards" @update:value="selectSection" />
       <div class="kx-main">
-        <div ref="pane" class="kx-main-scroll work-settings-content" role="region" :aria-label="tab">
+        <div ref="pane" class="kx-main-scroll work-settings-content" role="region" :aria-label="tab" tabindex="-1">
           <SettingsSectionHead v-if="authorized && schema" :title="tab" :description="sectionDescriptions[tab]">
             <template v-if="showDraftActions || tab === 'Plugins'" #actions>
               <Button v-if="tab === 'Plugins'" label="Refresh status" severity="secondary" outlined :disabled="busy || loading" @click="load()">
@@ -432,16 +457,19 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
               :pack-title="schema.pack ? packTitle : undefined" :outdated="schema.outdated" :upgrade-reason="upgradeReason"
               :can-upgrade="upgradeAvailable && canManagePack" :can-install="canManagePack"
               :pack-error="packError" @upgrade="upgrade" @install="installing = true" @retry="loadPacks()"
-              @dirty-change="metadataDirty = $event" @saved="load()" />
+              @dirty-change="metadataDirty = $event" @saved="load()" @share="openAccess" />
 
             <form :id="draftForm" ref="editor" @submit.prevent="openReview()">
               <fieldset :key="editorVersion" class="work-settings-fieldset" :disabled="busy || checkingRemoval" :inert="busy || checkingRemoval || undefined">
                 <TypesEditor v-if="visited.has('Item types')" v-show="tab === 'Item types'" class="work-ia-section"
-                  :draft="draft" :guard-removal="guardRemoval" :issues="issues" />
+                  :draft="draft" :guard-removal="guardRemoval" :issues="issues"
+                  @create-field="(type, event) => startCreation('Fields', type, event)"
+                  @create-workflow="(type, event) => startCreation('Workflow', type, event)" />
 
                 <FieldsEditor v-if="visited.has('Fields')" v-show="tab === 'Fields'" class="work-ia-section"
                   :board-id="boardId" :installed-types="options?.installed_types" :draft="draft" :guard-removal="guardRemoval"
-                  :issues="issues" v-model:item-type="fieldType" @validity="(key, valid) => validity('fields:' + key, valid)" />
+                  :issues="issues" v-model:item-type="fieldType" :create-for-item-type="creation?.section === 'Fields'"
+                  @created="finishCreation()" @cancel-creation="finishCreation()" @validity="(key, valid) => validity('fields:' + key, valid)" />
 
                 <RelationsEditor v-if="visited.has('Links')" v-show="tab === 'Links'" class="work-ia-section"
                   :draft="draft" :guard-removal="guardRemoval" />
@@ -449,7 +477,8 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
                 <section v-if="visited.has('Workflow')" v-show="tab === 'Workflow'" class="work-ia-section">
                   <p v-if="countsError" class="work-muted">Item counts are unavailable. <Button label="Reload counts" text @click="loadCounts(boardId)" /></p>
                   <ProcessEditor :board-id="boardId" :draft="draft" :guard-removal="guardRemoval" :issues="issues" :counts="stateCounts" :count-types="schema.declaration.item_types" :guards="options?.guards"
-                    @validity="(key, valid) => validity('process:' + key, valid)" />
+                    :create-for-item-type="creation?.section === 'Workflow'" :creation-opener="creation?.opener"
+                    @created="finishCreation" @cancel-creation="finishCreation()" @validity="(key, valid) => validity('process:' + key, valid)" />
                 </section>
 
                 <BoardAccessSettings v-if="visited.has('Access')" v-show="tab === 'Access'" :active="tab === 'Access'" :board-id="boardId"
