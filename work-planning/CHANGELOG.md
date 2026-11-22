@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/kicksideai/components/compare/work-planning-v0.1.4...work-planning-v0.1.5) (2026-11-22)
+
+
+### Bug Fixes
+
+* align Planning and Search with Work contracts ([#371](https://github.com/kicksideai/components/issues/371)) ([7df0eef](https://github.com/kicksideai/components/commit/7df0eef94970abe789dc3f12efc51fcacf52e9d5))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/work-planning-v0.1.3...work-planning-v0.1.4) (2026-11-21)
 
 
