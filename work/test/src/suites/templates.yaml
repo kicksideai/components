@@ -13,6 +13,7 @@ entries:
     fixture: app:fixture
     scoped: app:scoped
     steps: app:steps
+    delivery_identity: kickside.automation:delivery_identity
 - name: templates_recurring
   kind: function.lua
   source: file://../templates_recurring.lua

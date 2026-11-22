@@ -19,8 +19,15 @@ type Write = {
     config: Pinned?, input: ActionInput?, sink_op: string?, identity_key: string?, idempotency_key: string?,
     origin: string?, automation_ref: Map?, trace_context: domain.TraceContext?,
 }
+type WriteSuccess = { success: boolean, result: string, dest_ref: { item_id: string? } }
+type WriteFailure = {
+    success: boolean,
+    error: { code: string, message: string, retriable: boolean, scope: string, kind: string?, details: unknown },
+}
+type WriteResult = WriteSuccess | WriteFailure
+
 local M = {}
 M.Map, M.BoardRequest, M.Pinned, M.Preset = Map, BoardRequest, Pinned, Preset
 M.Publish, M.Instantiate, M.Record, M.Version, M.List, M.Archive = Publish, Instantiate, Record, Version, List, Archive
-M.Publication, M.ActionInput, M.Write = Publication, ActionInput, Write
+M.Publication, M.ActionInput, M.Write, M.WriteResult = Publication, ActionInput, Write, WriteResult
 return M

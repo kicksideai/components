@@ -74,12 +74,20 @@ local function transaction<T>(work: (sql.Transaction) -> (T?, error?)): (T?, err
     local db, err = store.open()
     if err or not db then return nil, err end
     local tx, terr = db:begin()
-    if terr or not tx then db:release(); return nil, terr end
+    if terr or not tx then
+        local _, release_err = db:release()
+        return nil, terr or release_err
+    end
     local result, failure = work(tx)
-    if failure or result == nil then tx:rollback()
-    else _, failure = tx:commit() end
-    db:release()
-    if failure then return nil, failure end
+    local _, cleanup_err
+    if failure or result == nil then
+        _, cleanup_err = tx:rollback()
+    else
+        _, failure = tx:commit()
+    end
+    local _, release_err = db:release()
+    local final_err = failure or cleanup_err or release_err
+    if final_err then return nil, final_err end
     return result, nil
 end
 
@@ -140,8 +148,8 @@ function M.delete(): ({ success: boolean }?, error?)
     local db, err = store.open()
     if err or not db then return nil, err end
     local _, derr = db:execute("DELETE FROM kickside_work_template_version WHERE attachment_id = $1", { id })
-    db:release()
-    if derr then return nil, derr end
+    local _, release_err = db:release()
+    if derr or release_err then return nil, derr or release_err end
     return { success = true }, nil
 end
 
