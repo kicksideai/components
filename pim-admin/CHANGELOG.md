@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.18](https://github.com/kicksideai/components/compare/pim-admin-v0.1.17...pim-admin-v0.1.18) (2026-11-22)
+
+
+### Bug Fixes
+
+* **pim-admin:** use UI Kit 1.7.8 for full-width rail highlights ([#359](https://github.com/kicksideai/components/issues/359)) ([4862dce](https://github.com/kicksideai/components/commit/4862dcee0f2e18da47889c59e2e548155be7253d))
+
 ## [0.1.17](https://github.com/kicksideai/components/compare/pim-admin-v0.1.16...pim-admin-v0.1.17) (2026-11-22)
 
 
