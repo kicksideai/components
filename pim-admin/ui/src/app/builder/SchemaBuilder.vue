@@ -16,7 +16,7 @@ import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import SettingsDraftActions from '@kickside/ui-kit/SettingsDraftActions.vue'
 import { clone } from '../../state'
 // Schema edits are reviewed and applied together; vocabulary terms save immediately.
-import { computed, nextTick, onUnmounted, ref, useId, watch, type ComponentPublicInstance } from 'vue'
+import { computed, provide, nextTick, onUnmounted, ref, useId, watch, type ComponentPublicInstance } from 'vue'
 import { host, on } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { pim } from '../../api'
@@ -24,6 +24,7 @@ import type { CatalogRow, Declaration, PluginConfigs, RemoveDecl, SchemaOptions,
 import BuilderFields from './BuilderFields.vue'
 import BuilderDimensions from './BuilderDimensions.vue'
 import BuilderVocabularies from './BuilderVocabularies.vue'
+import { sectionRow } from '../../shared/sectionRow'
 import BuilderFamilies from './BuilderFamilies.vue'
 import BuilderChannels from './BuilderChannels.vue'
 import BuilderPlugins from './BuilderPlugins.vue'
@@ -36,8 +37,8 @@ import { humanize } from '../../forms'
 import { humanLabel } from '../../shared/labels'
 import { presentError, SCHEMA_CONFLICT, type PluginConfigRefusal } from '../../shared/transport'
 
-const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; catalog?: CatalogRow; backLabel?: string; focusBack?: boolean }>()
-const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean] }>()
+const props = defineProps<{ catalogId: string; embedded?: boolean; title?: string; catalog?: CatalogRow; backLabel?: string; focusBack?: boolean; route?: string }>()
+const emit = defineEmits<{ applied: [generation: number]; back: []; 'dirty-changed': [dirty: boolean]; navigate: [route: string] }>()
 
 const navigation = {
   General: { question: 'What is this catalog for?', items: [
@@ -61,6 +62,12 @@ const navigation = {
   Plugins: { question: 'What can this catalog do?', items: [{ label: 'Plugins', icon: 'tabler:puzzle' }] },
 }
 type Section = keyof typeof navigation
+const sectionKeys: Record<string, string> = {
+  Overview: 'overview', History: 'history', Families: 'families', Fields: 'fields',
+  'Form layout': 'form-layout', Dimensions: 'dimensions', Vocabularies: 'vocabularies',
+  Channels: 'channels', Sources: 'sources', Access: 'access', Plugins: 'plugins',
+}
+const selectedRow = ref('')
 const section = ref<Section>('General')
 const view = ref('Overview')
 const familyFilter = ref('')
@@ -92,12 +99,44 @@ function selectView(value: string | undefined) {
   const item = sectionItems.find(option => option.label === value)
   if (item) selectSection(item.section, item.label)
 }
-function selectSection(next: Section, nextView = navigation[next].items[0].label) {
-  if (section.value === next && view.value === nextView) return
+function openRoute(next: Section, nextView: string, row = '') {
+  const changed = view.value !== nextView
   section.value = next
   view.value = nextView
-  if (content.value) content.value.scrollTop = 0
+  selectedRow.value = row ? sectionKeys[nextView] + '/' + row : ''
+  if (changed && content.value) content.value.scrollTop = 0
 }
+function setLocation(next: Section, nextView: string, row = '') {
+  openRoute(next, nextView, row)
+  if (props.route !== undefined) emit('navigate', [sectionKeys[nextView], ...(row ? [encodeURIComponent(row)] : [])].join('/'))
+}
+function selectSection(next: Section, nextView = navigation[next].items[0].label) {
+  if (section.value !== next || view.value !== nextView) setLocation(next, nextView)
+}
+function chooseRow(key: string, id: string, open: boolean) {
+  if (props.route === undefined || sectionKeys[view.value] !== key || (!open && selectedRow.value !== key + '/' + id)) return
+  const current = schema.value
+  const persisted =
+    key === 'families' ? current?.families[id] :
+    key === 'fields' ? current?.declaration.aspects?.some(aspect => aspect.attributes?.some(attr => aspect.namespace + '.' + attr.id === id)) :
+    key === 'dimensions' ? current?.dimensions.some(dimension => dimension.name === id) :
+    key === 'vocabularies' ? current?.vocabularies[id] :
+    key === 'channels' ? current?.channels[id] :
+    key === 'sources' ? current?.sources[id] :
+    key === 'plugins' && (options.value?.plugins.some(plugin => plugin.plugin === id) ||
+      options.value?.scopes.some(scope => 'scope:' + scope.id === id))
+  if (persisted) setLocation(section.value, view.value, open ? id : '')
+}
+provide(sectionRow, { selected: selectedRow, choose: chooseRow })
+watch(() => props.route, route => {
+  if (route === undefined) return
+  const [key, row] = route.split('/')
+  const item = sectionItems.find(option => sectionKeys[option.label] === key)
+  let id = ''
+  try { if (row) id = decodeURIComponent(row) } catch { /* Invalid identifiers have no selected row. */ }
+  if (item?.label === 'Fields' && id && selectedRow.value !== 'fields/' + id) familyFilter.value = ''
+  openRoute(item?.section ?? 'General', item?.label ?? 'Overview', id)
+}, { immediate: true })
 function openAdvanced(panel: 'defaults' | 'declaration') {
   advanced.value = panel
   advancedVisible.value = true

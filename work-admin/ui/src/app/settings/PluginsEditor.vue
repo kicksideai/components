@@ -118,7 +118,7 @@ async function submit(id: string, retry = false) {
     <p v-if="!options.length" class="kx-loading">No installed plugins are visible to you.</p>
     <div v-if="error" class="kx-err" role="alert">{{ error }}</div><p v-if="saved" class="work-notice" role="status">{{ saved }}</p>
     <DefinitionList columns="plugins" :count="options.length">
-      <DefinitionRow v-for="{ plugin, current, issue } in rows" :key="plugin.plugin"
+      <DefinitionRow route-section="plugins" :route-id="plugin.plugin" v-for="{ plugin, current, issue } in rows" :key="plugin.plugin"
         :title="plugin.installed === false ? plugin.plugin : plugin.title || plugin.plugin"
         :description="plugin.description"
         :kind="selected(plugin.plugin) && invalid.has(plugin.plugin) ? 'Configuration needed' : selected(plugin.plugin) !== active(plugin.plugin) ? 'Pending review' : issue?.status"
@@ -169,6 +169,17 @@ async function submit(id: string, retry = false) {
             <Button label="Review references" severity="secondary" outlined :disabled="activationDisabled" @click="reviewRemoval(plugin.plugin, $event)" />
           </div>
         </div>
+        <Disclosure v-if="plugin.installed" class="work-disclosure work-small" label="Technical details">
+          <dl class="work-stack work-tight">
+            <div><dt>Plugin ID</dt><dd><code>{{ plugin.plugin }}</code></dd></div>
+            <div v-if="(current?.interface_version ?? plugin.interface_version) != null">
+              <dt>Interface version</dt><dd>{{ current?.interface_version ?? plugin.interface_version }}</dd>
+            </div>
+            <div v-if="current?.version"><dt>Active schema version</dt><dd>{{ current.version }}</dd></div>
+            <div><dt>Configuration tool</dt><dd><code>WorkConfigurePlugin</code></dd></div>
+            <div v-if="plugin.tools.length"><dt>Plugin tools</dt><dd><code v-for="tool in plugin.tools" :key="tool" class="work-block">{{ tool }}</code></dd></div>
+          </dl>
+        </Disclosure>
         <section v-if="pluginFilters(plugin.plugin).length && (selected(plugin.plugin) || active(plugin.plugin))" class="work-stack work-tight">
           <h4>Query filters</h4>
           <p class="work-muted">Choose which filters people can use to narrow down work on this board.</p>

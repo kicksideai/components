@@ -20,6 +20,8 @@ import type { CatalogRow } from '../types'
 import { ensureTag } from './mount'
 import CreateCatalog from './CreateCatalog.vue'
 
+const props = defineProps<{ route?: string }>()
+const emit = defineEmits<{ navigate: [route: string]; 'dirty-changed': [dirty: boolean] }>()
 const ready = ref(false), loadingSettings = ref(false), creating = ref(false)
 const confirming = ref(false), dirty = ref(false)
 const focusBack = ref(false)
@@ -42,12 +44,39 @@ async function created(id: string) {
   }
   await load()
 }
+const detailRoute = ref('')
+watch(dirty, value => emit('dirty-changed', value), { flush: 'sync' })
+
+function navigate(route: string) {
+  if (props.route !== undefined && route !== props.route) emit('navigate', route)
+}
+function navigateDetail(path: string) {
+  const id = selected.value
+  if (!id || props.route === undefined) return
+  detailRoute.value = path
+  navigate(path ? encodeURIComponent(id) + '/' + path : encodeURIComponent(id))
+}
 function selectCatalog(id: string, focus = true) {
   offerDirectOpen = false
   focusBack.value = focus
   if (focus) detail.value?.focus({ preventScroll: true })
   currentCatalog.value = selected.value = id
+  navigateDetail('overview')
 }
+watch(() => props.route, route => {
+  if (route === undefined) return
+  const [segment, ...path] = route.split('/')
+  let id: string
+  try { id = decodeURIComponent(segment ?? '') } catch { return }
+  if (id) offerDirectOpen = false
+  if (id !== selected.value) {
+    selected.value = id
+    if (id) currentCatalog.value = id
+    focusBack.value = false
+    dirty.value = false
+  }
+  detailRoute.value = path.join('/')
+}, { immediate: true })
 async function mayLeave() {
   if (confirming.value) return false
   if (!dirty.value) return true
@@ -60,6 +89,8 @@ async function backToCatalogs() {
   if (!await mayLeave()) return false
   dirty.value = false
   selected.value = ''
+  detailRoute.value = ''
+  navigate('')
   await nextTick()
   const target = list.value?.querySelector<HTMLButtonElement>('[aria-current="true"]') ?? searchField.value?.querySelector('input')
   target?.focus()
@@ -170,7 +201,8 @@ onUnmounted(() => { unsubscribe(); clearTimeout(searchTimer); reads.begin() })
       <Button v-if="next != null" label="Load more catalogs" type="button" :disabled="loading || !!failed" @click="load(next)" severity="secondary" outlined size="small" />
     </ListRail>
     <section ref="detail" class="pim-system-main" aria-label="Catalog settings detail" tabindex="-1">
-      <kickside-pim-catalog-settings v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" :focus-back="String(focusBack)"
+      <kickside-pim-catalog-settings :route="props.route === undefined ? undefined : detailRoute"
+        @navigate.stop="navigateDetail($event.detail.route)" v-if="selected && ready" :key="selected" :catalog-id="selected" embedded="true" :focus-back="String(focusBack)"
         @open-catalog-picker="backToCatalogs" @dirty-changed="dirtyChanged" />
       <p v-else-if="selected && loadingSettings" class="kx-loading" role="status">Loading catalog settings…</p>
       <p v-else-if="selected" class="kx-err" role="alert">Catalog settings are unavailable.<Button label="Back to catalogs" severity="secondary" text @click="backToCatalogs" /><Button label="Retry" severity="secondary" outlined @click="loadSettings" /></p>

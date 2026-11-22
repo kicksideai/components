@@ -11,7 +11,7 @@ import lt from "primevue/accordioncontent";
 import dt from "primevue/accordionheader";
 import ut from "primevue/accordionpanel";
 import ct from "primevue/textarea";
-import { e as ft } from "./mount-Chf6MiNr.js";
+import { e as ft } from "./mount-DPTy0rBc.js";
 import { api as Fe } from "@wippy-fe/proxy";
 const ht = ["aria-labelledby"], pt = { class: "kx-railhead" }, mt = ["id"], bt = { key: 0 }, gt = { class: "kx-railhead-acts" }, yt = { class: "kx-rail-body" }, fn = /* @__PURE__ */ ue({
   __name: "ListRail",
@@ -2895,4 +2895,4 @@ export {
   _t as y,
   wn as z
 };
-//# sourceMappingURL=usePackDiscovery-CfANJ1PP.js.map
+//# sourceMappingURL=usePackDiscovery-BCCFCjF1.js.map

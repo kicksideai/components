@@ -74,6 +74,7 @@ function changes(after: Schema, before?: Schema) {
   if (labels.length) result.push(labels.join(', ') + ' updated')
   return result.length ? result : ['Board setup updated']
 }
+const packDetailsOpen = ref(false)
 const history = computed(() => {
   if (!previous.value || props.schema.generation < 1) return []
   const saved = [props.schema, ...previous.value]
@@ -108,6 +109,13 @@ const history = computed(() => {
       <Button v-else-if="outdated" label="Update pack" severity="secondary" outlined size="small" :disabled="!canUpgrade" :title="upgradeReason" @click="$emit('upgrade')" />
     </section>
 
+    <Disclosure v-if="schema.pack" v-model:open="packDetailsOpen" class="work-disclosure work-small" label="Technical details">
+      <dl v-if="packDetailsOpen" class="work-stack work-tight">
+        <div><dt>Pack ID</dt><dd><code>{{ schema.pack.id }}</code></dd></div>
+        <div><dt>Pack version</dt><dd>{{ schema.pack.version }}</dd></div>
+        <div><dt>Pack tools</dt><dd><code>WorkPackPlan</code>, <code>WorkPackApply</code></dd></div>
+      </dl>
+    </Disclosure>
     <Disclosure class="work-disclosure" label="Recent setup changes">
       <ul v-if="history.length" class="work-stack work-tight">
         <li v-for="(change, index) in history" :key="index">{{ change.join(' · ') }}</li>

@@ -129,7 +129,7 @@ async function retire(v: VocabularyDecl, t: TermRow, retired: boolean) {
 
 <template>
   <DefinitionList :count="vocabs.length" :columns="['details']">
-    <DefinitionRow :title="humanize(v.code)" v-for="v in vocabs" :key="v.code">
+    <DefinitionRow route-section="vocabularies" :route-id="v.code" :title="humanize(v.code)" v-for="v in vocabs" :key="v.code">
       <template #details><span class="muted small">{{ v.hierarchical ? 'Hierarchical' : 'Flat' }}</span></template>
       <template #actions><Button v-if="canEdit" type="button" :aria-label="'Remove ' + humanize(v.code)" @click="remove(v)" text severity="secondary" size="small"><Icon icon="tabler:trash" /></Button></template>
       <div class="pim-aspect">

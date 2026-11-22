@@ -6,6 +6,7 @@ const KicksideWorkSettings = element(SettingsRoot, {
   type: 'object', properties: {
     'board-id': { type: 'string', default: '', description: 'Board to administer.' },
     'focus-back': { type: 'boolean', default: false, description: 'Focus the first rail action when opening settings from the board picker.' },
+    route: { type: 'string', description: 'Section and selected row in System.' },
     embedded: { type: 'boolean', default: false, description: 'Fits in a System detail pane.' },
   },
 })

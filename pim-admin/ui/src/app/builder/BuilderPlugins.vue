@@ -140,7 +140,7 @@ function reviewRemoval(plugin: PluginView) {
     <DefinitionList :count="rows.length" :columns="['details']">
       <template #head><header class="pim-bsection-head"><h3>Plugins</h3><span class="muted small">{{ installedCount }} installed</span></header></template>
       <div v-if="rows.length === 0" class="pim-aspect muted">No plugin is installed.</div>
-      <DefinitionRow v-for="{ option, plugin, status, chosen, title, label, severity, refusal } in rows" :key="plugin.plugin"
+      <DefinitionRow route-section="plugins" :route-id="plugin.plugin" v-for="{ option, plugin, status, chosen, title, label, severity, refusal } in rows" :key="plugin.plugin"
         :title="title" :open="expanded[plugin.plugin] ?? !!(plugin.active && status && status.kind !== 'pending')"
         @update:open="expanded[plugin.plugin] = $event">
         <template #details>
@@ -207,6 +207,16 @@ function reviewRemoval(plugin: PluginView) {
             <Button label="Review references" severity="secondary" outlined size="small" @click="referenceId = plugin.plugin" />
           </template>
 
+          <Disclosure v-if="plugin.installed && (!status || status.kind === 'pending')" class="small pim-ia-disclosure" label="Technical details">
+            <dl class="pim-stack">
+              <div><dt>Plugin ID</dt><dd><code>{{ plugin.plugin }}</code></dd></div>
+              <div v-if="(plugin.interface_version ?? option.interface_version) != null">
+                <dt>Interface version</dt><dd>{{ plugin.interface_version ?? option.interface_version }}</dd>
+              </div>
+              <div><dt>Configuration tool</dt><dd><code>PIMConfigurePlugin</code></dd></div>
+              <div v-if="plugin.tools.length"><dt>Plugin tools</dt><dd><ul><li v-for="tool in plugin.tools" :key="tool"><code>{{ tool }}</code></li></ul></dd></div>
+            </dl>
+          </Disclosure>
           <template v-if="chosen && plugin.installed && status?.kind !== 'failed' && status?.kind !== 'uninstalled'">
             <ConfigForm :disabled="!canEdit" :schema="option.config_schema" :model-value="pluginConfigs[plugin.plugin] ?? plugin.config ?? {}"
               :problem="status?.kind === 'config' ? status.error : undefined"
@@ -252,8 +262,11 @@ function reviewRemoval(plugin: PluginView) {
 
     <DefinitionList :count="options.scopes.length" :columns="['details']">
       <template #head><header class="pim-bsection-head"><h3>Product filter sets</h3><span class="muted small">Choose additional ways to filter products.</span></header></template>
+      <Disclosure class="small pim-ia-disclosure" label="Filter set technical details">
+        <p>Product filter sets are <code>scopes</code> in <code>PIMQuery</code>. Use the filter set ID in <code>scopes[].id</code>.</p>
+      </Disclosure>
       <div v-if="options.scopes.length === 0" class="pim-aspect muted">No product filter sets are available.</div>
-      <DefinitionRow v-for="s in options.scopes" :key="s.id" :title="humanLabel(s.title, 'Filter set')">
+      <DefinitionRow route-section="plugins" :route-id="'scope:' + s.id" v-for="s in options.scopes" :key="s.id" :title="humanLabel(s.title, 'Filter set')">
         <template #details><Tag :severity="adopted(s) ? 'success' : 'secondary'" :value="adopted(s) ? 'Selected' : 'Available'" /></template>
         <template v-if="canEdit" #actions>
           <ToggleSwitch :aria-label="'Use ' + humanLabel(s.title, 'Filter set')" :model-value="adopted(s)" @update:model-value="adopt(s, $event)" />
@@ -263,6 +276,9 @@ function reviewRemoval(plugin: PluginView) {
           <Tag v-for="(f, name) in s.filters" :key="name" class="kx-tag-sm small" severity="secondary" :value="filterLabel(name, f.ops)" />
           <span>{{ humanize(s.access) }} access required</span>
         </div>
+        <Disclosure class="small pim-ia-disclosure" label="Technical details">
+          <p>Filter set ID <code>{{ s.id }}</code></p>
+        </Disclosure>
       </DefinitionRow>
     </DefinitionList>
   </div>

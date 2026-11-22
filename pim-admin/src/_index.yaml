@@ -68,7 +68,25 @@ entries:
     icon: tabler:packages
     description: Search and create PIM catalogs from the System page. Select a catalog
       to open its administration settings.
-    props: {}
+  props:
+    type: object
+    properties:
+      route:
+        type: string
+        description: System location relative to this tab, with a catalog ID, section and optional row.
+  events:
+    navigate:
+      type: object
+      properties:
+        route:
+          type: string
+      required: [route]
+    dirty-changed:
+      type: object
+      properties:
+        dirty:
+          type: boolean
+      required: [dirty]
 - name: catalog_settings
   kind: registry.entry
   meta:
@@ -90,6 +108,9 @@ entries:
         type: string
         default: ''
         description: Catalog whose schema the signed-in administrator edits.
+      route:
+        type: string
+        description: Section and optional expanded row in System.
       embedded:
         type: boolean
         default: false

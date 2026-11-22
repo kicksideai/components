@@ -3,7 +3,7 @@
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import Select from 'primevue/select'
 import NativeDialog from '../../NativeDialog.vue'
-import { computed, nextTick, onUnmounted, ref, useId, watch } from 'vue'
+import { computed, provide, nextTick, onUnmounted, ref, useId, watch } from 'vue'
 import Button from 'primevue/button'
 import SettingsRail, { type SettingsRailGroup } from '@kickside/ui-kit/SettingsRail.vue'
 import { Icon } from '@iconify/vue'
@@ -27,13 +27,14 @@ import PluginsEditor from './PluginsEditor.vue'
 import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import SettingsDraftActions from '@kickside/ui-kit/SettingsDraftActions.vue'
 import BoardAccessSettings from './BoardAccessSettings.vue'
+import { sectionRow } from './sectionRow'
 import GeneralSettings from './GeneralSettings.vue'
 import { stateTitle } from './process'
 import SchemaReview from './SchemaReview.vue'
 import PackReview from './PackReview.vue'
 import { availablePack, packChoice, planUpgrade, upgradeRequest, type PackPlan, type PackRequest, type PackResult } from '../../packs'
-const props = defineProps<{ boardId: string; embedded?: boolean; focusBack?: boolean }>()
-const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
+const props = defineProps<{ boardId: string; embedded?: boolean; focusBack?: boolean; route?: string }>()
+const emit = defineEmits<{ 'dirty-change': [dirty: boolean]; navigate: [route: string] }>()
 const go = useNavigate()
 const draftForm = useId()
 const pane = ref<HTMLElement>()
@@ -62,10 +63,37 @@ const sectionGroups: SettingsRailGroup[] = [
   ] },
 ]
 const tab = ref<Section>('General')
+const sectionKeys: Record<Section, string> = {
+  General: 'general', 'Item types': 'items', Fields: 'fields', Links: 'links',
+  Workflow: 'workflow', Access: 'access', Plugins: 'plugins',
+}
+const selectedRow = ref('')
+function openRoute(section: Section, row = '') {
+  tab.value = section
+  selectedRow.value = row ? sectionKeys[section] + '/' + row : ''
+}
+function setLocation(section: Section, row = '') {
+  openRoute(section, row)
+  if (props.route !== undefined) emit('navigate', [sectionKeys[section], ...(row ? [encodeURIComponent(row)] : [])].join('/'))
+}
+function chooseRow(section: string, id: string, open: boolean) {
+  if (props.route === undefined || sectionKeys[tab.value] !== section || (!open && selectedRow.value !== section + '/' + id)) return
+  const existing = schema.value?.declaration
+  const persisted =
+    section === 'items' ? existing?.item_types?.some(type => type.id === id) :
+    section === 'fields' ? existing?.fields?.some(field => field.code === id) :
+    section === 'links' ? existing?.relation_types?.some(link => link.id === id) :
+    section === 'plugins' ? options.value?.schema_options.plugins.some(plugin => plugin.plugin === id) :
+    section === 'workflow' && existing?.processes?.some(process =>
+      process.states.some(state => process.id + '.state.' + state.id === id) ||
+      process.transitions?.some(transition => process.id + '.transition.' + transition.id === id))
+  if (persisted) setLocation(tab.value, open ? id : '')
+}
+provide(sectionRow, { selected: selectedRow, choose: chooseRow })
 function selectSection(section: string) {
   if (section === allBoards.value.value) { void back(); return }
   if (section === 'General' || sectionGroups.some(group => group.items.some(item => item.value === section))) {
-    tab.value = section as Section
+    setLocation(section as Section)
   }
 }
 const sectionDescriptions: Record<Section, string> = {
@@ -342,7 +370,17 @@ async function back() {
 }
 function discard() { resetGeneration = undefined; activePluginConfigs.value = {}; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
 
-watch(() => props.boardId, () => { metadataDirty.value = false; activePluginConfigs.value = {}; resetGeneration = undefined; clearPack(); resetPacks(); packOperation.value = undefined; packOperationError.value = ''; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; visited.value = new Set(['General']); selectSection('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { metadataDirty.value = false; activePluginConfigs.value = {}; resetGeneration = undefined; clearPack(); resetPacks(); packOperation.value = undefined; packOperationError.value = ''; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
+watch([() => props.route, () => props.boardId], ([route]) => {
+  if (route === undefined) return
+  const [key, row] = route.split('/')
+  const section = (Object.keys(sectionKeys) as Section[]).find(section => sectionKeys[section] === key) ?? 'General'
+  let id = ''
+  try { if (row) id = decodeURIComponent(row) } catch { /* Invalid identifiers have no selected row. */ }
+  if (section === 'Fields' && id && selectedRow.value !== 'fields/' + id) fieldType.value = ''
+  openRoute(section, id)
+  visited.value.add(section)
+}, { immediate: true })
 let stop = () => {}
 watch(() => props.boardId, id => { stop(); stop = on(`component.${id}`, () => { void load() }) }, { immediate: true })
 useHostVisibilityRefresh(load)

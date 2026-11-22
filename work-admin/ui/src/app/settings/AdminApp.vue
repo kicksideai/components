@@ -14,6 +14,8 @@ import CreateBoard from '../CreateBoard.vue'
 import { ensureTag } from '../mount'
 import { canAdmin } from './model'
 import { useBoards } from '../useBoards'
+const props = defineProps<{ route?: string }>()
+const emit = defineEmits<{ navigate: [route: string]; 'dirty-change': [dirty: boolean] }>()
 const dirty = ref(false), confirming = ref(false)
 async function mayLeave() {
   if (confirming.value) return false
@@ -34,16 +36,45 @@ const boardGroups = computed(() => [
 let offerDirectOpen = true
 watch(search, () => { offerDirectOpen = false })
 
+const detailRoute = ref('')
+watch(dirty, value => emit('dirty-change', value), { flush: 'sync' })
+
+function navigate(route: string) {
+  if (props.route !== undefined && route !== props.route) emit('navigate', route)
+}
+function navigateDetail(path: string) {
+  const id = selected.value
+  if (!id || props.route === undefined) return
+  detailRoute.value = path
+  navigate(path ? encodeURIComponent(id) + '/' + path : encodeURIComponent(id))
+}
 function select(id: string, focus = true) {
   offerDirectOpen = false
   focusBack.value = focus
   if (focus) detail.value?.focus({ preventScroll: true })
   currentBoard.value = selected.value = id
+  navigateDetail('general')
 }
+watch(() => props.route, route => {
+  if (route === undefined) return
+  const [segment, ...path] = route.split('/')
+  let id: string
+  try { id = decodeURIComponent(segment ?? '') } catch { return }
+  if (id) offerDirectOpen = false
+  if (id !== selected.value) {
+    selected.value = id
+    if (id) currentBoard.value = id
+    focusBack.value = false
+    dirty.value = false
+  }
+  detailRoute.value = path.join('/')
+}, { immediate: true })
 async function backToBoards() {
   if (!await mayLeave()) return false
   dirty.value = false
   selected.value = ''
+  detailRoute.value = ''
+  navigate('')
   await nextTick()
   const target = list.value?.querySelector<HTMLButtonElement>('[aria-current="true"]') ?? searchField.value?.querySelector('input')
   target?.focus()
@@ -117,7 +148,8 @@ async function created(id: string) {
       <p v-if="hasLoaded && !loading && !error && !visibleBoards.length" class="picker-message" role="status">{{ boards.length ? 'No boards match. Try another name or key.' : 'Create a board or ask a board administrator to grant you access.' }}</p>
     </ListRail>
     <section ref="detail" class="work-admin-main" aria-label="Board settings detail" tabindex="-1">
-      <kickside-work-board-settings v-if="selected && ready" :key="selected" :board-id="selected" embedded="true" :focus-back="String(focusBack)"
+      <kickside-work-board-settings :route="props.route === undefined ? undefined : detailRoute"
+        @navigate.stop="navigateDetail($event.detail.route)" v-if="selected && ready" :key="selected" :board-id="selected" embedded="true" :focus-back="String(focusBack)"
         @back-to-boards="backToBoards" @dirty-change="dirty = $event.detail.dirty" />
       <p v-else-if="selected && widgetLoading" class="kx-loading" role="status">Loading board settings…</p>
       <p v-else-if="selected" class="kx-err" role="alert">Board settings are unavailable.<Button label="Back to boards" severity="secondary" text @click="backToBoards" /><Button label="Reload settings" severity="secondary" outlined @click="loadSettings"><template #icon><Icon icon="tabler:refresh" /></template></Button></p>
