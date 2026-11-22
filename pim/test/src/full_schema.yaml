@@ -130,7 +130,21 @@ entries:
     meta: { type: test, suite: kickside_pim, timeout: 300s }
     source: file://full_schema_test.lua
     method: run
-    modules: [json, registry, time, channel, sql, base64, hash, http_client, fs, funcs, uuid]
+    modules: [json, registry, time, channel, sql]
+    imports:
+      test: wippy.test:test
+      fixture: app:fixture
+      steps: app:steps
+      scoped: app:scoped
+      types: kickside.pim:types
+      catalog_fixture: app:catalog_fixture
+
+  - name: full_schema_media_cases
+    kind: function.lua
+    meta: { type: test, suite: kickside_pim, timeout: 300s }
+    source: file://full_schema_media_test.lua
+    method: run
+    modules: [json, registry, time, sql, base64, hash, http_client, fs, funcs, uuid]
     imports:
       test: wippy.test:test
       fixture: app:fixture
