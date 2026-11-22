@@ -4,7 +4,7 @@ local catalog = require("catalog")
 local planner = require("planner")
 local packs = require("packs")
 local component = require("component")
-local store = require("store")
+local board_meta = require("board_meta")
 local consts = require("consts")
 local types = require("types")
 local M = {}
@@ -16,10 +16,9 @@ end
 function M.pack_plan(input: unknown): (types.Plan?, error?)
     local err = requests.parse("pack_plan", input)
     if err then return nil, err end
-    local plan, perr = planner.plan(input :: types.Request)
-    if perr or not plan then return nil, perr end
-    plan.prepared, plan.plugin_configs = nil, nil
-    return plan, nil
+    local execution, perr = planner.plan(input :: types.Request)
+    if perr or not execution then return nil, perr end
+    return execution.plan, nil
 end
 function M.pack_apply(input: unknown): (types.Result?, error?)
     local err = requests.parse("pack_apply", input)
@@ -36,38 +35,23 @@ function M.fleet(input: unknown): (types.Fleet?, error?)
     if berr then return nil, berr :: error end
     local more = #(boards or {}) > limit
     local ids: { unknown } = {}
-    local placeholders: { string } = {}
     for i = 1, math.min(#(boards or {}), limit) do
-        ids[i], placeholders[i] = boards[i].component_id, "$" .. i
+        ids[i] = boards[i].component_id
     end
-    if #ids == 0 then return { boards = {} }, nil end
-    local db, derr = store.open()
-    if not db then return nil, derr end
-    local rows, rerr = db:query("SELECT board_id,pack,pack_version,pack_digest FROM kickside_work_board WHERE board_id IN (" ..
-        table.concat(placeholders, ",") .. ") ORDER BY board_id", ids)
-    db:release()
-    if rerr then return nil, rerr end
+    local rows, rerr = board_meta.packs(ids, request.pack)
+    if rerr or not rows then return nil, rerr end
     local result: { types.FleetRow } = {}
-    local revisions: { [string]: { version: string, digest: string } | false } = {}
-    for _, row in ipairs(rows or {}) do
-        local pack = store.text(row.pack)
-        if pack and (not request.pack or request.pack == pack) then
-            local current = revisions[pack]
-            if current == nil then
-                local revision, err = catalog.revision(pack)
-                if err then return nil, err end
-                current = revision or false
-                revisions[pack] = current
-            end
-            local board_id, ierr = store.need(row, "board_id")
-            if ierr then return nil, ierr end
-            local version, verr = store.need(row, "pack_version")
-            if verr then return nil, verr end
-            local digest, derr = store.need(row, "pack_digest")
-            if derr then return nil, derr end
-            result[#result + 1] = { board_id = board_id :: string, pack = pack, version = version :: string, digest = digest :: string,
-                outdated = current == false or current.version ~= version or current.digest ~= digest }
+    local revisions: { [string]: types.Revision | false } = {}
+    for _, row in ipairs(rows) do
+        local current = revisions[row.pack]
+        if current == nil then
+            local revision, err = catalog.revision(row.pack)
+            if err then return nil, err end
+            current = revision or false
+            revisions[row.pack] = current
         end
+        result[#result + 1] = { board_id = row.board_id, pack = row.pack, version = row.version, digest = row.digest,
+            outdated = catalog.is_outdated(current or nil, row.version, row.digest) }
     end
     return { boards = result, next = more and (after + limit) or nil }, nil
 end

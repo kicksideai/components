@@ -11,7 +11,6 @@ entries:
   imports: &id001
     schema_commands: kickside.work.command:schema_commands
     apply_ops: kickside.work.command:apply_ops
-    process_report: kickside.work.command:process_report
     query: kickside.work.read:query
     cross_board: kickside.work.read:cross_board
     reader: kickside.work.read:reader
@@ -450,7 +449,7 @@ entries:
     planner: kickside.work.command:pack_plan
     packs: kickside.work.command:packs
     component: kickside.component:component
-    store: kickside.work.persist:store
+    board_meta: kickside.work.persist:board_meta
     consts: kickside.work:consts
     types: kickside.work.domain:types
 - name: pack_plan

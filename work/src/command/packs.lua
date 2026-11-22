@@ -24,8 +24,9 @@ function M.apply(request: types.Request): (types.Result?, error?)
     local replayed = owner ~= nil
     if owner and owner.request_hash ~= hashed then return nil, receipts.conflict_of() end
     if not owner then
-        local plan, perr = planner.plan(request)
-        if perr or not plan then return nil, perr end
+        local execution, perr = planner.plan(request)
+        if perr or not execution then return nil, perr end
+        local plan = execution.plan
         local known: { [string]: boolean } = {}
         local unresolved: { string } = {}
         for _, conflict in ipairs(plan.conflicts) do
@@ -40,7 +41,9 @@ function M.apply(request: types.Request): (types.Result?, error?)
         if #unresolved > 0 then return nil, errors.new({ kind = errors.CONFLICT, message = "pack conflicts require explicit resolutions", details = { code = "pack_conflicts", conflicts = unresolved } }) end
         if #plan.refused > 0 then return nil, guard.invalid("pack changes require migration", { code = "migration_required", changes = plan.refused :: { operations.Map }, migration = plan.migration }) end
         local starter = plan.initial and (request.starter == true or (request.starter == nil and plan.base.starter.default))
-        owner, oerr = rows.create(request.board_id, "pack", request.key, hashed, { plan = plan, starter = starter,
+        local stored: types.Map = { prepared = execution.prepared, plugin_configs = execution.plugin_configs }
+        for field, value in pairs(plan :: types.Map) do stored[field] = value end
+        owner, oerr = rows.create(request.board_id, "pack", request.key, hashed, { plan = stored, starter = starter,
             expected_generation = request.expected_generation, trace_context = request.trace_context }, true)
         if oerr or not owner then return nil, oerr end
     end
@@ -56,7 +59,7 @@ function M.apply(request: types.Request): (types.Result?, error?)
     local current, rerr = rows.get(current_db, request.board_id, owner.operation_id, nil, nil)
     current_db:release()
     if rerr or not current then return nil, rerr end
-    local plan = current.data.plan :: types.Plan
+    local plan = current.data.plan :: types.StoredPlan
     return { operation_id = current.operation_id, job_id = current.job_id, status = current.status, generation = plan.generation, replayed = replayed or nil }, nil
 end
 return M

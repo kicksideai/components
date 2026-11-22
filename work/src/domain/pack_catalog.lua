@@ -139,7 +139,7 @@ function M.list(): (types.Discovery?, error?)
     table.sort(packs, function(a: types.Summary, b: types.Summary): boolean return a.id < b.id end)
     return { packs = packs }, nil
 end
-function M.revision(id: string): ({ version: string, digest: string }?, error?)
+function M.revision(id: string): (types.Revision?, error?)
     local entry, err = registry.get(id)
     if err then
         if err:kind() == errors.NOT_FOUND then return nil, nil end
@@ -151,9 +151,13 @@ function M.revision(id: string): ({ version: string, digest: string }?, error?)
     if derr then return nil, derr end
     return { version = (entry.meta or {}).version :: string, digest = digest }, nil
 end
+function M.is_outdated(current: types.Revision?, version: string, stored_digest: string): boolean
+    return not current or current.version ~= version or current.digest ~= stored_digest
+end
+
 function M.outdated(id: string, version: string, stored_digest: string): (boolean?, error?)
     local current, err = M.revision(id)
     if err then return nil, err end
-    return not current or current.version ~= version or current.digest ~= stored_digest, nil
+    return M.is_outdated(current, version, stored_digest), nil
 end
 return M

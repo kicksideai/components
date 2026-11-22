@@ -14,7 +14,7 @@ function M.initial_prefix(board_id: string, requested: string?, declared: string
     return requested or declared or ("W" .. board_id:gsub("-", ""):sub(1, 9):upper())
 end
 
-function M.plan(request: types.Request): (types.Plan?, error?)
+function M.plan(request: types.Request): (types.Execution?, error?)
     local aerr = guard.require_access(request.board_id, guard.admin_access())
     if aerr then return nil, aerr end
     local pack, perr = catalog.load(request.pack, request.version)
@@ -68,9 +68,10 @@ function M.plan(request: types.Request): (types.Plan?, error?)
         plan.class = "refused"
         plan.migration = "install a new named component and delete the old component through its owning contract before upgrading"
     end
-    return { pack = pack.id, version = pack.version, digest = pack.digest, generation = plan.generation, class = plan.class,
-        changes = plan.changes, refused = plan.refused, migration = plan.migration, declaration = merged, prepared = prepared, plugin_configs = request.plugin_configs,
+    local public: types.Plan = { pack = pack.id, version = pack.version, digest = pack.digest, generation = plan.generation, class = plan.class,
+        changes = plan.changes, refused = plan.refused, migration = plan.migration, declaration = merged,
         conflicts = conflicts, maps = proposals, views = managed.views, automations = managed.automations,
-        traits = managed.traits, plugins = pack.requires, base = pack.data, initial = not board or not board.pack } :: types.Plan, nil
+        traits = managed.traits, plugins = pack.requires, base = pack.data, initial = not board or not board.pack }
+    return { plan = public, prepared = prepared, plugin_configs = request.plugin_configs }, nil
 end
 return M
