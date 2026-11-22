@@ -15,9 +15,13 @@ function M.live_subtree(db: sql.Transaction, root: domain.Item, limit: integer, 
     local ancestor = "s.col = 'path_under' AND s.value_key = $2"
     local statement = prefix .. "kickside_work_item i WHERE " .. item .. " AND " .. ancestor
     if dialect == sql.type.POSTGRES then
-        -- Keep item lookups inside the ordered ancestor range so the limit can stop the walk.
-        statement = prefix .. "LATERAL (SELECT i.item_id, i.parent_id, i.path FROM kickside_work_item i WHERE "
-            .. item .. " LIMIT 1) i WHERE " .. ancestor
+        -- Seek the composite primary key before checking exact identity and life.
+        -- With stale board statistics an equality lookup can scan the board for each descendant.
+        statement = prefix .. [[LATERAL (
+            SELECT board_id, item_id, parent_id, path, life FROM kickside_work_item
+            WHERE (board_id, item_id) >= ($1, s.item_id)
+            ORDER BY board_id, item_id LIMIT 1
+        ) i WHERE ]] .. item .. " AND " .. ancestor
     end
     local descendants, err = db:query(statement .. " ORDER BY s.item_id LIMIT $3", { root.board_id, root.item_id, limit - 1 })
     if err or not descendants then return nil, err end
