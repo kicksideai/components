@@ -68,7 +68,7 @@ local function stamp<T: types.ProductBody>(st: item_state.State, p: types.Produc
     end
     body.origin = st.origin
     body.provenance = st.provenance
-    body.approval_item_id = st.approval_item_id
+    body.approval_item_id = st.proposal_id
     body.audit = st.audit
     return body
 end
@@ -380,7 +380,7 @@ function M.authorize_source(catalog: types.Catalog, id: string?, actor: string):
     return source, nil
 end
 
-function M.plan(db: types.Executor, catalog: types.Catalog, request: types.ApplyRequest, actor: string, defaults: types.Policy,
+function M.plan(db: types.Executor, catalog: types.Catalog, request: types.ApplyRequest & { proposal_id: string? }, actor: string, defaults: types.Policy,
     prepared: Prepared?, proposal: boolean?): (PlanResult?, error?)
     local source, access_err = M.authorize_source(catalog, request.source, actor)
     if access_err then return nil, access_err end
@@ -402,7 +402,7 @@ function M.plan(db: types.Executor, catalog: types.Catalog, request: types.Apply
     if terr then return nil, terr end
     st.origin = request.origin
     st.provenance = request.provenance
-    st.approval_item_id = request.approval_item_id
+    st.proposal_id = request.proposal_id
     local effective = policy.effective(defaults, catalog.compiled.policy)
     st.audit = effective.audit == "fields" and (source == nil or source.audit)
     local outcomes: { types.Outcome } = {}

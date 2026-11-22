@@ -17,7 +17,7 @@ type State = {
     source: types.Source?, products: { [string]: types.Product }, skus: { [string]: string },
     freed: { [string]: boolean }, gone: { [string]: boolean }, uniques: { [string]: string }, released: { [string]: boolean }, axes: { [string]: string },
     vacated: { [string]: boolean }, stored_skus: { [string]: boolean }, siblings: { [string]: { [string]: string } },
-        terms: { [string]: PendingTerm }, counted: { [string]: integer }, descendant_delta: { [string]: integer }, origin: types.Origin?, provenance: types.JsonObject?, approval_item_id: string?,
+        terms: { [string]: PendingTerm }, counted: { [string]: integer }, descendant_delta: { [string]: integer }, origin: types.Origin?, provenance: types.JsonObject?, proposal_id: string?,
         import: boolean, proposal: boolean,
     audit: boolean, stored_terms: { [string]: PendingTerm | false },
     -- items are the command's items; links holds, per link kind the command
