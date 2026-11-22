@@ -31,7 +31,7 @@ entries:
       policies:
         - kickside.pim.security:schema_output_publish
         - kickside.pim.security:catalog_public_meta
-    imports:
+    imports: &catalog_imports
       writer: kickside.pim.command:writer
       reader: kickside.pim.read:reader
       create: kickside.pim.command:create
@@ -62,34 +62,14 @@ entries:
     meta: { comment: "kickside.pim:catalog list." }
     source: file://catalog.lua
     method: list
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: get_catalog
     kind: function.lua
     meta: { comment: "kickside.pim:catalog get_catalog." }
     source: file://catalog.lua
     method: get_catalog
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: get_schema
     kind: function.lua
@@ -98,34 +78,14 @@ entries:
     meta: { comment: "kickside.pim:catalog get_schema." }
     source: file://catalog.lua
     method: get_schema
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: policy_defaults
     kind: function.lua
     meta: { comment: "kickside.pim:catalog policy_defaults." }
     source: file://catalog.lua
     method: policy_defaults
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: plan_schema
     kind: function.lua
@@ -134,17 +94,7 @@ entries:
     meta: { comment: "kickside.pim:catalog plan_schema." }
     source: file://catalog.lua
     method: plan_schema
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: apply_schema
     kind: function.lua
@@ -155,68 +105,28 @@ entries:
       groups: [kickside.pim.security:manifest_reader]
       policies:
         - kickside.pim.security:schema_output_publish
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: get
     kind: function.lua
     meta: { comment: "kickside.pim:catalog get." }
     source: file://catalog.lua
     method: get
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: query
     kind: function.lua
     meta: { comment: "kickside.pim:catalog query." }
     source: file://catalog.lua
     method: query
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: list_history
     kind: function.lua
     meta: { comment: "kickside.pim:catalog list_history." }
     source: file://catalog.lua
     method: list_history
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: apply
     kind: function.lua
@@ -226,17 +136,7 @@ entries:
     security:
       policies:
         - kickside.pim.security:item_output_publish
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: propose
     kind: function.lua
@@ -245,17 +145,7 @@ entries:
     method: propose
     security:
       policies: [kickside.pim.security:proposal_submit_publish]
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: decide
     kind: function.lua
@@ -266,34 +156,14 @@ entries:
       policies:
         - kickside.pim.security:item_output_publish
         - kickside.pim.security:proposal_decide_publish
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: list_proposals
     kind: function.lua
     meta: { comment: "kickside.pim:catalog list_proposals." }
     source: file://catalog.lua
     method: list_proposals
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: release
     kind: function.lua
@@ -303,17 +173,7 @@ entries:
     security:
       policies:
         - kickside.pim.security:release_output_publish
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: withdraw
     kind: function.lua
@@ -323,170 +183,70 @@ entries:
     security:
       policies:
         - kickside.pim.security:withdraw_output_publish
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: rebuild
     kind: function.lua
     meta: { comment: "kickside.pim:catalog rebuild." }
     source: file://catalog.lua
     method: rebuild
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: list_links
     kind: function.lua
     meta: { comment: "kickside.pim:catalog list_links." }
     source: file://catalog.lua
     method: list_links
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: explain
     kind: function.lua
     meta: { comment: "kickside.pim:catalog explain." }
     source: file://catalog.lua
     method: explain
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: list_changes
     kind: function.lua
     meta: { comment: "kickside.pim:catalog list_changes." }
     source: file://catalog.lua
     method: list_changes
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: list_publications
     kind: function.lua
     meta: { comment: "kickside.pim:catalog list_publications." }
     source: file://catalog.lua
     method: list_publications
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: get_release
     kind: function.lua
     meta: { comment: "kickside.pim:catalog get_release." }
     source: file://catalog.lua
     method: get_release
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: get_model_release
     kind: function.lua
     meta: { comment: "kickside.pim:catalog get_model_release." }
     source: file://catalog.lua
     method: get_model_release
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: wait_for_product
     kind: function.lua
     meta: { comment: "kickside.pim:catalog wait_for_product." }
     source: file://catalog.lua
     method: wait_for_product
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: list_terms
     kind: function.lua
     meta: { comment: "kickside.pim:catalog list_terms." }
     source: file://catalog.lua
     method: list_terms
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: schema_options
     kind: function.lua
@@ -495,34 +255,14 @@ entries:
     meta: { comment: "kickside.pim:catalog schema_options." }
     source: file://catalog.lua
     method: schema_options
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: list_releases
     kind: function.lua
     meta: { comment: "kickside.pim:catalog list_releases." }
     source: file://catalog.lua
     method: list_releases
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
   - name: configure_plugin
     kind: function.lua
     meta: { comment: "kickside.pim:catalog configure_plugin." }
@@ -532,17 +272,7 @@ entries:
       groups: [kickside.pim.security:manifest_reader]
       policies:
         - kickside.pim.security:schema_output_publish
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: plugin_context
     kind: function.lua
@@ -551,17 +281,7 @@ entries:
     method: plugin_context
     security:
       groups: [kickside.pim.security:manifest_reader]
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
 
   - name: plugin_feed
     kind: function.lua
@@ -570,14 +290,4 @@ entries:
     method: plugin_feed
     security:
       groups: [kickside.pim.security:manifest_reader]
-    imports:
-      writer: kickside.pim.command:writer
-      reader: kickside.pim.read:reader
-      create: kickside.pim.command:create
-      locate: kickside.pim.read:locate
-      types: kickside.pim:types
-      feeds: kickside.pim.read:feeds
-      release_reads: kickside.pim.read:releases
-      wait: kickside.pim.read:wait
-      requests: kickside.pim:requests
-      plugin_feed: kickside.pim.extensions:plugin_feed
+    imports: *catalog_imports
