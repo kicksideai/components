@@ -123,29 +123,32 @@ async function verifyState(page, shell, scenario, layout, exercise) {
     assert.equal(await unavailable.locator('button[aria-expanded]').getAttribute('aria-expanded'), 'false')
   }
   await row.getByText(scenario.cause).waitFor()
-  const action = scenario.action ? button(row, scenario.action) : row.getByRole('textbox', { name: /certificate issuer/i })
-  await action.waitFor()
+  const field = row.getByRole('textbox', { name: /certificate issuer/i })
+  const action = scenario.action ? button(row, scenario.action) : undefined
+  const control = action ?? field
+  await control.waitFor()
   assert.equal(await row.getByText('Enabled', { exact: true }).count(), 0)
-  const width = await action.evaluate(element => ({
-    row: element.closest('.pim-definition-body').getBoundingClientRect().width,
-    action: element.getBoundingClientRect().width,
-  }))
-  if (scenario.action) assert.ok(width.action < width.row - 16, JSON.stringify(width))
-  if (layout.startsWith('390-')) {
-    const review = button(settings, 'Review changes')
+  if (action) {
+    const width = await action.evaluate(element => ({
+      row: element.closest('.pim-definition-body').getBoundingClientRect().width,
+      action: element.getBoundingClientRect().width,
+    }))
+    assert.ok(width.action < width.row - 16, JSON.stringify(width))
+  } else {
+    await field.fill('Northstar')
+  }
+  const review = button(settings, 'Review changes')
+  if (scenario.key === 'misconfigured' && layout.startsWith('390-')) {
     const compact = await review.evaluate(node =>
       node.getBoundingClientRect().width < node.closest('.kx-head').getBoundingClientRect().width - 48)
     assert.ok(compact, 'Review changes should use the same compact button as Work Admin')
   }
   const ids = row.getByText(/fixture\.recovery:/)
   assert.equal(await ids.and(row.locator(':visible')).count(), 0, 'Technical IDs must be inside the closed disclosure')
-  const style = await inspectHost(action, layout.split('-').at(-1))
-  if (scenario.key === 'misconfigured') {
-    await row.getByRole('textbox', { name: /certificate issuer/i }).waitFor()
-  }
+  const style = await inspectHost(action ?? review, layout.split('-').at(-1))
   await row.evaluate(node => node.scrollIntoView({ block: 'center', inline: 'nearest' }))
   await paint(row)
-  for (const item of [row.locator('.pim-row-title'), row.getByText(scenario.cause), action]) {
+  for (const item of [row.locator('.pim-row-title'), row.getByText(scenario.cause), control]) {
     const visible = await item.evaluate(node => new Promise(resolve => {
       const observer = new IntersectionObserver(([entry]) => {
         observer.disconnect()
@@ -221,13 +224,16 @@ async function verifyState(page, shell, scenario, layout, exercise) {
         await button(confirm, 'Cancel').click()
       }
     }
-    if (scenario.key === 'misconfigured' && exercise) {
-      await row.getByRole('textbox', { name: /certificate issuer/i }).fill('Northstar')
-      await button(settings, 'Review changes').click()
-      await button(settings.getByRole('dialog', { name: 'Review changes' }), 'Apply changes').click()
-      await row.getByText('Enabled', { exact: true }).waitFor()
-      assert.equal(await row.getByRole('textbox', { name: /certificate issuer/i }).inputValue(), 'Northstar')
-      console.log('PASS real configuration repair returned the plugin to Enabled')
+    if (scenario.key === 'misconfigured') {
+      if (exercise) {
+        await review.click()
+        await button(settings.getByRole('dialog', { name: 'Review changes' }), 'Apply changes').click()
+        await row.getByText('Enabled', { exact: true }).waitFor()
+        assert.equal(await field.inputValue(), 'Northstar')
+        console.log('PASS real configuration repair returned the plugin to Enabled')
+      } else {
+        await button(settings, 'Discard').click()
+      }
     }
   }
   console.log(`PASS ${scenario.key} ${layout} | ${style.font} | PrimeVue button padding ${style.padding}px | host content ${style.background}`)
