@@ -288,7 +288,7 @@ local function fetch(db: types.Executor, query: sql.SelectBuilder): ({ domain.Ro
     return execution:query()
 end
 
-local function bounded_rows(db: types.Executor, plan: types.BoundedPlan, take: integer): ({ domain.Row }?, error?, integer?, domain.Cursor?)
+local function bounded_rows(db: types.Executor, plan: types.BoundedPlan, take: integer): (types.RowResult?, error?)
     local remaining = plan.scan
     local result: { domain.Row } = {}
     local last: domain.Cursor? = nil
@@ -296,7 +296,7 @@ local function bounded_rows(db: types.Executor, plan: types.BoundedPlan, take: i
         if remaining == 0 then
             local next_rows, err = fetch(db, walk:limit(1))
             if err then return nil, err end
-            if #(next_rows or {}) > 0 then return result, nil, plan.scan, last end
+            if #(next_rows or {}) > 0 then return { rows = result, inspected = plan.scan, scan_cursor = last }, nil end
         else
             local edge, err = fetch(db, walk:offset(remaining - 1):limit(2))
             if err then return nil, err end
@@ -304,9 +304,9 @@ local function bounded_rows(db: types.Executor, plan: types.BoundedPlan, take: i
             if not edge or not edge[1] then
                 local format = plan.dialect == sql.type.POSTGRES and sql.builder.dollar or sql.builder.question
                 local inner, args = walk:limit(remaining):placeholder_format(format):to_sql()
-                local n, _, nerr = M.total(db, { statement = "SELECT count(*) AS n FROM (" .. inner .. ") candidates", args = args, cap = remaining })
-                if nerr then return nil, nerr end
-                scanned = n :: integer
+                local count, nerr = M.total(db, { statement = "SELECT count(*) AS n FROM (" .. inner .. ") candidates", args = args, cap = remaining })
+                if nerr or not count then return nil, nerr end
+                scanned = count.total
             end
             if scanned > 0 then
                 local statement, args = plan.statement(walk, scanned, take + 1 - #result)
@@ -315,17 +315,17 @@ local function bounded_rows(db: types.Executor, plan: types.BoundedPlan, take: i
                 for _, row in ipairs(matched or {}) do result[#result + 1] = row end
                 remaining = remaining - scanned
             end
-            if #result > take then return result, nil, plan.scan - remaining, nil end
+            if #result > take then return { rows = result, inspected = plan.scan - remaining }, nil end
             if edge and edge[1] then
                 last = window.cursor(edge[1], plan.order)
-                if edge[2] then return result, nil, plan.scan, last end
+                if edge[2] then return { rows = result, inspected = plan.scan, scan_cursor = last }, nil end
             end
         end
     end
-    return result, nil, plan.scan - remaining, nil
+    return { rows = result, inspected = plan.scan - remaining }, nil
 end
 
-function M.rows(db: types.Executor, plan: types.Plan): ({ domain.Row }?, error?, integer?, domain.Cursor?)
+function M.rows(db: types.Executor, plan: types.Plan): (types.RowResult?, error?)
     if plan.bounded then return bounded_rows(db, plan.bounded, plan.take) end
     local rows, rerr = fetch(db, plan.query)
     if rerr then return nil, rerr end
@@ -337,23 +337,23 @@ function M.rows(db: types.Executor, plan: types.Plan): ({ domain.Row }?, error?,
         if perr then return nil, perr end
         for _, row in ipairs(page or {}) do result[#result + 1] = row end
     end
-    return result, nil
+    return { rows = result }, nil
 end
 
 -- total runs the plan's count: the exact number of matches up to its cap. Past the
 -- cap it answers the cap with estimated set.
-function M.total(db: types.Executor, count: types.Count): (integer?, boolean?, error?)
+function M.total(db: types.Executor, count: types.Count): (types.TotalResult?, error?)
     local rows, err = db:query(count.statement, count.args)
-    if err then return nil, nil, err end
+    if err then return nil, err end
     local n = rows and rows[1] and store.int(rows[1].n)
-    if not n then return nil, nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "count returned no number" }) end
-    if n > count.cap then return count.cap, true, nil end
+    if not n then return nil, errors.new({ details = { code = "internal" }, kind = errors.INTERNAL, message = "count returned no number" }) end
+    if n > count.cap then return { total = count.cap, estimated = true }, nil end
     if count.beyond then
         local rows, err = db:query(count.beyond, count.beyond_args)
-        if err then return nil, nil, err end
-        if rows and rows[1] then return n, true, nil end
+        if err then return nil, err end
+        if rows and rows[1] then return { total = n, estimated = true }, nil end
     end
-    return n, false, nil
+    return { total = n, estimated = false }, nil
 end
 
 return M

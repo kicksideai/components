@@ -58,13 +58,14 @@ entries:
 - name: reader
   kind: library.lua
   meta:
-    comment: Schema, item, history reads.
+    comment: Schema, item and interval reads.
   source: file://reader.lua
   modules:
   - json
   - time
   imports:
     stage_runs: kickside.work.read:stage_runs
+    history: kickside.work.read:history
     interval_views: kickside.work.read:interval_views
     transitions: kickside.work.read:transitions
     item_view: kickside.work.read:item_view
@@ -88,6 +89,23 @@ entries:
     budget: kickside.work.read:budget
     locate: kickside.work.command:locate
     pack_catalog: kickside.work.domain:pack_catalog
+- name: history
+  kind: library.lua
+  source: file://history.lua
+  imports:
+    access: kickside.work.read:access
+    access_rows: kickside.work.persist:access_rows
+    budget: kickside.work.read:budget
+    consts: kickside.work:consts
+    domain: kickside.work:types
+    fields: kickside.work.domain:fields
+    interval_views: kickside.work.read:interval_views
+    item_view: kickside.work.read:item_view
+    peers: kickside.work.read:peers
+    read_rows: kickside.work.persist:read_rows
+    rules: kickside.work.domain:access_rules
+    store: kickside.work.persist:store
+    types: kickside.work.read:types
 - name: feed_cursor
   kind: library.lua
   source: file://feed_cursor.lua
@@ -134,6 +152,15 @@ entries:
     window: kickside.work.read:window
     domain: kickside.work:types
     types: kickside.work.read:types
+- name: reference_page
+  kind: library.lua
+  source: file://reference_page.lua
+  imports:
+    access: kickside.work.read:access
+    cursor_codec: kickside.work.read:cursor_codec
+    domain: kickside.work:types
+    predicates: kickside.work.domain:predicates
+    types: kickside.work.read:types
 - name: query
   kind: library.lua
   source: file://query.lua
@@ -141,7 +168,7 @@ entries:
   - security
   imports:
     groups: kickside.work.read:groups
-    cursor_codec: kickside.work.read:cursor_codec
+    reference_page: kickside.work.read:reference_page
     awaiting: kickside.work.read:awaiting
     principals: kickside.work.read:principals
     planner: kickside.work.read:planner

@@ -9,6 +9,8 @@ type Declaration = domain.Declaration
 
 -- Count counts the matches up to cap + 1, before any page or cursor applies.
 type Count = { statement: string, args: { unknown }, cap: integer, beyond: string?, beyond_args: { unknown }? }
+type RowResult = { rows: { domain.Row }, inspected: integer?, scan_cursor: domain.Cursor? }
+type TotalResult = { total: integer, estimated: boolean }
 -- Plan is the built page statement and its count.
 type BoundedPlan = { scans: { sql.SelectBuilder }, scan: integer, dialect: string, order: { domain.Sort },
     statement: (sql.SelectBuilder, integer, integer) -> (string, { unknown }) }
@@ -116,7 +118,8 @@ type TransitionCandidate = { item: domain.Item, root: domain.Item, transition: d
 type TransitionGroup = { candidates: { TransitionCandidate }, items: { domain.Item }, where: unknown, require: { string },
     model: domain.Model, process: domain.Process }
 return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = ApprovalView, StageRun = StageRun, StageRunsRequest = StageRunsRequest, StageRunsResult = StageRunsResult, JsonObject = JsonObject, PluginFeedRequest = PluginFeedRequest, PluginFeed = PluginFeed, PluginContext = PluginContext, PluginSelection = PluginSelection, PluginAdmission = PluginAdmission, PluginOptions = PluginOptions, PluginContextRequest = PluginContextRequest, TransitionCandidate = TransitionCandidate, TransitionGroup = TransitionGroup, Redactor = Redactor, BudgetUsage = BudgetUsage, ReadBudget = ReadBudget, ReadAllowance = ReadAllowance, SchemaPlugin = SchemaPlugin, QueryGroupRow = QueryGroupRow, QueryGroup = QueryGroup,
-    Count = Count, Plan = Plan, BoundedPlan = BoundedPlan, MeasureColumn = MeasureColumn, MeasureValue = MeasureValue,
+    Count = Count, RowResult = RowResult, TotalResult = TotalResult, Plan = Plan, BoundedPlan = BoundedPlan,
+    MeasureColumn = MeasureColumn, MeasureValue = MeasureValue,
     GroupKey = GroupKey, GroupSeek = GroupSeek, GroupPosition = GroupPosition, GroupBucket = GroupBucket, GroupPage = GroupPage,
     CrossCandidate = CrossCandidate,
     ReferenceOrder = ReferenceOrder, BoardSelection = BoardSelection, BoardAdmission = BoardAdmission,
