@@ -20,6 +20,24 @@ function changeEffect(index: number, mode: string) {
   if (!old || !props.transition.set) return
   props.transition.set[index] = { field: old.field, ...(mode === 'clear' ? { clear: true } : mode === 'copy' ? { copy: '' } : { value: '' }) }
 }
+function isEffect(value: unknown): value is NonNullable<Transition['set']>[number] {
+  if (!value || typeof value !== 'object' || !('field' in value) || typeof value.field !== 'string') return false
+  if ('clear' in value) return value.clear === true && !('copy' in value) && !('value' in value)
+  if ('copy' in value) return typeof value.copy === 'string' && !('value' in value)
+  return 'value' in value
+}
+function commitEffects(value: unknown) {
+  if (value !== undefined && (!Array.isArray(value) || !value.every(isEffect))) {
+    return 'Each effect needs a field and exactly one of value, clear (true), or copy (a source field).'
+  }
+  props.transition.set = value
+}
+function commitGuards(value: unknown) {
+  if (value !== undefined && (!Array.isArray(value) || !value.every((guard: unknown) => typeof guard === 'string'))) {
+    return 'Enter guard IDs as strings.'
+  }
+  props.transition.guards = value
+}
 </script>
 <template>
   <div class="work-stack work-transition-settings">
@@ -143,14 +161,14 @@ function changeEffect(index: number, mode: string) {
       label="Set values"
       :model-value="transition.set"
       shape="array"
-      @update:model-value="transition.set = $event as Transition['set']"
+      :commit="commitEffects"
       @validity="emit('validity', 'set', $event)"
     />
     <JsonInput
       label="Guards"
       :model-value="transition.guards"
       shape="array"
-      @update:model-value="transition.guards = $event as string[]"
+      :commit="commitGuards"
       @validity="emit('validity', 'guards', $event)"
     />
 

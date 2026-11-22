@@ -26,6 +26,24 @@ function choose(code: string) {
   props.draft.visibility = { field: code, levels: (field?.options ?? []).map(o => ({ id: o.id, holders: [] })) }
 }
 function update(id: string, holders: Holder[] | undefined) { const level = visibility.value?.levels.find(l => l.id === id); if (level) level.holders = holders ?? [] }
+function isHolder(value: unknown): value is Holder {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const entries = Object.entries(value)
+  if (entries.length !== 1) return false
+  const [key, id] = entries[0]
+  return ['group', 'user', 'service', 'field'].includes(key) && typeof id === 'string' && id.length > 0
+}
+function isVisibility(value: unknown): value is NonNullable<Declaration['visibility']> {
+  return !!value && typeof value === 'object' && 'field' in value && typeof value.field === 'string'
+    && (!('bypass' in value) || value.bypass === 'admin')
+    && 'levels' in value && Array.isArray(value.levels) && value.levels.every((level: unknown) =>
+      !!level && typeof level === 'object' && 'id' in level && typeof level.id === 'string' && level.id.length > 0
+      && 'holders' in level && Array.isArray(level.holders) && level.holders.every(isHolder))
+}
+function commitRules(value: unknown) {
+  if (value !== undefined && !isVisibility(value)) return 'Enter a field and levels with valid holder rules. Omit bypass or set it to admin.'
+  props.draft.visibility = value
+}
 </script>
 <template>
   <section class="work-stack" aria-label="Board visibility">
@@ -61,6 +79,6 @@ function update(id: string, holders: Holder[] | undefined) { const level = visib
     </template>
     <JsonInput label="Visibility rules" :model-value="visibility" shape="object"
       :example="{ field: 'visibility', levels: [{ id: 'internal', holders: [] }], bypass: 'admin' }"
-      @update:model-value="draft.visibility = $event as Declaration['visibility']" @validity="emit('validity', $event)" />
+      :commit="commitRules" @validity="emit('validity', $event)" />
   </section>
 </template>
