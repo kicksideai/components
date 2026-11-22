@@ -23,13 +23,15 @@ local asset_rows = require("asset_rows")
 local item_index = require("item_index")
 local schema_cleanup = require("schema_cleanup")
 local release_jobs = require("release_jobs")
+local receipts = require("receipts")
 local proposal_rows = require("proposal_rows")
 local attachments = require("attachments")
 
 local M = {}
 
 type IdSet = { [string]: boolean }
-type FoldResult = { rebuild_job: string?, jobs: { string }, last_seq: integer, previous_seq: integer }
+type FoldResult = { rebuild_job: string?, jobs: { string }, last_seq: integer }
+type FoldReceipt = { seq: integer, at: string, receipt: types.Receipt }
 -- Batch is what one fold accumulates and writes once at its end: the products
 -- it loaded or saved, the items to recompute, products whose ref and unique rows
 -- change, attribute usage deltas, history rows, and the counter changes it
@@ -226,7 +228,8 @@ end
 
 -- Read consecutive edits together. Structural events use the live fold cache
 -- and database. A model stamp invalidates any still-unused prefetched rows.
-local function prefetch_edits(tx: types.Executor, catalog_id: string, batch: Batch, events: { types.RawEvent }, first: integer): error?
+local function prefetch_edits(tx: types.Executor, catalog_id: string, batch: Batch, events: { types.RawEvent }, first: integer,
+    first_body: unknown): error?
     local ids: { string } = {}
     local seen: IdSet = {}
     batch.prefetched = {}
@@ -234,8 +237,7 @@ local function prefetch_edits(tx: types.Executor, catalog_id: string, batch: Bat
         local event = events[index]
         if event.type ~= EV.PRODUCT_CHANGED then break end
         batch.prefetched_through = index
-        local body = event.body
-        if type(body) == "string" then body = json.decode(body) end
+        local body = index == first and first_body or driver.decode_body(event)
         local id = type(body) == "table" and narrow.text((body :: types.JsonObject).product_id) or nil
         if id and not batch.cache[id] and not seen[id] then
             ids[#ids + 1] = id
@@ -452,6 +454,7 @@ end
 local FOLDED: { [string]: boolean } = {
     [EV.MODEL_RELEASE_REQUESTED] = true, [EV.SCHEMA_APPLIED] = true, [EV.TERM_CHANGED] = true, [EV.PRODUCT_RELEASED] = true, [EV.PRODUCT_WITHDRAWN] = true,
     [EV.PROPOSAL_SUBMITTED] = true, [EV.PROPOSAL_DECIDED] = true, [EV.ASSETS_REAPING] = true, [EV.ASSET_RESERVED] = true,
+    [EV.PLUGIN_CONFIGURED] = true, [EV.PLUGIN_REBUILD] = true,
 }
 for t in pairs(PRODUCT_EVENTS) do FOLDED[t] = true end
 
@@ -474,7 +477,8 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
     local catalog, err = store.catalog(tx, catalog_id, dialect)
     if err then return nil, err end
     local applied = catalog and catalog.applied_seq or 0
-    local result: FoldResult = { last_seq = to_seq, previous_seq = applied, jobs = {} }
+    local result: FoldResult = { last_seq = to_seq, jobs = {} }
+    local fold_receipts: { FoldReceipt } = {}
     local batch: Batch = { cache = {}, ids = {}, rows = 0, derived = {}, usage = {}, history = {}, products = 0, items = 0, trashed = 0,
         product_writes = {}, product_inserts = false, prefetched = {}, prefetched_through = 0 }
     local pending = false
@@ -482,6 +486,11 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
         rows = function(): integer return batch.rows end,
         pending = function(): boolean return pending end,
         apply = function(step: driver.Step, index: integer): error?
+            local body = step.body :: types.EventBody
+            if body.receipt then
+                fold_receipts[#fold_receipts + 1] = { seq = step.seq, receipt = body.receipt, at = body.at :: string }
+            end
+            if step.type == EV.PLUGIN_CONFIGURED or step.type == EV.PLUGIN_REBUILD then return nil end
             if step.type == EV.PROPOSAL_SUBMITTED or step.type == EV.PROPOSAL_DECIDED then
                 if not catalog then return failure.corrupt("catalog event before its schema") end
                 if step.type == EV.PROPOSAL_SUBMITTED then
@@ -504,7 +513,7 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
                 herr = flush_products(tx, catalog_id, batch)
                 if herr then return herr end
             elseif event.type == EV.PRODUCT_CHANGED and index > batch.prefetched_through then
-                herr = prefetch_edits(tx, catalog_id, batch, events, index)
+                herr = prefetch_edits(tx, catalog_id, batch, events, index, step.body)
                 if herr then return herr end
             end
             if event.kind == "schema" then
@@ -574,6 +583,18 @@ function M.fold(tx: sql.Transaction, dialect: string, catalog_id: string, events
         err = exec(tx, [[UPDATE kickside_pim_catalog SET applied_seq = $1, product_count = product_count + $2,
             item_count = item_count + $3, trashed_count = trashed_count + $4 WHERE catalog_id = $5]],
             { result.last_seq, batch.products, batch.items, batch.trashed, catalog_id })
+        if err then return nil, err end
+    end
+    for _, entry in ipairs(fold_receipts) do
+        if entry.seq > result.last_seq then break end
+        local receipt, first_seq = entry.receipt, entry.seq
+        if receipt.after_fold then
+            local outcomes = (receipt.result :: types.JsonObject).outcomes :: { types.Outcome }
+            err = release_jobs.attach_ids(tx, catalog_id, outcomes)
+            if err then return nil, err end
+            first_seq = first_seq - (receipt.event_count :: integer) + 1
+        end
+        err = receipts.record(tx, catalog_id, receipt, first_seq, entry.at)
         if err then return nil, err end
     end
     return result, nil

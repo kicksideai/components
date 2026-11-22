@@ -124,6 +124,7 @@ entries:
       failure: kickside.pim:failure
       attachments: kickside.pim.extensions:plugin_attachments
       release_jobs: kickside.pim.persist:release_jobs
+      receipts: kickside.pim.persist:receipts
       schema_cleanup: kickside.pim.persist:schema_cleanup
       merge_rows: kickside.pim.persist:merge_rows
       driver: kickside.pim.persist:fold_driver
@@ -151,8 +152,6 @@ entries:
     method: run
     modules: [json, funcs, sql]
     imports:
-      receipts: kickside.pim.persist:receipts
-      release_jobs: kickside.pim.persist:release_jobs
       store: kickside.pim.persist:store
       materializer: kickside.pim.persist:materializer
       jobs: kickside.core.jobs:jobs

@@ -8,8 +8,6 @@ local jobs = require("jobs")
 local types = require("types")
 local consts = require("consts")
 
-local receipts = require("receipts")
-local release_jobs = require("release_jobs")
 local json = require("json")
 local sql=require("sql")
 local M = {}
@@ -59,30 +57,10 @@ function M.run(raw: unknown): (Output?, error?)
             local state = catalog.plugin_state[body.plugin]
             if state and state.active and event.seq > state.seq then
                 state.config, state.seq, state.lifecycle = body.config or state.config, event.seq, { state = "pending" }
-                local json = require("json")
                 local _, uerr = tx:execute("UPDATE kickside_pim_catalog SET plugin_state = $1 WHERE catalog_id = $2", { json.encode(catalog.plugin_state), catalog_id })
                 if uerr then return nil, uerr end
             end
             changed = true
-        end
-    end
-    for _, event in ipairs(input.events or {}) do
-        if event.seq > folded.previous_seq and event.seq <= folded.last_seq then
-            local body: unknown = event.body
-            if type(body)=="string" then body=assert(json.decode(body)) end
-            local r=(body :: types.JsonObject).receipt
-            if type(r)=="table" then
-                local receipt = r :: types.Receipt
-                local first_seq = event.seq
-                if receipt.after_fold then
-                    local outcomes = (receipt.result :: types.JsonObject).outcomes :: { types.Outcome }
-                    local jerr = release_jobs.attach_ids(tx, catalog_id, outcomes)
-                    if jerr then return nil, jerr end
-                    first_seq = first_seq - (receipt.event_count :: integer) + 1
-                end
-                local rerr=receipts.record(tx,catalog_id,receipt,first_seq,(body :: types.JsonObject).at :: string)
-                if rerr then return nil,rerr end
-            end
         end
     end
     if changed then

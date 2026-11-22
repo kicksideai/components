@@ -46,18 +46,24 @@ local function body_schema(schemas: { [string]: types.JsonObject }, t: string): 
     return tolerant, nil
 end
 
+function M.decode_body(raw: types.RawEvent): (unknown, error?)
+    if type(raw.body) ~= "string" then return raw.body, nil end
+    local body, err = json.decode(raw.body)
+    if err then
+        local seq = tostring(narrow.int(raw.seq) or raw.seq)
+        return nil, internal("event " .. seq .. " (" .. raw.type .. ") body is not JSON: " .. tostring(err), "row_corrupt")
+    end
+    return body, nil
+end
+
 -- parse turns a raw event of a folded type into a Step whose body matches its
 -- declared schema.
 local function parse(raw: types.RawEvent, schemas: { [string]: types.JsonObject }): (Step?, error?)
     local seq = narrow.int(raw.seq)
     if not seq then return nil, internal("event without a seq", "row_corrupt") end
     local t = raw.type
-    local body: unknown = raw.body
-    if type(body) == "string" then
-        local decoded, derr = json.decode(body)
-        if derr then return nil, internal("event " .. seq .. " (" .. t .. ") body is not JSON: " .. tostring(derr), "row_corrupt") end
-        body = decoded
-    end
+    local body, derr = M.decode_body(raw)
+    if derr then return nil, derr end
     local schema, serr = body_schema(schemas, t)
     if serr or not schema then return nil, serr end
     local cerr = shape.check(schema, body, "event body")
