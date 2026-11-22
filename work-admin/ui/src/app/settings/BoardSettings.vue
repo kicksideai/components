@@ -3,7 +3,7 @@
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import Select from 'primevue/select'
 import NativeDialog from '../../NativeDialog.vue'
-import { computed, provide, nextTick, onUnmounted, ref, useId, watch } from 'vue'
+import { computed, provide, nextTick, onUnmounted, reactive, ref, useId, watch } from 'vue'
 import Button from 'primevue/button'
 import SettingsRail, { type SettingsRailGroup } from '@kickside/ui-kit/SettingsRail.vue'
 import { Icon } from '@iconify/vue'
@@ -14,7 +14,6 @@ import { work } from '../../api'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import type { BoardRow, Declaration, AdminOptions, ItemType, Process, Schema, State } from '../../types'
 import { useNavigate } from '../route'
-import { usePackDiscovery } from '../usePackDiscovery'
 import { humanize } from '../../forms'
 import { settings } from './api'
 import { validationIssues, removalReason, clone, normalizeSchema, processMigration, requestDeclaration, reviewSnapshot, type PluginConfigs, type SchemaPlan, type RemovalKind, removeEntry } from './model'
@@ -32,14 +31,14 @@ import GeneralSettings from './GeneralSettings.vue'
 import { stateTitle } from './process'
 import SchemaReview from './SchemaReview.vue'
 import PackReview from './PackReview.vue'
-import { availablePack, packChoice, planUpgrade, upgradeRequest, type PackPlan, type PackRequest, type PackResult } from '../../packs'
+import { usePackReview } from './packReview'
 const props = defineProps<{ boardId: string; embedded?: boolean; focusBack?: boolean; route?: string }>()
 const emit = defineEmits<{ 'dirty-change': [dirty: boolean]; navigate: [route: string] }>()
 const go = useNavigate()
 const draftForm = useId()
 const pane = ref<HTMLElement>()
 let resetGeneration: number | undefined, resetDraft = ''
-const draftSnapshot = () => JSON.stringify([request.value, configs.value, packRequest.value, [...invalid.value]])
+const draftSnapshot = (): string => JSON.stringify([request.value, configs.value, pack.request, [...invalid.value]])
 type Section = 'General' | 'Item types' | 'Fields' | 'Links' | 'Workflow' | 'Access' | 'Plugins'
 const allBoards = computed(() => ({
   value: 'all-boards',
@@ -128,19 +127,23 @@ function finishCreation(processId?: string) {
   creation.value = undefined
   if (active.section === 'Fields') void nextTick(() => active.opener.focus())
 }
-const reviewOpen = ref(false), reviewError = ref(''), reviewOpener = ref<HTMLElement>()
+const reviewOpen = ref(false), schemaReviewError = ref(''), reviewOpener = ref<HTMLElement>()
 watch(tab, section => {
   pane.value?.scrollTo({ top: 0 })
   if (creation.value && section !== creation.value.section) creation.value = undefined
 })
-function closeReview() { reviewOpen.value = false; reviewError.value = ''; confirmedRenames.value = false }
+function closeReview() {
+  reviewOpen.value = false
+  schemaReviewError.value = ''
+  pack.clearReviewError()
+  confirmedRenames.value = false
+}
 function openReview(opener?: HTMLElement) {
   if (!showDraftActions.value || !validForm() || invalid.value.size) return
   reviewOpener.value = opener
   reviewOpen.value = true
   void review()
 }
-const installing = ref(false), installPack = ref('')
 const visited = ref(new Set<Section>(['General']))
 watch(tab, value => visited.value.add(value))
 const schema = ref<Schema>(), latest = ref<Schema>(), board = ref<BoardRow>(), draft = ref<Declaration>({}), configs = ref<PluginConfigs>({})
@@ -162,29 +165,35 @@ async function loadCounts(id: string) {
 watch(tab, section => {
   if (authorized.value && section === 'Workflow') void loadCounts(props.boardId)
 })
-const { packs: discoveredPacks, loading: loadingPacks, error: packError, load: loadPacks, reset: resetPacks } = usePackDiscovery()
-const packs = computed(() => discoveredPacks.value.filter(availablePack))
-const packChoices = computed(() => discoveredPacks.value.map(packChoice))
-const installChoice = computed(() => packChoices.value.find(pack => pack.id === installPack.value && !pack.disabled))
-const packRequest = ref<PackRequest>(), packPlan = ref<PackPlan>(), packReviewed = ref<PackRequest>()
-interface PackOperation { request: PackRequest; key: string; result: PackResult; draft: string }
-const packOperation = ref<PackOperation>(), packOperationError = ref('')
-const packInProgress = computed(() => !!packOperation.value && packOperation.value.result.status !== 'done')
-const canManagePack = computed(() => !busy.value && !dirty.value && !migrationPending.value && !packInProgress.value)
-const showDraftActions = computed(() => dirty.value && !(packInProgress.value && packRequest.value))
-const plan = ref<SchemaPlan>(), reviewed = ref<ReturnType<typeof reviewSnapshot>>(), applyKey = ref('')
+const schemaPlan = ref<SchemaPlan>(), reviewed = ref<ReturnType<typeof reviewSnapshot>>(), applyKey = ref('')
 const serverIssues = ref<import('./model').SchemaChange[]>([])
-const issues = computed(() => [...serverIssues.value, ...(plan.value?.refused ?? [])])
 const checkingRemoval = ref(false), editorVersion = ref(0)
 const invalid = ref(new Set<string>()), editor = ref<HTMLFormElement>()
 const beginRead = latestRequest(), beginReview = latestRequest()
 const request = computed(() => requestDeclaration(draft.value, schema.value?.declaration ?? {}))
-const dirty = computed(() => invalid.value.size > 0 || !!packRequest.value || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(requestDeclaration(schema.value.declaration, schema.value.declaration)) || Object.keys(configs.value).length > 0))
+const schemaDirty = computed(() => invalid.value.size > 0 || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(requestDeclaration(schema.value.declaration, schema.value.declaration)) || Object.keys(configs.value).length > 0))
+const migrationPending = computed(() => !!latest.value?.migration_error || board.value?.status === 'migrating')
+const stale = computed(() => !!schema.value && !!latest.value && schema.value.generation !== latest.value.generation)
+const canReview = () => authorized.value && !stale.value && !invalid.value.size
+const pack = reactive(usePackReview({
+  boardId: () => props.boardId, schema, configs, busy,
+  schemaDirty: () => schemaDirty.value, migrationPending: () => migrationPending.value, canReview,
+  authorized: () => authorized.value, draftSnapshot,
+  openReview: () => { reviewOpener.value = undefined; reviewOpen.value = true },
+  clearSaved: () => { saved.value = '' },
+  applied: reloadApplied,
+}))
+const plan = computed(() => pack.request ? pack.plan : schemaPlan.value)
+const reviewError = computed(() => pack.request ? pack.reviewError : schemaReviewError.value)
+const issues = computed(() => [...serverIssues.value, ...(plan.value?.refused ?? [])])
+const dirty = computed(() => !!pack.request || schemaDirty.value)
+const showDraftActions = computed(() => dirty.value && !(pack.inProgress && pack.request))
 const metadataDirty = ref(false)
 const unsaved = computed(() => dirty.value || metadataDirty.value)
 watch(unsaved, value => emit('dirty-change', value), { immediate: true, flush: 'sync' })
-const stale = computed(() => !!schema.value && !!latest.value && schema.value.generation !== latest.value.generation)
-const canSchemaApply = computed(() => (!occupiedChanges.value.renamed.length || confirmedRenames.value) && authorized.value && !busy.value && !checkingRemoval.value && !migrationPending.value && !stale.value && !invalid.value.size && plan.value && (plan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && plan.value.class !== 'refused' && !plan.value.refused.length && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value))
+const canSchemaApply = computed(() => (!occupiedChanges.value.renamed.length || confirmedRenames.value) && canReview() && !busy.value && !checkingRemoval.value && !migrationPending.value && schemaPlan.value && (schemaPlan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && schemaPlan.value.class !== 'refused' && !schemaPlan.value.refused.length && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value))
+const canApply = computed(() => pack.request ? pack.canApply : canSchemaApply.value)
+const isReviewed = computed(() => pack.request ? pack.isReviewed : !!schemaPlan.value)
 const confirmedRenames = ref(false)
 const occupiedChanges = computed(() => {
   const saved = schema.value?.declaration
@@ -210,54 +219,24 @@ function setDestination(process: Process, state: string, destination: string) {
   process.map = { ...process.map, [state]: destination }
   void review()
 }
-const packPlugins = computed(() => packs.value.find(pack => pack.id === packRequest.value?.pack)?.plugins.filter(plugin => !schema.value?.plugins?.some(state => state.plugin === plugin.plugin && state.active)).map(plugin => ({ use: plugin.plugin })) ?? [])
-const packMatches = computed(() => !!packReviewed.value && JSON.stringify(packReviewed.value) === JSON.stringify(packRequest.value))
-const canApply = computed(() => packRequest.value ? authorized.value && !busy.value && !invalid.value.size && !stale.value && !migrationPending.value && packMatches.value && plan.value?.class !== 'refused' && !plan.value?.refused.length && packPlan.value?.conflicts.every(c => !!packRequest.value?.resolutions?.[c.path]) : canSchemaApply.value)
-const isReviewed = computed(() => !!plan.value && (!packRequest.value || packMatches.value))
-const packTitle = computed(() => packs.value.find(p => p.id === schema.value?.pack?.id)?.title || 'Installed pack')
-const upgradeAvailable = computed(() => !packError.value && !!schema.value?.outdated && !!packChoices.value.find(p => p.id === schema.value?.pack?.id && !p.disabled))
-const upgradeReason = computed(() => packError.value ? 'Reload packs to check available upgrades.' : packInProgress.value ? 'Finish the current pack installation before upgrading.' : !upgradeAvailable.value ? 'Install an available version of this pack to upgrade.' : dirty.value ? 'Discard the current draft before upgrading.' : migrationPending.value ? 'Finish the current migration before upgrading.' : busy.value ? 'Wait for the current request to finish.' : undefined)
-function clearPack() { packRequest.value = undefined; packPlan.value = undefined; packReviewed.value = undefined }
-async function upgrade() {
-  if (!schema.value?.pack || !canManagePack.value || !upgradeAvailable.value) return
-  const installed = packs.value.find(p => p.id === schema.value!.pack!.id)
-  if (!installed) return
-  reviewOpener.value = undefined
-  packRequest.value = upgradeRequest(installed, schema.value.generation); reviewOpen.value = true
-  await reviewPack()
-}
-async function install() {
-  const pack = packs.value.find(p => p.id === installPack.value)
-  if (!schema.value || !pack || !installChoice.value || !canManagePack.value || loadingPacks.value) return
-  reviewOpener.value = undefined
-  packRequest.value = upgradeRequest(pack, schema.value.generation); installing.value = false; reviewOpen.value = true
-  await reviewPack()
-}
-async function reviewPack() {
-  if (!packRequest.value || busy.value || !authorized.value || stale.value || invalid.value.size) return
-  const current = beginReview(), request = clone(packRequest.value), before = JSON.stringify(packRequest.value)
-  busy.value = true; reviewError.value = ''; saved.value = ''
-  try {
-    const reviewed = await planUpgrade(request, request => settings.packPlan(props.boardId, request))
-    if (!current() || before !== JSON.stringify(packRequest.value)) return
-    packPlan.value = reviewed.plan; plan.value = reviewed.plan; packRequest.value = reviewed.request
-    packReviewed.value = clone(packRequest.value); applyKey.value = crypto.randomUUID(); reviewOpen.value = true
-  } catch (e) { if (current()) { packReviewed.value = undefined; reviewError.value = formatApiError(e, 'Could not review the pack.') } }
-  finally { busy.value = false }
-}
-const reviewedDeclaration = computed(() => packPlan.value?.declaration ?? reviewed.value?.declaration)
+const reviewedDeclaration = computed(() => pack.preview?.declaration ?? reviewed.value?.declaration)
 const follows = computed(() => {
   const declaration = reviewedDeclaration.value
   if (!plan.value || !declaration) return []
   return processMigration(plan.value, declaration).map(id => declaration.processes?.find(process => process.id === id)?.name || 'Untitled process')
 })
-const migrationPending = computed(() => !!latest.value?.migration_error || board.value?.status === 'migrating')
-function invalidate() { serverIssues.value = []; beginReview(); plan.value = undefined; reviewed.value = undefined; packReviewed.value = undefined; applyKey.value = '' }
+function invalidate() {
+  serverIssues.value = []
+  beginReview()
+  schemaPlan.value = undefined
+  reviewed.value = undefined
+  applyKey.value = ''
+  pack.invalidate()
+}
 watch([request, configs], invalidate, { deep: true, flush: 'sync' })
 watch(dirty, value => { if (value) saved.value = '' })
-watch(configs, value => { if (packRequest.value) { if (Object.keys(value).length) packRequest.value.plugin_configs = clone(value); else delete packRequest.value.plugin_configs } }, { deep: true, flush: 'sync' })
 function validity(key: string, valid: boolean) { if (valid) invalid.value.delete(key); else invalid.value.add(key); invalidate() }
-function reset(view: Schema) { clearPack(); creation.value = undefined; editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); invalidate() }
+function reset(view: Schema) { pack.clear(); creation.value = undefined; editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); invalidate() }
 async function load(force = false) {
   const current = beginRead()
   try {
@@ -278,7 +257,7 @@ async function load(force = false) {
     }
     else if (force || !schema.value || !dirty.value && normalized.generation !== schema.value.generation) reset(normalized)
     if (stale.value) invalidate()
-    await loadPacks(current)
+    await pack.load(current)
     if (current() && tab.value === 'Workflow') void loadCounts(props.boardId)
   } catch (e) {
     if (!current()) return
@@ -303,10 +282,10 @@ function validForm() {
   return true
 }
 async function review() {
-  if (packRequest.value) return reviewPack()
-  if (!schema.value || busy.value || !authorized.value || stale.value || invalid.value.size) return
+  if (pack.request) return pack.review()
+  if (!schema.value || busy.value || !canReview()) return
   const current = beginReview(), snapshot = reviewSnapshot(request.value, schema.value.generation, configs.value)
-  busy.value = true; reviewError.value = ''; saved.value = ''
+  busy.value = true; schemaReviewError.value = ''; saved.value = ''
   try {
     const changedName = (snapshot.declaration.processes ?? []).some(process =>
       schema.value?.declaration.processes?.find(saved => saved.id === process.id)?.states.some(state =>
@@ -317,25 +296,22 @@ async function review() {
     ])
     if (changedName && countsError.value) {
       invalidate()
-      reviewError.value = 'Could not check which items use the renamed states. Check the impact again.'
+      schemaReviewError.value = 'Could not check which items use the renamed states. Check the impact again.'
       return
     }
     if (!current() || invalid.value.size || !snapshot.matches(request.value, schema.value.generation, configs.value)) return
-    plan.value = response; reviewed.value = snapshot; applyKey.value = crypto.randomUUID(); reviewOpen.value = true
-  } catch (e) { if (current()) { invalidate(); reviewError.value = formatApiError(e, 'Could not review changes.'); serverIssues.value = validationIssues(e, request.value) } }
+    schemaPlan.value = response; reviewed.value = snapshot; applyKey.value = crypto.randomUUID(); reviewOpen.value = true
+  } catch (e) { if (current()) { invalidate(); schemaReviewError.value = formatApiError(e, 'Could not review changes.'); serverIssues.value = validationIssues(e, request.value) } }
   finally { busy.value = false }
 }
 async function apply() {
   if (!canApply.value) return
-  if (packRequest.value && packReviewed.value) {
-    busy.value = true; reviewError.value = ''
-    try { await applyPack(clone(packReviewed.value), applyKey.value, draftSnapshot()); closeReview() }
-    catch (e) { reviewError.value = formatApiError(e, 'Could not apply the pack upgrade.') }
-    finally { busy.value = false }
+  if (pack.request) {
+    if (await pack.apply()) closeReview()
     return
   }
   if (!reviewed.value) return
-  busy.value = true; reviewError.value = ''; saved.value = ''
+  busy.value = true; schemaReviewError.value = ''; saved.value = ''
   const appliedDraft = draftSnapshot()
   try {
     const result = await settings.apply(props.boardId, reviewed.value, applyKey.value)
@@ -343,27 +319,15 @@ async function apply() {
     await load()
     saved.value = 'Board changes applied.'
     closeReview()
-  } catch (e) { reviewError.value = formatApiError(e, 'Could not apply the board changes.') }
+  } catch (e) { schemaReviewError.value = formatApiError(e, 'Could not apply the board changes.') }
   finally { busy.value = false }
 }
-async function applyPack(request: PackRequest, key: string, appliedDraft: string) {
-  const boardId = props.boardId
-  const result = await settings.packApply(boardId, request, key)
-  if (props.boardId !== boardId) return
-  packOperation.value = { request, key, result, draft: appliedDraft }
+async function reloadApplied(generation: number, appliedDraft: string) {
   if (appliedDraft === draftSnapshot()) {
-    resetGeneration = result.generation
+    resetGeneration = generation
     resetDraft = appliedDraft
   }
   await load()
-}
-async function continuePack() {
-  const operation = packOperation.value
-  if (!operation || !packInProgress.value || busy.value || !authorized.value) return
-  busy.value = true; packOperationError.value = ''
-  try { await applyPack(operation.request, operation.key, operation.draft) }
-  catch (e) { packOperationError.value = formatApiError(e, 'Could not continue the pack installation.') }
-  finally { busy.value = false }
 }
 async function resume() {
   if (busy.value) return
@@ -395,7 +359,7 @@ async function back() {
 }
 function discard() { resetGeneration = undefined; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
 
-watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; clearPack(); resetPacks(); packOperation.value = undefined; packOperationError.value = ''; schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; creation.value = undefined; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; pack.reset(); schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; creation.value = undefined; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
 watch([() => props.route, () => props.boardId], ([route]) => {
   if (route === undefined) return
   const [key, row] = route.split('/')
@@ -409,7 +373,7 @@ watch([() => props.route, () => props.boardId], ([route]) => {
 let stop = () => {}
 watch(() => props.boardId, id => { stop(); stop = on(`component.${id}`, () => { void load() }) }, { immediate: true })
 useHostVisibilityRefresh(load)
-onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
+onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.invalidate() })
 </script>
 <template>
   <section class="work-settings-shell work-ia" :class="{ 'work-embedded': embedded }">
@@ -437,12 +401,12 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
           <p v-else-if="!authorized && !error" class="work-notice" role="alert">Ask a board administrator to grant you access to these settings.</p>
 
           <div v-if="authorized && schema" class="work-settings-body">
-            <section v-if="packOperation" class="work-notice work-stack work-tight" aria-label="Pack installation">
-              <p v-if="packInProgress" role="status">Pack installation status <strong>{{ humanize(packOperation.result.status) }}</strong></p>
+            <section v-if="pack.result" class="work-notice work-stack work-tight" aria-label="Pack installation">
+              <p v-if="pack.inProgress" role="status">Pack installation status <strong>{{ humanize(pack.result.status) }}</strong></p>
               <p v-else role="status">Pack applied.</p>
-              <p class="work-small">Operation <code>{{ packOperation.result.operation_id }}</code> · Job <code>{{ packOperation.result.job_id }}</code></p>
-              <p v-if="packOperationError" class="kx-err" role="alert">{{ packOperationError }}</p>
-              <div v-if="packInProgress"><Button label="Continue pack installation" severity="secondary" outlined :loading="busy" :disabled="busy" @click="continuePack" /></div>
+              <p class="work-small">Operation <code>{{ pack.result.operation_id }}</code> · Job <code>{{ pack.result.job_id }}</code></p>
+              <p v-if="pack.operationError" class="kx-err" role="alert">{{ pack.operationError }}</p>
+              <div v-if="pack.inProgress"><Button label="Continue pack installation" severity="secondary" outlined :loading="busy" :disabled="busy" @click="pack.continueInstallation" /></div>
             </section>
             <p v-if="stale" class="work-notice" role="alert">Someone saved new settings while you were editing. Discard this draft to load their changes.</p>
             <div v-if="migrationPending" class="work-notice">
@@ -454,9 +418,9 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
             <GeneralSettings v-show="tab === 'General'" :draft="draft" :schema="latest ?? schema" :board="board"
               :active="tab === 'General'" :board-apps="options?.board_apps"
               :draft-form="draftForm" :disabled="busy || checkingRemoval"
-              :pack-title="schema.pack ? packTitle : undefined" :outdated="schema.outdated" :upgrade-reason="upgradeReason"
-              :can-upgrade="upgradeAvailable && canManagePack" :can-install="canManagePack"
-              :pack-error="packError" @upgrade="upgrade" @install="installing = true" @retry="loadPacks()"
+              :pack-title="schema.pack ? pack.title : undefined" :outdated="schema.outdated" :upgrade-reason="pack.upgradeReason"
+              :can-upgrade="pack.upgradeAvailable && pack.canManage" :can-install="pack.canManage"
+              :pack-error="pack.error" @upgrade="pack.upgrade" @install="pack.installing = true" @retry="pack.load()"
               @dirty-change="metadataDirty = $event" @saved="load()" @share="openAccess" />
 
             <form :id="draftForm" ref="editor" @submit.prevent="openReview()">
@@ -499,17 +463,17 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
                   <p v-if="busy" role="status">{{ plan ? 'Applying or checking changes…' : 'Checking the impact on your board…' }}</p>
                   <p v-if="reviewError" role="alert" class="kx-err">{{ reviewError }}</p>
                   <p v-if="stale" role="alert">The board changed while you were editing. Close this review and discard the draft to load the latest settings.</p>
-                  <ProcessMigration v-if="reviewOpen && !packRequest && (occupiedChanges.removed.length || occupiedChanges.renamed.length)"
+                  <ProcessMigration v-if="reviewOpen && !pack.request && (occupiedChanges.removed.length || occupiedChanges.renamed.length)"
                     :removed="occupiedChanges.removed" :renamed="occupiedChanges.renamed" :disabled="busy || checkingRemoval"
                     v-model:confirmed="confirmedRenames" @destination="setDestination" />
-                  <PluginsEditor v-if="reviewOpen && packRequest && packPlugins.length" :board-id="boardId" :draft="{ plugins: packPlugins }" :schema="latest ?? schema"
-                    :options="options?.schema_options.plugins.filter(plugin => packPlugins.some(selected => selected.use === plugin.plugin)) ?? []"
+                  <PluginsEditor v-if="reviewOpen && pack.request && pack.plugins.length" :board-id="boardId" :draft="{ plugins: pack.plugins }" :schema="latest ?? schema"
+                    :options="options?.schema_options.plugins.filter(plugin => pack.plugins.some(selected => selected.use === plugin.plugin)) ?? []"
                     :configs="configs" :disabled="busy" activation-locked @validity="(key, valid) => validity('pack-plugin:' + key, valid)" />
                   <SchemaReview v-if="reviewOpen" :board-id="boardId" :original="schema.declaration" :declaration="reviewedDeclaration" :plan="plan"
                     :follows="follows" :config-count="Object.keys(configs).length" :plugin-configs="reviewed?.plugin_configs"
-                    :pack-review="!!packPlan" :plugins="options?.schema_options.plugins">
-                    <PackReview v-if="packPlan && packRequest" :plan="packPlan" :request="packRequest" :original="schema.declaration"
-                      :plugins="options?.schema_options.plugins" :disabled="busy" @change="packReviewed = undefined; applyKey = ''" />
+                    :pack-review="!!pack.preview" :plugins="options?.schema_options.plugins">
+                    <PackReview v-if="pack.preview && pack.request" :plan="pack.preview" :request="pack.request" :original="schema.declaration"
+                      :plugins="options?.schema_options.plugins" :disabled="busy" @change="pack.changed" />
                   </SchemaReview>
                   <p v-if="!busy && !isReviewed && !stale && !reviewError">Check the impact again before applying.</p>
                 </div>
@@ -526,17 +490,17 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
       </div>
     </div>
 
-    <NativeDialog v-if="authorized" :visible="installing" label="Install pack" :busy="busy" @close="installing = false">
-      <form v-if="installing" class="work-dialog-box work-stack" @submit.prevent="install">
+    <NativeDialog v-if="authorized" :visible="pack.installing" label="Install pack" :busy="busy" @close="pack.installing = false">
+      <form v-if="pack.installing" class="work-dialog-box work-stack" @submit.prevent="pack.install">
         <h2>Install a pack</h2>
         <p class="work-muted work-small">Packs give an empty board a starting setup. Review checks whether this board is eligible.</p>
-        <p v-if="loadingPacks" class="work-muted" role="status">Loading packs…</p>
-        <div v-else-if="packError" class="kx-err work-alert-actions">
-          <p role="alert">{{ packError }}</p>
-          <Button label="Reload packs" severity="secondary" outlined @click="loadPacks()" />
+        <p v-if="pack.loading" class="work-muted" role="status">Loading packs…</p>
+        <div v-else-if="pack.error" class="kx-err work-alert-actions">
+          <p role="alert">{{ pack.error }}</p>
+          <Button label="Reload packs" severity="secondary" outlined @click="pack.load()" />
         </div>
-        <label v-else-if="packChoices.length" class="work-stack work-tight">Pack
-          <Select v-model="installPack" aria-label="Pack to install" appendTo="self" optionLabel="title" optionValue="id" optionDisabled="disabled" :options="packChoices"
+        <label v-else-if="pack.choices.length" class="work-stack work-tight">Pack
+          <Select v-model="pack.installPack" aria-label="Pack to install" appendTo="self" optionLabel="title" optionValue="id" optionDisabled="disabled" :options="pack.choices"
             :pt="{ option: ({ context }) => ({ 'aria-label': [context.option.title, context.option.unavailable].filter(Boolean).join('. ') }) }">
             <template #option="{ option }">
               <span>{{ option.title }}<small v-if="option.unavailable" class="work-pack-unavailable work-block">{{ option.unavailable }}</small></span>
@@ -544,7 +508,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts() })
           </Select>
         </label>
         <p v-else class="work-muted">No available packs were found.</p>
-        <footer class="work-dialog-actions"><Button label="Cancel" severity="secondary" outlined @click="installing = false" /><Button type="submit" label="Review pack" :disabled="!installChoice || !canManagePack || loadingPacks || !!packError" /></footer>
+        <footer class="work-dialog-actions"><Button label="Cancel" severity="secondary" outlined @click="pack.installing = false" /><Button type="submit" label="Review pack" :disabled="!pack.installChoice || !pack.canManage || pack.loading || !!pack.error" /></footer>
       </form>
     </NativeDialog>
   </section>
