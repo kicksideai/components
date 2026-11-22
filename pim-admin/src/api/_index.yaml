@@ -10,8 +10,10 @@ entries:
   - http
   - contract
   - security
+  - json
   imports:
     types: kickside.pim.admin:types
+    catalog_client: kickside.pim:client
     component: kickside.component:component
     http_errors: kickside.contract:http_errors
 - name: principals.endpoint

@@ -22,6 +22,7 @@ type Session = {
     actor: security.Actor,
     scope: security.Scope,
     call: (string, unknown, string?) -> (unknown, error?),
+    async_call: (string, unknown, string?) -> (funcs.Future?, error?),
     http: (string, string, Json?) -> Reply,
     http_raw: (string, string, string) -> Reply,
     route: (string, string) -> string,
@@ -51,6 +52,9 @@ local function open(actor: security.Actor, scope: security.Scope): Session
         call = function(op: string, request: unknown, board_id: string?): (unknown, error?)
             return executor:call("app:work_call", { op = op, board_id = board_id, request = request })
         end,
+        async_call = function(op: string, request: unknown, board_id: string?): (funcs.Future?, error?)
+            return executor:async("app:work_call", { op = op, board_id = board_id, request = request })
+        end,
         http = function(method: string, path: string, body: Json?): Reply
             return request(method, path, json.encode(body or {}))
         end,
@@ -63,11 +67,12 @@ end
 
 -- board creates a board through the contract as the session and returns a handle whose calls run as the session.
 -- The first schema is the given declaration, the reference declaration when omitted.
-function M.board(session: Session, declaration: Json?): fixture.Handle
+function M.board(session: Session, declaration: Json?, pack: string?): fixture.Handle
     local prefix = fixture.fresh_prefix()
     local first = declaration or fixture.declaration(prefix)
     if declaration then prefix = declaration.key_prefix :: string end
-    local created, err = session.call("create", { idempotency_key = (uuid.v4()), title = "Scoped board", declaration = first })
+    local created, err = session.call("create", { idempotency_key = (uuid.v4()), title = "Scoped board",
+        declaration = first, pack = pack })
     assert(not err, tostring(err))
     local board_id = (created :: Json).board_id :: string
     return {

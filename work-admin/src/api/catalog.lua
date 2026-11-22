@@ -1,19 +1,16 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local registry = require("registry")
 local types = require("types")
+local ui_app = require("ui_app")
 local M = {}
 
 local MAX_CHOICES = 200
-type Rule = { id: string, title: string, plugin: string, description: string?, reads: { string }? }
-type BoardApp = { id: string, title: string }
-type Catalog = { guards: { Rule }, filters: { Rule }, board_apps: { BoardApp } }
 type IdSet = { [string]: boolean }
 type Label = { id: string, title: string }
-type RuleKind = { kind: string, name: string, target: { Rule } }
-M.Catalog = Catalog
+type RuleKind = { kind: string, name: string, target: { types.Rule } }
 
-function M.empty(): Catalog
-    return { guards = table.create(1, 0), filters = table.create(1, 0), board_apps = table.create(1, 0) }
+function M.empty(): types.Catalog
+    return { guards = table.create(1, 0), scopes = table.create(1, 0), board_apps = table.create(1, 0) }
 end
 
 local function limit_error(kind: string): error
@@ -56,21 +53,7 @@ local function seam_ids(owner: string): (IdSet?, error?)
     return ids, nil
 end
 
-local function board_app(entry: registry.Entry): BoardApp?
-    local id, meta = entry.id, entry.meta or {}
-    -- Match the published board UI app registration used by Work's binding.
-    if not id:match("^[^:%s]+:[^:%s]+$") or not nonblank(meta.title) or not nonblank(meta.icon) then return nil end
-    local page, tag = meta.page, meta.component
-    if page ~= nil then
-        if tag ~= nil or type(page) ~= "string" or page:sub(1, 1) ~= "/" or page:sub(1, 2) == "//"
-            or page:match("[\\%s%c?#]") then return nil end
-    elseif type(tag) ~= "string" or not tag:match("^[a-z][a-z0-9]*%-[a-z0-9][a-z0-9%-]*$") then
-        return nil
-    end
-    return { id = id, title = meta.title :: string }
-end
-
-local function rule(entry: registry.Entry, owner: string): Rule
+local function rule(entry: registry.Entry, owner: string): types.Rule
     local meta = entry.meta or {}
     local name = entry.id:match("([^:]+)$") or entry.id
     local title = nonblank(meta.title) and meta.title :: string or name:gsub("[_%.%-]+", " "):gsub("^%l", string.upper)
@@ -83,7 +66,7 @@ local function rule(entry: registry.Entry, owner: string): Rule
         description = type(meta.description) == "string" and meta.description or nil }
 end
 
-function M.load(options: types.SchemaOptions?): (Catalog?, error?)
+function M.load(options: types.PluginOptions?): (types.Catalog?, error?)
     local out = M.empty()
     local admitted: IdSet = {}
     local seams: { [string]: IdSet } = {}
@@ -95,7 +78,7 @@ function M.load(options: types.SchemaOptions?): (Catalog?, error?)
     end
     local rules: { RuleKind } = {
         { kind = "function.lua", name = "guard", target = out.guards },
-        { kind = "registry.entry", name = "scope", target = out.filters },
+        { kind = "registry.entry", name = "scope", target = out.scopes },
     }
     for _, spec in ipairs(rules) do
         local found, err = entries(spec.kind, spec.name)
@@ -118,8 +101,9 @@ function M.load(options: types.SchemaOptions?): (Catalog?, error?)
     local apps, err = entries("registry.entry", "ui.app")
     if err then return nil, err end
     for _, entry in ipairs(apps or {}) do
-        local app = board_app(entry)
-        if app then out.board_apps[#out.board_apps + 1] = app end
+        if ui_app.valid_entry(entry) then
+            out.board_apps[#out.board_apps + 1] = { id = entry.id, title = (entry.meta or {}).title :: string }
+        end
     end
     table.sort(out.board_apps, ordered)
     return out, nil

@@ -80,13 +80,21 @@ local function cases()
             local id = board(owner)
             local response = owner.get(path(id, "options"))
             test.eq(response.status, 200, json.encode(response.body))
-            local descriptor = score_type(response.body.data.installed_types)
-            test.eq(descriptor.title, "Score")
-            test.eq(descriptor.form, "int")
-            test.eq(json.encode(descriptor.indexes), '["number"]')
-            test.eq(json.encode(descriptor.config_schema.required), '["limit"]')
-            test.eq(descriptor.config_schema.properties.limit.type, "integer")
-            test.eq(json.encode(descriptor), json.encode(score_type(response.body.data.schema_options.field_types)))
+            local data = response.body.data
+            for _, options in ipairs({ data.installed_types, data.schema_options.field_types }) do
+                local descriptor = score_type(options)
+                test.eq(descriptor.title, "Score")
+                test.eq(descriptor.form, "int")
+                test.eq(#descriptor.indexes, 1)
+                test.eq(descriptor.indexes[1], "number")
+                local schema = descriptor.config_schema
+                test.eq(schema.type, "object")
+                test.eq(#schema.required, 1)
+                test.eq(schema.required[1], "limit")
+                test.eq(schema.properties.limit.type, "integer")
+                test.eq(schema.properties.limit.minimum, 1)
+            end
+            local descriptor = score_type(data.schema_options.field_types)
             local plan = owner.post("/work/boards/" .. id .. "/plan_schema", {
                 expected_generation = 1,
                 declaration = {
@@ -97,14 +105,14 @@ local function cases()
             test.eq(plan.status, 200, json.encode(plan.body))
             test.eq(#plan.body.data.refused, 0, json.encode(plan.body))
         end)
-        test.it("discovers access and initializes a legacy board without a schema", function()
+        test.it("discovers access and applies the initial schema at generation zero", function()
             local owner = session.admin()
             local id = assert(owner.call("register_schemaless", {})).board_id
             local options = owner.get(path(id, "options"))
             test.eq(options.status, 200, json.encode(options.body))
             test.is_true(options.body.data.access.admin)
             test.eq(score_type(options.body.data.installed_types).form, "int")
-            local request = { declaration = { key_prefix = "LEGACY" }, expected_generation = 0 }
+            local request = { declaration = { key_prefix = "INITIAL" }, expected_generation = 0 }
             local plan = owner.post("/work/boards/" .. id .. "/plan_schema", request)
             test.eq(plan.status, 200, json.encode(plan.body))
             request.key = uuid.v4()
