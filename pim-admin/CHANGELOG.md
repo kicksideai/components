@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.19](https://github.com/kicksideai/components/compare/pim-admin-v0.1.18...pim-admin-v0.1.19) (2026-11-22)
+
+
+### Bug Fixes
+
+* **pim-admin:** extract builder plugin operations ([#361](https://github.com/kicksideai/components/issues/361)) ([8059c2c](https://github.com/kicksideai/components/commit/8059c2cc46a48568ab2df276a129804f3aa49a59))
+
 ## [0.1.18](https://github.com/kicksideai/components/compare/pim-admin-v0.1.17...pim-admin-v0.1.18) (2026-11-22)
 
 
