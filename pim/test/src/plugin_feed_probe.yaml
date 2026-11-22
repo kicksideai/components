@@ -50,16 +50,14 @@ entries:
 
   - name: snapshot_reader
     kind: library.lua
-    modules: [registry, base64, json]
+    modules: [base64, json]
     meta:
       comment: Product reads and item queries; every answer reports as_of.
     source: file://snapshot_reader.lua
     imports:
       failure: kickside.pim:failure
-      component: kickside.component:component
       layout: kickside.pim.persist:layout
-      plugins: kickside.pim.extensions:plugins
-      plugin_projections: kickside.pim.extensions:plugin_projection_state
+      plugin_reads: kickside.pim.read:plugins
       history: kickside.pim.persist:history
       consts: kickside.pim:consts
       store: app:snapshot_store_fixture
