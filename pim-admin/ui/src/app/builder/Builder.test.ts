@@ -2,7 +2,7 @@
 import { closeTechnicalSchema, openTechnicalSchema, settingsTab } from '../../test/settings-navigation'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { host } from '@wippy-fe/proxy'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import SchemaBuilder from './SchemaBuilder.vue'
 import BuilderDeclaration from './BuilderDeclaration.vue'
 import BuilderPlugins from './BuilderPlugins.vue'
@@ -79,15 +79,33 @@ const pluginOptions = {
   plugins: [{
     ...pluginFixture('stock'), title: 'Inventory',
     config_schema: { type: 'object', properties: { hold_seconds: { type: 'integer' } } },
+  }, {
+    ...pluginFixture('pricing'), title: 'Pricing',
+    config_schema: { type: 'object', properties: { enabled: { type: 'boolean' } } },
   }],
 }
 
 function activePlugins(...ids: string[]) {
   const active = structuredClone(schema)
-  active.plugins = ids.map(id => ({ ...pluginFixture(id), active: true, config: { hold_seconds: 60 } }))
+  active.plugins = ids.map(id => ({
+    ...pluginOptions.plugins.find(plugin => plugin.plugin === id)!,
+    active: true,
+    config: id === 'pricing' ? { enabled: true } : { hold_seconds: 60 },
+  }))
   active.declaration.plugins = ids.map(use => ({ use }))
   vi.mocked(pim.schema).mockResolvedValue(active)
-  vi.mocked(pim.schemaOptions).mockResolvedValue(pluginOptions)
+  vi.mocked(pim.schemaOptions).mockResolvedValue({ ...pluginOptions, plugins: pluginOptions.plugins.filter(plugin => ids.includes(plugin.plugin)) })
+  return active
+}
+
+const button = (w: VueWrapper, label: string) => w.findAll('button').find(el => el.text() === label)!
+
+async function editPlugin(w: VueWrapper, title: string, config: Record<string, unknown>) {
+  const row = w.findAll('.pim-definition').find(el => el.get('.pim-definition-toggle').text().startsWith(title))!
+  const toggle = row.get('.pim-definition-toggle')
+  if (toggle.attributes('aria-expanded') === 'false') await toggle.trigger('click')
+  await flushPromises()
+  await row.get('wc-schema-form').trigger('config-changed', { detail: config })
 }
 
 it('reviews an active plugin configuration without applying an unchanged declaration', async () => {
@@ -114,45 +132,71 @@ it('reviews an active plugin configuration without applying an unchanged declara
 })
 
 it('does not clear a new catalog configuration draft when an old save returns', async () => {
+  vi.clearAllMocks()
   activePlugins('stock')
   let finish!: (value: { seq: number }) => void
   vi.mocked(pim.configurePlugin).mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
   const w = mount(SchemaBuilder, { props: { catalogId: 'first' } })
   await flushPromises()
-  const vm = w.vm as unknown as { review: () => Promise<void>; apply: () => Promise<void>; pluginConfigs: Record<string, unknown> }
-  vm.pluginConfigs.stock = { hold_seconds: 180 }
-  await vm.review()
-  const save = vm.apply()
+  await settingsTab(w, 'Plugins')
+  await editPlugin(w, 'Inventory', { hold_seconds: 180 })
+  await button(w, 'Review changes').trigger('click')
+  expect(w.get('dialog[aria-label="Review changes"]').text()).toContain('Hold seconds · 180')
+  await button(w, 'Apply changes').trigger('click')
+  expect(pim.configurePlugin).toHaveBeenCalledWith('first', 'stock', { hold_seconds: 180 })
   await w.setProps({ catalogId: 'second' })
   await flushPromises()
-  vm.pluginConfigs.stock = { hold_seconds: 240 }
+  await settingsTab(w, 'Plugins')
+  await editPlugin(w, 'Inventory', { hold_seconds: 240 })
   finish({ seq: 1 })
-  await save
-  expect(vm.pluginConfigs.stock).toEqual({ hold_seconds: 240 })
+  await flushPromises()
+  await button(w, 'Review changes').trigger('click')
+  expect(w.get('dialog[aria-label="Review changes"]').text()).toContain('Hold seconds · 240')
+  await button(w, 'Apply changes').trigger('click')
+  await flushPromises()
+  expect(pim.configurePlugin).toHaveBeenNthCalledWith(2, 'second', 'stock', { hold_seconds: 240 })
   w.unmount()
 })
 
 it('applies the reviewed declaration and keeps only failed active configuration in the draft', async () => {
   vi.clearAllMocks()
-  activePlugins('stock', 'pricing')
+  const active = activePlugins('stock', 'pricing')
+  const edited = structuredClone(active.declaration)
+  edited.aspects![0].attributes![0].width = 'half'
   vi.mocked(pim.planSchema).mockResolvedValue({ generation: 2, class: 'cosmetic', changes: [], refused: [] })
-  vi.mocked(pim.applySchema).mockResolvedValue({ generation: 2, class: 'cosmetic' })
-  vi.mocked(pim.configurePlugin).mockResolvedValueOnce({ seq: 3 }).mockRejectedValueOnce(new Error('Pricing validation failed'))
+  vi.mocked(pim.applySchema).mockImplementationOnce(async (_id, declaration) => {
+    vi.mocked(pim.schema).mockResolvedValue({ ...active, schema_generation: 2, declaration })
+    return { generation: 2, class: 'cosmetic' }
+  })
+  vi.mocked(pim.configurePlugin).mockImplementationOnce(async (_id, _plugin, config) => {
+    vi.mocked(pim.schema).mockResolvedValue({
+      ...active, schema_generation: 2, declaration: edited,
+      plugins: active.plugins.map(plugin => plugin.plugin === 'stock' ? { ...plugin, config } : plugin),
+    })
+    return { seq: 3 }
+  }).mockRejectedValueOnce(new Error('Pricing validation failed'))
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } })
   await flushPromises()
-  const vm = w.vm as unknown as { review: () => Promise<void>; apply: () => Promise<void>; pluginConfigs: Record<string, unknown> }
+  await openTechnicalSchema(w)
+  await w.get('textarea').setValue(JSON.stringify(edited))
+  await w.get('textarea').trigger('blur')
+  await closeTechnicalSchema(w)
   await settingsTab(w, 'Plugins')
-  w.getComponent(BuilderPlugins).props('draft').aspects![0].attributes![0].width = 'half'
-  vm.pluginConfigs.stock = { hold_seconds: 180 }
-  vm.pluginConfigs.pricing = { enabled: false }
-  await vm.review()
-  await vm.apply()
+  await editPlugin(w, 'Inventory', { hold_seconds: 180 })
+  await editPlugin(w, 'Pricing', { enabled: false })
+  await button(w, 'Review changes').trigger('click')
   await flushPromises()
-  expect(pim.applySchema).toHaveBeenCalledWith('cat', expect.objectContaining({ aspects: expect.any(Array) }), 1, {})
+  await button(w, 'Apply changes').trigger('click')
+  await flushPromises()
+  expect(pim.applySchema).toHaveBeenCalledWith('cat', edited, 1, {})
   expect(pim.configurePlugin).toHaveBeenNthCalledWith(1, 'cat', 'stock', { hold_seconds: 180 })
   expect(pim.configurePlugin).toHaveBeenNthCalledWith(2, 'cat', 'pricing', { enabled: false })
-  expect(vm.pluginConfigs).toEqual({ pricing: { enabled: false } })
   expect(w.text()).toContain('Pricing validation failed')
+  await button(w, 'Review changes').trigger('click')
+  const review = w.get('dialog[aria-label="Review changes"]')
+  expect(review.text()).toContain('Enabled · No')
+  expect(review.text()).not.toContain('Inventory')
+  expect(pim.planSchema).toHaveBeenCalledTimes(1)
   w.unmount()
 })
 
