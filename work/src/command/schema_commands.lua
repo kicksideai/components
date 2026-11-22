@@ -19,11 +19,8 @@ local receipts = require("receipts")
 local domain = require("domain")
 local types = require("types")
 
-local defaults = require("defaults")
-local hash = require("hash")
-local plugin_rows = require("plugin_rows")
-local plugins = require("plugins")
 local plugin_schema = require("plugin_schema")
+local configure = require("configure")
 local fields = require("fields")
 local peers = require("peers")
 local values = require("values")
@@ -117,48 +114,11 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
         local claim_err = plugin_schema.check_claims(request.declaration, board and board.compiled)
         if claim_err then return nil, claim_err end
         local merged, merr = declaration.merge(previous, request.declaration)
-        effective = merged :: domain.Declaration
         if merr or not merged then return nil, merr end
-        local configured, config_err = plugin_rows.list(db, board_id)
-        if config_err then return nil, config_err end
-        local configs: { [string]: domain.JsonObject } = {}
-        local listed: { [string]: boolean } = {}
-        for _, entry in ipairs(effective.plugins or {}) do listed[entry.use] = true end
-        for _, row in ipairs(configured or {}) do
-            if row.active then configs[row.plugin] = row.config end
-        end
-        for id, config in pairs(request.plugin_configs or {}) do
-            if not listed[id] then return nil, guard.invalid("configuration names an unlisted plugin", { code = "plugin_unlisted" }) end
-            if configs[id] and not values.equal(configs[id], config) then
-                config_changes[#config_changes + 1] = { what = "plugin.config", class = "cosmetic", code = id }
-            end
-            configs[id] = config
-        end
-        if request.declaration.plugins ~= nil or next(request.plugin_configs or {}) ~= nil then
-            local resolved, err = plugins.compile(effective.plugins, configs, board_id, previous and previous.plugins)
-            if err then return nil, err end
-            effective.plugins = resolved
-            for _, plugin in ipairs(effective.plugins or {}) do plugin.attachment_kind = nil end
-        end
-        local removal_err = plugin_schema.check_removal(effective, board and board.compiled)
-        if removal_err then return nil, removal_err end
-        local composed, owners, compose_err = plugin_schema.compose(effective, board and board.compiled)
-        if compose_err or not composed or not owners then return nil, compose_err end
-        local settings, setting_err = defaults.read()
-        if setting_err or not settings then return nil, setting_err end
-        local built, cerr = schema.compile(board and board.compiled or nil, composed, generation + 1, configs, settings :: domain.JsonObject)
-        if cerr or not built then return nil, cerr end
-        compiled = built
-        plugin_schema.stamp(compiled, owners)
-        for _, plugin in ipairs(compiled.plugins or {}) do
-            local previous_plugin: domain.PluginDecl? = nil
-            for _, old in ipairs(board and board.compiled.plugins or {}) do if old.use == plugin.use then previous_plugin = old end end
-            if previous_plugin then plugin.attachment_id = previous_plugin.attachment_id
-            else
-                local digest = tostring(hash.sha256(board_id .. "\0" .. plugin.use .. "\0" .. (generation + 1)))
-                plugin.attachment_id = digest:sub(1, 8) .. "-" .. digest:sub(9, 12) .. "-5" .. digest:sub(14, 16) .. "-8" .. digest:sub(18, 20) .. "-" .. digest:sub(21, 32)
-            end
-        end
+        effective = merged
+        local prepared, prepare_err = configure.prepare_schema(db, board_id, generation + 1, snapshot, effective, request)
+        if prepare_err or not prepared then return nil, prepare_err end
+        compiled, config_changes = prepared.compiled, prepared.config_changes
     end
     local binding = creating and "kickside.work.service:stage_binding_preflight" or "kickside.work.service:stage_binding"
     local _, binding_err = funcs.call(binding, { board_id = board_id, compiled = compiled })

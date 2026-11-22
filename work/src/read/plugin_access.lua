@@ -22,7 +22,7 @@ function M.active(request: types.PluginContextRequest, context: types.ReadContex
     if err or not selected then return nil, err end
     local manifest, merr = manifests.load(request.plugin)
     if merr or not manifest then return nil, merr end
-    local config, cerr = plugins.effective(manifest, selected.state.config)
+    local config, cerr = declarations.effective(manifest, selected.state.config)
     if cerr or not config then return nil, cerr end
     return { state = selected.state, manifest = manifest, config = config }, nil
 end

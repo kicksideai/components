@@ -14,6 +14,17 @@ local FIELD_TYPE = "kickside.work.type"
 local function invalid(code: string, message: string): error
     return errors.new({ kind = errors.INVALID, message = message, details = { code = code } })
 end
+
+function M.effective(plugin: types.Plugin, own: types.JsonObject?): (types.JsonObject?, error?)
+    local app: types.JsonObject = {}
+    if plugin.settings then
+        local values, err = defaults.namespace(plugin.settings)
+        if err or not values then return nil, err end
+        app = values
+    end
+    return manifests.effective(plugin, app, own)
+end
+
 function M.compile(entries: { types.PluginDecl }?, configs: { [string]: types.JsonObject }?, board_id: string?, previous: { types.PluginDecl }?): ({ types.PluginDecl }?, error?)
     if #(entries or {}) > 200 then return nil, invalid("plugin_limit", "a board activates at most 200 plugins") end
     local out: { types.PluginDecl } = {}
@@ -24,13 +35,7 @@ function M.compile(entries: { types.PluginDecl }?, configs: { [string]: types.Js
         local plugin, err = manifests.load(entry.use)
         if err or not plugin then return nil, err end
         local config = (configs or {})[entry.use] or {}
-        local app: types.JsonObject = {}
-        if plugin.settings then
-            local values, verr = defaults.namespace(plugin.settings)
-            if verr or not values then return nil, verr end
-            app = values
-        end
-        local effective, eerr = manifests.effective(plugin, app, config)
+        local effective, eerr = M.effective(plugin, config)
         if eerr then return nil, eerr end
         local resolved = entry.schema
         if board_id then

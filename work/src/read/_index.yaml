@@ -345,7 +345,7 @@ entries:
   modules: [registry]
   imports:
     manifests: kickside.work.domain:manifests
-    defaults: kickside.work.settings:defaults
+    declarations: kickside.work.domain:plugins
     states: kickside.work.extensions:plugin_projection_state
     types: kickside.work:types
 - name: plugin_access

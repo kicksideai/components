@@ -2,7 +2,7 @@
 -- The host answers one plugin shape for schema reads, options and service admission.
 local registry = require("registry")
 local manifests = require("manifests")
-local defaults = require("defaults")
+local declarations = require("declarations")
 local states = require("states")
 local types = require("types")
 local M = {}
@@ -14,15 +14,7 @@ function M.failure(err: error): types.PluginError
         floor = code == "plugin_projection_gap" and details.floor :: integer? or nil }
 end
 
-function M.effective(plugin: types.Plugin, own: types.JsonObject?): (types.JsonObject?, error?)
-    local app: types.JsonObject = {}
-    if plugin.settings then
-        local values, err = defaults.namespace(plugin.settings)
-        if err or not values then return nil, err end
-        app = values
-    end
-    return manifests.effective(plugin, app, own)
-end
+M.effective = declarations.effective
 
 function M.list(board_id: string, desired: { types.PluginState }, activations: { types.PluginDecl }, historical: boolean?, options: boolean?): ({ types.PluginView }?, error?)
     local entries, err = registry.find({ [".kind"] = "registry.entry", ["meta.type"] = manifests.TYPE })
