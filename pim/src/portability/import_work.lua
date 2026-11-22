@@ -14,33 +14,42 @@ local json=require("json")
 local hash=require("hash")
 local clock=require("clock")
 local types=require("types")
+local import_types=require("import_types")
 local sql=require("sql")
 local component=require("component")
 local failure=require("failure")
 local error_envelope=require("error_envelope")
 local M={}
 
-type Position={phase:string,file:integer,offset:integer,after:string}
-type Mapping={old_id:string,sku:string,refs:{types.ExportedValue}}
-type Frozen={method:string,request:unknown,mappings:{Mapping},next:Position}
-type Work={catalog_id:string,request_id:string,storage_id:string,path:string,identity:types.JsonObject,position:Position,batch:Frozen?,job_id:string,done:integer}
-M.Work=Work
 local function invalid(message:string,code:string): error
     return errors.new({kind=errors.INVALID,retryable=false,message=message,details={code=code}})
 end
-function M.get(tx:types.Executor,catalog_id:string,lock:string?): (Work?,error?)
+function M.get(tx:types.Executor,catalog_id:string,lock:string?): (import_types.Work?,error?)
     local rows,err=tx:query("SELECT * FROM kickside_pim_import_work WHERE catalog_id=$1"..(lock=="postgres" and " FOR UPDATE" or ""),{catalog_id})
     if err or not rows or not rows[1] then return nil,err :: error? end
     local row,derr=store.decode_row(rows[1],{catalog_id="text",request_id="text",storage_id="text",path="text",identity="json",position="json",batch="json?",job_id="text",done="int"})
-    return row :: Work?,derr
+    if derr or not row then return nil, derr end
+    local batch = row.batch :: { method: unknown, request: unknown, mappings: unknown, next: unknown }?
+    if batch then
+        if type(batch.request) ~= "table" or type(batch.mappings) ~= "table" or type(batch.next) ~= "table"
+            or (batch.method ~= "schema" and batch.method ~= "items" and batch.method ~= "advance") then
+            return nil, failure.corrupt("invalid frozen import command", "batch")
+        end
+        local request = batch.request :: { declaration: unknown, items: unknown }
+        if (batch.method == "schema" and type(request.declaration) ~= "table")
+            or (batch.method == "items" and type(request.items) ~= "table") then
+            return nil, failure.corrupt("invalid frozen import request", "batch")
+        end
+    end
+    return row :: import_types.Work, nil
 end
-function M.start(catalog_id:string,storage_id:string,path:string,declaration:types.Declaration,configs:{[string]:types.JsonObject}): (Work?,error?)
+function M.start(catalog_id:string,storage_id:string,path:string,declaration:types.Declaration,configs:{[string]:types.JsonObject}): (import_types.Work?,error?)
     local database_id,dberr=store.database_id()
     if dberr or not database_id then return nil,dberr end
     local identity,ierr=execution_identity.capture()
     if ierr or not identity then return nil,ierr :: error? end
     local request_id=tostring(hash.sha256(catalog_id.."\0"..storage_id.."\0"..path))
-    return store.transaction("import admission",function(tx:types.Executor,dialect:string): (Work?,error?)
+    return store.transaction("import admission",function(tx:types.Executor,dialect:string): (import_types.Work?,error?)
         local fence_err=component.fence(tx,catalog_id,database_id)
         if fence_err then return nil,fence_err end
         local prior,perr=M.get(tx,catalog_id,dialect)
@@ -55,8 +64,8 @@ function M.start(catalog_id:string,storage_id:string,path:string,declaration:typ
         local job,jerr=jobs.enqueue_tx(tx :: sql.Transaction,dialect,{namespace="pim",scope="import",key=request_id,max_attempts=5,
             owner_locator={kind="component",id=catalog_id},job_type="kickside.pim.jobs:import",immutable_payload={catalog_id=catalog_id,request_id=request_id}})
         if jerr or not job then return nil,jerr end
-        local position:Position={phase="schema",file=1,offset=1,after=""}
-        local frozen:Frozen={method="schema",request={declaration=declaration,plugin_configs=configs,idempotency={namespace="import",key=request_id..":schema"}},mappings={},next={phase="terms",file=1,offset=1,after=""}}
+        local position:import_types.Position={phase="schema",file=1,offset=1,after=""}
+        local frozen:import_types.Frozen={method="schema",request={declaration=declaration,plugin_configs=configs,idempotency={namespace="import",key=request_id..":schema"}},mappings={},next={phase="terms",file=1,offset=1,after=""}}
         local _,err=tx:execute([[INSERT INTO kickside_pim_import_work(catalog_id,request_id,storage_id,path,identity,position,batch,job_id,done)
             VALUES($1,$2,$3,$4,$5,$6,$7,$8,0)]],{catalog_id,request_id,storage_id,path,values.canonical(identity),values.canonical(position),values.canonical(frozen),job.id})
         if err then return nil,err :: error? end
@@ -115,7 +124,7 @@ local function term_page(storage: fs.FS,path: string,offset: integer,BATCH:integ
 end
 
 local function entry(v:types.ExportedValue): types.ValueEntry return {attr=v.attr,ctx=v.ctx,value=v.value,source=v.source} end
-local function prepare(work:Work): (Frozen?,error?)
+local function prepare(work:import_types.Work): (import_types.Frozen?,error?)
     local operating,oerr=defaults.catalog(work.catalog_id)
     if oerr or not operating then return nil,oerr end
     local BATCH=operating.import_rows
@@ -124,8 +133,8 @@ local function prepare(work:Work): (Frozen?,error?)
     if serr or not storage then return nil,serr end
     local base=work.path.."/data/"
     local items:{types.ApplyItem}={}
-    local mappings:{Mapping}={}
-    local next_pos:Position={phase=pos.phase,file=pos.file,offset=pos.offset,after=pos.after}
+    local mappings:{import_types.Mapping}={}
+    local next_pos:import_types.Position={phase=pos.phase,file=pos.file,offset=pos.offset,after=pos.after}
     if pos.phase=="terms" then
         local rows,cursor,done,err=term_page(storage,base.."terms.jsonl",pos.offset,BATCH)
         if err or not rows or not cursor then return nil,err end
@@ -199,7 +208,19 @@ local function prepare(work:Work): (Frozen?,error?)
         if release_err then return nil,release_err end
         if #(rows or {})<BATCH and (not rows or not rows[#rows] or next_pos.after==rows[#rows].old_id) then next_pos.phase="done" end
     else return nil,failure.corrupt("import phase is invalid","position") end
-    return {method=#items>0 and "items" or "advance",request={items=items,idempotency={namespace="import",key=work.request_id..":"..pos.phase..":"..pos.file..":"..pos.offset..":"..pos.after}},mappings=mappings,next=next_pos},nil
+    local request: types.ApplyRequest = {
+        items = items,
+        idempotency = { namespace = "import", key = work.request_id..":"..pos.phase..":"..pos.file..":"..pos.offset..":"..pos.after },
+    }
+    if #items == 0 then return { method = "advance", request = request, mappings = mappings, next = next_pos }, nil end
+    return { method = "items", request = request, mappings = mappings, next = next_pos }, nil
+end
+
+-- The writer can mutate its request. Keep the frozen batch for the checkpoint comparison.
+local function copy_request<Request>(request: Request): (Request?, error?)
+    local command, err = json.decode(values.canonical(request))
+    if err then return nil, failure.corrupt("cannot decode frozen import request: " .. tostring(err), "batch") end
+    return command :: Request, nil
 end
 
 function M.batch(catalog_id:string): (boolean?,error?)
@@ -212,7 +233,7 @@ function M.batch(catalog_id:string): (boolean?,error?)
     if not work.batch then
         local built,berr=prepare(work)
         if berr or not built then return nil,berr end
-        local current,ferr=store.transaction("freeze import command",function(tx:types.Executor,dialect:string): (Work?,error?)
+        local current,ferr=store.transaction("freeze import command",function(tx:types.Executor,dialect:string): (import_types.Work?,error?)
             local current,cerr=M.get(tx,catalog_id,dialect)
             if cerr or not current then return nil,cerr end
             if not current.batch and values.equal(current.position,work.position) then
@@ -226,14 +247,19 @@ function M.batch(catalog_id:string): (boolean?,error?)
         work=current
         if not work.batch then return false,nil end
     end
-    local frozen=work.batch :: Frozen
-    local command=assert(json.decode(values.canonical(frozen.request)))
+    local frozen = work.batch
     local outcomes:{types.Outcome}={}
     if frozen.method=="schema" then
-        local _,err=writer.apply_schema(catalog_id,command :: types.SchemaRequest)
+        local request: types.SchemaRequest = frozen.request
+        local command, decode_err = copy_request(request)
+        if decode_err or not command then return nil, decode_err end
+        local _,err=writer.apply_schema(catalog_id,command)
         if err then return nil,err :: error? end
     elseif frozen.method=="items" then
-        local out,err=writer.import_items(catalog_id,command :: types.ApplyRequest)
+        local request: types.ApplyRequest = frozen.request
+        local command, decode_err = copy_request(request)
+        if decode_err or not command then return nil, decode_err end
+        local out,err=writer.import_items(catalog_id,command)
         if err or not out then return nil,err :: error? end
         for _,outcome in ipairs(out.outcomes) do
             if outcome.outcome~="created" and outcome.outcome~="updated" and outcome.outcome~="unchanged" then return nil,invalid("import item refused: "..values.canonical(outcome),"import_item_refused") end
