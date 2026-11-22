@@ -110,9 +110,8 @@ entries:
     kind: function.lua
     security:
       groups: [kickside.pim.security:manifest_reader]
-    source: file://build.lua
+    source: file://plugin_tools.lua
     method: working
-    modules: [registry]
     imports:
       catalog_client: kickside.pim:client
       plugins: kickside.pim.extensions:plugins
@@ -122,9 +121,8 @@ entries:
     kind: function.lua
     security:
       groups: [kickside.pim.security:manifest_reader]
-    source: file://build.lua
+    source: file://plugin_tools.lua
     method: reads
-    modules: [registry]
     imports:
       catalog_client: kickside.pim:client
       plugins: kickside.pim.extensions:plugins
