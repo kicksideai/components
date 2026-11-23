@@ -13,38 +13,61 @@ import JsonInput from './JsonInput.vue'
 import { ensureTag } from '../mount'
 import { configErrors, configFields, stringArray } from './config'
 const props = defineProps<{ schema: Record<string, unknown>; modelValue: Record<string, unknown>; disabled?: boolean; suggestDefaults?: boolean }>()
-const emit = defineEmits<{ 'update:modelValue': [value: Record<string, unknown>]; validity: [valid: boolean]; 'validation-message': [message: string] }>()
+interface SchemaForm extends HTMLElement { reportValidity(): boolean }
+interface FieldValidity { valid: boolean; errors: Record<string, string> }
+const emit = defineEmits<{ 'update:modelValue': [value: Record<string, unknown>]; validity: [valid: boolean]; 'widget-validity': [valid: boolean]; 'validation-message': [message: string] }>()
 const invalid = ref(new Set<string>()), ready = ref(false), widgetLoading = ref(false)
+const widget = ref<SchemaForm>()
+const widgetErrors = ref<Record<string, string>>({})
 const id = useId()
 const fields = computed(() => configFields(props.schema))
-const errors = computed(() => configErrors(props.schema, props.modelValue, !props.suggestDefaults))
 const picked = computed(() => fields.value.filter(f => typeof f.schema.picker === 'string'))
 const scalar = computed(() => fields.value.filter(f => typeof f.schema.picker !== 'string'))
 const pickerSchema = computed(() => ({ ...props.schema, properties: Object.fromEntries(picked.value.map(f => [f.key, { ...f.schema, title: f.title }])), required: Array.isArray(props.schema.required) ? props.schema.required.filter(key => picked.value.some(f => f.key === key)) : [] }))
+const scalarSchema = computed(() => ({
+  ...props.schema,
+  properties: Object.fromEntries(scalar.value.map(field => [field.key, field.schema])),
+}))
+const errors = computed(() => configErrors(scalarSchema.value, props.modelValue, !props.suggestDefaults))
 const pickerValues = computed(() => Object.fromEntries(picked.value.map(f => [f.key, props.modelValue[f.key]])))
 const valid = computed(() => !Object.keys(errors.value).length && !invalid.value.size && (!picked.value.length || ready.value))
+const widgetValid = computed(() => !picked.value.length || !Object.keys(widgetErrors.value).length)
 const firstError = computed(() => {
   for (const field of fields.value) {
     if (errors.value[field.key]) return field.title + ': ' + errors.value[field.key]
+    if (widgetErrors.value[field.key]) return field.title + ': ' + widgetErrors.value[field.key]
     if (invalid.value.has(field.key)) return field.title + ': Enter valid JSON.'
   }
   if (!valid.value) return 'Open plugin settings to check the configuration widget.'
   return ''
 })
-watch(valid, value => emit('validity', value), { immediate: true })
+watch([valid, widgetValid], ([local, shared]) => emit('validity', local && shared), { immediate: true })
+watch([valid, widgetValid], ([local, shared]) => emit('widget-validity', !local || shared), { immediate: true })
 watch(firstError, value => emit('validation-message', value), { immediate: true })
 async function loadPicker() { widgetLoading.value = true; ready.value = await ensureTag('wc-schema-form'); widgetLoading.value = false }
-watch(() => picked.value.length > 0, present => { if (present) void loadPicker() }, { immediate: true })
-onBeforeUnmount(() => { emit('validity', true); emit('validation-message', '') })
+watch(() => picked.value.length > 0, present => {
+  if (present) void loadPicker()
+  else widgetErrors.value = {}
+}, { immediate: true })
+onBeforeUnmount(() => { emit('validity', true); emit('widget-validity', true); emit('validation-message', '') })
 function shown(key: string, fallback: unknown) { return props.modelValue[key] ?? (props.suggestDefaults ? undefined : fallback) }
 function update(key: string, value: unknown) { const next = { ...props.modelValue }; if (value === undefined || value === null) delete next[key]; else next[key] = value; emit('update:modelValue', next) }
 function strings(key: string): string[] { const value = props.modelValue[key]; return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [] }
 function validity(key: string, valid: boolean) { if (valid) invalid.value.delete(key); else invalid.value.add(key) }
-function pickerChange(event: Event) { emit('update:modelValue', { ...props.modelValue, ...record((event as CustomEvent<unknown>).detail) }) }
+function pickerChange(event: Event) {
+  emit('update:modelValue', { ...props.modelValue, ...record((event as CustomEvent<unknown>).detail) })
+}
+function pickerValidity(event: Event) {
+  widgetErrors.value = (event as CustomEvent<FieldValidity>).detail.errors
+}
+function reportValidity() { return widget.value?.reportValidity() }
+
+defineExpose({ reportValidity })
 </script>
 <template>
   <div class="work-stack">
-    <wc-schema-form v-if="picked.length && ready" class="work-config-widget" :inert="disabled || undefined" :schema="JSON.stringify(pickerSchema)" :config="JSON.stringify(pickerValues)" @config-changed="pickerChange" />
+    <wc-schema-form v-if="picked.length && ready" ref="widget" class="work-config-widget" :inert="disabled || undefined"
+      :schema="JSON.stringify(pickerSchema)" :config="JSON.stringify(pickerValues)" @config-changed="pickerChange" @validity-changed="pickerValidity" />
     <p v-else-if="picked.length && widgetLoading" role="status" class="work-muted work-small">The configuration widget is loading.</p>
     <p v-else-if="picked.length" role="alert" class="kx-err">The configuration widget is unavailable.<Button label="Reload configuration widget" severity="secondary" outlined @click="loadPicker" /></p>
     <div class="work-config-fields">
