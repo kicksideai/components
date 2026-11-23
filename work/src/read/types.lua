@@ -26,9 +26,10 @@ type PluginContext = { attachment_id: string?, interface_version: integer, confi
 type PluginContextRequest = { board_id: string, plugin: string }
 type PluginFeedRequest = PluginContextRequest & { kind: string, token: string? }
 type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, reset: boolean, generation: integer, changes: { ChangeItem }, token: string, done: boolean }
-type SchemaGetRequest = { budget: ReadBudget?, board_id: string, generation: integer?, check_plugins: boolean? }
+type SchemaGetRequest = { budget: ReadBudget?, board_id: string, generation: integer?, check_plugins: boolean?, include_extensions: boolean? }
+type ConsumerPlacement = { id: string, slot: string, tag: string?, title: string, order: integer, access: string, plugin: string, target: string }
 type SchemaPlugin = domain.PluginView
-type SchemaView = ReadStamp & { pack: JsonObject?, outdated: boolean?, plugins: { SchemaPlugin }?, declaration: Declaration, compiled: JsonObject, digest: string, key_prefix: string, migration_error: string? }
+type SchemaView = ReadStamp & { pack: JsonObject?, outdated: boolean?, plugins: { SchemaPlugin }?, extensions: { ConsumerPlacement }?, declaration: Declaration, compiled: JsonObject, digest: string, key_prefix: string, migration_error: string? }
 type ItemRef = { id: string?, key: string? }
 type GetRequest = { budget: ReadBudget?, board_id: string?, item: ItemRef, include: { string }?, min_seq: integer? }
 type ApprovalView = { principal: domain.PrincipalDecl, decision: string, at: string }
@@ -129,7 +130,7 @@ return { AwaitingView = AwaitingView, GateView = GateView, ApprovalView = Approv
     Snapshot = Snapshot, SnapshotPreparation = SnapshotPreparation, PrincipalResult = PrincipalResult, ReadContext = ReadContext, PageCheck = PageCheck,
     Executor = Executor,
     Order = Order, QueryRequest = QueryRequest, QueryResult = QueryResult, CountResult = CountResult,
-    EditMember = EditMember, EditSelection = EditSelection, ReadStamp = ReadStamp, SchemaGetRequest = SchemaGetRequest, SchemaView = SchemaView, ItemRef = ItemRef, GetRequest = GetRequest,
+    EditMember = EditMember, EditSelection = EditSelection, ReadStamp = ReadStamp, SchemaGetRequest = SchemaGetRequest, ConsumerPlacement = ConsumerPlacement, SchemaView = SchemaView, ItemRef = ItemRef, GetRequest = GetRequest,
     ItemView = ItemView, LinkView = LinkView, CommentView = CommentView, GetResult = GetResult, ChangesCursor = ChangesCursor,
     ChangesRequest = ChangesRequest, ChangeItem = ChangeItem, FeedGap = FeedGap, ChangesResult = ChangesResult,
     HistoryRequest = HistoryRequest, HistoryEntry = HistoryEntry, HistoryResult = HistoryResult, TransitionView = TransitionView,

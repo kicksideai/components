@@ -234,6 +234,7 @@ entries:
   - json
   - security
   imports:
+    consts: kickside.work:consts
     http_errors: kickside.contract:http_errors
     types: kickside.work.api:types
     board_client: kickside.work:client

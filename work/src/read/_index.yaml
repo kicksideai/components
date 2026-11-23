@@ -55,6 +55,18 @@ entries:
     types: kickside.work.read:types
     principals: kickside.work.read:principals
     domain: kickside.work:types
+- name: consumer_extensions
+  kind: library.lua
+  source: file://consumer_extensions.lua
+  modules: [registry, security]
+  imports:
+    access_rows: kickside.work.persist:access_rows
+    predicates: kickside.work.domain:predicates
+    plugins: kickside.work.domain:plugins
+    scopes: kickside.work.read:scopes
+    search: kickside.work.domain:search
+    domain: kickside.work:types
+    types: kickside.work.read:types
 - name: reader
   kind: library.lua
   meta:
@@ -64,6 +76,7 @@ entries:
   - json
   - time
   imports:
+    consumer_extensions: kickside.work.read:consumer_extensions
     stage_runs: kickside.work.read:stage_runs
     history: kickside.work.read:history
     interval_views: kickside.work.read:interval_views

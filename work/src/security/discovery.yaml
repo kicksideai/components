@@ -307,6 +307,7 @@ entries:
     - kickside.work.read:access
     - kickside.work.read:awaiting
     - kickside.work.read:budget
+    - kickside.work.read:consumer_extensions
     - kickside.work.read:cross_board
     - kickside.work.read:feeds
     - kickside.work.read:gate

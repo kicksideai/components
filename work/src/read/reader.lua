@@ -23,6 +23,7 @@ local plugin_rows = require("plugin_rows")
 local manifests = require("manifests")
 local plugin_schema = require("plugin_schema")
 local plugins = require("plugins")
+local consumer_extensions = require("consumer_extensions")
 local peers = require("peers")
 
 local rules = require("rules")
@@ -35,6 +36,13 @@ local render, find = views.render, views.find
 local function get_schema(request: types.SchemaGetRequest, context: types.ReadContext): (types.SchemaView?, error?)
     local unsupported = access.non_item(request)
     if unsupported then return nil, unsupported end
+    local grants: domain.BoardAccess? = nil
+    if request.include_extensions and request.generation == nil then
+        local effective, err = access.effective(request.board_id)
+        if err or not effective then return nil, err end
+        grants = effective
+        context.admitted[request.board_id] = true
+    end
     local settings, serr = defaults.read()
     if serr or not settings then return nil, serr end
     local result, err = access.with_snapshot(request.board_id, nil, function(tx: types.Executor, board: domain.Board, _dialect: string): (types.SchemaView?, error?)
@@ -52,9 +60,15 @@ local function get_schema(request: types.SchemaGetRequest, context: types.ReadCo
         if derr then return nil, derr end
         local selected, perr = plugins.list(board.board_id, desired or {}, row.compiled.plugins or {}, request.generation ~= nil)
         if perr then return nil, perr end
+        local extensions: { types.ConsumerPlacement }? = nil
+        if grants then
+            local listed, lerr = consumer_extensions.list(board, grants, selected or {})
+            if lerr then return nil, lerr end
+            extensions = listed
+        end
         local parked, perr = store.parked_migration(tx, board.board_id)
         if perr then return nil, perr end
-        return { pack = row.pack, plugins = selected, declaration = row.declaration, compiled = compiled, digest = row.digest, key_prefix = row.compiled.key_prefix,
+        return { pack = row.pack, plugins = selected, extensions = extensions, declaration = row.declaration, compiled = compiled, digest = row.digest, key_prefix = row.compiled.key_prefix,
             migration_error = parked and parked.error or nil }, nil
     end, context)
     if err or not result then return nil, err end
@@ -83,7 +97,7 @@ local function get_schema(request: types.SchemaGetRequest, context: types.ReadCo
         if perr then return nil, perr end
         result.outdated = outdated
     end
-    return { pack = result.pack, outdated = result.outdated, plugins = result.plugins, declaration = result.declaration, compiled = result.compiled, digest = result.digest,
+    return { pack = result.pack, outdated = result.outdated, plugins = result.plugins, extensions = result.extensions, declaration = result.declaration, compiled = result.compiled, digest = result.digest,
         key_prefix = result.key_prefix, migration_error = result.migration_error, as_of = result.as_of,
         generation = request.generation or result.generation } :: types.SchemaView, nil
 end
