@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/kicksideai/components/compare/work-kanban-v0.1.0...work-kanban-v0.1.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **work-kanban:** restore proof-quality board layout and drag ([#404](https://github.com/kicksideai/components/issues/404)) ([6b7da3a](https://github.com/kicksideai/components/commit/6b7da3a3f43fe446e585d9a9e7a03510555b0f7e))
+
 ## 0.1.0 (2026-11-23)
 
 
