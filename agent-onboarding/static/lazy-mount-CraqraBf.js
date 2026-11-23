@@ -1,50 +1,50 @@
-import { s as nt, B as G, a as dt, b as Z, c as ot, f as _, R as $t, q as wt, k as Ct, u as St, P as _t } from "./wc-runtime-B4X5k44Z.js";
-import { openBlock as l, createElementBlock as b, mergeProps as c, createElementVNode as a, renderSlot as S, createTextVNode as Pt, toDisplayString as z, resolveComponent as D, resolveDirective as It, withDirectives as At, createBlock as P, resolveDynamicComponent as lt, withCtx as zt, createCommentVNode as $, normalizeClass as Y, defineComponent as Ft, ref as h, computed as A, onMounted as Bt, createVNode as g, unref as v, withModifiers as K } from "vue";
-import { Icon as it } from "@iconify/vue";
-import { loadByTagName as W, api as M } from "@wippy-fe/proxy";
-var ut = {
+import { s as ot, B as U, a as lt, b as Y, c as et, f as A, R as wt, q as Ct, k as St, u as _t, P as Pt } from "./wc-runtime-B4X5k44Z.js";
+import { openBlock as d, createElementBlock as c, mergeProps as b, createElementVNode as a, renderSlot as P, createTextVNode as It, toDisplayString as I, resolveComponent as G, resolveDirective as At, withDirectives as zt, createBlock as w, resolveDynamicComponent as ut, withCtx as Ft, createCommentVNode as x, normalizeClass as J, defineComponent as Bt, ref as h, computed as F, onMounted as Tt, createVNode as y, unref as g, withModifiers as W } from "vue";
+import { Icon as at } from "@iconify/vue";
+import { loadByTagName as Z, api as D } from "@wippy-fe/proxy";
+var ct = {
   name: "SpinnerIcon",
-  extends: nt
+  extends: ot
 };
-function Tt(t) {
-  return Ot(t) || Vt(t) || Nt(t) || jt();
+function jt(t) {
+  return Et(t) || Ot(t) || Vt(t) || Nt();
 }
-function jt() {
+function Nt() {
   throw new TypeError(`Invalid attempt to spread non-iterable instance.
 In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
 }
-function Nt(t, n) {
+function Vt(t, n) {
   if (t) {
-    if (typeof t == "string") return J(t, n);
+    if (typeof t == "string") return Q(t, n);
     var o = {}.toString.call(t).slice(8, -1);
-    return o === "Object" && t.constructor && (o = t.constructor.name), o === "Map" || o === "Set" ? Array.from(t) : o === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o) ? J(t, n) : void 0;
+    return o === "Object" && t.constructor && (o = t.constructor.name), o === "Map" || o === "Set" ? Array.from(t) : o === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o) ? Q(t, n) : void 0;
   }
 }
-function Vt(t) {
+function Ot(t) {
   if (typeof Symbol < "u" && t[Symbol.iterator] != null || t["@@iterator"] != null) return Array.from(t);
 }
-function Ot(t) {
-  if (Array.isArray(t)) return J(t);
+function Et(t) {
+  if (Array.isArray(t)) return Q(t);
 }
-function J(t, n) {
+function Q(t, n) {
   (n == null || n > t.length) && (n = t.length);
   for (var o = 0, e = Array(n); o < n; o++) e[o] = t[o];
   return e;
 }
-function Et(t, n, o, e, d, r) {
-  return l(), b("svg", c({
+function Lt(t, n, o, e, l, r) {
+  return d(), c("svg", b({
     width: "14",
     height: "14",
     viewBox: "0 0 14 14",
     fill: "none",
     xmlns: "http://www.w3.org/2000/svg"
-  }, t.pti()), Tt(n[0] || (n[0] = [a("path", {
+  }, t.pti()), jt(n[0] || (n[0] = [a("path", {
     d: "M6.99701 14C5.85441 13.999 4.72939 13.7186 3.72012 13.1832C2.71084 12.6478 1.84795 11.8737 1.20673 10.9284C0.565504 9.98305 0.165424 8.89526 0.041387 7.75989C-0.0826496 6.62453 0.073125 5.47607 0.495122 4.4147C0.917119 3.35333 1.59252 2.4113 2.46241 1.67077C3.33229 0.930247 4.37024 0.413729 5.4857 0.166275C6.60117 -0.0811796 7.76026 -0.0520535 8.86188 0.251112C9.9635 0.554278 10.9742 1.12227 11.8057 1.90555C11.915 2.01493 11.9764 2.16319 11.9764 2.31778C11.9764 2.47236 11.915 2.62062 11.8057 2.73C11.7521 2.78503 11.688 2.82877 11.6171 2.85864C11.5463 2.8885 11.4702 2.90389 11.3933 2.90389C11.3165 2.90389 11.2404 2.8885 11.1695 2.85864C11.0987 2.82877 11.0346 2.78503 10.9809 2.73C9.9998 1.81273 8.73246 1.26138 7.39226 1.16876C6.05206 1.07615 4.72086 1.44794 3.62279 2.22152C2.52471 2.99511 1.72683 4.12325 1.36345 5.41602C1.00008 6.70879 1.09342 8.08723 1.62775 9.31926C2.16209 10.5513 3.10478 11.5617 4.29713 12.1803C5.48947 12.7989 6.85865 12.988 8.17414 12.7157C9.48963 12.4435 10.6711 11.7264 11.5196 10.6854C12.3681 9.64432 12.8319 8.34282 12.8328 7C12.8328 6.84529 12.8943 6.69692 13.0038 6.58752C13.1132 6.47812 13.2616 6.41667 13.4164 6.41667C13.5712 6.41667 13.7196 6.47812 13.8291 6.58752C13.9385 6.69692 14 6.84529 14 7C14 8.85651 13.2622 10.637 11.9489 11.9497C10.6356 13.2625 8.85432 14 6.99701 14Z",
     fill: "currentColor"
   }, null, -1)])), 16);
 }
-ut.render = Et;
-var Lt = `
+ct.render = Lt;
+var Mt = `
     .p-badge {
         display: inline-flex;
         border-radius: dt('badge.border.radius');
@@ -119,12 +119,12 @@ var Lt = `
         min-width: dt('badge.xl.min.width');
         height: dt('badge.xl.height');
     }
-`, Mt = {
+`, Dt = {
   root: function(n) {
     var o = n.props, e = n.instance;
     return ["p-badge p-component", {
-      "p-badge-circle": Z(o.value) && String(o.value).length === 1,
-      "p-badge-dot": dt(o.value) && !e.$slots.default,
+      "p-badge-circle": Y(o.value) && String(o.value).length === 1,
+      "p-badge-dot": lt(o.value) && !e.$slots.default,
       "p-badge-sm": o.size === "small",
       "p-badge-lg": o.size === "large",
       "p-badge-xl": o.size === "xlarge",
@@ -136,13 +136,13 @@ var Lt = `
       "p-badge-contrast": o.severity === "contrast"
     }];
   }
-}, Dt = G.extend({
+}, Gt = U.extend({
   name: "badge",
-  style: Lt,
-  classes: Mt
-}), Gt = {
+  style: Mt,
+  classes: Dt
+}), Ut = {
   name: "BaseBadge",
-  extends: ot,
+  extends: et,
   props: {
     value: {
       type: [String, Number],
@@ -157,7 +157,7 @@ var Lt = `
       default: null
     }
   },
-  style: Dt,
+  style: Gt,
   provide: function() {
     return {
       $pcBadge: this,
@@ -165,54 +165,54 @@ var Lt = `
     };
   }
 };
-function F(t) {
+function B(t) {
   "@babel/helpers - typeof";
-  return F = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
+  return B = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
     return typeof n;
   } : function(n) {
     return n && typeof Symbol == "function" && n.constructor === Symbol && n !== Symbol.prototype ? "symbol" : typeof n;
-  }, F(t);
+  }, B(t);
 }
-function at(t, n, o) {
-  return (n = Ut(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
+function dt(t, n, o) {
+  return (n = Rt(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
 }
-function Ut(t) {
-  var n = Rt(t, "string");
-  return F(n) == "symbol" ? n : n + "";
+function Rt(t) {
+  var n = Ht(t, "string");
+  return B(n) == "symbol" ? n : n + "";
 }
-function Rt(t, n) {
-  if (F(t) != "object" || !t) return t;
+function Ht(t, n) {
+  if (B(t) != "object" || !t) return t;
   var o = t[Symbol.toPrimitive];
   if (o !== void 0) {
     var e = o.call(t, n);
-    if (F(e) != "object") return e;
+    if (B(e) != "object") return e;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (n === "string" ? String : Number)(t);
 }
-var ct = {
+var st = {
   name: "Badge",
-  extends: Gt,
+  extends: Ut,
   inheritAttrs: !1,
   computed: {
     dataP: function() {
-      return _(at(at({
+      return A(dt(dt({
         circle: this.value != null && String(this.value).length === 1,
         empty: this.value == null && !this.$slots.default
       }, this.severity, this.severity), this.size, this.size));
     }
   }
-}, Ht = ["data-p"];
-function qt(t, n, o, e, d, r) {
-  return l(), b("span", c({
+}, qt = ["data-p"];
+function Kt(t, n, o, e, l, r) {
+  return d(), c("span", b({
     class: t.cx("root"),
     "data-p": r.dataP
-  }, t.ptmi("root")), [S(t.$slots, "default", {}, function() {
-    return [Pt(z(t.value), 1)];
-  })], 16, Ht);
+  }, t.ptmi("root")), [P(t.$slots, "default", {}, function() {
+    return [It(I(t.value), 1)];
+  })], 16, qt);
 }
-ct.render = qt;
-var Kt = `
+st.render = Kt;
+var Wt = `
     .p-button {
         display: inline-flex;
         cursor: pointer;
@@ -863,35 +863,35 @@ var Kt = `
         color: dt('button.link.active.color');
     }
 `;
-function B(t) {
+function T(t) {
   "@babel/helpers - typeof";
-  return B = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
+  return T = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
     return typeof n;
   } : function(n) {
     return n && typeof Symbol == "function" && n.constructor === Symbol && n !== Symbol.prototype ? "symbol" : typeof n;
-  }, B(t);
+  }, T(t);
 }
-function m(t, n, o) {
-  return (n = Wt(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
+function v(t, n, o) {
+  return (n = Zt(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
 }
-function Wt(t) {
-  var n = Zt(t, "string");
-  return B(n) == "symbol" ? n : n + "";
+function Zt(t) {
+  var n = Yt(t, "string");
+  return T(n) == "symbol" ? n : n + "";
 }
-function Zt(t, n) {
-  if (B(t) != "object" || !t) return t;
+function Yt(t, n) {
+  if (T(t) != "object" || !t) return t;
   var o = t[Symbol.toPrimitive];
   if (o !== void 0) {
     var e = o.call(t, n);
-    if (B(e) != "object") return e;
+    if (T(e) != "object") return e;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (n === "string" ? String : Number)(t);
 }
-var Yt = {
+var Jt = {
   root: function(n) {
     var o = n.instance, e = n.props;
-    return ["p-button p-component", m(m(m(m(m(m(m(m(m({
+    return ["p-button p-component", v(v(v(v(v(v(v(v(v({
       "p-button-icon-only": o.hasIcon && !e.label && !e.badge,
       "p-button-vertical": (e.iconPos === "top" || e.iconPos === "bottom") && e.label,
       "p-button-loading": e.loading,
@@ -901,16 +901,16 @@ var Yt = {
   loadingIcon: "p-button-loading-icon",
   icon: function(n) {
     var o = n.props;
-    return ["p-button-icon", m({}, "p-button-icon-".concat(o.iconPos), o.label)];
+    return ["p-button-icon", v({}, "p-button-icon-".concat(o.iconPos), o.label)];
   },
   label: "p-button-label"
-}, Jt = G.extend({
+}, Qt = U.extend({
   name: "button",
-  style: Kt,
-  classes: Yt
-}), Qt = {
+  style: Wt,
+  classes: Jt
+}), Xt = {
   name: "BaseButton",
-  extends: ot,
+  extends: et,
   props: {
     label: {
       type: String,
@@ -997,7 +997,7 @@ var Yt = {
       default: null
     }
   },
-  style: Jt,
+  style: Qt,
   provide: function() {
     return {
       $pcButton: this,
@@ -1005,34 +1005,34 @@ var Yt = {
     };
   }
 };
-function T(t) {
+function j(t) {
   "@babel/helpers - typeof";
-  return T = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
+  return j = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
     return typeof n;
   } : function(n) {
     return n && typeof Symbol == "function" && n.constructor === Symbol && n !== Symbol.prototype ? "symbol" : typeof n;
-  }, T(t);
+  }, j(t);
 }
 function p(t, n, o) {
-  return (n = Xt(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
+  return (n = tn(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
 }
-function Xt(t) {
-  var n = tn(t, "string");
-  return T(n) == "symbol" ? n : n + "";
+function tn(t) {
+  var n = nn(t, "string");
+  return j(n) == "symbol" ? n : n + "";
 }
-function tn(t, n) {
-  if (T(t) != "object" || !t) return t;
+function nn(t, n) {
+  if (j(t) != "object" || !t) return t;
   var o = t[Symbol.toPrimitive];
   if (o !== void 0) {
     var e = o.call(t, n);
-    if (T(e) != "object") return e;
+    if (j(e) != "object") return e;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (n === "string" ? String : Number)(t);
 }
-var x = {
+var $ = {
   name: "Button",
-  extends: Qt,
+  extends: Xt,
   inheritAttrs: !1,
   inject: {
     $pcFluid: {
@@ -1060,7 +1060,7 @@ var x = {
       return this.icon || this.$slots.icon;
     },
     attrs: function() {
-      return c(this.asAttrs, this.a11yAttrs, this.getPTOptions("root"));
+      return b(this.asAttrs, this.a11yAttrs, this.getPTOptions("root"));
     },
     asAttrs: function() {
       return this.as === "BUTTON" ? {
@@ -1077,82 +1077,82 @@ var x = {
       };
     },
     hasFluid: function() {
-      return dt(this.fluid) ? !!this.$pcFluid : this.fluid;
+      return lt(this.fluid) ? !!this.$pcFluid : this.fluid;
     },
     dataP: function() {
-      return _(p(p(p(p(p(p(p(p(p(p({}, this.size, this.size), "icon-only", this.hasIcon && !this.label && !this.badge), "loading", this.loading), "fluid", this.hasFluid), "rounded", this.rounded), "raised", this.raised), "outlined", this.outlined || this.variant === "outlined"), "text", this.text || this.variant === "text"), "link", this.link || this.variant === "link"), "vertical", (this.iconPos === "top" || this.iconPos === "bottom") && this.label));
+      return A(p(p(p(p(p(p(p(p(p(p({}, this.size, this.size), "icon-only", this.hasIcon && !this.label && !this.badge), "loading", this.loading), "fluid", this.hasFluid), "rounded", this.rounded), "raised", this.raised), "outlined", this.outlined || this.variant === "outlined"), "text", this.text || this.variant === "text"), "link", this.link || this.variant === "link"), "vertical", (this.iconPos === "top" || this.iconPos === "bottom") && this.label));
     },
     dataIconP: function() {
-      return _(p(p({}, this.iconPos, this.iconPos), this.size, this.size));
+      return A(p(p({}, this.iconPos, this.iconPos), this.size, this.size));
     },
     dataLabelP: function() {
-      return _(p(p({}, this.size, this.size), "icon-only", this.hasIcon && !this.label && !this.badge));
+      return A(p(p({}, this.size, this.size), "icon-only", this.hasIcon && !this.label && !this.badge));
     }
   },
   components: {
-    SpinnerIcon: ut,
-    Badge: ct
+    SpinnerIcon: ct,
+    Badge: st
   },
   directives: {
-    ripple: $t
+    ripple: wt
   }
-}, nn = ["data-p"], on = ["data-p"];
-function en(t, n, o, e, d, r) {
-  var y = D("SpinnerIcon"), k = D("Badge"), w = It("ripple");
-  return t.asChild ? S(t.$slots, "default", {
+}, on = ["data-p"], en = ["data-p"];
+function rn(t, n, o, e, l, r) {
+  var m = G("SpinnerIcon"), k = G("Badge"), C = At("ripple");
+  return t.asChild ? P(t.$slots, "default", {
     key: 1,
-    class: Y(t.cx("root")),
+    class: J(t.cx("root")),
     a11yAttrs: r.a11yAttrs
-  }) : At((l(), P(lt(t.as), c({
+  }) : zt((d(), w(ut(t.as), b({
     key: 0,
     class: t.cx("root"),
     "data-p": r.dataP
   }, r.attrs), {
-    default: zt(function() {
-      return [S(t.$slots, "default", {}, function() {
-        return [t.loading ? S(t.$slots, "loadingicon", c({
+    default: Ft(function() {
+      return [P(t.$slots, "default", {}, function() {
+        return [t.loading ? P(t.$slots, "loadingicon", b({
           key: 0,
           class: [t.cx("loadingIcon"), t.cx("icon")]
         }, t.ptm("loadingIcon")), function() {
-          return [t.loadingIcon ? (l(), b("span", c({
+          return [t.loadingIcon ? (d(), c("span", b({
             key: 0,
             class: [t.cx("loadingIcon"), t.cx("icon"), t.loadingIcon]
-          }, t.ptm("loadingIcon")), null, 16)) : (l(), P(y, c({
+          }, t.ptm("loadingIcon")), null, 16)) : (d(), w(m, b({
             key: 1,
             class: [t.cx("loadingIcon"), t.cx("icon")],
             spin: ""
           }, t.ptm("loadingIcon")), null, 16, ["class"]))];
-        }) : S(t.$slots, "icon", c({
+        }) : P(t.$slots, "icon", b({
           key: 1,
           class: [t.cx("icon")]
         }, t.ptm("icon")), function() {
-          return [t.icon ? (l(), b("span", c({
+          return [t.icon ? (d(), c("span", b({
             key: 0,
             class: [t.cx("icon"), t.icon, t.iconClass],
             "data-p": r.dataIconP
-          }, t.ptm("icon")), null, 16, nn)) : $("", !0)];
-        }), t.label ? (l(), b("span", c({
+          }, t.ptm("icon")), null, 16, on)) : x("", !0)];
+        }), t.label ? (d(), c("span", b({
           key: 2,
           class: t.cx("label")
         }, t.ptm("label"), {
           "data-p": r.dataLabelP
-        }), z(t.label), 17, on)) : $("", !0), t.badge ? (l(), P(k, {
+        }), I(t.label), 17, en)) : x("", !0), t.badge ? (d(), w(k, {
           key: 3,
           value: t.badge,
-          class: Y(t.badgeClass),
+          class: J(t.badgeClass),
           severity: t.badgeSeverity,
           unstyled: t.unstyled,
           pt: t.ptm("pcBadge")
-        }, null, 8, ["value", "class", "severity", "unstyled", "pt"])) : $("", !0)];
+        }, null, 8, ["value", "class", "severity", "unstyled", "pt"])) : x("", !0)];
       })];
     }),
     _: 3
-  }, 16, ["class", "data-p"])), [[w]]);
+  }, 16, ["class", "data-p"])), [[C]]);
 }
-x.render = en;
-var rn = {
+$.render = rn;
+var an = {
   name: "BaseEditableHolder",
-  extends: ot,
+  extends: et,
   emits: ["update:modelValue", "value-change"],
   props: {
     modelValue: {
@@ -1237,8 +1237,8 @@ var rn = {
   formField: {},
   methods: {
     writeValue: function(n, o) {
-      var e, d;
-      this.controlled && (this.d_value = n, this.$emit("update:modelValue", n)), this.$emit("value-change", n), (e = (d = this.formField).onChange) === null || e === void 0 || e.call(d, {
+      var e, l;
+      this.controlled && (this.d_value = n, this.$emit("update:modelValue", n)), this.$emit("value-change", n), (e = (l = this.formField).onChange) === null || e === void 0 || e.call(l, {
         originalEvent: o,
         value: n
       });
@@ -1247,12 +1247,12 @@ var rn = {
     findNonEmpty: function() {
       for (var n = arguments.length, o = new Array(n), e = 0; e < n; e++)
         o[e] = arguments[e];
-      return o.find(Z);
+      return o.find(Y);
     }
   },
   computed: {
     $filled: function() {
-      return Z(this.d_value);
+      return Y(this.d_value);
     },
     $invalid: function() {
       var n, o;
@@ -1286,9 +1286,9 @@ var rn = {
       return this.$filled;
     }
   }
-}, st = {
+}, bt = {
   name: "BaseInput",
-  extends: rn,
+  extends: an,
   props: {
     size: {
       type: String,
@@ -1325,7 +1325,7 @@ var rn = {
       return this.$fluid;
     }
   }
-}, an = `
+}, dn = `
     .p-inputtext {
         font-family: inherit;
         font-feature-settings: inherit;
@@ -1403,7 +1403,7 @@ var rn = {
     .p-inputtext-fluid {
         width: 100%;
     }
-`, dn = {
+`, ln = {
   root: function(n) {
     var o = n.instance, e = n.props;
     return ["p-inputtext p-component", {
@@ -1415,14 +1415,14 @@ var rn = {
       "p-inputtext-fluid": o.$fluid
     }];
   }
-}, ln = G.extend({
+}, un = U.extend({
   name: "inputtext",
-  style: an,
-  classes: dn
-}), un = {
+  style: dn,
+  classes: ln
+}), cn = {
   name: "BaseInputText",
-  extends: st,
-  style: ln,
+  extends: bt,
+  style: un,
   provide: function() {
     return {
       $pcInputText: this,
@@ -1430,34 +1430,34 @@ var rn = {
     };
   }
 };
-function j(t) {
+function N(t) {
   "@babel/helpers - typeof";
-  return j = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
+  return N = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
     return typeof n;
   } : function(n) {
     return n && typeof Symbol == "function" && n.constructor === Symbol && n !== Symbol.prototype ? "symbol" : typeof n;
-  }, j(t);
+  }, N(t);
 }
-function cn(t, n, o) {
-  return (n = sn(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
+function sn(t, n, o) {
+  return (n = bn(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
 }
-function sn(t) {
-  var n = bn(t, "string");
-  return j(n) == "symbol" ? n : n + "";
+function bn(t) {
+  var n = pn(t, "string");
+  return N(n) == "symbol" ? n : n + "";
 }
-function bn(t, n) {
-  if (j(t) != "object" || !t) return t;
+function pn(t, n) {
+  if (N(t) != "object" || !t) return t;
   var o = t[Symbol.toPrimitive];
   if (o !== void 0) {
     var e = o.call(t, n);
-    if (j(e) != "object") return e;
+    if (N(e) != "object") return e;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (n === "string" ? String : Number)(t);
 }
-var bt = {
+var pt = {
   name: "InputText",
-  extends: un,
+  extends: cn,
   inheritAttrs: !1,
   methods: {
     onInput: function(n) {
@@ -1466,7 +1466,7 @@ var bt = {
   },
   computed: {
     attrs: function() {
-      return c(this.ptmi("root", {
+      return b(this.ptmi("root", {
         context: {
           filled: this.$filled,
           disabled: this.disabled
@@ -1474,16 +1474,16 @@ var bt = {
       }), this.formField);
     },
     dataP: function() {
-      return _(cn({
+      return A(sn({
         invalid: this.$invalid,
         fluid: this.$fluid,
         filled: this.$variant === "filled"
       }, this.size, this.size));
     }
   }
-}, pn = ["value", "name", "disabled", "aria-invalid", "data-p"];
-function hn(t, n, o, e, d, r) {
-  return l(), b("input", c({
+}, hn = ["value", "name", "disabled", "aria-invalid", "data-p"];
+function fn(t, n, o, e, l, r) {
+  return d(), c("input", b({
     type: "text",
     class: t.cx("root"),
     value: t.d_value,
@@ -1494,73 +1494,31 @@ function hn(t, n, o, e, d, r) {
     onInput: n[0] || (n[0] = function() {
       return r.onInput && r.onInput.apply(r, arguments);
     })
-  }, r.attrs), null, 16, pn);
+  }, r.attrs), null, 16, hn);
 }
-bt.render = hn;
-var pt = {
-  name: "CheckIcon",
-  extends: nt
-};
-function fn(t) {
-  return yn(t) || mn(t) || vn(t) || gn();
-}
-function gn() {
-  throw new TypeError(`Invalid attempt to spread non-iterable instance.
-In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
-}
-function vn(t, n) {
-  if (t) {
-    if (typeof t == "string") return Q(t, n);
-    var o = {}.toString.call(t).slice(8, -1);
-    return o === "Object" && t.constructor && (o = t.constructor.name), o === "Map" || o === "Set" ? Array.from(t) : o === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o) ? Q(t, n) : void 0;
-  }
-}
-function mn(t) {
-  if (typeof Symbol < "u" && t[Symbol.iterator] != null || t["@@iterator"] != null) return Array.from(t);
-}
-function yn(t) {
-  if (Array.isArray(t)) return Q(t);
-}
-function Q(t, n) {
-  (n == null || n > t.length) && (n = t.length);
-  for (var o = 0, e = Array(n); o < n; o++) e[o] = t[o];
-  return e;
-}
-function kn(t, n, o, e, d, r) {
-  return l(), b("svg", c({
-    width: "14",
-    height: "14",
-    viewBox: "0 0 14 14",
-    fill: "none",
-    xmlns: "http://www.w3.org/2000/svg"
-  }, t.pti()), fn(n[0] || (n[0] = [a("path", {
-    d: "M4.86199 11.5948C4.78717 11.5923 4.71366 11.5745 4.64596 11.5426C4.57826 11.5107 4.51779 11.4652 4.46827 11.4091L0.753985 7.69483C0.683167 7.64891 0.623706 7.58751 0.580092 7.51525C0.536478 7.44299 0.509851 7.36177 0.502221 7.27771C0.49459 7.19366 0.506156 7.10897 0.536046 7.03004C0.565935 6.95111 0.613367 6.88 0.674759 6.82208C0.736151 6.76416 0.8099 6.72095 0.890436 6.69571C0.970973 6.67046 1.05619 6.66385 1.13966 6.67635C1.22313 6.68886 1.30266 6.72017 1.37226 6.76792C1.44186 6.81567 1.4997 6.8786 1.54141 6.95197L4.86199 10.2503L12.6397 2.49483C12.7444 2.42694 12.8689 2.39617 12.9932 2.40745C13.1174 2.41873 13.2343 2.47141 13.3251 2.55705C13.4159 2.64268 13.4753 2.75632 13.4938 2.87973C13.5123 3.00315 13.4888 3.1292 13.4271 3.23768L5.2557 11.4091C5.20618 11.4652 5.14571 11.5107 5.07801 11.5426C5.01031 11.5745 4.9368 11.5923 4.86199 11.5948Z",
-    fill: "currentColor"
-  }, null, -1)])), 16);
-}
-pt.render = kn;
+pt.render = fn;
 var ht = {
-  name: "MinusIcon",
-  extends: nt
+  name: "CheckIcon",
+  extends: ot
 };
-function xn(t) {
-  return Sn(t) || Cn(t) || wn(t) || $n();
+function gn(t) {
+  return kn(t) || yn(t) || mn(t) || vn();
 }
-function $n() {
+function vn() {
   throw new TypeError(`Invalid attempt to spread non-iterable instance.
 In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
 }
-function wn(t, n) {
+function mn(t, n) {
   if (t) {
     if (typeof t == "string") return X(t, n);
     var o = {}.toString.call(t).slice(8, -1);
     return o === "Object" && t.constructor && (o = t.constructor.name), o === "Map" || o === "Set" ? Array.from(t) : o === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o) ? X(t, n) : void 0;
   }
 }
-function Cn(t) {
+function yn(t) {
   if (typeof Symbol < "u" && t[Symbol.iterator] != null || t["@@iterator"] != null) return Array.from(t);
 }
-function Sn(t) {
+function kn(t) {
   if (Array.isArray(t)) return X(t);
 }
 function X(t, n) {
@@ -1568,20 +1526,62 @@ function X(t, n) {
   for (var o = 0, e = Array(n); o < n; o++) e[o] = t[o];
   return e;
 }
-function _n(t, n, o, e, d, r) {
-  return l(), b("svg", c({
+function xn(t, n, o, e, l, r) {
+  return d(), c("svg", b({
     width: "14",
     height: "14",
     viewBox: "0 0 14 14",
     fill: "none",
     xmlns: "http://www.w3.org/2000/svg"
-  }, t.pti()), xn(n[0] || (n[0] = [a("path", {
+  }, t.pti()), gn(n[0] || (n[0] = [a("path", {
+    d: "M4.86199 11.5948C4.78717 11.5923 4.71366 11.5745 4.64596 11.5426C4.57826 11.5107 4.51779 11.4652 4.46827 11.4091L0.753985 7.69483C0.683167 7.64891 0.623706 7.58751 0.580092 7.51525C0.536478 7.44299 0.509851 7.36177 0.502221 7.27771C0.49459 7.19366 0.506156 7.10897 0.536046 7.03004C0.565935 6.95111 0.613367 6.88 0.674759 6.82208C0.736151 6.76416 0.8099 6.72095 0.890436 6.69571C0.970973 6.67046 1.05619 6.66385 1.13966 6.67635C1.22313 6.68886 1.30266 6.72017 1.37226 6.76792C1.44186 6.81567 1.4997 6.8786 1.54141 6.95197L4.86199 10.2503L12.6397 2.49483C12.7444 2.42694 12.8689 2.39617 12.9932 2.40745C13.1174 2.41873 13.2343 2.47141 13.3251 2.55705C13.4159 2.64268 13.4753 2.75632 13.4938 2.87973C13.5123 3.00315 13.4888 3.1292 13.4271 3.23768L5.2557 11.4091C5.20618 11.4652 5.14571 11.5107 5.07801 11.5426C5.01031 11.5745 4.9368 11.5923 4.86199 11.5948Z",
+    fill: "currentColor"
+  }, null, -1)])), 16);
+}
+ht.render = xn;
+var ft = {
+  name: "MinusIcon",
+  extends: ot
+};
+function $n(t) {
+  return _n(t) || Sn(t) || Cn(t) || wn();
+}
+function wn() {
+  throw new TypeError(`Invalid attempt to spread non-iterable instance.
+In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
+}
+function Cn(t, n) {
+  if (t) {
+    if (typeof t == "string") return tt(t, n);
+    var o = {}.toString.call(t).slice(8, -1);
+    return o === "Object" && t.constructor && (o = t.constructor.name), o === "Map" || o === "Set" ? Array.from(t) : o === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o) ? tt(t, n) : void 0;
+  }
+}
+function Sn(t) {
+  if (typeof Symbol < "u" && t[Symbol.iterator] != null || t["@@iterator"] != null) return Array.from(t);
+}
+function _n(t) {
+  if (Array.isArray(t)) return tt(t);
+}
+function tt(t, n) {
+  (n == null || n > t.length) && (n = t.length);
+  for (var o = 0, e = Array(n); o < n; o++) e[o] = t[o];
+  return e;
+}
+function Pn(t, n, o, e, l, r) {
+  return d(), c("svg", b({
+    width: "14",
+    height: "14",
+    viewBox: "0 0 14 14",
+    fill: "none",
+    xmlns: "http://www.w3.org/2000/svg"
+  }, t.pti()), $n(n[0] || (n[0] = [a("path", {
     d: "M13.2222 7.77778H0.777778C0.571498 7.77778 0.373667 7.69584 0.227806 7.54998C0.0819442 7.40412 0 7.20629 0 7.00001C0 6.79373 0.0819442 6.5959 0.227806 6.45003C0.373667 6.30417 0.571498 6.22223 0.777778 6.22223H13.2222C13.4285 6.22223 13.6263 6.30417 13.7722 6.45003C13.9181 6.5959 14 6.79373 14 7.00001C14 7.20629 13.9181 7.40412 13.7722 7.54998C13.6263 7.69584 13.4285 7.77778 13.2222 7.77778Z",
     fill: "currentColor"
   }, null, -1)])), 16);
 }
-ht.render = _n;
-var Pn = `
+ft.render = Pn;
+var In = `
     .p-checkbox {
         position: relative;
         display: inline-flex;
@@ -1720,7 +1720,7 @@ var Pn = `
         width: dt('checkbox.icon.lg.size');
         height: dt('checkbox.icon.lg.size');
     }
-`, In = {
+`, An = {
   root: function(n) {
     var o = n.instance, e = n.props;
     return ["p-checkbox p-component", {
@@ -1735,13 +1735,13 @@ var Pn = `
   box: "p-checkbox-box",
   input: "p-checkbox-input",
   icon: "p-checkbox-icon"
-}, An = G.extend({
+}, zn = U.extend({
   name: "checkbox",
-  style: Pn,
-  classes: In
-}), zn = {
+  style: In,
+  classes: An
+}), Fn = {
   name: "BaseCheckbox",
-  extends: st,
+  extends: bt,
   props: {
     value: null,
     binary: Boolean,
@@ -1790,7 +1790,7 @@ var Pn = `
       default: null
     }
   },
-  style: An,
+  style: zn,
   provide: function() {
     return {
       $pcCheckbox: this,
@@ -1798,59 +1798,59 @@ var Pn = `
     };
   }
 };
-function N(t) {
+function V(t) {
   "@babel/helpers - typeof";
-  return N = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
+  return V = typeof Symbol == "function" && typeof Symbol.iterator == "symbol" ? function(n) {
     return typeof n;
   } : function(n) {
     return n && typeof Symbol == "function" && n.constructor === Symbol && n !== Symbol.prototype ? "symbol" : typeof n;
-  }, N(t);
+  }, V(t);
 }
-function Fn(t, n, o) {
-  return (n = Bn(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
+function Bn(t, n, o) {
+  return (n = Tn(n)) in t ? Object.defineProperty(t, n, { value: o, enumerable: !0, configurable: !0, writable: !0 }) : t[n] = o, t;
 }
-function Bn(t) {
-  var n = Tn(t, "string");
-  return N(n) == "symbol" ? n : n + "";
+function Tn(t) {
+  var n = jn(t, "string");
+  return V(n) == "symbol" ? n : n + "";
 }
-function Tn(t, n) {
-  if (N(t) != "object" || !t) return t;
+function jn(t, n) {
+  if (V(t) != "object" || !t) return t;
   var o = t[Symbol.toPrimitive];
   if (o !== void 0) {
     var e = o.call(t, n);
-    if (N(e) != "object") return e;
+    if (V(e) != "object") return e;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (n === "string" ? String : Number)(t);
 }
-function jn(t) {
-  return En(t) || On(t) || Vn(t) || Nn();
+function Nn(t) {
+  return Ln(t) || En(t) || On(t) || Vn();
 }
-function Nn() {
+function Vn() {
   throw new TypeError(`Invalid attempt to spread non-iterable instance.
 In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
 }
-function Vn(t, n) {
+function On(t, n) {
   if (t) {
-    if (typeof t == "string") return tt(t, n);
+    if (typeof t == "string") return nt(t, n);
     var o = {}.toString.call(t).slice(8, -1);
-    return o === "Object" && t.constructor && (o = t.constructor.name), o === "Map" || o === "Set" ? Array.from(t) : o === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o) ? tt(t, n) : void 0;
+    return o === "Object" && t.constructor && (o = t.constructor.name), o === "Map" || o === "Set" ? Array.from(t) : o === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(o) ? nt(t, n) : void 0;
   }
 }
-function On(t) {
+function En(t) {
   if (typeof Symbol < "u" && t[Symbol.iterator] != null || t["@@iterator"] != null) return Array.from(t);
 }
-function En(t) {
-  if (Array.isArray(t)) return tt(t);
+function Ln(t) {
+  if (Array.isArray(t)) return nt(t);
 }
-function tt(t, n) {
+function nt(t, n) {
   (n == null || n > t.length) && (n = t.length);
   for (var o = 0, e = Array(n); o < n; o++) e[o] = t[o];
   return e;
 }
-var ft = {
+var gt = {
   name: "Checkbox",
-  extends: zn,
+  extends: Fn,
   inheritAttrs: !1,
   emits: ["change", "focus", "blur", "update:indeterminate"],
   inject: {
@@ -1888,10 +1888,10 @@ var ft = {
     onChange: function(n) {
       var o = this;
       if (!this.disabled && !this.readonly) {
-        var e = this.$pcCheckboxGroup ? this.$pcCheckboxGroup.d_value : this.d_value, d;
-        this.binary ? d = this.d_indeterminate ? this.trueValue : this.checked ? this.falseValue : this.trueValue : this.checked || this.d_indeterminate ? d = e.filter(function(r) {
-          return !Ct(r, o.value);
-        }) : d = e ? [].concat(jn(e), [this.value]) : [this.value], this.d_indeterminate && (this.d_indeterminate = !1, this.$emit("update:indeterminate", this.d_indeterminate)), this.$pcCheckboxGroup ? this.$pcCheckboxGroup.writeValue(d, n) : this.writeValue(d, n), this.$emit("change", n);
+        var e = this.$pcCheckboxGroup ? this.$pcCheckboxGroup.d_value : this.d_value, l;
+        this.binary ? l = this.d_indeterminate ? this.trueValue : this.checked ? this.falseValue : this.trueValue : this.checked || this.d_indeterminate ? l = e.filter(function(r) {
+          return !St(r, o.value);
+        }) : l = e ? [].concat(Nn(e), [this.value]) : [this.value], this.d_indeterminate && (this.d_indeterminate = !1, this.$emit("update:indeterminate", this.d_indeterminate)), this.$pcCheckboxGroup ? this.$pcCheckboxGroup.writeValue(l, n) : this.writeValue(l, n), this.$emit("change", n);
       }
     },
     onFocus: function(n) {
@@ -1911,10 +1911,10 @@ var ft = {
     },
     checked: function() {
       var n = this.$pcCheckboxGroup ? this.$pcCheckboxGroup.d_value : this.d_value;
-      return this.d_indeterminate ? !1 : this.binary ? n === this.trueValue : wt(this.value, n);
+      return this.d_indeterminate ? !1 : this.binary ? n === this.trueValue : Ct(this.value, n);
     },
     dataP: function() {
-      return _(Fn({
+      return A(Bn({
         invalid: this.$invalid,
         checked: this.checked,
         disabled: this.disabled,
@@ -1923,20 +1923,20 @@ var ft = {
     }
   },
   components: {
-    CheckIcon: pt,
-    MinusIcon: ht
+    CheckIcon: ht,
+    MinusIcon: ft
   }
-}, Ln = ["data-p-checked", "data-p-indeterminate", "data-p-disabled", "data-p"], Mn = ["id", "value", "name", "checked", "tabindex", "disabled", "readonly", "required", "aria-labelledby", "aria-label", "aria-invalid"], Dn = ["data-p"];
-function Gn(t, n, o, e, d, r) {
-  var y = D("CheckIcon"), k = D("MinusIcon");
-  return l(), b("div", c({
+}, Mn = ["data-p-checked", "data-p-indeterminate", "data-p-disabled", "data-p"], Dn = ["id", "value", "name", "checked", "tabindex", "disabled", "readonly", "required", "aria-labelledby", "aria-label", "aria-invalid"], Gn = ["data-p"];
+function Un(t, n, o, e, l, r) {
+  var m = G("CheckIcon"), k = G("MinusIcon");
+  return d(), c("div", b({
     class: t.cx("root")
   }, r.getPTOptions("root"), {
     "data-p-checked": r.checked,
-    "data-p-indeterminate": d.d_indeterminate || void 0,
+    "data-p-indeterminate": l.d_indeterminate || void 0,
     "data-p-disabled": t.disabled,
     "data-p": r.dataP
-  }), [a("input", c({
+  }), [a("input", b({
     ref: "input",
     id: t.inputId,
     type: "checkbox",
@@ -1961,209 +1961,218 @@ function Gn(t, n, o, e, d, r) {
     onChange: n[2] || (n[2] = function() {
       return r.onChange && r.onChange.apply(r, arguments);
     })
-  }, r.getPTOptions("input")), null, 16, Mn), a("div", c({
+  }, r.getPTOptions("input")), null, 16, Dn), a("div", b({
     class: t.cx("box")
   }, r.getPTOptions("box"), {
     "data-p": r.dataP
-  }), [S(t.$slots, "icon", {
+  }), [P(t.$slots, "icon", {
     checked: r.checked,
-    indeterminate: d.d_indeterminate,
-    class: Y(t.cx("icon")),
+    indeterminate: l.d_indeterminate,
+    class: J(t.cx("icon")),
     dataP: r.dataP
   }, function() {
-    return [r.checked ? (l(), P(y, c({
+    return [r.checked ? (d(), w(m, b({
       key: 0,
       class: t.cx("icon")
     }, r.getPTOptions("icon"), {
       "data-p": r.dataP
-    }), null, 16, ["class", "data-p"])) : d.d_indeterminate ? (l(), P(k, c({
+    }), null, 16, ["class", "data-p"])) : l.d_indeterminate ? (d(), w(k, b({
       key: 1,
       class: t.cx("icon")
     }, r.getPTOptions("icon"), {
       "data-p": r.dataP
-    }), null, 16, ["class", "data-p"])) : $("", !0)];
-  })], 16, Dn)], 16, Ln);
+    }), null, 16, ["class", "data-p"])) : x("", !0)];
+  })], 16, Gn)], 16, Mn);
 }
-ft.render = Gn;
-const Un = { class: "onboarding" }, Rn = {
+gt.render = Un;
+const Rn = { class: "onboarding" }, Hn = {
   key: 0,
   class: "status",
   role: "status"
-}, Hn = {
+}, qn = {
   key: 1,
   class: "stack"
-}, qn = {
+}, Kn = {
   class: "error",
   role: "alert"
-}, Kn = { class: "actions" }, Wn = {
+}, Wn = { class: "actions" }, Zn = {
   key: 2,
   class: "model-setup",
   "aria-labelledby": "model-setup-title"
-}, Zn = { class: "head" }, Yn = {
+}, Yn = { class: "head" }, Jn = {
   class: "head-icon",
   "aria-hidden": "true"
-}, Jn = {
+}, Qn = {
+  id: "model-setup-title",
+  class: "title"
+}, Xn = {
   key: 0,
+  class: "text"
+}, to = {
+  key: 1,
+  class: "text"
+}, no = {
+  key: 2,
   class: "error",
   role: "alert"
-}, Qn = { class: "actions" }, Xn = {
+}, oo = { class: "actions" }, eo = {
   key: 3,
   class: "stack",
   "aria-labelledby": "model-config-title"
-}, to = { class: "head" }, no = {
+}, ro = { class: "head" }, io = {
   class: "head-icon",
   "aria-hidden": "true"
-}, oo = ["disabled"], eo = { class: "field-row" }, ro = { class: "field" }, io = { class: "field" }, ao = ["value"], lo = {
+}, ao = ["disabled"], lo = { class: "field-row" }, uo = { class: "field" }, co = { class: "field" }, so = ["value"], bo = {
   key: 0,
   class: "hint"
-}, uo = { class: "field" }, co = { class: "memory-choice" }, so = ["value"], bo = {
+}, po = { class: "field" }, ho = { class: "memory-choice" }, fo = ["value"], go = {
   key: 0,
   class: "error",
   role: "alert"
-}, po = { class: "actions" }, ho = "My Assistant", fo = /* @__PURE__ */ Ft({
+}, vo = { class: "actions" }, mo = "My Assistant", yo = /* @__PURE__ */ Bt({
   __name: "Onboarding",
   setup(t) {
-    const n = St(), o = ["kickside.agents.traits:trait_master", "kickside.agents.traits:artifacts", "kickside.uploads.traits:file_manager"], e = h(ho), d = h(""), r = h(!0), y = h({ traits: [...o], trait_contexts: { "kickside.agents.traits:trait_master": { inject_trait_catalog: !0 } } }), k = h(!0), w = h(!1), C = h(!1), f = h(""), I = h(""), V = h([]), U = h([]), et = A(() => U.value.includes("class:fast")), gt = A(() => V.value.length > 0), O = h(!1), vt = A(() => d.value ? V.value.includes(d.value) || U.value.includes(d.value) : et.value), rt = A(() => w.value && !k.value && !C.value && !!e.value.trim() && vt.value), E = A(() => k.value ? "loading" : w.value ? O.value ? "configuring" : gt.value ? "create" : "model-setup" : "failed");
-    function R(s) {
+    const n = _t(), o = ["kickside.agents.traits:trait_master", "kickside.agents.traits:artifacts", "kickside.uploads.traits:file_manager"], e = h(mo), l = h(""), r = h(!0), m = h({ traits: [...o], trait_contexts: { "kickside.agents.traits:trait_master": { inject_trait_catalog: !0 } } }), k = h(!0), C = h(!1), S = h(!1), f = h(""), z = h(""), O = h([]), R = h([]), rt = F(() => R.value.includes("class:fast")), vt = F(() => O.value.length > 0), _ = h(!1), E = h(!1), mt = F(() => l.value ? O.value.includes(l.value) || R.value.includes(l.value) : rt.value), it = F(() => C.value && !k.value && !S.value && !!e.value.trim() && mt.value), L = F(() => k.value ? "loading" : C.value ? E.value ? "configuring" : vt.value ? "create" : "model-setup" : "failed");
+    function H(s) {
       const i = s;
       return i?.response?.data?.error || i?.message || String(s);
     }
-    function mt(s) {
+    function yt(s) {
       const i = s.detail;
-      y.value = { traits: [...i.traits], trait_contexts: { ...i.trait_contexts } };
+      m.value = { traits: [...i.traits], trait_contexts: { ...i.trait_contexts } };
     }
-    function H() {
+    function q() {
       n("done", { status: "skipped" });
     }
-    async function q() {
-      k.value = !0, w.value = !1, f.value = "";
+    async function K() {
+      k.value = !0, C.value = !1, f.value = "";
       try {
         await Promise.all([
-          W("wc-model-picker", { timeoutMs: 8e3 }),
-          W("wc-agent-trait-picker", { timeoutMs: 8e3 })
+          Z("wc-model-picker", { timeoutMs: 8e3 }),
+          Z("wc-agent-trait-picker", { timeoutMs: 8e3 })
         ]);
         const [s, i] = await Promise.all([
-          M.get("/api/v1/models/list?capability=generate"),
-          M.get("/api/v1/models/classes")
+          D.get("/api/v1/models/list?capability=generate"),
+          D.get("/api/v1/models/classes")
         ]);
         if (s.data?.success !== !0 || i.data?.success !== !0) throw new Error("Could not check model configuration.");
-        V.value = s.data.models.map((u) => u.name), U.value = i.data.classes.filter((u) => u.models.length > 0 && V.value.includes(u.models[0].name)).map((u) => `class:${u.name}`), w.value = !0;
+        O.value = s.data.models.map((u) => u.name), R.value = i.data.classes.filter((u) => u.models.length > 0 && O.value.includes(u.models[0].name)).map((u) => `class:${u.name}`), _.value = s.data.can_manage_models === !0, C.value = !0;
       } catch (s) {
-        f.value = R(s);
+        f.value = H(s);
       } finally {
         k.value = !1;
       }
     }
-    async function yt() {
-      f.value = "";
-      try {
-        await W("kickside-onboard-models", { timeoutMs: 8e3 }), O.value = !0;
-      } catch (s) {
-        f.value = R(s);
-      }
-    }
     async function kt() {
-      O.value = !1, await q();
-    }
-    async function xt() {
-      if (rt.value) {
-        C.value = !0, f.value = "";
+      if (_.value) {
+        f.value = "";
         try {
-          if (!I.value) {
-            const u = { title: e.value.trim(), memory: r.value };
-            d.value && (u.model = d.value), y.value.traits.length && (u.traits = [...y.value.traits], u.trait_contexts = { ...y.value.trait_contexts });
-            const { data: L } = await M.post("/api/v1/agent-onboarding/agents", u);
-            if (L?.success !== !0 || !L.component_id) throw new Error(L?.error || "Could not create your agent.");
-            I.value = L.component_id;
-          }
-          const { data: s } = await M.get("/api/v1/agents/list");
-          if (s?.success !== !0) throw new Error(s?.error || "Could not open your agent.");
-          const i = s.agents.find((u) => u.name === `user_agent:${I.value}`);
-          if (!i?.start_token) throw new Error("Your agent is created. Chat is unavailable; retry to open it.");
-          n("navigate", { path: "/sessions", startToken: i.start_token });
+          await Z("kickside-onboard-models", { timeoutMs: 8e3 }), E.value = !0;
         } catch (s) {
-          f.value = R(s);
-        } finally {
-          C.value = !1;
+          f.value = H(s);
         }
       }
     }
-    return Bt(q), (s, i) => (l(), b("div", Un, [
-      E.value === "loading" ? (l(), b("p", Rn, "Loading your choices…")) : E.value === "failed" ? (l(), b("div", Hn, [
-        a("p", qn, z(f.value), 1),
-        a("div", Kn, [
-          g(v(x), {
+    async function xt() {
+      E.value = !1, await K();
+    }
+    async function $t() {
+      if (it.value) {
+        S.value = !0, f.value = "";
+        try {
+          if (!z.value) {
+            const u = { title: e.value.trim(), memory: r.value };
+            l.value && (u.model = l.value), m.value.traits.length && (u.traits = [...m.value.traits], u.trait_contexts = { ...m.value.trait_contexts });
+            const { data: M } = await D.post("/api/v1/agent-onboarding/agents", u);
+            if (M?.success !== !0 || !M.component_id) throw new Error(M?.error || "Could not create your agent.");
+            z.value = M.component_id;
+          }
+          const { data: s } = await D.get("/api/v1/agents/list");
+          if (s?.success !== !0) throw new Error(s?.error || "Could not open your agent.");
+          const i = s.agents.find((u) => u.name === `user_agent:${z.value}`);
+          if (!i?.start_token) throw new Error("Your agent is created. Chat is unavailable; retry to open it.");
+          n("navigate", { path: "/sessions", startToken: i.start_token });
+        } catch (s) {
+          f.value = H(s);
+        } finally {
+          S.value = !1;
+        }
+      }
+    }
+    return Tt(K), (s, i) => (d(), c("div", Rn, [
+      L.value === "loading" ? (d(), c("p", Hn, "Loading your choices…")) : L.value === "failed" ? (d(), c("div", qn, [
+        a("p", Kn, I(f.value), 1),
+        a("div", Wn, [
+          y(g($), {
             type: "button",
             "data-dismiss": "",
             label: "Skip for now",
             severity: "secondary",
-            onClick: H
+            onClick: q
           }),
-          g(v(x), {
+          y(g($), {
             type: "button",
             label: "Retry",
-            onClick: q
+            onClick: K
           })
         ])
-      ])) : E.value === "model-setup" ? (l(), b("section", Wn, [
-        a("header", Zn, [
-          a("span", Yn, [
-            g(v(it), { icon: "tabler:cpu" })
+      ])) : L.value === "model-setup" ? (d(), c("section", Zn, [
+        a("header", Yn, [
+          a("span", Jn, [
+            y(g(at), { icon: "tabler:cpu" })
           ]),
-          i[4] || (i[4] = a("h2", {
-            id: "model-setup-title",
-            class: "title"
-          }, "Set up a model", -1))
+          a("h2", Qn, I(_.value ? "Set up a model" : "A model is required"), 1)
         ]),
-        i[5] || (i[5] = a("p", { class: "text" }, "Agents need a language model to respond, and none is connected to this workspace yet. Connect a model provider to continue, or ask an administrator if you do not manage models.", -1)),
-        f.value ? (l(), b("p", Jn, z(f.value), 1)) : $("", !0),
-        a("div", Qn, [
-          g(v(x), {
+        _.value ? (d(), c("p", Xn, "Agents need a language model to respond. Connect a model provider to continue.")) : (d(), c("p", to, "Agents need a language model to respond. A workspace administrator can set one up under System → Models. Once a model is ready, you can create an agent from the Agents page.")),
+        f.value ? (d(), c("p", no, I(f.value), 1)) : x("", !0),
+        a("div", oo, [
+          y(g($), {
             type: "button",
             "data-dismiss": "",
-            label: "Cancel",
+            label: _.value ? "Cancel" : "Close",
             severity: "secondary",
-            onClick: H
-          }),
-          g(v(x), {
+            onClick: q
+          }, null, 8, ["label"]),
+          _.value ? (d(), w(g($), {
+            key: 0,
             type: "button",
             label: "Set up a model",
-            onClick: yt
-          })
+            onClick: kt
+          })) : x("", !0)
         ])
-      ])) : E.value === "configuring" ? (l(), b("section", Xn, [
-        a("header", to, [
-          a("span", no, [
-            g(v(it), { icon: "tabler:cpu" })
+      ])) : L.value === "configuring" ? (d(), c("section", eo, [
+        a("header", ro, [
+          a("span", io, [
+            y(g(at), { icon: "tabler:cpu" })
           ]),
-          i[6] || (i[6] = a("h2", {
+          i[4] || (i[4] = a("h2", {
             id: "model-config-title",
             class: "title"
           }, "Set up a model", -1))
         ]),
-        (l(), P(lt("kickside-onboard-models"), {
+        (d(), w(ut("kickside-onboard-models"), {
           class: "model-config",
-          onDone: K(kt, ["stop"]),
-          onBack: i[0] || (i[0] = K((u) => O.value = !1, ["stop"]))
+          onDone: W(xt, ["stop"]),
+          onBack: i[0] || (i[0] = W((u) => E.value = !1, ["stop"]))
         }, null, 32))
-      ])) : (l(), b("form", {
+      ])) : (d(), c("form", {
         key: 4,
         class: "stack",
         "aria-labelledby": "create-agent-title",
-        onSubmit: K(xt, ["prevent"])
+        onSubmit: W($t, ["prevent"])
       }, [
-        i[11] || (i[11] = a("h2", {
+        i[9] || (i[9] = a("h2", {
           id: "create-agent-title",
           class: "title"
         }, "Create your first agent", -1)),
-        i[12] || (i[12] = a("p", { class: "intro" }, "Your assistant starts with every installed capability. Rename it or adjust its capabilities, or remove them all for a general-purpose agent.", -1)),
+        i[10] || (i[10] = a("p", { class: "intro" }, "Your assistant starts with every installed capability. Rename it or adjust its capabilities, or remove them all for a general-purpose agent.", -1)),
         a("fieldset", {
-          disabled: C.value || !!I.value
+          disabled: S.value || !!z.value
         }, [
-          a("div", eo, [
-            a("div", ro, [
-              i[7] || (i[7] = a("label", { for: "first-agent-title" }, "Agent name", -1)),
-              g(v(bt), {
+          a("div", lo, [
+            a("div", uo, [
+              i[5] || (i[5] = a("label", { for: "first-agent-title" }, "Agent name", -1)),
+              y(g(pt), {
                 id: "first-agent-title",
                 modelValue: e.value,
                 "onUpdate:modelValue": i[1] || (i[1] = (u) => e.value = u),
@@ -2173,61 +2182,61 @@ const Un = { class: "onboarding" }, Rn = {
                 fluid: ""
               }, null, 8, ["modelValue"])
             ]),
-            a("div", io, [
-              i[8] || (i[8] = a("span", {
+            a("div", co, [
+              i[6] || (i[6] = a("span", {
                 id: "first-agent-model",
                 class: "label"
               }, "Model", -1)),
               a("wc-model-picker", {
-                value: d.value,
+                value: l.value,
                 capability: "generate",
                 "aria-labelledby": "first-agent-model",
-                onSelect: i[2] || (i[2] = (u) => d.value = u.detail)
-              }, null, 40, ao),
-              et.value ? $("", !0) : (l(), b("p", lo, "This workspace has no default model; choose one."))
+                onSelect: i[2] || (i[2] = (u) => l.value = u.detail)
+              }, null, 40, so),
+              rt.value ? x("", !0) : (d(), c("p", bo, "This workspace has no default model; choose one."))
             ])
           ]),
-          a("div", uo, [
-            a("div", co, [
-              g(v(ft), {
+          a("div", po, [
+            a("div", ho, [
+              y(g(gt), {
                 modelValue: r.value,
                 "onUpdate:modelValue": i[3] || (i[3] = (u) => r.value = u),
                 "input-id": "first-agent-memory",
                 binary: ""
               }, null, 8, ["modelValue"]),
-              i[9] || (i[9] = a("label", { for: "first-agent-memory" }, "Personal memory", -1))
+              i[7] || (i[7] = a("label", { for: "first-agent-memory" }, "Personal memory", -1))
             ]),
-            i[10] || (i[10] = a("p", { class: "hint" }, "Remember your preferences and useful details across conversations.", -1))
+            i[8] || (i[8] = a("p", { class: "hint" }, "Remember your preferences and useful details across conversations.", -1))
           ]),
           a("wc-agent-trait-picker", {
-            value: JSON.stringify(y.value),
+            value: JSON.stringify(m.value),
             "aria-label": "Agent capabilities",
-            onChange: mt
-          }, null, 40, so)
-        ], 8, oo),
-        f.value ? (l(), b("p", bo, z(f.value), 1)) : $("", !0),
-        a("div", po, [
-          g(v(x), {
+            onChange: yt
+          }, null, 40, fo)
+        ], 8, ao),
+        f.value ? (d(), c("p", go, I(f.value), 1)) : x("", !0),
+        a("div", vo, [
+          y(g($), {
             type: "button",
             "data-dismiss": "",
             label: "Skip for now",
             severity: "secondary",
-            disabled: C.value,
-            onClick: H
+            disabled: S.value,
+            onClick: q
           }, null, 8, ["disabled"]),
-          g(v(x), {
+          y(g($), {
             type: "submit",
-            label: C.value ? "Creating…" : I.value ? "Open agent chat" : "Create agent",
-            disabled: !rt.value
+            label: S.value ? "Creating…" : z.value ? "Open agent chat" : "Create agent",
+            disabled: !it.value
           }, null, 8, ["label", "disabled"])
         ])
       ], 32))
     ]));
   }
-}), ko = {
-  rootComponent: fo,
-  plugins: [_t]
+}), Co = {
+  rootComponent: yo,
+  plugins: [Pt]
 };
 export {
-  ko as mountConfig
+  Co as mountConfig
 };

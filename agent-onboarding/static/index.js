@@ -9,7 +9,7 @@ class e extends t {
   }
   static get vueConfig() {
     return {
-      ...r(() => import("./lazy-mount-BSHnDI4t.js").then((i) => i.mountConfig), { surface: "page", loading: "Loading…", failed: "Could not load the onboarding. Reload the page to try again.", timeout: 3e4 })
+      ...r(() => import("./lazy-mount-CraqraBf.js").then((i) => i.mountConfig), { surface: "page", loading: "Loading…", failed: "Could not load the onboarding. Reload the page to try again.", timeout: 3e4 })
     };
   }
 }

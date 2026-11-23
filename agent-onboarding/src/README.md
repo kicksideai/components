@@ -49,16 +49,15 @@ blocked until model discovery confirms a generation model for the selected model
 or the platform default `class:fast`; without a default, the user chooses a
 configured model.
 
-The create step declares no title, so the component owns the dialog heading.
-When model discovery finds no generation model, the dialog is a model setup
-popup with its own icon, the **Set up a model** title, one message, **Cancel**,
-and **Set up a model**; the agent title and form appear only once a generation
-model exists. Set up a model opens the existing Models onboarding component
-(`kickside-onboard-models`). Its `back` event returns to the setup view; its
+The component owns the dialog heading. When model discovery finds no generation
+model, the dialog uses the Models discovery response's `can_manage_models` flag.
+Callers with access see **Set up a model**, which opens the Models onboarding component
+(`kickside-onboard-models`). Its `back` event returns to the setup view. Its
 `done` event rechecks persisted configuration and opens the agent form once a
-generation model exists. Users without model settings access ask an
-administrator. The component uses `--p-*` and `--kx-*` theme tokens and
-PrimeVue inline controls.
+generation model exists. Other callers and hosts with an older Models discovery
+response see **A model is required** and directions to the administrator's
+**System → Models** view. Failed model discovery offers **Retry**. The component uses
+`--p-*` and `--kx-*` theme tokens and PrimeVue inline controls.
 
 Personal memory is on by default. The shared checkbox lets a user opt out, with
 no memory provisioning when it is off. When on, the creation service finds the
