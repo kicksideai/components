@@ -1,0 +1,218 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.kanban
+entries:
+- name: pack
+  kind: registry.entry
+  meta:
+    type: kickside.work.pack
+    title: Kanban
+    version: 1.0.0
+    icon: tabler:layout-kanban
+    description: Track issues, defects and sprint commitments on a Work board.
+  data:
+    ui_app: kickside.work.kanban:board_app
+    requires:
+    - kickside.work.planning:plugin
+    - kickside.work_search:plugin
+    traits: []
+    automations: []
+    starter: {items: [], default: false}
+    schema:
+      scopes: [kickside.work_search:text]
+      fields:
+      - {code: title, title: Summary, form: text, track: true}
+      - {code: description, title: Description, form: text}
+      - code: priority
+        title: Priority
+        type: option
+        index: number
+        track: true
+        options:
+        - {id: highest, label: Highest, order: 1}
+        - {id: high, label: High, order: 2}
+        - {id: medium, label: Medium, order: 3}
+        - {id: low, label: Low, order: 4}
+        - {id: lowest, label: Lowest, order: 5}
+      - {code: assignee, title: Assignee, type: principal, index: key, track: true}
+      - {code: reporter, title: Reporter, type: principal, index: key, track: true}
+      - {code: story_points, title: Story points, form: int, index: number, track: true}
+      - {code: labels, title: Labels, form: text, cardinality: set, index: key}
+      - {code: components, title: Components, form: text, cardinality: set, index: key}
+      - {code: due_date, title: Due date, form: time, config: {format: date}}
+      - code: resolution
+        title: Resolution
+        type: option
+        index: key
+        track: true
+        options:
+        - {id: fixed, label: Fixed}
+        - {id: delivered, label: Delivered}
+        - {id: duplicate, label: Duplicate}
+        - {id: wont_fix, label: Won’t Fix}
+      - {code: environment, title: Environment, form: text}
+      - {code: acceptance_criteria, title: Acceptance criteria, form: text}
+      # Planning period types and their fields use the published Planning pack's IDs.
+      # The Planning plugin adds the two reference fields to the tracker types.
+      - {code: name, title: Name, form: text}
+      - {code: planning_start, title: Start date, form: time, index: key}
+      - {code: planning_end, title: End date, form: time, index: key}
+      - {code: planning_goal, title: Goal, form: text}
+      - {code: current_sprint, title: Current sprint, type: item, config: {item_type: sprint, item_states: [planned, active]}, index: key, track: true}
+      - {code: milestone, title: Milestone, type: item, config: {item_type: milestone}, index: key, track: true}
+      item_types:
+      - id: epic
+        title: Epic
+        process: delivery
+        parent_types: []
+        fields: [title, description, priority, assignee, reporter, labels, components, due_date, resolution]
+      - id: story
+        title: Story
+        process: story_delivery
+        parent_types: [epic]
+        fields: [title, description, priority, assignee, reporter, story_points, labels, components, due_date, resolution, acceptance_criteria]
+      - id: task
+        title: Task
+        process: delivery
+        parent_types: [epic]
+        fields: [title, description, priority, assignee, reporter, story_points, labels, components, due_date, resolution]
+      - id: bug
+        title: Bug
+        process: delivery
+        parent_types: [epic]
+        fields: [title, description, priority, assignee, reporter, labels, components, due_date, resolution, environment]
+      - id: sub_task
+        title: Sub-task
+        process: delivery
+        parent_types: [story, task, bug]
+        fields: [title, description, priority, assignee, reporter, labels, components, due_date, resolution]
+      - {id: sprint, title: Sprint, process: planning_sprint, parent_types: [], fields: [name, planning_start, planning_end, planning_goal]}
+      - {id: milestone, title: Milestone, process: planning_period, parent_types: [], fields: [name, planning_start, planning_end, planning_goal]}
+      relation_types:
+      - {id: blocks, outward: blocks, inward: is blocked by}
+      - {id: relates, outward: relates to, inward: relates to, symmetric: true}
+
+    processes:
+    - id: delivery
+      name: Delivery
+      initial: todo
+      states:
+      - &todo {id: todo, name: To Do, category: unstarted, require: [title]}
+      - &doing {id: doing, name: In Progress, category: started}
+      - {id: review, name: In Review, category: started}
+      - &done {id: done, name: Done, category: completed, require: [resolution]}
+      - &blocked {id: blocked, name: Blocked, category: started}
+      transitions:
+      - &start {id: start, name: Start work, from: [todo], to: doing}
+      - &review {id: review, name: Request review, from: [doing], to: review}
+      - &return {id: return_to_progress, name: Return to In Progress, from: [review], to: doing}
+      - &block
+        id: block
+        name: Mark blocked
+        from: [todo, doing, review]
+        to: blocked
+        when:
+          rel: blocks
+          dir: inward
+          q: some
+          where: &open {field: category, op: nin, value: [completed, canceled]}
+      - &unblock
+        id: unblock
+        name: Resume work
+        from: [blocked]
+        to: doing
+        when:
+          rel: blocks
+          dir: inward
+          q: none
+          where: *open
+      - id: finish
+        name: Resolve
+        from: [review]
+        to: done
+        when: &no_blockers {rel: blocks, dir: inward, q: none, where: *open}
+      - &reopen
+        id: reopen
+        name: Reopen
+        from: [done]
+        to: todo
+        set: [{field: resolution, clear: true}]
+    - id: story_delivery
+      name: Story delivery
+      initial: todo
+      states:
+      - *todo
+      - *doing
+      - id: review
+        name: In Review
+        category: started
+        kind: gate
+        release_when:
+          approvals: {min: 1, from: {group: kickside.security.groups:members}, prevent_self: true}
+          when:
+            and:
+            - {field: resolution, op: is_null, value: false}
+            - *no_blockers
+      - *done
+      - *blocked
+      transitions:
+      - *start
+      - *review
+      - *return
+      - *block
+      - *unblock
+      - {id: finish, name: Resolve after approval, from: [review], to: done, auto: true, default: true}
+      - *reopen
+    - id: planning_period
+      name: Planning period
+      initial: planned
+      states: &period_states
+      - {id: planned, name: Planned, category: unstarted, require: [name]}
+      - {id: active, name: Active, category: started, require: [name, planning_start, planning_end]}
+      - {id: closed, name: Closed, category: completed, require: [name]}
+      transitions:
+      - &start_period {id: start, from: [planned], to: active, guards: [kickside.work.planning:date_order]}
+      - {id: close, from: [active], to: closed}
+    - id: planning_sprint
+      initial: planned
+      states: *period_states
+      transitions:
+      - *start_period
+      - {id: close, from: [active], to: closed, prepare_command: kickside.work.planning:prepare_close}
+    views:
+    - id: backlog
+      title: Backlog
+      view:
+        type: kanban_backlog
+        columns: [title, state, priority, assignee, story_points]
+        order: [{field: rank}]
+        where:
+          and:
+          - &issue_types {field: type, op: in, value: [epic, story, task, bug, sub_task]}
+          - {field: state, op: eq, value: todo}
+    - id: board
+      title: Board
+      view:
+        type: kanban_board
+        columns: [title, state, priority, assignee, story_points]
+        group_by: state
+        order: [{field: rank}]
+        where: *issue_types
+    - id: my_open_issues
+      title: My open issues
+      view:
+        type: kanban_list
+        columns: [title, state, priority, due_date]
+        order: [{field: rank}]
+        where:
+          and:
+          - *issue_types
+          - *open
+          - {field: assignee, op: eq, value: {'$actor': id}}
+    - id: bugs_by_priority
+      title: Bugs by priority
+      view:
+        type: kanban_table
+        columns: [title, priority, state, assignee, environment]
+        order: [{field: priority, dir: asc}, {field: rank, dir: asc}]
+        where: {field: type, op: eq, value: bug}

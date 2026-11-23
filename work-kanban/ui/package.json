@@ -1,0 +1,81 @@
+{
+  "name": "@kickside/work-kanban",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "specification": "wippy-component-1.0",
+  "wippy": {
+    "tagName": "kickside-work-kanban",
+    "type": "component",
+    "props": {
+      "type": "object",
+      "properties": {
+        "route": {
+          "type": "string",
+          "default": "",
+          "description": "Shell path below /work-kanban, including a board ID, optional tab and optional issue ID."
+        }
+      }
+    },
+    "description": "Mount Kanban in the KickSide shell and open the first readable board or select one by its ID. Set route to board/<board-id> and append backlog, sprints, search or issue/<item-id> to deep-link to a view. The component emits navigate with a path relative to the Kanban page.",
+    "events": {
+      "type": "object",
+      "properties": {
+        "navigate": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "back": {
+              "type": "object",
+              "properties": {
+                "within": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "description": "Requests navigation within Work Kanban."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "vite build --outDir ../static --emptyOutDir",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@kickside/ui-kit": "1.7.8",
+    "@wippy-fe/theme": "0.0.70",
+    "@wippy-fe/webcomponent-vue": "0.0.70",
+    "sortablejs": "1.15.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "5.2.4",
+    "@wippy-fe/vite-plugin": "0.0.70",
+    "vite": "6.4.5",
+    "@iconify/vue": "5.0.5",
+    "@wippy-fe/proxy": "0.0.70",
+    "primevue": "4.5.5",
+    "typescript": "5.9.3",
+    "vue": "3.5.45",
+    "vue-tsc": "3.3.12",
+    "vitest": "^3.2.7",
+    "@types/node": "^22.0.0"
+  },
+  "browser": "../static/index.js",
+  "peerDependencies": {
+    "@iconify/vue": "^5.0.0",
+    "@wippy-fe/proxy": "0.0.70",
+    "primevue": "4.5.5",
+    "vue": "^3.5.0"
+  },
+  "workspaces": [
+    "./.wippy/npm/@*/*"
+  ]
+}

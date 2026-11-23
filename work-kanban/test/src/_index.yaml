@@ -1,0 +1,300 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: Work Kanban consumer harness
+- name: db
+  kind: db.sql.sqlite
+  foreign_keys: true
+  meta:
+    comment: Test database; the postgres profile replaces it.
+  file: ./.wippy/work-kanban-test.sqlite
+- name: env_storage
+  kind: env.storage.file
+  meta:
+    type: envstorage
+  file_path: ./.wippy/test.env
+  auto_create: true
+- name: processes
+  kind: process.host
+  lifecycle:
+    auto_start: true
+- name: api
+  kind: http.router
+  meta:
+    server: gateway
+  middleware:
+  - token_auth
+  post_middleware:
+  - endpoint_firewall
+  options:
+    token_store: kickside.users.security:tokens
+  prefix: /api/v1
+- name: caller_only
+  kind: security.policy
+  meta:
+    comment: Lets a session run the harness caller function and nothing else.
+  policy:
+    resources:
+    - app:work_call
+    actions:
+    - funcs.call
+    effect: allow
+- name: actors
+  kind: library.lua
+  meta:
+    comment: Persists harness users so deferred projections resolve their principals.
+  source: file://actors.lua
+  modules:
+  - sql
+  - security
+- name: realtime_notify
+  kind: function.lua
+  meta:
+    comment: Harness realtime notify accepts each delivery.
+  source: file://realtime_fake.lua
+  method: notify
+- name: realtime_broadcast
+  kind: function.lua
+  meta:
+    comment: Harness realtime broadcast; boards only notify their readers.
+  source: file://realtime_fake.lua
+  method: broadcast
+- name: realtime_binding
+  kind: contract.binding
+  meta:
+    comment: Harness realtime implementation for board notifications.
+  contracts:
+  - contract: kickside.contract:realtime
+    default: true
+    methods:
+      notify: app:realtime_notify
+      broadcast: app:realtime_broadcast
+- name: dep.test
+  kind: ns.dependency
+  version: '*'
+  component: wippy/test
+- name: dep.migration
+  kind: ns.dependency
+  version: '*'
+  component: wippy/migration
+  parameters:
+  - name: wippy.migration:app_db
+    value: app:db
+- name: dep.users
+  kind: ns.dependency
+  version: '*'
+  component: kickside/users
+  parameters:
+  - name: kickside.users:target_db
+    value: app:db
+  - name: kickside.users:env_storage
+    value: app:env_storage
+  - name: kickside.users:api_router
+    value: app:api
+  - name: kickside.users:public_router
+    value: app:api
+  - name: kickside.users:ui_server
+    value: app:gateway
+  - name: kickside.users:user_security_scope
+    value: kickside.security.groups:members
+  - name: kickside.users:admin_security_scope
+    value: app.security:work_admin
+  - name: kickside.users:login_role_resource
+    value: kickside.security.groups:members
+- name: dep.settings
+  kind: ns.dependency
+  version: '*'
+  component: kickside/settings
+  parameters:
+  - name: kickside.settings:target_db
+    value: app:db
+  - name: kickside.settings:api_router
+    value: app:api
+  - name: kickside.settings:ui_server
+    value: app:gateway
+- name: dep.component
+  kind: ns.dependency
+  version: '*'
+  component: kickside/component
+  parameters:
+  - name: kickside.component:target_db
+    value: app:db
+  - name: kickside.component:api_router
+    value: app:api
+  - name: kickside.component:lifecycle_impl
+    value: kickside.core.lifecycle:component_lifecycle_impl
+- name: dep.jobs
+  kind: ns.dependency
+  version: '*'
+  component: kickside/jobs
+  parameters:
+  - name: kickside.core.jobs:target_db
+    value: app:db
+  - name: kickside.core.jobs:process_host
+    value: app:processes
+- name: dep.core
+  kind: ns.dependency
+  version: '*'
+  component: kickside/core
+  parameters:
+  - name: kickside.core:target_db
+    value: app:db
+  - name: kickside.core.lifecycle:process_host
+    value: app:processes
+  - name: kickside.core.threads:api_router
+    value: app:api
+  - name: kickside.core.threads:process_host
+    value: app:processes
+  - name: kickside.core.projections:api_router
+    value: app:api
+  - name: kickside.core.retention:api_router
+    value: app:api
+  - name: kickside.core.retention:process_host
+    value: app:processes
+  - name: kickside.core.lifecycle:user_lifecycle_grant
+    value:
+      subject_id: kickside.security.groups:members
+      subject_type: group
+      access_mask: 2
+  - name: kickside.core.lifecycle:admin_lifecycle_grant
+    value:
+      subject_id: app.security:work_admin
+      subject_type: group
+      access_mask: 11
+- name: dep.contract
+  kind: ns.dependency
+  version: '*'
+  component: kickside/contract
+- name: dep.security
+  kind: ns.dependency
+  version: '*'
+  component: kickside/security
+  parameters:
+  - name: kickside.security:target_db
+    value: app:db
+  - name: kickside.security:api_router
+    value: app:api
+  - name: kickside.security:ui_server
+    value: app:gateway
+  - name: kickside.security:process_host
+    value: app:processes
+- name: dep.automation
+  kind: ns.dependency
+  version: '*'
+  component: kickside/automation
+  parameters:
+  - name: kickside.automation:target_db
+    value: app:db
+  - name: kickside.automation:api_router
+    value: app:api
+  - name: kickside.automation:ui_server
+    value: app:gateway
+- name: dep.module
+  kind: ns.dependency
+  version: '*'
+  component: kickside/work
+  parameters:
+  - name: kickside.work:target_db
+    value: app:db
+  - name: kickside.work:api_router
+    value: app:api
+  - name: kickside.work:registry_admin_grant
+    value:
+      subject_id: app.security:work_admin
+      subject_type: group
+      access_mask: 3
+- name: dep.bootloader
+  kind: ns.dependency
+  version: '*'
+  component: wippy/bootloader
+  parameters:
+  - name: wippy.bootloader:application_host
+    value: app:processes
+  - name: wippy.bootloader:env_storage
+    value: app:env_storage
+- name: work_admin
+  kind: security.scope
+  policies: []
+- name: work_admin_composition
+  kind: registry.entry
+  meta:
+    type: kickside.security.group_composition
+  group_id: app.security:work_admin
+  groups:
+  - kickside.security.groups:members
+  policies:
+  - kickside.work.security:work_admin
+- name: work_call
+  kind: function.lua
+  source: file://work_call.lua
+  method: run
+  modules:
+  - contract
+  - security
+  - registry
+  imports:
+    component: kickside.component:component
+- name: dep.workflows
+  kind: ns.dependency
+  component: kickside/workflows
+  version: '*'
+  parameters:
+  - { name: 'kickside.workflows:target_db', value: 'app:db' }
+  - { name: 'kickside.workflows:api_router', value: 'app:api' }
+  - { name: 'kickside.workflows:ui_server', value: 'app:gateway' }
+  - { name: 'kickside.workflows:process_host', value: 'app:processes' }
+- name: dep.sync
+  kind: ns.dependency
+  component: kickside/sync
+  version: '*'
+  parameters:
+  - { name: 'kickside.sync:ui_server', value: 'app:gateway' }
+- name: dep.transform
+  kind: ns.dependency
+  component: kickside/transform
+  version: '*'
+  parameters:
+  - { name: 'kickside.transform:ui_server', value: 'app:gateway' }
+  - { name: 'kickside.transform:api_router', value: 'app:api' }
+- name: dep.blocks
+  kind: ns.dependency
+  component: kickside/blocks
+  version: '*'
+  parameters:
+  - { name: 'kickside.blocks:process_host', value: 'app:processes' }
+  - { name: 'wippy.session:api_router', value: 'app:api' }
+  - { name: 'wippy.session:env_storage', value: 'app:env_storage' }
+  - { name: 'wippy.session:delegation_func_id', value: 'userspace.dataflow.session:delegate' }
+- name: dep.search
+  kind: ns.dependency
+  component: kickside/work-search
+  version: '*'
+  parameters:
+  - { name: 'kickside.work_search:target_db', value: 'app:db' }
+- name: dep.kanban
+  kind: ns.dependency
+  version: '*'
+  component: kickside/work-kanban
+- name: kanban_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work_kanban, timeout: 120s}
+  source: file://kanban_test.lua
+  method: run
+  modules: [funcs, security, uuid, json, http_client, time]
+  imports:
+    test: wippy.test:test
+    actors: app:actors
+    gateway: app:gateway_url
+- name: dep.views
+  kind: ns.dependency
+  version: '*'
+  component: wippy/views
+  parameters:
+  - name: wippy.views:api_router
+    value: app:api
+  - name: wippy.views:env_storage
+    value: app:env_storage

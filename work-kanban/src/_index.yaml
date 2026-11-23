@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.kanban
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: Work Kanban
+    description: Issue tracking and sprint planning on KickSide Work.
+- name: dep.work
+  kind: ns.dependency
+  component: kickside/work
+  version: '>=0.1.45'
+- name: dep.planning
+  kind: ns.dependency
+  component: kickside/work-planning
+  version: '>=0.1.5'
+- name: dep.search
+  kind: ns.dependency
+  component: kickside/work-search
+  version: '>=0.1.4'
+- name: ui_server
+  kind: ns.requirement
+  default: app:gateway
+  meta:
+    value_kind: http.service
+    comment: HTTP service that serves the Kanban bundle.
+  targets:
+  - {entry: 'kickside.work.kanban:ui_static', path: .meta.server}
+- name: user_security_scope
+  kind: ns.requirement
+  default: kickside.security.groups:members
+  meta:
+    value_kind: security.scope
+    comment: Group that can discover Kanban and load its bundle.
+  targets:
+  - {entry: 'kickside.work.kanban:module_access', path: '.groups +='}
+  - {entry: 'kickside.work.kanban:static_access', path: '.groups +='}
+- name: ui_fs
+  kind: fs.directory
+  directory: ./static
+  auto_init: true
+- name: ui_static
+  kind: http.static
+  meta: {}
+  path: /kickside-work-kanban
+  fs: kickside.work.kanban:ui_fs
+  options:
+    cache: no-cache
+    mime_types:
+      .js: application/javascript
+- name: page
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Kanban
+    description: Open a Work board and switch between its Board, Backlog, Sprints and Search views.
+    announced: true
+    auto_register: true
+    tag_name: kickside-work-kanban
+    base_path: kickside-work-kanban
+    entry_point: index.js
+    icon: tabler:layout-kanban
+    props: &page_props
+      type: object
+      properties:
+        route:
+          type: string
+          default: ''
+          description: Shell path below /work-kanban, including a board ID, optional tab and optional issue ID.
+  props: *page_props
+- name: nav
+  kind: registry.entry
+  access: kickside.work.kanban:page
+  meta:
+    type: ui.nav_item
+    section: ''
+    path: /work-kanban
+    route_name: work-kanban
+    title: Kanban
+    comment: Track issues and plan sprints on Work boards.
+    icon: tabler:layout-kanban
+    order: 34
+    render: component
+    component_tag: kickside-work-kanban
+- name: board_app
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.app
+    page: /work-kanban/board
+    title: Kanban
+    icon: tabler:layout-kanban
+    packs: ['kickside.work.kanban:pack']
+- name: module_access
+  kind: security.policy
+  meta:
+    title: Work Kanban
+    surface: kickside.work.kanban
+    intent: module_access
+    includes: ['kickside.work.kanban:static_access']
+  groups: []
+  policy:
+    resources:
+    - kickside.work.kanban:page
+    - kickside.work.kanban:nav
+    - kickside.work.kanban:board_app
+    - kickside.work.kanban:pack
+    - kickside.work.kanban:board_view
+    - kickside.work.kanban:backlog_view
+    - kickside.work.kanban:list_view
+    - kickside.work.kanban:table_view
+    actions: [registry.get, registry.find, access]
+    effect: allow
+- name: static_access
+  kind: security.policy
+  meta: {private: true}
+  groups: []
+  policy:
+    resources: ['kickside.work.kanban:ui_static']
+    actions: [access]
+    effect: allow

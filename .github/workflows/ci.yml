@@ -48,6 +48,8 @@ jobs:
       run: make -C pim-admin ui-kit
     - name: Materialize locked Work admin UI Kit for license provenance
       run: make -C work-admin ui-kit
+    - name: Materialize locked Work Kanban UI Kit for license provenance
+      run: make -C work-kanban ui-kit
     - uses: kicksideai/.github/actions/legal-check@e1186b6a3f9aac84125b7d5300077b7b23a70804
       with:
         base: ${{ github.event.pull_request.base.sha }}
@@ -272,6 +274,19 @@ jobs:
             cd "$source_root"
             version=$(jq -er --arg path work '.[$path]' .release-please-manifest.json)
             wippy publish --config work --version "$version" --dry-run --create --module-visibility private --module-type plugin
+        - module: work-kanban
+          engine: sqlite
+          commands: |
+            make -C work-kanban setup build typecheck ui-test check lint test pack
+        - module: work-kanban
+          engine: postgres
+          commands: |
+            set -euo pipefail
+            make -C work-kanban setup build
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_0"
+            createdb "$database"
+            trap 'dropdb "$database"' EXIT
+            make -C work-kanban test WIPPY_ARGS="--profile postgres --set vars.pg_database=$database --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
         - module: work-search
           engine: sqlite
           commands: |

@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.kanban
+entries:
+- name: board_view
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.view
+    id: kanban_board
+    title: Board
+    requires: {group_by: {kinds: [state]}}
+    config_schema: &view_config {type: object, additionalProperties: false}
+- name: backlog_view
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.view
+    id: kanban_backlog
+    title: Backlog
+    config_schema: *view_config
+- name: list_view
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.view
+    id: kanban_list
+    title: List
+    config_schema: *view_config
+- name: table_view
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.view
+    id: kanban_table
+    title: Table
+    config_schema: *view_config
