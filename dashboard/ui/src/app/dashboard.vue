@@ -12,43 +12,58 @@ import { useComponentEvents } from '../constants.ts'
 interface Surface {
   id: string
   label: string
-  description: string
   icon: string
+  path: string
   route_name: string
   component_tag: string
+}
+
+interface NavItem extends Surface {
+  hidden?: boolean
+  render?: string
+  surface?: string
 }
 
 const emit = useComponentEvents()
 
 const surfaces = ref<Surface[]>([])
-const loading = ref(false)
-const error = ref('')
+const status = ref<'loading' | 'ready' | 'error'>('loading')
+let refresh = 0
+
+const componentTag = /^[a-z][a-z0-9]*-[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
+
+function isActionable(item: NavItem): boolean {
+  if (!item?.id || !item.label || item.hidden || typeof item.path !== 'string') return false
+  const path = item.path.split(/[?#]/, 1)[0]
+  if (!path.startsWith('/') || path.startsWith('//') || path === '/' || item.path.includes('\\') || item.path.includes('://')) return false
+  if (item.render === 'component') return typeof item.component_tag === 'string'
+    && item.component_tag.length <= 80 && componentTag.test(item.component_tag)
+  // System is the built-in KickSide renderer. Admission still comes from nav/list.
+  return (!item.render || item.render === 'surface') && path === '/system'
+    && (item.surface || item.route_name) === 'system'
+}
 
 async function fetchOverview() {
-  loading.value = true
-  error.value = ''
+  const current = ++refresh
+  status.value = 'loading'
   try {
-    const { data } = await api.get('/api/v1/dashboard/overview')
-    surfaces.value = data.success ? (data.surfaces || []) : []
-    if (!data.success && data.error) error.value = data.error
-  } catch (e) {
-    surfaces.value = []
-    error.value = e instanceof Error ? e.message : 'failed to load overview'
-  } finally {
-    loading.value = false
+    const { data } = await api.get('/api/v1/nav/list')
+    if (current !== refresh) return
+    if (data?.success !== true) throw new Error('Navigation unavailable')
+    const items = data.items
+    if (!Array.isArray(items) && !(data.count === 0 && items && typeof items === 'object' && !Object.keys(items).length)) {
+      throw new Error('Invalid navigation response')
+    }
+    surfaces.value = Array.isArray(items) ? items.filter(isActionable) : []
+    status.value = 'ready'
+  } catch {
+    if (current === refresh) status.value = 'error'
   }
 }
 
-// Navigate to a sibling surface by its absolute shell route (/<route_name>). This
-// is SHELL-INTERNAL navigation: the `navigate` event carries `path`, the shell's
-// WcSurface bridge router.push()es it, and the shell reflects the host URL
-// (/c/app.views:main/<route>) via host.onRouteChanged. We deliberately do NOT call
-// host.navigate here -- that is host-level navigation (it addresses host pages by
-// /c/<page-id>), so a bare /agents would be wrong and a /c/app.views:main/agents
-// would hardcode the shell's page id. The host owns the /c/<page-id> prefix.
+// Use the effective path because a provider's route name can differ from its URL.
 function open(s: Surface) {
-  if (!s.route_name) return
-  emit('navigate', { path: `/${s.route_name}`, route_name: s.route_name, component_tag: s.component_tag, id: s.id })
+  emit('navigate', { path: s.path, route_name: s.route_name, component_tag: s.component_tag, id: s.id })
 }
 
 useHostVisibilityRefresh(fetchOverview)
@@ -61,23 +76,23 @@ useHostVisibilityRefresh(fetchOverview)
         <div class="kx-hero-mark"><Icon icon="tabler:sparkles" aria-hidden="true" /></div>
         <div class="kx-hero-text">
           <h1 class="kx-hero-title">Welcome to KickSide</h1>
-          <p class="kx-hero-sub">Everything installed in this workspace, ready to use.</p>
         </div>
-        <span v-if="surfaces.length" class="kx-hero-chip">{{ surfaces.length }} surface{{ surfaces.length === 1 ? '' : 's' }}</span>
       </div>
     </header>
 
-    <div v-if="error" class="kx-err">{{ error }}</div>
-
     <div class="kx-body">
-      <div v-if="loading && !surfaces.length" class="kx-loading">
+      <div v-if="status === 'loading'" class="kx-loading" role="status">
         <Icon icon="tabler:loader-2" class="spin" aria-hidden="true" /> Loading…
+      </div>
+
+      <div v-else-if="status === 'error'" class="kx-err">
+        <p role="alert">Could not load workspace navigation.</p>
+        <button type="button" class="kx-retry" @click="fetchOverview">Retry</button>
       </div>
 
       <div v-else-if="!surfaces.length" class="kx-empty">
         <Icon icon="tabler:layout-dashboard" class="kx-empty-ico" aria-hidden="true" />
-        <div class="kx-empty-title">Nothing installed yet</div>
-        <div class="kx-empty-sub">Install a feature module that declares a surface and it appears here.</div>
+        <div class="kx-empty-title">No features available to this account</div>
       </div>
 
       <div v-else class="kx-grid">
@@ -85,15 +100,13 @@ useHostVisibilityRefresh(fetchOverview)
           v-for="s in surfaces"
           :key="s.id"
           class="kx-card"
-          :class="{ 'kx-card-static': !s.route_name }"
-          :disabled="!s.route_name"
-          :aria-label="s.route_name ? `Open ${s.label}` : s.label"
+          type="button"
+          :aria-label="`Open ${s.label}`"
           @click="open(s)"
         >
           <span class="kx-card-icon"><Icon :icon="s.icon" aria-hidden="true" /></span>
           <span class="kx-card-name">{{ s.label }}</span>
-          <span v-if="s.description" class="kx-card-desc">{{ s.description }}</span>
-          <span v-if="s.route_name" class="kx-card-go"><Icon icon="tabler:arrow-right" aria-hidden="true" /></span>
+          <span class="kx-card-go"><Icon icon="tabler:arrow-right" aria-hidden="true" /></span>
         </button>
       </div>
     </div>

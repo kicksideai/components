@@ -1,24 +1,21 @@
 # kickside/dashboard
 
-A registry-driven deployment overview. The dashboard is the landing surface that
-answers "what is installed here?" without any hardcoded knowledge of the
-deployment — it discovers the installed navigable surfaces from the registry and
-renders each one as a card with its icon, name, and a human description.
+A landing surface for opening features available to the signed-in account. Cards
+use the effective navigation shared with the shell.
 
 ## What it does
 
-- `GET /api/v1/dashboard/overview` discovers the installed navigable surfaces via
-  `registry.find` (`view.component` and `ui.nav_item` entries), pulls a human
-  description for each from the entry meta and the owning module's
-  `ns.definition`, and returns `[{ id, label, description, icon, route_name }]`.
-- The `kickside-dashboard` web component fetches that list and renders a card
-  grid. Each card is clickable and emits a `navigate` event (and updates the
-  host location) so the host can route to the surface.
+- The `kickside-dashboard` web component reads `/api/v1/nav/list` using the
+  authenticated host's API and uses the returned item paths, order, labels, and
+  icons. A failed read gives the user a Retry action.
+- `GET /api/v1/dashboard/overview` remains available for existing clients that
+  use the installed-surface registry overview.
+- Each card emits a `navigate` event so the host can route to the surface.
 - The page is self-contained: it ships and serves its own built bundle, so the
   module needs no app code to render.
 
-Adding or removing any module that declares a surface changes the dashboard
-automatically — there is no central list to edit.
+Module and administrator navigation changes are reflected when the Dashboard
+becomes visible again.
 
 ## Layout
 

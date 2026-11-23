@@ -1,6 +1,6 @@
 # kickside/dashboard
 
-Registry-driven overview of installed navigation and application surfaces.
+Overview of the application features available to the signed-in account.
 
 This module installs independently into a [KickSide](https://kickside.ai) host.
 
@@ -15,7 +15,7 @@ wippy install
 ```
 
 Apply host bindings and migrations through the application install plan.
-Install the module and bind the declared host resources. Its cards come from installed navigation and view metadata.
+Install the module and bind the declared host resources. The host serves effective navigation at `/api/v1/nav/list`.
 
 ## Requirements
 
@@ -39,7 +39,7 @@ commit regenerated tracked assets with the source.
 
 ## Use
 
-Open **Dashboard** to select an installed navigable surface. Cards come from visible navigation and view declarations. A missing card requires checking installation, declarations, and the caller’s access; the dashboard does not supply domain metrics.
+Open **Dashboard** to select a feature from your effective navigation. If Dashboard cannot load navigation, select **Retry**.
 
 ## Reference
 
