@@ -15,9 +15,9 @@ typecheck:
 	cd test && $(WIPPY) lint --strict-any --level warning --ns 'kickside.work.*' --ns kickside.work
 test:
 	cd test && WIPPY="$(WIPPY)" ./run.sh
-WORK_PG_PORT ?= 5434
 test-pg:
-	cd test && WIPPY="$(WIPPY)" ./run.sh --profile postgres --set vars.pg_port=$(WORK_PG_PORT)
+	cd test && WIPPY="$(WIPPY)" PGPORT="$(or $(WORK_PG_PORT),$(PGPORT))" bash ../../test-support/postgres.sh kickside_test_work \
+		bash -ec './run.sh --profile postgres --set "vars.pg_host=$$PGHOST" --set "vars.pg_port=$$PGPORT" --set "vars.pg_database=$$PGDATABASE"'
 
 check-module:
 	node scripts/generate-contracts.mjs --check
