@@ -138,10 +138,10 @@ function personName(value: Scalar) {
         </li>
       </ul>
     </div>
-    <MultiSelect v-else-if="many && options.length" :input-id="id" :aria-label="field.title" :aria-required="required"
+    <MultiSelect v-else-if="many && options.length" class="issue-field-select" :input-id="id" :aria-label="field.title" :aria-required="required"
       :model-value="listValue" :options="options" option-label="label" option-value="id" :disabled="disabled" fluid
       @update:model-value="set" />
-    <Select v-else-if="options.length" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="stringValue"
+    <Select v-else-if="options.length" class="issue-field-select" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="stringValue"
       :options="options" option-label="label" option-value="id" placeholder="Choose an option" :show-clear="!required" :disabled="disabled" fluid
       @update:model-value="set" />
     <Select v-else-if="isItem" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="refValue?.item"

@@ -130,23 +130,25 @@ async function create() {
         {{ issueProblem(error, schema).message }}
         <small v-if="issueProblem(error, schema).code">{{ issueProblem(error, schema).code }}</small>
       </div>
-      <div class="issue-create-field">
-        <label :for="id + '-type'">Issue type</label>
-        <Select :input-id="id + '-type'" aria-label="Issue type" :model-value="typeId" :options="types" option-label="title" option-value="id"
-          fluid :disabled="busy || uncertain" @update:model-value="chooseType" />
-      </div>
-      <div v-if="parentTypes.length" class="issue-create-field">
-        <label :for="id + '-parent'">Parent <span v-if="needsParent(kind)" aria-hidden="true">*</span></label>
-        <Select v-model="parent" :input-id="id + '-parent'" aria-label="Parent" :aria-required="needsParent(kind)" :options="parentOptions"
-          option-label="label" option-value="id" filter fluid placeholder="Select a parent"
-          :show-clear="!needsParent(kind)" :disabled="busy || uncertain" :loading="loadingParents"
-          empty-message="No eligible parents" @show="!parents.loaded.value && parents.load()">
-          <template #footer>
-            <span v-if="parentError" role="alert">Could not load eligible parents.</span>
-            <Button v-if="moreParents || parentError" type="button" size="small" text
-              :label="parentError ? 'Retry' : 'Load more parents'" @click.stop="parentError ? parents.retry() : parents.load(true)" />
-          </template>
-        </Select>
+      <div class="issue-create-context">
+        <div class="issue-create-field">
+          <label :for="id + '-type'">Issue type</label>
+          <Select class="issue-field-select" :input-id="id + '-type'" aria-label="Issue type" :model-value="typeId" :options="types"
+            option-label="title" option-value="id" fluid :disabled="busy || uncertain" @update:model-value="chooseType" />
+        </div>
+        <div v-if="parentTypes.length" class="issue-create-field">
+          <label :for="id + '-parent'">Parent <span v-if="needsParent(kind)" aria-hidden="true">*</span></label>
+          <Select v-model="parent" class="issue-field-select" :input-id="id + '-parent'" aria-label="Parent" :aria-required="needsParent(kind)"
+            :options="parentOptions" option-label="label" option-value="id" filter fluid placeholder="Select a parent"
+            :show-clear="!needsParent(kind)" :disabled="busy || uncertain" :loading="loadingParents"
+            empty-message="No eligible parents" @show="!parents.loaded.value && parents.load()">
+            <template #footer>
+              <span v-if="parentError" role="alert">Could not load eligible parents.</span>
+              <Button v-if="moreParents || parentError" type="button" size="small" text
+                :label="parentError ? 'Retry' : 'Load more parents'" @click.stop="parentError ? parents.retry() : parents.load(true)" />
+            </template>
+          </Select>
+        </div>
       </div>
       <FieldControl v-for="field in fields.required" :key="field.code" v-model="draft[field.code]"
         :field="field" :board="board.board_id" :work="work" required :disabled="busy || uncertain" :autofocus="field.code === 'title'" />

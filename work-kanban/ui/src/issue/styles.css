@@ -4,13 +4,16 @@
 .issue-create-form, .issue-create-field { display: grid; gap: 12px; min-inline-size: 0; }
 .issue-create-field { gap: 4px; }
 .issue-create-field label { font-weight: 600; }
-.issue-create-support { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 12px; }
-.issue-create-wide { grid-column: 1 / -1; }
+.issue-create-context, .issue-create-support { display: grid; gap: 12px; }
+.issue-create-context { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.issue-create-support { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
+.issue-create-wide, .issue-create-context > :only-child { grid-column: 1 / -1; }
 @media (max-width: 28rem) {
-  .issue-create-support { grid-template-columns: minmax(0, 1fr); }
+  .issue-create-context, .issue-create-support { grid-template-columns: minmax(0, 1fr); }
 }
 .issue-create-form [role='alert'] small { display: block; margin-block-start: .25rem; }
 .issue-field-control { display: grid; gap: 4px; min-inline-size: 0; }
+.issue-field-select { min-inline-size: 0; max-inline-size: 100%; }
 .issue-field-control label { font-weight: 600; }
 .issue-principal-picker { display: grid; justify-items: start; gap: .25rem; }
 .issue-principal-picker wc-principal-picker { inline-size: 100%; }
