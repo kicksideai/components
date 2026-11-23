@@ -1,0 +1,783 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local test = require("test")
+local security = require("security")
+local contract = require("contract")
+local funcs = require("funcs")
+local registry = require("registry")
+local blocks = require("blocks")
+local compiler = require("compiler")
+local json = require("json")
+local sql = require("sql")
+local time = require("time")
+local uuid = require("uuid")
+local jobs = require("jobs")
+local notifier = require("notifier")
+local canonical_json = require("canonical_json")
+
+local TOOL_NS = "kickside.mail.traits:"
+local READER_POLICIES = {
+    "kickside.mail.security:module_access",
+    "kickside.mail.security:module_runtime",
+    "kickside.mail.security:template_access",
+}
+
+local function open(id, binding)
+    local definition, err = contract.get(id)
+    if err then return nil, err end
+    return definition:open(binding)
+end
+
+local function probe(input)
+    if input.operation == "set" or input.operation == "unset" then
+        local settings = assert(open("kickside.settings:settings"))
+        return settings[input.operation](settings, {
+            namespace = "kickside.mail", key = input.key, value = input.value,
+        })
+    end
+    if input.operation == "write" then
+        local writable = assert(open("kickside.data:writable", "kickside.mail.sink:writable"))
+        return writable:write({
+            config = {}, sink_op = "create", input = input.message,
+            idempotency_key = "delivery-key", identity_key = "record-key", origin = "automation",
+        })
+    end
+    if input.operation == "blocks" then
+        local catalog, catalog_err = blocks.catalog()
+        if catalog_err then return nil, catalog_err end
+        local id = TOOL_NS .. "mail_send"
+        local descriptor = assert(catalog[id], "MailSend is missing from the Block catalog")
+        local plan, plan_err = blocks.plan({block_id = id, def_node_id = "deliver", config = input.message})
+        assert(plan, plan_err :: error?)
+        local upstream_plan, upstream_err = blocks.plan({block_id = id, def_node_id = "deliver", config = {}})
+        assert(upstream_plan, upstream_err :: error?)
+        local compiled = assert(compiler.compile({
+            nodes = {
+                {id = "prepare", kind = "block", ref = TOOL_NS .. "mail_preview", config = {
+                    template = "notice", vars = {subject = "Status", message = "Ready"},
+                }},
+                {id = "deliver", kind = "block", ref = id, config = {to = input.message.to}},
+            },
+            edges = {{id = "message", source_id = "prepare", source_port = "result", target_id = "deliver"}},
+        }, {blocks = catalog}))
+        return {descriptor = descriptor, plan = plan, upstream_plan = upstream_plan, compiled = compiled}
+    end
+    if input.operation == "raw" then
+        return open("kickside.mail:transport", "kickside.mail.harness:first")
+    end
+    if input.operation == "raw_send" then
+        return funcs.call("kickside.mail.harness:send_first", input.message)
+    end
+    if input.operation == "driver_validation" then
+        return funcs.call("kickside.mail:validate_driver", {value = "first"})
+    end
+    local mailer, err = open("kickside.mail:mailer")
+    if err then return nil, err end
+    if input.operation == "list_templates" then return mailer:list_templates() end
+    return mailer[input.operation](mailer, input.message)
+end
+
+local function caller(policy_ids, id)
+    local policies = {assert(security.policy("kickside.mail.harness:caller"))}
+    local groups = {"app:user"}
+    for _, policy_id in ipairs(policy_ids) do
+        policies[#policies + 1] = assert(security.policy(policy_id))
+        if policy_id == "kickside.mail.security:send_access" then
+            groups[#groups + 1] = "app:mail_senders"
+        end
+    end
+    id = id or uuid.v4()
+    local db = assert(sql.get("app:db"))
+    assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
+        VALUES ($1,$2,$1,'test-only','active') ON CONFLICT (user_id) DO NOTHING]], {id, id .. "@example.org"}))
+    for _, group_id in ipairs(groups) do
+        assert(db:execute([[INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)
+            ON CONFLICT (user_id,group_id) DO NOTHING]], {id, group_id}))
+    end
+    assert(db:release())
+    local actor = assert(security.new_actor(id, {security_groups = groups}))
+    local scope = assert(security.new_scope(policies))
+    return assert(funcs.new():with_actor(actor):with_scope(scope))
+end
+
+local function invoke(executor, operation, message)
+    return executor:call("kickside.mail.harness:probe", {operation = operation, message = message})
+end
+
+local function await_message(executor, id, matches, seconds)
+    local deadline = time.now():add((seconds or 25) * time.SECOND):unix_nano()
+    local result
+    repeat
+        result = assert(invoke(executor, "get_message", id))
+        if matches(result) then return result end
+        time.sleep("25ms")
+    until time.now():unix_nano() >= deadline
+    error("Unexpected delivery state: " .. assert(json.encode(result)))
+end
+
+local function terminal(executor, queued)
+    test.eq("queued", queued.status)
+    return await_message(executor, queued.message_id, function(result) return result.status ~= "queued" end)
+end
+
+local function query(statement, args)
+    local db = assert(sql.get("app:db"))
+    local rows, err = db:query(statement, args)
+    assert(db:release())
+    return assert(rows, tostring(err))
+end
+
+local function persisted(id)
+    return assert(query("SELECT * FROM mail_message WHERE id=$1", {id})[1])
+end
+
+local function no_body(id)
+    local row = persisted(id)
+    test.is_nil(row.html)
+    test.is_nil(row.text)
+    test.is_nil(row.actor_context)
+    test.is_nil(row.next_check_at)
+    test.is_nil(row.next_attempt_at)
+end
+
+local function await_job(id, status)
+    local deadline = time.now():add(25 * time.SECOND):unix_nano()
+    local state
+    repeat
+        state = assert(jobs.get_job(id))
+        if state.status == status then return state end
+        time.sleep("25ms")
+    until time.now():unix_nano() >= deadline
+    error("Unexpected Jobs state: " .. assert(json.encode(state)))
+end
+
+local function change(admin, key, value)
+    return assert(admin:call("kickside.mail.harness:probe", {
+        operation = value == nil and "unset" or "set", key = key, value = value,
+    }))
+end
+
+local function body()
+    return {to = {"reader@example.org"}, subject = "Status", text = "Ready"}
+end
+
+local function template_request()
+    return {to = {"reader@example.org"}, template = "notice", vars = {subject = "Status & updates", message = "Ready"}}
+end
+
+local function capture_with(admin)
+    assert(change(admin, "driver", "capture").success)
+    assert(change(admin, "from_address", "mail@example.org").success)
+end
+
+local function refusal(value, err, kind, code, variable)
+    test.is_nil(value)
+    test.not_nil(err)
+    test.eq(kind, err:kind(), tostring(err))
+    test.is_false(err:retryable())
+    if code then test.eq(code, (err:details() or {}).code) end
+    if variable then
+        test.eq(variable, err:details().variable)
+        test.is_true(err:message():find(variable, 1, true) ~= nil)
+    end
+end
+
+local function unconfigured(executor)
+    local value, err = invoke(executor, "send", body())
+    test.is_nil(value)
+    test.eq("invalid_config", err:details().code)
+    test.is_false(err:retryable())
+    return err
+end
+
+return {
+    probe = probe,
+    run = test.run_cases(function()
+        test.describe("System-managed mailer", function()
+            local admin, sender, denied
+            test.before_each(function()
+                admin = caller({"kickside.mail.harness:admin"})
+                denied = caller({"kickside.mail.security:module_runtime"})
+                sender = caller({
+                    "kickside.mail.security:module_runtime",
+                    "kickside.mail.security:template_access",
+                    "kickside.mail.security:send_access",
+                })
+                for _, key in ipairs({"driver", "from_address", "from_name", "reply_to"}) do
+                    local result = change(admin, key)
+                    test.is_true(result.success, result.error :: string?)
+                end
+            end)
+
+            test.it("uses its own member scope without joining the shared HTTP endpoint scope", function()
+                local definition = assert(registry.get("kickside.mail:definition"))
+                test.is_nil(definition.meta.member_scope)
+                local policy = assert(registry.get("kickside.mail.security:module_access"))
+                test.eq("module_access", policy.meta.intent)
+            end)
+
+            test.it("accepts one queued message per sender and idempotency key", function()
+                capture_with(admin)
+                local input = body()
+                input.idempotency_key = "mail-admission"
+                local first = assert(invoke(sender, "send", input))
+                test.eq("queued", first.status)
+                test.not_nil(first.message_id)
+                local replay = assert(invoke(sender, "send", input))
+                test.eq(first.message_id, replay.message_id)
+                local other = caller({"kickside.mail.security:send_access",
+                    "kickside.mail.security:module_runtime", "kickside.mail.security:template_access"})
+                local separate = assert(invoke(other, "send", input))
+                test.is_true(first.message_id ~= separate.message_id)
+                terminal(other, separate)
+                test.eq("sent", terminal(sender, first).status)
+                no_body(first.message_id)
+                assert(change(admin, "driver", nil).success)
+                replay = assert(invoke(sender, "send", input))
+                test.eq(first.message_id, replay.message_id)
+                test.eq("sent", replay.status)
+                input.text = "Different"
+                local result, err = invoke(sender, "send", input)
+                refusal(result, err, errors.CONFLICT, "idempotency_conflict")
+            end)
+
+            test.it("writes no job or message for invalid mail admissions", function()
+                local function counts()
+                    return query([[SELECT (SELECT COUNT(*) FROM mail_message) AS messages,
+                        (SELECT COUNT(*) FROM kickside_job WHERE owner_kind='mail-message') AS jobs]])[1]
+                end
+                local before = counts()
+                unconfigured(sender)
+                capture_with(admin)
+                local invalid = body()
+                invalid.to = {}
+                local value, err = invoke(sender, "send", invalid)
+                refusal(value, err, errors.INVALID, "recipient_required")
+                local templated = template_request()
+                templated.vars = {}
+                value, err = invoke(sender, "send", templated)
+                refusal(value, err, errors.INVALID, "invalid_template_vars")
+                value, err = invoke(denied, "send", body())
+                refusal(value, err, errors.PERMISSION_DENIED, "mail_send_denied")
+                local after = counts()
+                test.eq(before.messages, after.messages)
+                test.eq(before.jobs, after.jobs)
+            end)
+
+            test.it("rearms the same job after a retryable error and clears bodies when it sends", function()
+                capture_with(admin)
+                local input = body()
+                input.subject = "Fixture once"
+                local queued = assert(invoke(sender, "send", input))
+                local retry = await_message(sender, queued.message_id, function(row)
+                    return row.last_error and row.last_error.code == "rate_limited"
+                end)
+                local pending = persisted(queued.message_id)
+                test.eq(1, retry.attempts)
+                test.eq("queued", retry.status)
+                test.not_nil(pending.html)
+                test.not_nil(pending.text)
+                test.is_true(retry.next_attempt_at > retry.created_at)
+                local sent = terminal(sender, queued)
+                test.eq("sent", sent.status)
+                test.eq(2, sent.attempts)
+                test.is_nil(sent.last_error)
+                test.eq(queued.message_id, assert(json.decode(sent.provider_message_id)).idempotency_key)
+                test.eq("done", await_job(pending.job_id, "done").status)
+                test.eq(pending.job_id, persisted(queued.message_id).job_id)
+                no_body(queued.message_id)
+            end)
+
+            test.it("stops retrying at the attempt limit", function()
+                capture_with(admin)
+                local input = body()
+                input.subject = "Fixture exhaust"
+                local queued = assert(invoke(sender, "send", input))
+                local failed = terminal(sender, queued)
+                test.eq("failed", failed.status)
+                test.eq(5, failed.attempts)
+                test.eq("rate_limited", failed.last_error.code)
+                no_body(queued.message_id)
+            end)
+
+            test.it("fails a nonretryable provider rejection on the first attempt", function()
+                capture_with(admin)
+                local input = body()
+                input.subject = "Fixture rejected"
+                local queued = assert(invoke(sender, "send", input))
+                local failed = terminal(sender, queued)
+                test.eq("failed", failed.status)
+                test.eq(1, failed.attempts)
+                test.eq("credentials_invalid", failed.last_error.code)
+                test.eq("Test authorization refused", failed.last_error.message)
+                no_body(queued.message_id)
+            end)
+
+            test.it("uses the active driver at delivery even after a different driver rearmed the job", function()
+                capture_with(admin)
+                local input = body()
+                input.subject = "Fixture exhaust"
+                local queued = assert(invoke(sender, "send", input))
+                local retry = await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
+                test.eq("capture", retry.driver_id)
+                assert(change(admin, "driver", "second").success)
+                local sent = terminal(sender, queued)
+                test.eq("sent", sent.status)
+                test.eq(2, sent.attempts)
+                test.eq("second", sent.driver_id)
+                test.eq("second|mail@example.org||", sent.provider_message_id)
+            end)
+
+            test.it("lists and reads only the sender's messages unless the viewer holds log administration", function()
+                capture_with(admin)
+                local other = caller({"kickside.mail.security:send_access",
+                    "kickside.mail.security:module_runtime", "kickside.mail.security:template_access"})
+                local log_admin = caller({"kickside.mail.security:log_admin", "kickside.mail.security:module_runtime"})
+                local one = assert(invoke(sender, "send", body()))
+                local two = assert(invoke(sender, "send", body()))
+                local three = assert(invoke(other, "send", body()))
+                local sent = terminal(sender, one)
+                terminal(sender, two)
+                terminal(other, three)
+                local denied_value, denied_err = invoke(other, "get_message", one.message_id)
+                refusal(denied_value, denied_err, errors.NOT_FOUND, "message_not_found")
+                local page = assert(invoke(sender, "list_messages", {limit = 1, status = "sent"}))
+                test.eq(two.message_id, page.items[1].message_id)
+                test.is_true(page.has_more)
+                local second = assert(invoke(sender, "list_messages", {limit = 1, status = "sent", cursor = page.next_cursor}))
+                test.eq(one.message_id, second.items[1].message_id)
+                test.is_false(second.has_more)
+                test.is_nil(second.next_cursor)
+                local expired_filter = assert(invoke(sender, "list_messages", {limit = 5, since = sent.created_at + 100000}))
+                test.eq(0, #expired_filter.items)
+                local others = assert(invoke(other, "list_messages", {limit = 5}))
+                test.eq(1, #others.items)
+                test.eq(three.message_id, others.items[1].message_id)
+                local all = assert(invoke(log_admin, "list_messages", {limit = 200}))
+                local visible = {}
+                for _, row in ipairs(all.items) do visible[row.message_id] = true end
+                test.is_true(visible[one.message_id] and visible[three.message_id])
+                test.eq(one.message_id, assert(invoke(log_admin, "get_message", one.message_id)).message_id)
+            end)
+
+            test.it("settles jobs that are cancelled or no longer stored", function()
+                capture_with(admin)
+                local input = body()
+                input.subject = "Fixture exhaust"
+                local queued = assert(invoke(sender, "send", input))
+                await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
+                local row = persisted(queued.message_id)
+                assert(jobs.cancel(row.job_id))
+                await_job(row.job_id, "cancelled")
+
+                local cancelled = terminal(sender, queued)
+                test.eq("failed", cancelled.status)
+                test.eq("delivery_job_cancelled", cancelled.last_error.code)
+                no_body(queued.message_id)
+
+                local missing_id = uuid.v7()
+                local now = time.now():unix_nano() // 1000000
+                local db = assert(sql.get("app:db"))
+                assert(db:execute([[INSERT INTO mail_message
+                    (id,created_at,status,next_attempt_at,next_check_at,sender,actor_context,
+                     recipients,subject,from_address,attachments,job_id,html,text)
+                    VALUES ($1,$2,'queued',$2,$2,$3,'{}','{"to":["reader@example.org"]}',
+                    'Missing job','mail@example.org','[]',$4,'<p>Ready</p>','Ready')]],
+                    {missing_id, now, row.sender, uuid.v7()}))
+                assert(db:release())
+                assert(notifier.notify({kind = "owner_eligibility_changed"}))
+
+                local missing = await_message(sender, missing_id, function(message) return message.status == "failed" end)
+                test.eq("delivery_job_missing", missing.last_error.code)
+                test.eq("The delivery job is no longer available", missing.last_error.message)
+                no_body(missing_id)
+            end)
+
+            test.it("refuses another delivery attempt after the sender becomes inactive", function()
+                capture_with(admin)
+                local input = body()
+                input.subject = "Fixture once"
+                local queued = assert(invoke(sender, "send", input))
+                local retry = await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
+                local db = assert(sql.get("app:db"))
+                assert(db:execute([[UPDATE app_users SET status='suspended' WHERE user_id=$1]], {retry.sender}))
+                assert(db:release())
+                local failed = terminal(sender, queued)
+                test.eq("failed", failed.status)
+                test.eq(2, failed.attempts)
+                test.eq(errors.PERMISSION_DENIED, failed.last_error.kind)
+                no_body(queued.message_id)
+            end)
+
+            test.it("refuses delivery after the sender's send grant is revoked", function()
+                capture_with(admin)
+                local input = body()
+                input.subject = "Fixture once"
+                local queued = assert(invoke(sender, "send", input))
+                local retry = await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
+                local db = assert(sql.get("app:db"))
+                assert(db:execute("DELETE FROM app_user_groups WHERE user_id=$1 AND group_id=$2",
+                    {retry.sender, "app:mail_senders"}))
+                assert(db:release())
+                local failed = terminal(sender, queued)
+                test.eq("failed", failed.status)
+                test.eq(2, failed.attempts)
+                test.eq(errors.PERMISSION_DENIED, failed.last_error.kind)
+                test.eq("mail_send_denied", failed.last_error.code)
+                test.is_nil(failed.provider_message_id)
+                no_body(queued.message_id)
+            end)
+
+            test.it("drains more than one expiry batch after the retention setting changes", function()
+                local now = time.now():unix_nano() // 1000000
+                local cutoff = now - 172800000
+                local slots = 450
+                local db = assert(sql.get("app:db"))
+                local tx = assert(db:begin())
+                for _ = 1, slots do
+                    assert(tx:execute([[INSERT INTO mail_message
+                        (id,created_at,status,finished_at,sender,recipients,subject,from_address,attachments)
+                        VALUES($1,$2,'failed',$2,'retention-fixture','{"to":["reader@example.org"]}',
+                        'Retention test','mail@example.org','[]')]], {uuid.v7(), cutoff}))
+                end
+                assert(tx:commit())
+                assert(db:release())
+                local count = "SELECT COUNT(*) AS n FROM mail_message WHERE sender='retention-fixture'"
+                test.eq(slots, query(count)[1].n)
+                test.is_false(change(admin, "log_retention_days", 0).success)
+                local retention = change(admin, "log_retention_days", 1)
+                test.is_true(retention.success, retention.error :: string?)
+                local deadline = time.now():add(10 * time.SECOND):unix_nano()
+                repeat
+                    if query(count)[1].n == 0 then return end
+                    time.sleep("25ms")
+                until time.now():unix_nano() >= deadline
+                error("Retention did not drain the expired rows")
+            end)
+
+            for _, lost in ipairs({false, true}) do
+                local hint = lost and "with the lease-release hint lost" or "on the lease-release hint"
+                test.it("settles a delivery killed on the final execution " .. hint, function()
+                    capture_with(admin)
+                    local input = body()
+                    input.subject = lost and "Fixture ceiling_lost" or "Fixture ceiling"
+                    local queued = assert(invoke(sender, "send", input))
+                    await_message(sender, queued.message_id, function(row) return row.attempts == 5 end)
+                    local pending = persisted(queued.message_id)
+                    local job = await_job(pending.job_id, "dead")
+                    test.eq(5, job.execution_seq)
+                    local last_error = job.last_error :: string
+                    test.is_true(last_error:find("max_execution_ms", 1, true) ~= nil, last_error)
+                    if lost then
+                        local before = persisted(queued.message_id)
+                        test.eq("queued", before.status)
+                        test.not_nil(before.html)
+                    end
+                    local failed = await_message(sender, queued.message_id, function(row) return row.status == "failed" end, 35)
+                    test.eq("delivery_job_dead", failed.last_error.code)
+                    test.eq("The delivery job ended before recording an outcome", failed.last_error.message)
+                    test.eq(5, failed.attempts)
+                    if lost then
+                        test.is_true(failed.finished_at >= pending.next_check_at)
+                    else
+                        test.is_true(failed.finished_at < pending.next_check_at)
+                    end
+                    no_body(queued.message_id)
+                end)
+            end
+
+            test.it("discovers installed descriptors and selects each on the next send", function()
+                test.is_false(change(admin, "driver", "missing").success)
+                for key, value in pairs({driver = "first", from_address = "mail@example.org",
+                    from_name = "Test Mail", reply_to = "default@example.org"}) do
+                    local result = change(admin, key, value)
+                    test.is_true(result.success, result.error :: string?)
+                end
+                local forbidden_from = body()
+                forbidden_from.from = "other@example.org"
+                local rejected, err = invoke(sender, "send", forbidden_from)
+                test.is_nil(rejected)
+                test.eq("from_not_allowed", err:details().code)
+                local first = assert(invoke(sender, "send", body()))
+                test.eq("first|mail@example.org|Test Mail|default@example.org", terminal(sender, first).provider_message_id)
+
+                test.is_true(change(admin, "driver", "second").success)
+                local second = assert(invoke(sender, "send", {
+                    template = "notice", vars = {subject = "Status", message = "Ready"},
+                    to = {"reader@example.org"}, reply_to = "override@example.org",
+                }))
+                test.eq("second|mail@example.org|Test Mail|override@example.org", terminal(sender, second).provider_message_id)
+            end)
+
+            test.it("returns the message ID as the writable destination reference", function()
+                test.is_true(change(admin, "driver", "first").success)
+                test.is_true(change(admin, "from_address", "mail@example.org").success)
+                local result = assert(invoke(sender, "write", body()))
+                test.is_true(result.success)
+                local replay = assert(invoke(sender, "write", body()))
+                test.eq(result.dest_ref.message_id, replay.dest_ref.message_id)
+                local message = await_message(sender, result.dest_ref.message_id, function(row) return row.status ~= "queued" end)
+                test.eq("first|mail@example.org||", message.provider_message_id)
+                test.is_nil(result.dest_ref.provider_message_id)
+                test.is_nil(result.dest_ref.transport_metadata)
+            end)
+
+            test.it("rejects malformed configured addresses before writing settings", function()
+                for _, key in ipairs({"from_address", "reply_to"}) do
+                    test.is_true(change(admin, key, "mail@example.org").success)
+                    local result = change(admin, key, "mail@example")
+                    test.is_false(result.success)
+                    test.eq("Enter a valid email address", result.error)
+                    test.is_true(change(admin, key, "").success)
+                end
+            end)
+
+            test.it("returns the same configuration error through mailer and writable destination", function()
+                local missing_driver = unconfigured(sender)
+                local port = assert(registry.get("kickside.mail.sink:send_email"))
+                test.is_nil(port.data.config_schema and port.data.config_schema.connection_id)
+                local destination = assert(invoke(sender, "write", body()))
+                test.is_false(destination.success)
+                test.eq(missing_driver:details().code, destination.error.code)
+                test.eq(missing_driver:message(), destination.error.message)
+                test.is_false(destination.error.retriable)
+                test.is_true(change(admin, "driver", "first").success)
+                test.is_true(unconfigured(sender):message() ~= missing_driver:message())
+            end)
+
+            test.it("refuses a caller without the send capability before looking up settings", function()
+                local result, err = invoke(denied, "send", body())
+                test.is_nil(result)
+                test.eq(errors.PERMISSION_DENIED, err:kind())
+                local destination = assert(invoke(denied, "write", body()))
+                test.eq("permission_denied", destination.error.code)
+            end)
+
+            test.it("discovers declared templates and exposes their variables and sample", function()
+                local reader = caller(READER_POLICIES)
+                local builtin = assert(invoke(reader, "list_templates"))
+                test.eq(1, #builtin.templates)
+                local external_reader = caller({
+                    "kickside.mail.security:module_runtime", "kickside.mail.security:template_access",
+                    "kickside.mail.harness:external_template",
+                })
+                local found = assert(invoke(external_reader, "list_templates"))
+                test.eq(2, #found.templates)
+                test.eq("notice", found.templates[1].name)
+                test.eq("Notice", found.templates[1].title)
+                test.not_nil(found.templates[1].description)
+                test.eq("object", found.templates[1].variable_schema.type)
+                test.eq("string", found.templates[1].variable_schema.properties.subject.type)
+                test.is_nil(found.templates[1].sample)
+                test.eq("reminder", found.templates[2].name)
+
+                local reminder = assert(invoke(external_reader, "get_template", {template = "reminder"}))
+                test.eq("Send the report", reminder.sample.task)
+                test.eq("task", reminder.variable_schema.required[1])
+                test.eq("Task to complete.", reminder.variable_schema.properties.task.description)
+                local external_sender = caller({
+                    "kickside.mail.security:module_runtime", "kickside.mail.security:template_access",
+                    "kickside.mail.security:send_access", "kickside.mail.harness:external_template",
+                })
+                local preview = assert(invoke(external_sender, "preview", {template = "reminder", vars = {task = "A & B"}}))
+                test.eq("Reminder: A & B", preview.subject)
+            end)
+
+            test.it("refuses a Jet name with no declaration on send and preview", function()
+                capture_with(admin)
+                local input = template_request()
+                input.template = "undeclared"
+                local sent, send_err = invoke(sender, "send", input)
+                refusal(sent, send_err, errors.NOT_FOUND, "template_not_found")
+                local preview, preview_err = invoke(sender, "preview", {template = input.template, vars = input.vars})
+                refusal(preview, preview_err, errors.NOT_FOUND, "template_not_found")
+            end)
+
+            test.it("names missing, mistyped and unknown variables before rendering", function()
+                local input = template_request()
+                local tests = {
+                    {variable = "vars"},
+                    {vars = "not an object", variable = "vars"},
+                    {vars = {"an array"}, variable = "vars"},
+                    {vars = {message = "Ready"}, variable = "subject"},
+                    {vars = {subject = false, message = "Ready"}, variable = "subject"},
+                    {vars = {subject = "Status", message = "Ready", typo = "extra"}, variable = "typo"},
+                    {vars = {subject = "Status", ["a/b~c"] = true}, variable = "a/b~c"},
+                    {vars = {subject = "Status", details = {{key = "State", value = 9}}}, variable = "details"},
+                }
+                for _, case in ipairs(tests) do
+                    input.vars = case.vars
+                    local sent, send_err = invoke(sender, "send", input)
+                    refusal(sent, send_err, errors.INVALID, "invalid_template_vars", case.variable)
+                    local preview, preview_err = invoke(sender, "preview", {template = input.template, vars = case.vars})
+                    refusal(preview, preview_err, errors.INVALID, "invalid_template_vars", case.variable)
+                end
+            end)
+
+            test.it("previews without delivery settings and matches what send renders", function()
+                local input = template_request()
+                local preview = assert(invoke(sender, "preview", {template = input.template, vars = input.vars}))
+                test.eq(input.vars.subject, preview.subject)
+                test.not_nil(preview.html)
+                test.not_nil(preview.text)
+                test.is_nil(preview.attachments)
+
+                capture_with(admin)
+                local result = assert(invoke(sender, "send", input))
+                local captured = assert(json.decode(terminal(sender, result).provider_message_id))
+                for _, part in ipairs({"subject", "html", "text"}) do
+                    test.eq(captured[part], preview[part])
+                end
+            end)
+
+            test.it("invokes the four registered tools as non-admin callers", function()
+                local reader = caller(READER_POLICIES)
+                local tool_sender = caller({
+                    "kickside.mail.security:module_access", "kickside.mail.security:module_runtime",
+                    "kickside.mail.security:template_access", "kickside.mail.security:send_access",
+                })
+                local input = template_request()
+                local preview_input = {template = input.template, vars = input.vars}
+                for _, executor in ipairs({reader, tool_sender}) do
+                    local list = assert(executor:call(TOOL_NS .. "mail_list_templates", {}))
+                    test.eq("notice", list.templates[1].name)
+                    test.is_nil(list.templates[1].variable_schema)
+                    test.is_nil(list.templates[1].sample)
+                    local info = assert(executor:call(TOOL_NS .. "mail_get_template", {template = "notice"}))
+                    test.eq("string", info.variable_schema.properties.subject.type)
+                    local missing, missing_err = executor:call(TOOL_NS .. "mail_get_template", {template = "undeclared"})
+                    refusal(missing, missing_err, errors.NOT_FOUND, "template_not_found")
+                end
+                local refused, send_err = reader:call(TOOL_NS .. "mail_send", input)
+                refusal(refused, send_err, errors.PERMISSION_DENIED, "mail_send_denied")
+                local absent, preview_err = reader:call(TOOL_NS .. "mail_preview", preview_input)
+                refusal(absent, preview_err, errors.PERMISSION_DENIED, "mail_send_denied")
+                local preview = assert(tool_sender:call(TOOL_NS .. "mail_preview", preview_input))
+                test.eq(input.vars.subject, preview.subject)
+                local invalid, invalid_err = tool_sender:call(TOOL_NS .. "mail_preview", {template = "notice", vars = {}})
+                refusal(invalid, invalid_err, errors.INVALID, "invalid_template_vars", "subject")
+
+                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "from_address", "mail@example.org").success)
+                for _, message in ipairs({input, body()}) do
+                    local sent = assert(tool_sender:call(TOOL_NS .. "mail_send", message))
+                    local contract_result = assert(invoke(sender, "send", message))
+                    test.eq("queued", sent.status)
+                    test.eq("queued", contract_result.status)
+                    test.not_nil(sent.message_id)
+                    test.not_nil(contract_result.message_id)
+                    test.is_true(sent.message_id ~= contract_result.message_id)
+                    test.eq("sent", terminal(tool_sender, sent).status)
+                    test.eq("sent", terminal(sender, contract_result).status)
+                end
+
+                local full = assert(registry.get(TOOL_NS .. "mail"))
+                local read_trait = assert(registry.get(TOOL_NS .. "mail_readonly"))
+                test.is_true(full.meta.public)
+                test.is_true(read_trait.meta.public)
+                test.eq(4, #full.data.tools)
+                test.eq(3, #read_trait.data.tools)
+                test.eq(TOOL_NS .. "mail_send", full.data.tools[1])
+                for i, tool in ipairs(read_trait.data.tools) do
+                    test.eq(full.data.tools[i + 1], tool)
+                end
+            end)
+
+            test.it("discovers MailSend as a public Block and lowers its registered schema", function()
+                local id = TOOL_NS .. "mail_send"
+                local tool_sender = caller({
+                    "kickside.mail.security:module_runtime", "kickside.mail.security:send_access",
+                })
+                local result = assert(invoke(tool_sender, "blocks", body()))
+                test.eq("tool", result.descriptor.source_kind)
+                test.is_true(result.descriptor.tool)
+                local entry = assert(registry.get(id))
+                test.eq("MailSend", entry.meta.llm_alias)
+                test.eq(assert(canonical_json.encode(assert(json.decode(entry.meta.input_schema)))),
+                    assert(canonical_json.encode(result.descriptor.input)))
+                test.not_nil(result.descriptor.input.properties.attachments)
+                test.eq("userspace.dataflow.node.func:node", result.plan.node_type)
+                test.eq(id, result.plan.config.func_id)
+                test.eq("userspace.dataflow.node.func:node", result.upstream_plan.node_type)
+                test.eq(id, result.upstream_plan.config.func_id)
+                test.is_nil(result.upstream_plan.config.input_transform)
+                test.is_true(result.compiled.ok, json.encode(result.compiled.errors))
+                local nodes = {}
+                for _, command in ipairs(result.compiled.commands) do
+                    if command.type == "CREATE_NODE" then nodes[command.payload.node_id] = command.payload end
+                end
+                test.eq(id, nodes.deliver.config.func_id)
+                test.not_nil(nodes.deliver.config.input_transform.default)
+                test.eq(TOOL_NS .. "mail_preview", nodes.prepare.config.func_id)
+                test.eq("deliver", nodes.prepare.config.data_targets[1].node_id)
+
+                local definition = assert(registry.get("kickside.mail:mailer"))
+                local send_schema = assert(json.decode(definition.data.methods[1].input_schemas[1].definition))
+                local templated = template_request()
+                templated.attachments = {{upload_id = "attachment-id"}}
+                templated.to[2] = {user_id = "recipient-id"}
+                for _, input in ipairs({body(), templated}) do
+                    local tool_valid, tool_schema_err = json.validate(result.descriptor.input, input)
+                    test.is_true(tool_valid, tostring(tool_schema_err))
+                    local contract_valid, contract_schema_err = json.validate(send_schema, input)
+                    test.is_true(contract_valid, tostring(contract_schema_err))
+                end
+            end)
+
+            test.it("reports the conflict when a template and a supplied body are both present", function()
+                local input = template_request()
+                input.text = "Conflicting body"
+                local sent, err = invoke(sender, "send", input)
+                refusal(sent, err, errors.INVALID, "template_body_conflict")
+            end)
+
+            test.it("resolves user recipients only under the caller's Users authority", function()
+                capture_with(admin)
+                local db = assert(sql.get("app:db"))
+                local id = "07cc253a-d1ab-46e5-936f-7d12490524bd"
+                local blank = "07cc253a-d1ab-46e5-936f-7d12490524be"
+                assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
+                    VALUES ($1,'resolved@example.org','Recipient','test-only','active'),
+                           ($2,'','No address','test-only','active')]], {id, blank}))
+                db:release()
+
+                local reader = caller({
+                    "kickside.mail.security:module_runtime", "kickside.mail.security:template_access",
+                    "kickside.mail.security:send_access", "kickside.mail.harness:principal_reader",
+                    "kickside.users.security:users_runtime_read", "kickside.users.security:login_db_access",
+                })
+                local input = body()
+                input.to[2] = {user_id = id}
+                input.cc = {{user_id = id}}
+                input.bcc = {{user_id = id}}
+                local refused, err = invoke(sender, "send", input)
+                refusal(refused, err, errors.PERMISSION_DENIED)
+                local delivered = assert(reader:call(TOOL_NS .. "mail_send", input))
+                local captured = assert(json.decode(terminal(reader, delivered).provider_message_id))
+                test.eq("reader@example.org", captured.to[1])
+                test.eq("resolved@example.org", captured.to[2])
+                test.eq("resolved@example.org", captured.cc[1])
+                test.eq("resolved@example.org", captured.bcc[1])
+
+                for _, recipient in ipairs({blank, "resolved@example.org"}) do
+                    input.to[2] = {user_id = recipient}
+                    local missing, missing_err = invoke(reader, "send", input)
+                    refusal(missing, missing_err, errors.INVALID, "recipient_address_missing")
+                end
+            end)
+
+            test.it("selects only drivers with an explicit discovery grant", function()
+                local result = change(admin, "driver", "unregistered")
+                test.is_false(result.success)
+                test.eq("The active mail driver is not installed", result.error)
+            end)
+
+            test.it("keeps driver selection and transport outside the sending group's public scope", function()
+                for _, operation in ipairs({"raw", "raw_send", "driver_validation"}) do
+                    local result, err = invoke(sender, operation, body())
+                    test.is_nil(result)
+                    test.eq(errors.PERMISSION_DENIED, err:kind())
+                end
+            end)
+        end)
+    end),
+}

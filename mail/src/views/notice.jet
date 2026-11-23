@@ -1,0 +1,26 @@
+{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}{{ extends "layout" }}
+{{ block body() }}
+  {{ if isset(heading) }}<h1 style="margin:0 0 16px;color:#182231;font-size:28px;line-height:1.2;">{{ heading }}</h1>{{ end }}
+  {{ if isset(message) }}<p style="margin:0 0 14px;">{{ message }}</p>{{ end }}
+  {{ if isset(paragraphs) }}{{ range _, paragraph := paragraphs }}<p style="margin:0 0 14px;">{{ paragraph }}</p>{{ end }}{{ end }}
+  {{ if isset(action_url, action_label) && action_label != "" && (hasPrefix(action_url, "https://") || hasPrefix(action_url, "http://")) }}
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0 12px;">
+      <tr><td bgcolor="#183b60" style="background-color:#183b60;border-radius:6px;">
+        <a href="{{ action_url }}" style="display:inline-block;border:12px solid #183b60;border-left-width:20px;border-right-width:20px;border-radius:6px;color:#ffffff;font-size:15px;font-weight:bold;line-height:20px;text-decoration:none;">{{ action_label }}</a>
+      </td></tr>
+    </table>
+  {{ end }}
+  {{ if isset(inline_content_id) }}
+    <img src="cid:{{ inline_content_id }}" width="552" alt="{{ if isset(image_alt) }}{{ image_alt }}{{ else }}Notice image{{ end }}" style="display:block;width:100%;max-width:552px;height:auto;border:0;margin:20px 0 0;">
+  {{ end }}
+  {{ if isset(details) && len(details) > 0 }}
+    <table width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;margin-top:20px;border-collapse:collapse;color:#202938;font-size:14px;line-height:21px;">
+      {{ range _, row := details }}
+      <tr>
+        <th scope="row" align="left" valign="top" style="padding:10px 12px;border-top:1px solid #e3e7ed;background-color:#f8f9fb;color:#49586b;font-weight:bold;">{{ row.key }}</th>
+        <td valign="top" style="padding:10px 12px;border-top:1px solid #e3e7ed;">{{ row.value }}</td>
+      </tr>
+      {{ end }}
+    </table>
+  {{ end }}
+{{ end }}

@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["subject", "html", "text"],
+  "properties": {
+    "subject": {"type": "string"}, "html": {"type": "string"}, "text": {"type": "string"}
+  }
+}

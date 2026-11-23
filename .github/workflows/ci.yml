@@ -61,6 +61,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
+        - module: mail
+          engine: sqlite
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/mail/test/.wippy/tmp"
+            mkdir -p "$TMPDIR"
+            make -C mail verify
+            version=$(jq -er '.["mail"] // "0.1.0"' .release-please-manifest.json)
+            wippy publish --config mail --version "$version" --dry-run --create --module-visibility public --module-type plugin --embed kickside.mail.views:layout_assets
+        - module: mail
+          engine: postgres
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/mail/test/.wippy/tmp"
+            mkdir -p "$TMPDIR"
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_mail"
+            createdb "$database"
+            trap 'dropdb "$database"' EXIT
+            make -C mail verify WIPPY_ARGS="--profile postgres --set vars.pg_host=$PGHOST --set vars.pg_port=$PGPORT --set vars.pg_database=$database"
         - module: dashboard
           engine: sqlite
           commands: |

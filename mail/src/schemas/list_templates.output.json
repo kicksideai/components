@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["templates"],
+  "properties": {
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "title", "description", "variable_schema"],
+        "properties": {
+          "name": {"type": "string"}, "title": {"type": "string"},
+          "description": {"type": "string"}, "variable_schema": {"type": "object"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "template",
+    "vars"
+  ],
+  "properties": {
+    "template": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Shipped template name from MailListTemplates."
+    },
+    "vars": {
+      "type": "object",
+      "description": "Variables from the schema returned by MailGetTemplate."
+    }
+  }
+}

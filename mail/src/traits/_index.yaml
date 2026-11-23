@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.traits
+entries:
+  - name: mail
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      public: true
+      title: Mail
+      comment: Send email and discover or preview shipped mail templates.
+    prompt: Use MailListTemplates to find template names and MailGetTemplate to read the available variable names. MailSend queues delivery.
+    tools:
+      - kickside.mail.traits:mail_send
+      - kickside.mail.traits:mail_list_templates
+      - kickside.mail.traits:mail_get_template
+      - kickside.mail.traits:mail_preview
+  - name: mail_readonly
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      public: true
+      title: Mail Templates
+      comment: Discover and preview shipped mail templates. Preview requires mail send access.
+    prompt: Use MailListTemplates to find template names and MailGetTemplate to read the available variable names. MailPreview renders the template without delivery and requires mail send access.
+    tools:
+      - kickside.mail.traits:mail_list_templates
+      - kickside.mail.traits:mail_get_template
+      - kickside.mail.traits:mail_preview
+  - name: mail_send
+    kind: function.lua
+    meta:
+      type: tool
+      public: true
+      title: Send Mail
+      llm_alias: MailSend
+      llm_description: >-
+        Queue an email for delivery and return its message ID. Use a template name from MailListTemplates with vars from
+        MailGetTemplate, or provide a subject and a text or HTML body. Recipients are email addresses
+        or user IDs you have permission to resolve. Attachments reference uploaded files by upload ID.
+      input_schema: file://../schemas/send.input.json
+      output_schema: file://../schemas/send.output.json
+    source: &tool_source file://tools.lua
+    method: send
+    imports: &tool_imports
+      types: kickside.mail:types
+      client: kickside.mail:client
+  - name: mail_list_templates
+    kind: function.lua
+    meta:
+      type: tool
+      public: true
+      title: List Mail Templates
+      llm_alias: MailListTemplates
+      llm_description: List names, titles, and descriptions of shipped mail templates. A template name selects a shipped set of email parts. Call MailGetTemplate with that name for its variables and sample.
+      input_schema: file://../schemas/list_templates.tool.input.json
+      output_schema: file://../schemas/list_templates.tool.output.json
+    source: *tool_source
+    method: list_templates
+    imports: *tool_imports
+  - name: mail_get_template
+    kind: function.lua
+    meta:
+      type: tool
+      public: true
+      title: Get Mail Template
+      llm_alias: MailGetTemplate
+      llm_description: Get a shipped email template by its name from MailListTemplates. The variable schema gives the names, types, and required variables for MailSend and MailPreview.
+      input_schema: file://../schemas/get_template.input.json
+      output_schema: file://../schemas/get_template.output.json
+    source: *tool_source
+    method: get_template
+    imports: *tool_imports
+  - name: mail_preview
+    kind: function.lua
+    meta:
+      type: tool
+      public: true
+      title: Preview Mail Template
+      llm_alias: MailPreview
+      llm_description: Render the subject, HTML, and text without delivery. Use a shipped template name from MailListTemplates and variable names from MailGetTemplate. Mail send access is required.
+      input_schema: file://../schemas/preview.input.json
+      output_schema: file://../schemas/preview.output.json
+    source: *tool_source
+    method: preview
+    imports: *tool_imports

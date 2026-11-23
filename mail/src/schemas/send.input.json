@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["to"],
+  "$defs": {
+    "recipient": {
+      "type": ["string", "object"],
+      "format": "email",
+      "additionalProperties": false,
+      "required": ["user_id"],
+      "properties": {"user_id": {"type": "string", "minLength": 1}}
+    }
+  },
+  "properties": {
+    "template": {"type": "string", "minLength": 1},
+    "vars": {"type": "object"},
+    "subject": {"type": "string", "minLength": 1},
+    "text": {"type": "string"},
+    "html": {"type": "string"},
+    "to": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/recipient"}},
+    "cc": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},
+    "bcc": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},
+    "reply_to": {"type": "string", "format": "email"},
+    "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "attachments": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["upload_id"],
+        "properties": {
+          "upload_id": {"type": "string", "minLength": 1},
+          "filename": {"type": "string", "minLength": 1},
+          "disposition": {"enum": ["attachment", "inline"]},
+          "content_id": {"type": "string", "minLength": 1}
+        },
+        "if": {"required": ["disposition"], "properties": {"disposition": {"const": "inline"}}},
+        "then": {"required": ["content_id"]}
+      }
+    }
+  }
+}

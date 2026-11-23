@@ -1,0 +1,32 @@
+{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ _mail_title }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f2f4f7;color:#202938;">
+  <div style="display:none;visibility:hidden;opacity:0;overflow:hidden;mso-hide:all;max-height:0;max-width:0;font-size:1px;line-height:1px;">{{ if isset(preheader) }}{{ preheader }}{{ else }}{{ _mail_title }}{{ end }}</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f2f4f7;">
+    <tr><td align="center" style="padding:20px 0;">
+      <!--[if mso]><table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0"><tr><td><![endif]-->
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;">
+        <tr>
+          <td align="center" style="padding:24px 24px 20px;border-top:4px solid #ee4f36;border-bottom:1px solid #e3e7ed;">
+            <img src="cid:{{ _mail_logo_id }}" width="140" height="140" alt="KickSide" style="display:block;width:140px;height:auto;border:0;margin:0 auto;color:#202938;font-size:20px;font-weight:bold;">
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 24px 32px;color:#202938;font-size:16px;line-height:1.55;overflow-wrap:anywhere;">
+            {{ block body() }}{{ if isset(_mail_html) }}{{ raw(_mail_html) }}{{ else }}<pre style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;">{{ _mail_text }}</pre>{{ end }}{{ end }}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:17px 24px;border-top:1px solid #e3e7ed;background-color:#f8f9fb;color:#5b6575;font-size:13px;line-height:20px;">KickSide</td>
+        </tr>
+      </table>
+      <!--[if mso]></td></tr></table><![endif]-->
+    </td></tr>
+  </table>
+</body>
+</html>

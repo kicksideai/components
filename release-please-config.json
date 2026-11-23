@@ -7,6 +7,16 @@
   "bump-patch-for-minor-pre-major": true,
   "bootstrap-sha": "6eb4b97a1a9df6c0c819b79e12c5ac6c8da2501a",
   "packages": {
+    "mail": {
+      "component": "mail",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "exclude-paths": [
+        "mail/test",
+        "mail/.wippy",
+        "mail/wippy.lock"
+      ]
+    },
     "dashboard": {
       "component": "dashboard",
       "changelog-path": "CHANGELOG.md"

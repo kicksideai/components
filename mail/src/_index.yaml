@@ -1,0 +1,216 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail
+entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta: { title: Mail }
+  - name: dep.core
+    kind: ns.dependency
+    version: "*"
+    component: kickside/core
+  - name: dep.views
+    kind: ns.dependency
+    version: "*"
+    component: wippy/views
+  - name: dep.settings
+    kind: ns.dependency
+    version: "*"
+    component: kickside/settings
+  - name: dep.contract
+    kind: ns.dependency
+    version: "*"
+    component: kickside/contract
+  - name: dep.uploads
+    kind: ns.dependency
+    version: "*"
+    component: kickside/uploads
+  - name: dep.jobs
+    kind: ns.dependency
+    version: "*"
+    component: kickside/jobs
+  - name: dep.execution
+    kind: ns.dependency
+    version: "*"
+    component: kickside/execution
+  - name: target_db
+    kind: ns.requirement
+    meta: { value_kind: db.sql, comment: The SQL database configured for Jobs. }
+    targets:
+      - { entry: kickside.mail:db_config, path: ".meta.db_id" }
+      - { entry: kickside.mail.migrations:01_messages, path: ".meta.target_db" }
+      - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
+  - name: db_config
+    kind: registry.entry
+    meta: { private: true, db_id: "" }
+  - name: types
+    kind: library.lua
+    source: file://types.lua
+    modules: [sql]
+  - name: message
+    kind: library.lua
+    source: file://message.lua
+    imports: { types: kickside.mail:types }
+  - name: client
+    kind: library.lua
+    source: file://client.lua
+    modules: [contract, security]
+    imports: { types: kickside.mail:types }
+  - name: settings
+    kind: library.lua
+    source: file://settings.lua
+    modules: [contract, registry]
+    imports: { types: kickside.mail:types }
+  - name: drivers_registry
+    kind: library.lua
+    source: file://drivers_registry.lua
+    modules: [registry, contract, funcs]
+    imports: { settings: kickside.mail:settings, types: kickside.mail:types }
+  - name: validate_driver
+    kind: function.lua
+    source: file://drivers_registry.lua
+    method: validate_setting
+    modules: [registry, contract, funcs]
+    imports: { settings: kickside.mail:settings, types: kickside.mail:types }
+    security:
+      policies: [kickside.mail.security:driver_discovery]
+  - name: setting_driver
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.mail
+    key: driver
+    title: Delivery driver
+    description: ID of the installed driver that delivers mail.
+    scope: global
+    value_type: string
+    default: ""
+    order: 10
+    read_access: admin
+    validate_func: kickside.mail:validate_driver
+  - name: setting_from_address
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.mail
+    key: from_address
+    title: From address
+    scope: global
+    value_type: string
+    default: ""
+    order: 20
+    validate_func: kickside.mail.config:validate_address
+  - name: setting_from_name
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.mail
+    key: from_name
+    title: From name
+    scope: global
+    value_type: string
+    default: ""
+    order: 30
+  - name: setting_reply_to
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.mail
+    key: reply_to
+    title: Reply-to address
+    scope: global
+    value_type: string
+    default: ""
+    order: 40
+    validate_func: kickside.mail.config:validate_address
+  - name: setting_log_retention_days
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.mail
+    key: log_retention_days
+    title: Delivery log retention days
+    description: Number of days to keep a completed or failed delivery.
+    scope: global
+    value_type: int
+    default: 30
+    order: 50
+    validate_func: kickside.mail.outbox:validate_retention
+  - name: settings_block
+    kind: registry.entry
+    meta: { type: "kickside.settings:block" }
+    key: mail
+    title: Mail
+    icon: lucide:mail
+    group: Integrations
+    order: 30
+    namespace: kickside.mail
+  - name: mailer
+    kind: contract.definition
+    meta: { title: Mailer }
+    methods:
+      - name: send
+        description: Queue delivery from the installation's configured address using a named template or a supplied body.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.output.json
+      - name: get_message
+        description: Read one visible delivery log entry.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_message.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_message.output.json
+      - name: list_messages
+        description: List visible delivery log entries in descending creation order.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/list_messages.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/list_messages.output.json
+      - name: list_templates
+        description: List visible shipped mail templates and their variable schemas.
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/list_templates.output.json
+      - name: get_template
+        description: Read a shipped template's description, variable schema, sample, and Jet part names.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_template.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_template.output.json
+      - name: preview
+        description: Render a shipped template using the send capability without delivering it.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/preview.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/preview.output.json
+  - name: mailer_binding
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:mailer
+        default: true
+        methods:
+          send: kickside.mail.service:send
+          get_message: kickside.mail.outbox:get_message
+          list_messages: kickside.mail.outbox:list_messages
+          list_templates: kickside.mail.service:list_templates
+          get_template: kickside.mail.service:get_template
+          preview: kickside.mail.service:preview
+  - name: transport
+    kind: contract.definition
+    meta: { comment: Internal delivery protocol for registered mail drivers. }
+    methods:
+      - name: send
+        description: Deliver one rendered message with the configured sender identity.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/transport.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.output.json

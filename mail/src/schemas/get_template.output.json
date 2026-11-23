@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "title", "description", "variable_schema", "sample", "parts"],
+  "properties": {
+    "name": {"type": "string"}, "title": {"type": "string"}, "description": {"type": "string"},
+    "variable_schema": {"type": "object"}, "sample": {"type": "object"},
+    "parts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "html", "text"],
+      "properties": {
+        "subject": {"type": "string"}, "html": {"type": "string"}, "text": {"type": "string"}
+      }
+    }
+  }
+}

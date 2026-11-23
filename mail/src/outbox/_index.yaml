@@ -1,0 +1,107 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.outbox
+entries:
+  - name: policy
+    kind: library.lua
+    source: file://policy.lua
+    modules: [time]
+    imports: { types: kickside.mail:types }
+  - name: validate_retention
+    kind: function.lua
+    source: file://policy.lua
+    method: validate_retention
+    modules: [time]
+    imports: { types: kickside.mail:types }
+  - name: database
+    kind: library.lua
+    source: file://database.lua
+    modules: [registry, sql]
+    imports:
+      types: kickside.mail:types
+      error_envelope: kickside.contract:error_envelope
+  - name: store
+    kind: library.lua
+    source: file://store.lua
+    modules: [sql, json, uuid]
+    imports:
+      database: kickside.mail.outbox:database
+      jobs: kickside.core.jobs:jobs
+      policy: kickside.mail.outbox:policy
+      types: kickside.mail:types
+  - name: get_message
+    kind: function.lua
+    source: &log_source file://log.lua
+    method: get_message
+    modules: &log_modules [security, sql, uuid]
+    imports: &log_imports
+      database: kickside.mail.outbox:database
+      identity: kickside.execution:execution_identity
+      store: kickside.mail.outbox:store
+      types: kickside.mail:types
+    security: &log_security
+      policies: [kickside.mail.security:outbox_db, kickside.mail.security:outbox_config]
+  - name: list_messages
+    kind: function.lua
+    source: *log_source
+    method: list_messages
+    modules: *log_modules
+    imports: *log_imports
+    security: *log_security
+  - name: deliver
+    kind: function.lua
+    meta: { private: true }
+    source: file://worker.lua
+    method: deliver
+    modules: [sql, logger, time]
+    imports:
+      database: kickside.mail.outbox:database
+      drivers: kickside.mail:drivers_registry
+      identity: kickside.execution:execution_identity
+      jobs: kickside.core.jobs:jobs
+      lease_release: kickside.core.jobs:lease_release
+      policy: kickside.mail.outbox:policy
+      settings: kickside.mail:settings
+      store: kickside.mail.outbox:store
+      types: kickside.mail:types
+    security:
+      policies:
+        - kickside.mail.security:deferred_delivery
+        - kickside.mail.security:driver_dispatch
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:settings_admin_read
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:job_notify
+  - name: read_attachments
+    kind: function.lua
+    meta: { private: true }
+    source: file://../service/attachments.lua
+    method: read
+    modules: [contract]
+    imports:
+      client: kickside.mail:client
+      types: kickside.mail:types
+      message: kickside.mail:message
+      render: kickside.mail.views:render
+    security:
+      policies: [kickside.mail.security:template_access]
+  - name: owner
+    kind: function.lua
+    meta: { private: true, type: kickside.retention.owner }
+    source: file://owner.lua
+    method: run
+    modules: [sql]
+    imports:
+      database: kickside.mail.outbox:database
+      jobs: kickside.core.jobs:jobs
+      policy: kickside.mail.outbox:policy
+      settings: kickside.mail:settings
+      store: kickside.mail.outbox:store
+      types: kickside.mail:types
+    security:
+      actor: { id: system:kickside.mail.retention }
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:settings_read

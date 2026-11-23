@@ -1,0 +1,91 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.views
+entries:
+  - name: templates
+    kind: template.set
+  - name: layout
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: file://layout.jet
+    meta:
+      inline_image:
+        filesystem: kickside.mail.views:layout_assets
+        filename: kickside-logo.png
+        content_type: image/png
+        content_id: kickside-layout-logo
+  - name: layout.text
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: file://layout.text.jet
+  - name: layout_assets
+    kind: fs.directory
+    base: module
+    directory: src/views/assets
+    mode: "0555"
+  - name: notice
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: file://notice.jet
+  - name: notice.subject
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: |-
+      {{ raw(subject) }}
+  - name: notice.text
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: file://notice.text.jet
+  - name: notice_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      name: notice
+      title: Notice
+      description: Send a branded notice with optional details, a link, and an inline image.
+      parts: { subject: notice.subject, html: notice, text: notice.text }
+      variable_schema:
+        type: object
+        additionalProperties: false
+        required: [subject]
+        properties:
+          subject: { type: string, description: Email subject. }
+          preheader: { type: string, description: Text shown in an inbox preview. }
+          heading: { type: string, description: Heading in the message body. }
+          message: { type: string, description: Opening message. }
+          paragraphs:
+            type: array
+            description: Additional paragraphs.
+            items: { type: string }
+          action_url: { type: string, description: HTTP or HTTPS address for the action link. }
+          action_label: { type: string, description: Text for the action link. }
+          inline_content_id: { type: string, description: Content ID of an inline attachment. }
+          image_alt: { type: string, description: Alternative text for the inline image. }
+          details:
+            type: array
+            description: Labeled details to include in the message.
+            items:
+              type: object
+              additionalProperties: false
+              required: [key, value]
+              properties:
+                key: { type: string, description: Label. }
+                value: { type: string, description: Detail to display. }
+      sample: { subject: Activity report ready, message: Your activity report is ready to review. }
+  - name: catalog
+    kind: library.lua
+    source: file://catalog.lua
+    modules: [registry, json]
+    imports:
+      types: kickside.mail:types
+      canonical_json: kickside.contract:canonical_json
+      error_envelope: kickside.contract:error_envelope
+  - name: render
+    kind: library.lua
+    source: file://render.lua
+    modules: [templates, html, registry, fs]
+    imports:
+      types: kickside.mail:types
+      catalog: kickside.mail.views:catalog
+      message: kickside.mail:message
+      error_envelope: kickside.contract:error_envelope

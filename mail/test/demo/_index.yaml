@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.demo
+entries:
+  - name: fixtures
+    kind: fs.directory
+    directory: ./fixtures
+    mode: "0555"
+  - name: output
+    kind: fs.directory
+    directory: ./.wippy/render-demo
+    auto_init: true
+  - name: driver
+    kind: registry.entry
+    meta: { type: "kickside.mail:driver" }
+    id: render-demo
+    label: Render demo
+    icon: lucide:mail
+    description: Capture the rendered demo notice.
+    binding: kickside.mail.demo:transport
+    settings_ns: kickside.mail.demo
+    available_func: kickside.mail.demo:available
+  - name: transport
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:transport
+        methods: { send: "kickside.mail.demo:capture" }
+  - name: available
+    kind: function.lua
+    source: file://capture.lua
+    method: available
+    modules: [base64, fs, json]
+  - name: capture
+    kind: function.lua
+    source: file://capture.lua
+    method: send
+    modules: [base64, fs, json]
+    security:
+      policies: [kickside.mail.demo:file_access]
+  - name: send_notice
+    kind: function.lua
+    source: file://send_notice.lua
+    method: send
+    modules: [security, contract, time]
+    imports:
+      client: kickside.mail:client
+      uploads: kickside.uploads:uploads
+  - name: render
+    kind: process.lua
+    source: file://render.lua
+    method: main
+    modules: [fs, funcs, security, sql]
+    imports:
+      provision: kickside.core.threads:provision
+    security:
+      policies: [kickside.mail.demo:file_access, kickside.mail.demo:fixture_authority]
+  - name: file_access
+    kind: security.policy
+    policy:
+      resources: [kickside.mail.demo:fixtures, kickside.mail.demo:output]
+      actions: [fs.get]
+      effect: allow
+  - name: call_access
+    kind: security.policy
+    groups: [app:user]
+    policy:
+      resources: [kickside.mail.demo:send_notice]
+      actions: [registry.get, funcs.call, contract.open, contract.call]
+      effect: allow
+  - name: fixture_authority
+    kind: security.policy
+    policy:
+      resources:
+        - app:db
+        - kickside.mail.demo:send_notice
+        - 07cc253a-d1ab-46e5-936f-7d12490524bc
+        - wippy.security:process
+        - security
+        - kickside.core:threads
+        - kickside.core:threads_binding
+        - kickside.core:db_config
+        - kickside.core.retention:notify
+        - kickside.component:kind_declaration
+        - upsert
+        - kickside.uploads:uploads_component
+      actions: [db.get, funcs.call, security.actor.create, security.policy_group.get, funcs.security, contract.get, contract.open, contract.call, contract.security, registry.get, registry.find]
+      effect: allow

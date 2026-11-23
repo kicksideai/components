@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "from": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address"],
+      "properties": {"address": {"type": "string", "format": "email"}, "name": {"type": "string"}}
+    },
+    "to": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "cc": {"type": "array", "items": {"type": "string"}},
+    "bcc": {"type": "array", "items": {"type": "string"}},
+    "reply_to": {"type": "string"},
+    "subject": {"type": "string", "minLength": 1},
+    "html": {"type": "string"},
+    "text": {"type": "string"},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "filename": {"type": "string", "minLength": 1},
+          "content_type": {"type": "string", "minLength": 1},
+          "content": {"type": "string", "description": "Original bytes in a Lua string"},
+          "disposition": {"enum": ["attachment", "inline"]},
+          "content_id": {"type": "string", "minLength": 1}
+        },
+        "required": ["filename", "content_type", "content", "disposition"],
+        "if": {"properties": {"disposition": {"const": "inline"}}},
+        "then": {"required": ["content_id"]}
+      }
+    }
+  },
+  "required": ["subject", "from", "to"],
+  "anyOf": [{"required": ["html"]}, {"required": ["text"]}]
+}

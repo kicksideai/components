@@ -2,6 +2,30 @@
   "repository": "components",
   "checks": [],
   "modules": {
+    "mail": {
+      "path": "mail",
+      "organization": "kickside",
+      "module": "mail",
+      "type": "plugin",
+      "visibility": "public",
+      "embed": [
+        "kickside.mail.views:layout_assets"
+      ],
+      "targets": [
+        "lockrefresh",
+        "lint",
+        "typecheck",
+        "test",
+        "verify",
+        "publish"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_mail",
+      "extra_tests": []
+    },
     "dashboard": {
       "path": "dashboard",
       "organization": "kickside",

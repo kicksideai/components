@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.service
+entries:
+  - name: send
+    kind: function.lua
+    source: file://send.lua
+    method: send
+    modules: &mailer_modules [logger]
+    imports: &mailer_imports
+      types: kickside.mail:types
+      client: kickside.mail:client
+      settings: kickside.mail:settings
+      drivers: kickside.mail:drivers_registry
+      message: kickside.mail:message
+      render: kickside.mail.views:render
+      attachments: kickside.mail.service:attachments
+      recipients: kickside.mail.service:recipients
+      canonical_json: kickside.contract:canonical_json
+      identity: kickside.execution:execution_identity
+      jobs: kickside.core.jobs:jobs
+      notifier: kickside.core.retention:notifier
+      store: kickside.mail.outbox:store
+    security:
+      policies:
+        - kickside.mail.security:driver_dispatch
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:settings_admin_read
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:job_notify
+        - kickside.core.retention:notify_access
+  - name: list_templates
+    kind: function.lua
+    source: file://../views/catalog.lua
+    method: list_templates
+    modules: &catalog_modules [registry, json]
+    imports: &catalog_imports
+      types: kickside.mail:types
+      canonical_json: kickside.contract:canonical_json
+      error_envelope: kickside.contract:error_envelope
+  - name: get_template
+    kind: function.lua
+    source: file://../views/catalog.lua
+    method: get_template
+    modules: *catalog_modules
+    imports: *catalog_imports
+  - name: preview
+    kind: function.lua
+    source: file://send.lua
+    method: preview
+    modules: *mailer_modules
+    imports: *mailer_imports
+  - name: delivery
+    kind: library.lua
+    source: file://delivery.lua
+    modules: [http_client, json, base64]
+    imports:
+      types: kickside.mail:types
+      error_envelope: kickside.contract:error_envelope
+  - name: attachments
+    kind: library.lua
+    source: file://attachments.lua
+    modules: &resolution_modules [contract]
+    imports:
+      client: kickside.mail:client
+      types: kickside.mail:types
+      message: kickside.mail:message
+      render: kickside.mail.views:render
+  - name: recipients
+    kind: library.lua
+    source: file://recipients.lua
+    modules: *resolution_modules
+    imports:
+      types: kickside.mail:types
+      message: kickside.mail:message

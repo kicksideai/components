@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "message_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "enum": [
+        "queued",
+        "sent",
+        "failed"
+      ]
+    }
+  },
+  "required": [
+    "message_id",
+    "status"
+  ]
+}

@@ -1,0 +1,209 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.harness
+entries:
+  - name: first_driver
+    kind: registry.entry
+    meta: { type: "kickside.mail:driver" }
+    id: first
+    label: First
+    icon: lucide:mail
+    description: First test transport.
+    binding: kickside.mail.harness:first
+    settings_ns: kickside.mail.harness.first
+    available_func: kickside.mail.harness:available
+  - name: second_driver
+    kind: registry.entry
+    meta: { type: "kickside.mail:driver" }
+    id: second
+    label: Second
+    icon: lucide:mail
+    description: Second test transport.
+    binding: kickside.mail.harness:second
+    settings_ns: kickside.mail.harness.second
+    available_func: kickside.mail.harness:available
+  - name: capture_driver
+    kind: registry.entry
+    meta: { type: "kickside.mail:driver" }
+    id: capture
+    label: Capture
+    icon: lucide:mail
+    description: Return the rendered message and recipient fields for assertions.
+    binding: kickside.mail.harness:capture
+    settings_ns: kickside.mail.harness.capture
+    available_func: kickside.mail.harness:available
+  - name: first_descriptor_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:first_driver
+    targets:
+      - { entry: kickside.mail.security:driver_discovery, path: ".policy.resources +=" }
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: first_binding_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:first
+    targets:
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: first_send_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:send_first
+    targets:
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: second_descriptor_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:second_driver
+    targets:
+      - { entry: kickside.mail.security:driver_discovery, path: ".policy.resources +=" }
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: second_binding_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:second
+    targets:
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: second_send_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:send_second
+    targets:
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: capture_descriptor_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:capture_driver
+    targets:
+      - { entry: kickside.mail.security:driver_discovery, path: ".policy.resources +=" }
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: capture_binding_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:capture
+    targets:
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: capture_send_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:send_capture
+    targets:
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: unregistered_driver
+    kind: registry.entry
+    meta: { type: "kickside.mail:driver" }
+    id: unregistered
+    label: Unregistered
+    icon: lucide:mail
+    description: A descriptor without delivery authorization.
+    binding: kickside.mail.harness:first
+    settings_ns: kickside.mail.harness.first
+    available_func: kickside.mail.harness:available
+  - name: capture
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:transport
+        methods: { send: "kickside.mail.harness:send_capture" }
+  - name: send_capture
+    kind: function.lua
+    source: file://transport.lua
+    method: capture
+    modules: [json, sql, channel]
+    security:
+      policies: [kickside.mail.harness:fixture_db]
+  - name: first
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:transport
+        methods: { send: "kickside.mail.harness:send_first" }
+  - name: second
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:transport
+        methods: { send: "kickside.mail.harness:send_second" }
+  - name: send_first
+    kind: function.lua
+    source: file://transport.lua
+    method: first
+    modules: [json, sql, channel]
+  - name: send_second
+    kind: function.lua
+    source: file://transport.lua
+    method: second
+    modules: [json, sql, channel]
+  - name: available_grant
+    kind: ns.requirement
+    default: kickside.mail.harness:available
+    targets:
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
+  - name: available
+    kind: function.lua
+    source: file://transport.lua
+    method: available
+    modules: [json, sql, channel]
+  - name: probe
+    kind: function.lua
+    source: file://mailer_test.lua
+    method: probe
+    modules: [contract, funcs, security, registry, json, sql, time, uuid]
+    imports:
+      test: wippy.test:test
+      blocks: kickside.blocks:blocks
+      compiler: kickside.workflows.compiler:compiler
+      canonical_json: kickside.contract:canonical_json
+      jobs: kickside.core.jobs:jobs
+      notifier: kickside.core.retention:notifier
+  - name: fixture_db
+    kind: security.policy
+    policy:
+      resources: [app:db]
+      actions: [db.get]
+      effect: allow
+  - name: caller
+    kind: security.policy
+    policy:
+      resources: [kickside.mail.harness:probe]
+      actions: [funcs.call]
+      effect: allow
+  - name: external_template
+    kind: security.policy
+    policy:
+      resources: [app.templates:reminder_template]
+      actions: [registry.get, registry.find]
+      effect: allow
+  - name: principal_reader
+    kind: security.policy
+    policy:
+      resources:
+        - get_user
+        - kickside.users:user_provisioning
+        - kickside.users:provisioning_binding
+        - kickside.users.provisioning:provisioning_get_user
+      actions: [registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+      effect: allow
+  - name: admin
+    kind: security.policy
+    policy:
+      resources:
+        - kickside.settings:*
+        - kickside.settings.api:put_settings.endpoint
+        - kickside.settings.persist:*
+        - kickside.mail:setting_*
+        - kickside.mail:validate_driver
+        - kickside.mail.config:validate_address
+        - kickside.mail.outbox:validate_retention
+        - app:db
+        - set
+        - unset
+      actions: [access, registry.find, registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security, db.get]
+      effect: allow
+  - name: test
+    kind: function.lua
+    meta: { type: test, suite: mailer }
+    source: file://mailer_test.lua
+    method: run
+    modules: [funcs, security, contract, registry, json, sql, time, uuid]
+    imports:
+      test: wippy.test:test
+      blocks: kickside.blocks:blocks
+      compiler: kickside.workflows.compiler:compiler
+      canonical_json: kickside.contract:canonical_json
+      jobs: kickside.core.jobs:jobs
+      notifier: kickside.core.retention:notifier
+  - name: lease_hint
+    kind: library.lua
+    source: file://lease_hint.lua
+    modules: [sql]
+    imports:
+      release: kickside.core.jobs:lease_release

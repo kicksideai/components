@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.templates
+entries:
+  - name: reminder
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: |
+      {{ extends "layout" }}
+      {{ block body() }}<p>Please finish {{ task }}.</p>{{ end }}
+  - name: reminder.title
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: |-
+      Reminder: {{ raw(task) }}
+  - name: reminder.plain
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: |
+      {{ extends "layout.text" }}
+      {{ block body() }}Please finish {{ raw(task) }}.{{ end }}
+  - name: reminder_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      name: reminder
+      title: Reminder
+      description: Remind the recipient about a task.
+      parts: { subject: reminder.title, html: reminder, text: reminder.plain }
+      variable_schema:
+        type: object
+        additionalProperties: false
+        required: [task]
+        properties:
+          task: { type: string, description: Task to complete. }
+      sample: { task: Send the report }
+  - name: undeclared
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: <p>Undeclared</p>
+  - name: undeclared.subject
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: Undeclared
+  - name: undeclared.text
+    kind: template.jet
+    set: kickside.mail.views:templates
+    source: Undeclared
