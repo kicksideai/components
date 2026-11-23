@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: test.kanban
+entries:
+- name: search_panel
+  kind: registry.entry
+  meta:
+    type: kickside.work.ui.panel
+    title: Search fixture
+    tag: test-kanban-search
+    target: board:search
+    plugin: kickside.work_search:plugin
+- name: discovery
+  kind: security.policy
+  groups: ['kickside.security.groups:members']
+  policy:
+    resources: ['test.kanban:search_panel']
+    actions: [registry.get, registry.find]
+    effect: allow

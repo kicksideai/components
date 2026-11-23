@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: work-kanban
+type: plugin
+description: Kanban boards, backlog, sprints and issue search on KickSide Work.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords: [kickside, work, kanban]
+exclude:
+- wippy.lock
+- ui/**
+- build-inputs/**
+- test/**
+- test:**
+- app:**
+- 'app.**:**'
+- .wippy/**
+- .wippy:**

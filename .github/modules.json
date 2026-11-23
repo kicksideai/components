@@ -206,6 +206,36 @@
       "pg_database": "kickside_test_work",
       "extra_tests": []
     },
+    "work-kanban": {
+      "path": "work-kanban",
+      "organization": "kickside",
+      "module": "work-kanban",
+      "type": "plugin",
+      "visibility": "public",
+      "embed": [
+        "kickside.work.kanban:ui_fs"
+      ],
+      "targets": [
+        "setup",
+        "build",
+        "typecheck",
+        "ui-test",
+        "check",
+        "lint",
+        "test",
+        "pack-public"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_work_kanban",
+      "extra_tests": [
+        ["make", "typecheck"],
+        ["make", "ui-test"],
+        ["make", "check"]
+      ]
+    },
     "work-search": {
       "path": "work-search",
       "organization": "kickside",

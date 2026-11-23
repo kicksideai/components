@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: work-kanban-harness
+description: Kanban consumer tests against Work, Work Planning and Work Search.

@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+  - name: gateway
+    kind: http.service
+    addr: 127.0.0.1:0
+    lifecycle:
+      auto_start: true
+  - name: gateway_url
+    kind: library.lua
+    modules: [system]
+    source: |
+      local system = require("system")
+
+      local function url(path: string): string
+          local gateway = assert(system.supervisor.state("app:gateway"))
+          local details = assert(gateway.details, "Test gateway did not report a listener")
+          local address = assert(details:match("^service listening on (127%.0%.0%.1:[1-9]%d*)$"), details)
+          return "http://" .. address .. path
+      end
+
+      return { url = url }
+  - name: gateway_test
+    kind: function.lua
+    meta: { type: test, suite: harness_http }
+    method: run
+    modules: [http_client, registry]
+    imports:
+      gateway: app:gateway_url
+      test: wippy.test:test
+    source: |
+      local gateway = require("gateway")
+      local http_client = require("http_client")
+      local registry = require("registry")
+      local test = require("test")
+
+      local function define()
+          test.describe("Harness HTTP gateway", function()
+              test.it("serves HTTP on a runtime-assigned loopback port", function()
+                  test.eq(assert(registry.get("app:gateway")).data.addr, "127.0.0.1:0")
+                  local response, err = http_client.request("GET", gateway.url("/"))
+                  assert(response, tostring(err))
+              end)
+          end)
+      end
+
+      return { run = test.run_cases(define) }

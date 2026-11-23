@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: work_kanban_build
+entries:
+- name: definition
+  kind: ns.definition
+  meta: {title: Work Kanban build inputs}
+- name: ui_kit
+  kind: ns.dependency
+  component: kickside/ui-kit
+  version: '1.7.8'
