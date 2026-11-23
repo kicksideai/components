@@ -25,6 +25,12 @@ const missingRefs = {
   shell_bindings: ['fixture.supplier:catalog_ui'],
   checks: [], plugins: [],
 }
+async function associatedError(field, message) {
+  assert.equal(await field.getAttribute('aria-invalid'), 'true')
+  assert.ok(await field.evaluate((node, expected) => node.getAttribute('aria-describedby')?.split(' ')
+    .some(id => node.getRootNode().getElementById(id)?.textContent === expected), message))
+}
+
 async function applyConfiguration(page, button) {
   await button(page, 'Review changes').click()
   const review = page.getByRole('dialog', { name: 'Review changes' })
@@ -137,15 +143,16 @@ const cases = [
       lifecycle: { state: 'failed', error: issue('plugin_config_invalid', manifest + ' config: missing required property issuer.', { field: 'issuer' }) },
     },
     async verify({ row, requests, button, page, capture }) {
-      await row.getByText(/certificate issuer is required/i).waitFor()
+      const field = row.getByRole('textbox', { name: 'Certificate issuer', exact: true })
+      await row.getByRole('alert').getByText('A value is required.', { exact: true }).waitFor()
+      await associatedError(field, 'A value is required.')
       await button(row, 'Technical details').click()
       await diagnostics(row, manifest).getByText(/missing required property issuer/).waitFor()
-      const field = row.getByRole('textbox', { name: /certificate issuer/i })
       await field.fill('Reject me')
       await applyConfiguration(page, button)
       await page.getByText(/Choose an approved certificate issuer/).waitFor()
       await capture('save-refusal')
-      await row.getByRole('alert').getByText('Certificate issuer: Choose an approved certificate issuer.').waitFor()
+      await associatedError(field, 'Choose an approved certificate issuer.')
       assert.equal(await field.inputValue(), 'Reject me')
       await field.fill('Approved issuer')
       await applyConfiguration(page, button)
@@ -162,8 +169,8 @@ const cases = [
       await button(page, 'Review changes').click()
       await page.getByText(/A required plugin setting is missing/).waitFor()
       await capture('review-refusal')
-      await row.getByRole('alert').getByText('Certificate issuer: A required plugin setting is missing.').waitFor()
-      const field = row.getByRole('textbox', { name: /certificate issuer/i })
+      const field = row.getByRole('textbox', { name: 'Certificate issuer', exact: true })
+      await associatedError(field, 'A required plugin setting is missing.')
       await field.fill('Approved issuer')
       await button(page, 'Review changes').click()
       await button(page, 'Apply changes').waitFor()

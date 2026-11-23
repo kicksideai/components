@@ -5,13 +5,13 @@ import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import ToggleSwitch from 'primevue/toggleswitch'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import DefinitionList from '../../shared/DefinitionList.vue'
 import DefinitionRow from '../../shared/DefinitionRow.vue'
 import NativeDialog from '../../shared/NativeDialog.vue'
 import { humanLabel } from '../../shared/labels'
 import type { PluginConfigRefusal } from '../../shared/transport'
-import { configFieldLabel, humanize } from '../../forms'
+import { humanize } from '../../forms'
 import type { Declaration, PluginView, RemoveDecl, SchemaOptions, SchemaView, ScopeOption } from '../../types'
 import { installedInterfaceProblem, pluginStatus } from './plugin-state'
 import ConfigForm from './ConfigForm.vue'
@@ -25,6 +25,7 @@ const emit = defineEmits<{
   review: []
   clearShellBinding: [binding: string]
   clearRefusal: []
+  'invalid-draft': [invalid: boolean]
 }>()
 const filterOperators = new Map([
   ['eq', 'Equals'],
@@ -35,6 +36,32 @@ const filterOperators = new Map([
   ['lte', 'At most'],
 ])
 const expanded = ref<Record<string, boolean>>({})
+const inventoryHelp = {
+  hold_seconds: 'Default and maximum time stock stays set aside after a reservation starts. Leave empty to use the deployment default.',
+}
+const forms = new Map<string, InstanceType<typeof ConfigForm>>()
+const invalidFields = ref(new Set<string>())
+const invalidDrafts = ref(new Set<string>())
+watch(() => invalidDrafts.value.size > 0, invalid => emit('invalid-draft', invalid))
+
+function validity(id: string, valid: boolean, localErrors: boolean) {
+  if (valid) invalidFields.value.delete(id)
+  else invalidFields.value.add(id)
+  if (localErrors) invalidDrafts.value.add(id)
+  else invalidDrafts.value.delete(id)
+}
+
+function reportValidity() {
+  const first = rows.value.find(({ plugin, chosen }) => chosen && invalidFields.value.has(plugin.plugin) &&
+    (invalidDrafts.value.has(plugin.plugin) || Object.hasOwn(props.pluginConfigs, plugin.plugin) ||
+     !plugin.active || props.refusal?.plugin === plugin.plugin))
+  if (!first) return true
+  expanded.value[first.plugin.plugin] = true
+  void nextTick(() => forms.get(first.plugin.plugin)?.reportValidity())
+  return false
+}
+
+defineExpose({ reportValidity })
 watch(() => props.refusal, refusal => {
   if (refusal) expanded.value[refusal.plugin] = true
 }, { immediate: true })
@@ -64,10 +91,10 @@ const rows = computed(() => props.options.plugins.map(option => {
   return {
     option, plugin, status, chosen, refusal,
     title: humanLabel(plugin.title ?? option.title, plugin.installed ? 'Plugin' : 'Unavailable plugin'),
-    label: refusal ? 'Configuration needed' : !plugin.active && status?.kind === 'failed' ? 'Unavailable' : status?.label ?? (chosen
+    label: refusal || invalidDrafts.value.has(plugin.plugin) ? 'Configuration needed' : !plugin.active && status?.kind === 'failed' ? 'Unavailable' : status?.label ?? (chosen
       ? plugin.active ? 'Enabled' : 'Will enable on apply'
       : plugin.active ? 'Will disable on apply' : 'Disabled'),
-    severity: refusal ? 'warn' as const : status?.severity ?? (chosen ? 'success' : 'secondary'),
+    severity: refusal || invalidDrafts.value.has(plugin.plugin) ? 'warn' as const : status?.severity ?? (chosen ? 'success' : 'secondary'),
   }
 }))
 
@@ -92,8 +119,11 @@ function choose(id: string, on: boolean) {
 
 function setConfig(id: string, value: Record<string, unknown>) {
   expanded.value[id] = true
+  const previous = props.pluginConfigs[id] ?? current.value.get(id)?.config ?? {}
   props.pluginConfigs[id] = value
-  if (props.refusal?.plugin === id) emit('clearRefusal')
+  if (props.refusal?.plugin === id && JSON.stringify(previous[props.refusal.field]) !== JSON.stringify(value[props.refusal.field])) {
+    emit('clearRefusal')
+  }
 }
 
 const scopes = computed(() => props.draft.scopes ?? [])
@@ -145,7 +175,7 @@ function reviewRemoval(plugin: PluginView) {
       <template #head><header class="pim-bsection-head"><h3>{{ installedCount }} installed · {{ enabledCount }} enabled here</h3></header></template>
       <div v-if="rows.length === 0" class="pim-aspect muted">No plugin is installed.</div>
       <DefinitionRow route-section="plugins" :route-id="plugin.plugin" v-for="{ option, plugin, status, chosen, title, label, severity, refusal } in rows" :key="plugin.plugin"
-        :title="title" :open="expanded[plugin.plugin] ?? (chosen && (!plugin.active || !!pluginConfigs[plugin.plugin]) || !!(plugin.active && status && status.kind !== 'pending'))"
+        :title="title" :keep-mounted="invalidDrafts.has(plugin.plugin)" :open="expanded[plugin.plugin] ?? (chosen && (!plugin.active || !!pluginConfigs[plugin.plugin]) || !!(plugin.active && status && status.kind !== 'pending'))"
         @update:open="expanded[plugin.plugin] = $event">
         <template #details>
           <Tag :severity="severity" :value="label" />
@@ -223,18 +253,14 @@ function reviewRemoval(plugin: PluginView) {
           </Disclosure>
           <template v-if="chosen && plugin.installed && status?.kind !== 'failed' && status?.kind !== 'uninstalled'">
             <template v-if="canEdit && option.config_schema.properties && Object.keys(option.config_schema.properties).length">
-              <p v-if="plugin.plugin === 'kickside.pim.inventory:plugin'" class="muted small">
-                Hold seconds sets the default and maximum time stock stays set aside after an inventory reservation starts.
-                Leave it empty to use the deployment default.
-              </p>
               <p class="muted small">Choose Review changes, then Apply changes to save this configuration.</p>
             </template>
-            <ConfigForm :disabled="!canEdit" :schema="option.config_schema" :model-value="pluginConfigs[plugin.plugin] ?? plugin.config ?? {}"
-              :problem="status?.kind === 'config' ? status.error : undefined"
+            <ConfigForm :ref="form => { if (form) forms.set(plugin.plugin, form as InstanceType<typeof ConfigForm>); else forms.delete(plugin.plugin) }"
+              :disabled="!canEdit" :schema="option.config_schema" :model-value="pluginConfigs[plugin.plugin] ?? plugin.config ?? {}"
+              :problem="status?.kind === 'config' && !Object.hasOwn(pluginConfigs, plugin.plugin) ? status.error : undefined"
               :plugin-id="status?.kind === 'config' ? plugin.plugin : undefined"
-              :problem-label="status?.error?.field && status.error.field !== 'config' ? configFieldLabel(option.config_schema, status.error.field) : undefined"
-              :refusal="refusal ? configFieldLabel(option.config_schema, refusal.field) + ': ' + refusal.message : undefined"
-              @update:model-value="setConfig(plugin.plugin, $event)" />
+              :refusal="refusal" :field-help="plugin.plugin === 'kickside.pim.inventory:plugin' ? inventoryHelp : undefined"
+              @validity="(valid, local) => validity(plugin.plugin, valid, local)" @update:model-value="setConfig(plugin.plugin, $event)" />
           </template>
         </div>
       </DefinitionRow>

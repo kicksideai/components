@@ -7,7 +7,7 @@ import { host } from '@wippy-fe/proxy'
 import DefinitionRow from './DefinitionRow.vue'
 import DefinitionList from './DefinitionList.vue'
 import ToggleSwitch from 'primevue/toggleswitch'
-import { computed, inject, ref } from 'vue'
+import { computed, inject, nextTick, ref, useId } from 'vue'
 import ChipPicker from './ChipPicker.vue'
 import { humanize } from '../../forms'
 import { configFields } from './config'
@@ -19,11 +19,14 @@ import { settings } from './api'
 import ConfigForm from './ConfigForm.vue'
 import { sectionRow } from './sectionRow'
 const props = defineProps<{ boardId: string; draft: Declaration; schema: Schema; options: PluginOption[]; configs: PluginConfigs; disabled?: boolean; activationLocked?: boolean; filters?: InstalledRule[] }>()
-const emit = defineEmits<{ configured: []; refresh: []; review: [opener?: HTMLElement]; validity: [key: string, valid: boolean] }>()
+const emit = defineEmits<{ configured: []; refresh: []; review: [opener?: HTMLElement]; validity: [key: string, valid: boolean]; 'widget-validity': [key: string, valid: boolean] }>()
 const busy = ref(''), error = ref(''), saved = ref('')
 const expanded = ref<Record<string, boolean>>({})
 const location = inject(sectionRow, undefined)
 const invalid = ref(new Set<string>())
+const widgetInvalid = ref(new Set<string>())
+const configVersions = ref<Record<string, number>>({})
+const forms = new Map<string, InstanceType<typeof ConfigForm>>()
 const validationMessages = ref<Record<string, string>>({})
 const repairing = ref(new Set<string>())
 const rows = computed(() => props.options.map(plugin => {
@@ -39,6 +42,7 @@ const rows = computed(() => props.options.map(plugin => {
 const readOnly = computed(() => !!busy.value || props.disabled)
 const activationDisabled = computed(() => readOnly.value || props.activationLocked)
 const emptyConfig: Record<string, unknown> = {}
+const planningHelpId = useId()
 const planningPlugin = 'kickside.work.planning:plugin'
 const planningTypes = computed(() => (props.draft.item_types ?? []).filter(type => !['issue', 'sprint', 'milestone'].includes(type.id))
   .map(type => ({ value: type.id, label: type.title || humanize(type.id) })))
@@ -73,7 +77,7 @@ function toggle(id: string, enabled: boolean) {
     expanded.value[id] = true
     location?.choose('plugins', id, true)
   }
-  if (!enabled) { props.draft.plugins = plugins.filter(p => p.use !== id); delete props.configs[id]; invalid.value.delete(id); emit('validity', id, true); setFilters(id, []) }
+  if (!enabled) { props.draft.plugins = plugins.filter(p => p.use !== id); delete props.configs[id]; invalid.value.delete(id); emit('validity', id, true); widgetValidity(id, true); setFilters(id, []) }
 }
 function reviewRemoval(id: string, event: MouseEvent) {
   toggle(id, false)
@@ -88,7 +92,23 @@ function update(id: string, value: Record<string, unknown>) {
 }
 function resetConfig(id: string) {
   delete props.configs[id]
+  configVersions.value[id] = (configVersions.value[id] ?? 0) + 1
 }
+function widgetValidity(id: string, valid: boolean) {
+  if (valid || !selected(id)) widgetInvalid.value.delete(id)
+  else widgetInvalid.value.add(id)
+  emit('widget-validity', id, !widgetInvalid.value.has(id))
+}
+async function reportValidity() {
+  const first = rows.value.find(({ plugin, chosen }) => chosen && widgetInvalid.value.has(plugin.plugin))
+  if (!first) return true
+  expanded.value[first.plugin.plugin] = true
+  await nextTick()
+  forms.get(first.plugin.plugin)?.reportValidity()
+  return false
+}
+defineExpose({ reportValidity })
+
 function validity(id: string, valid: boolean) {
   if (valid) invalid.value.delete(id)
   else invalid.value.add(id)
@@ -201,13 +221,13 @@ async function recover(id: string) {
           class="work-stack work-tight">
           <template v-if="plugin.plugin === planningPlugin">
             <p v-if="!hasPlanningFields" class="work-muted">The Planning pack supplies sprint and milestone fields for item types.</p>
-            <ChipPicker v-else label="Plan these item types" :options="planningTypes" :model-value="config(plugin.plugin).issue_types as string[] | undefined"
+            <ChipPicker v-else label="Plan these item types" :aria-describedby="planningHelpId" :options="planningTypes" :model-value="config(plugin.plugin).issue_types as string[] | undefined"
               :disabled="!!busy || disabled" @update:model-value="toggleConfig(plugin.plugin, $event)" />
-            <p class="work-muted">Selected types get Current sprint and Milestone fields.</p>
+            <p :id="planningHelpId" class="work-muted">Selected types get Current sprint and Milestone fields.</p>
           </template>
-          <ConfigForm v-else :disabled="!!busy || disabled" :schema="plugin.config_schema" :model-value="config(plugin.plugin)" suggest-defaults
+          <ConfigForm v-else :key="configVersions[plugin.plugin]" :ref="form => { if (form) forms.set(plugin.plugin, form as InstanceType<typeof ConfigForm>); else forms.delete(plugin.plugin) }" :disabled="!!busy || disabled" :schema="plugin.config_schema" :model-value="config(plugin.plugin)" suggest-defaults
             @update:model-value="update(plugin.plugin, $event)" @validity="validity(plugin.plugin, $event)"
-            @validation-message="validationMessages[plugin.plugin] = $event" />
+            @widget-validity="widgetValidity(plugin.plugin, $event)" @validation-message="validationMessages[plugin.plugin] = $event" />
           <div class="work-form-actions">
             <Button :label="issue ? 'Reset form values' : 'Reset'" severity="secondary" outlined :disabled="!!busy || disabled" @click="resetConfig(plugin.plugin)" />
           </div>

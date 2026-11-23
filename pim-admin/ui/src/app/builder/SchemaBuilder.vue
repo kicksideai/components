@@ -187,6 +187,9 @@ const draft = ref<Declaration>({})
 const removed = ref<RemoveDecl>({})
 const pluginConfigs = ref<PluginConfigs>({})
 const pluginRefusal = ref<PluginConfigRefusal>()
+const pluginEditor = ref<InstanceType<typeof BuilderPlugins>>()
+const pluginDraftInvalid = ref(false)
+const pluginEditorVersion = ref(0)
 const initialConfigs = computed(() => Object.fromEntries(Object.entries(pluginConfigs.value).filter(([id]) => draft.value.plugins?.some(p => p.use === id) && !schema.value?.plugins.some(p => p.plugin === id && p.active))))
 const error = ref<ReturnType<typeof presentError>>()
 const stale = ref(false)
@@ -303,7 +306,7 @@ watch(() => props.catalogId, () => { reviews.begin(); busy.value = false; stale.
 
 const removals = computed(() => Object.values(reconcileRemovals(draft.value, removed.value)).reduce((n, list) => n + (list?.length ?? 0), 0))
 const schemaDirty = computed(() => !!schema.value && (JSON.stringify(draft.value) !== JSON.stringify(schema.value.declaration) || removals.value > 0 || Object.keys(initialConfigs.value).length > 0))
-const dirty = computed(() => schemaDirty.value || Object.keys(pluginConfigs.value).length > 0)
+const dirty = computed(() => pluginDraftInvalid.value || schemaDirty.value || Object.keys(pluginConfigs.value).length > 0)
 watch(dirty, value => emit('dirty-changed', value), { immediate: true })
 const families = computed(() => draft.value.families?.filter(family => family.code !== 'generic') ?? [])
 const groups = computed(() => draft.value.aspects ?? [])
@@ -450,6 +453,11 @@ async function reloadSettings() {
 
 async function review() {
   if (!schema.value || !dirty.value || !valid.value || stale.value || busy.value) return
+  if (pluginDraftInvalid.value && section.value !== 'Plugins') {
+    selectSection('Plugins')
+    await nextTick()
+  }
+  if (pluginEditor.value && !pluginEditor.value.reportValidity()) return
   const generation = reviews.begin()
   const snapshot = {
     ...reviewedRequest(request.value, schema.value.schema_generation, pluginConfigs.value),
@@ -544,6 +552,8 @@ function closeAdvanced() {
 function discard() {
   handoff.value = undefined
   pluginConfigs.value = {}
+  pluginDraftInvalid.value = false
+  pluginEditorVersion.value++
   pluginRefusal.value = undefined
   valid.value = true
   if (schema.value) draft.value = clone(schema.value.declaration)
@@ -583,7 +593,7 @@ function remove(kind: keyof RemoveDecl, id: string) {
             <fieldset v-else-if="schema && options" class="pim-editor-surface" :disabled="busy" :inert="busy">
               <Message v-if="!editable" severity="info">You can view this catalog’s settings.</Message>
 
-              <div :key="view" class="pim-ia-content">
+              <div v-if="section !== 'Plugins'" :key="view" class="pim-ia-content">
                 <div v-if="handoff && view === handoffDestination" class="form pim-card-body pad pim-ia-action">
                   <div>
                     <p v-if="handoff.from === 'Channels'" class="muted small">Open the family that defines what products need before release, then add a release requirement.</p>
@@ -639,8 +649,11 @@ function remove(kind: keyof RemoveDecl, id: string) {
                 </template>
                 <BuilderChannels v-else-if="section === 'Channels'" :catalog-id="catalogId" :draft="draft" :schema="schema" :view="view === 'Sources' ? 'sources' : 'channels'" @remove="remove" @requirements="showRequirements" />
                 <CatalogShare v-else-if="section === 'Access'" :catalog-id="catalogId" :title="title || 'Catalog'" :access="schema.access" />
-                <BuilderPlugins v-else :draft="draft" :schema="schema" :options="options" :plugin-configs="pluginConfigs" :refusal="pluginRefusal" :stale="stale"
-                  @remove="remove" @reset="resetPlugin" @clear-refusal="pluginRefusal = undefined"
+              </div>
+              <div v-if="section === 'Plugins' || pluginDraftInvalid" v-show="section === 'Plugins'" class="pim-ia-content">
+                <BuilderPlugins :key="pluginEditorVersion" ref="pluginEditor" :draft="draft" :schema="schema" :options="options"
+                  :plugin-configs="pluginConfigs" :refusal="pluginRefusal" :stale="stale"
+                  @remove="remove" @reset="resetPlugin" @clear-refusal="pluginRefusal = undefined" @invalid-draft="pluginDraftInvalid = $event"
                   @refresh="refreshPluginStatus(true)" @resume="resumePluginProjection" @review="review" @clear-shell-binding="clearShellBinding" />
               </div>
 

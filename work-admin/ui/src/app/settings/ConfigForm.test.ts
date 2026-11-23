@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
 import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Select from 'primevue/select'
@@ -37,5 +37,24 @@ it('reports validity only when the valid state changes', async () => {
   await w.setProps({ modelValue: { max_files: 3 } })
   await w.setProps({ modelValue: { max_files: 5 } })
   expect(w.emitted('validity')).toEqual([[false], [true]])
+  w.unmount()
+})
+
+it('uses the shared field error and delegates focus without a config change', async () => {
+  const formSchema = { properties: { rules: { type: 'object', title: 'Rules', picker: 'wc-schema-form' } } }
+  const w = mount(ConfigForm, { props: { schema: formSchema, modelValue: {} } })
+  await flushPromises()
+  const widget = w.get('wc-schema-form')
+  const reportValidity = vi.fn(() => false)
+  Object.assign(widget.element, { reportValidity })
+  await widget.trigger('validity-changed', { detail: { valid: false, errors: { rules: 'Enter a JSON object.' } } })
+  expect(w.emitted('validity')?.at(-1)).toEqual([false])
+  expect(w.emitted('widget-validity')?.at(-1)).toEqual([false])
+  expect(w.emitted('validation-message')?.at(-1)).toEqual(['Rules: Enter a JSON object.'])
+  expect(w.emitted('update:modelValue')).toBeUndefined()
+  expect(w.vm.reportValidity()).toBe(false)
+  expect(reportValidity).toHaveBeenCalledOnce()
+  await widget.trigger('validity-changed', { detail: { valid: true, errors: {} } })
+  expect(w.emitted('validity')?.at(-1)).toEqual([true])
   w.unmount()
 })

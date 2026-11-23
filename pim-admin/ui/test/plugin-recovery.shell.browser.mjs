@@ -16,7 +16,7 @@ const cases = [
   { key: 'degraded', catalog: 'Certificate checks', title: 'Certificate checks', status: 'Background update paused',
     cause: /background worker stopped/i, action: 'Reset background updates', manifest: 'degraded', projection: 'degraded_replica' },
   { key: 'misconfigured', catalog: 'Supplier validation', title: 'Supplier validation', status: 'Configuration needed',
-    cause: /certificate issuer is required/i, manifest: 'configuration' },
+    cause: /a value is required/i, manifest: 'configuration' },
   { key: 'history-pruned', catalog: 'Supplier audit', title: 'Supplier audit', status: 'Reset required',
     cause: /history this background update needs was removed/i, action: 'Reset background updates', manifest: 'history', projection: 'history_replica' },
   { key: 'uninstalled', catalog: 'Supplier directory', title: 'Supplier directory', status: 'Uninstalled · still referenced',

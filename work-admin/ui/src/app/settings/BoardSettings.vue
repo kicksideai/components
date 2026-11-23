@@ -138,8 +138,16 @@ function closeReview() {
   pack.clearReviewError()
   confirmedRenames.value = false
 }
-function openReview(opener?: HTMLElement) {
-  if (!showDraftActions.value || !validForm() || invalid.value.size) return
+async function openReview(opener?: HTMLElement) {
+  if (!showDraftActions.value) return
+  if (widgetInvalid.value.size) {
+    if (tab.value !== 'Plugins') {
+      setLocation('Plugins')
+      await nextTick()
+    }
+    if (pluginEditor.value && !await pluginEditor.value.reportValidity()) return
+  }
+  if (!validForm() || invalid.value.size) return
   reviewOpener.value = opener
   reviewOpen.value = true
   void review()
@@ -169,12 +177,20 @@ const schemaPlan = ref<SchemaPlan>(), reviewed = ref<ReturnType<typeof reviewSna
 const serverIssues = ref<import('./model').SchemaChange[]>([])
 const checkingRemoval = ref(false), editorVersion = ref(0)
 const invalid = ref(new Set<string>()), editor = ref<HTMLFormElement>()
+const pluginEditor = ref<InstanceType<typeof PluginsEditor>>()
+const widgetInvalid = ref(new Set<string>())
+const blockingErrors = computed(() => [...invalid.value].some(key => !widgetInvalid.value.has(key)))
+function widgetValidity(key: string, valid: boolean) {
+  const id = 'plugin:' + key
+  if (valid) widgetInvalid.value.delete(id)
+  else widgetInvalid.value.add(id)
+}
 const beginRead = latestRequest(), beginReview = latestRequest()
 const request = computed(() => requestDeclaration(draft.value, schema.value?.declaration ?? {}))
-const schemaDirty = computed(() => invalid.value.size > 0 || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(requestDeclaration(schema.value.declaration, schema.value.declaration)) || Object.keys(configs.value).length > 0))
+const schemaDirty = computed(() => invalid.value.size > 0 || widgetInvalid.value.size > 0 || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(requestDeclaration(schema.value.declaration, schema.value.declaration)) || Object.keys(configs.value).length > 0))
 const migrationPending = computed(() => !!latest.value?.migration_error || board.value?.status === 'migrating')
 const stale = computed(() => !!schema.value && !!latest.value && schema.value.generation !== latest.value.generation)
-const canReview = () => authorized.value && !stale.value && !invalid.value.size
+const canReview = () => authorized.value && !stale.value && !invalid.value.size && !widgetInvalid.value.size
 const pack = reactive(usePackReview({
   boardId: () => props.boardId, schema, configs, busy,
   schemaDirty: () => schemaDirty.value, migrationPending: () => migrationPending.value, canReview,
@@ -236,7 +252,7 @@ function invalidate() {
 watch([request, configs], invalidate, { deep: true, flush: 'sync' })
 watch(dirty, value => { if (value) saved.value = '' })
 function validity(key: string, valid: boolean) { if (valid) invalid.value.delete(key); else invalid.value.add(key); invalidate() }
-function reset(view: Schema) { pack.clear(); creation.value = undefined; editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); invalidate() }
+function reset(view: Schema) { pack.clear(); creation.value = undefined; editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); widgetInvalid.value.clear(); invalidate() }
 async function load(force = false) {
   const current = beginRead()
   try {
@@ -359,7 +375,7 @@ async function back() {
 }
 function discard() { resetGeneration = undefined; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
 
-watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; pack.reset(); schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; creation.value = undefined; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; pack.reset(); schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); widgetInvalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; creation.value = undefined; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
 watch([() => props.route, () => props.boardId], ([route]) => {
   if (route === undefined) return
   const [key, row] = route.split('/')
@@ -388,7 +404,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
                 <template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template>
               </Button>
               <SettingsDraftActions v-if="showDraftActions" :busy="busy" :discard-disabled="checkingRemoval"
-                :review-disabled="checkingRemoval || migrationPending || stale || !!invalid.size"
+                :review-disabled="checkingRemoval || migrationPending || stale || blockingErrors"
                 @discard="discard" @review="openReview" />
             </template>
           </SettingsSectionHead>
@@ -449,9 +465,9 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
                   :draft="draft" :board="board" :busy="busy" @validity="validity('visibility', $event)" />
 
                 <section v-if="visited.has('Plugins')" v-show="tab === 'Plugins'" class="work-ia-section">
-                  <PluginsEditor :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"
+                  <PluginsEditor ref="pluginEditor" :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"
                     :filters="options?.filters" :configs="configs" :disabled="busy" @configured="invalidate(); load()" @refresh="load()" @review="openReview"
-                    @validity="(key, valid) => validity('plugin:' + key, valid)" />
+                    @validity="(key, valid) => validity('plugin:' + key, valid)" @widget-validity="widgetValidity" />
                 </section>
               </fieldset>
             </form>
