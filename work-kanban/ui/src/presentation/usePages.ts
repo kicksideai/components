@@ -117,12 +117,12 @@ export function usePages(options: Options) {
   })
   const tabPages = new Map<KanbanTab, ReturnType<typeof snapshot>>()
 
-  function problem(failure: unknown) {
+  function problem(failure: unknown, revalidate = false) {
     if (isAccessLoss(failure)) {
       tabPages.clear()
       views.clear()
       reset()
-      options.accessLost()
+      if (!revalidate) options.accessLost()
     }
     error.value = failure
   }
@@ -290,7 +290,7 @@ export function usePages(options: Options) {
       }
       saved.value = view
     } catch (failure) {
-      if (current()) problem(failure)
+      if (current()) problem(failure, revalidate)
     } finally {
       if (current()) fetching.value = false
     }

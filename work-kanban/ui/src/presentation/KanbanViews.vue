@@ -30,6 +30,7 @@ const props = defineProps<{
   route: KanbanRoute
   work: WorkClient
   revalidate?: () => Promise<void>
+  invalidate?: ReturnType<typeof createCoordinator>['invalidate']
   fieldControl?: Component
   usePrincipalNames?: (values: () => ReturnType<typeof principalRef>[]) =>
     (value: ReturnType<typeof principalRef>) => string | undefined
@@ -58,7 +59,7 @@ const pages = usePages({
     editor.value = undefined
     uncertain.value = undefined
     emit('accessLost')
-    void props.revalidate?.()
+    invalidate(undefined, true)
   },
 })
 const { context, lanes, backlog, backlogIndex, error, fetching, paging, subgroupLimited } = pages
@@ -73,7 +74,13 @@ let active = true
 onScopeDispose(() => { active = false })
 
 let live: ReturnType<typeof createCoordinator> | undefined
+function invalidate(seq?: number, revalidate = false) {
+  const notify = props.invalidate ?? live?.invalidate
+  notify?.(seq, revalidate)
+}
+defineExpose({ refresh: pages.refresh })
 watch(() => props.board.board_id, (id, _, onCleanup) => {
+  if (props.invalidate) return
   const coordinator = createCoordinator(async request => {
     if (request.revalidate) await props.revalidate?.()
     if (active && props.board.board_id === id) await pages.refresh(request)
@@ -90,7 +97,7 @@ watch(() => props.board.board_id, (id, _, onCleanup) => {
 
 let shown = false
 useHostVisibilityRefresh(() => {
-  if (shown) live?.invalidate(undefined, true)
+  if (shown && !props.invalidate) invalidate(undefined, true)
   shown = true
 })
 watch([() => props.board.board_id, () => props.schema.generation], () => {
@@ -103,9 +110,9 @@ watch(() => props.route.tab, tab => {
   editor.value = undefined
   mutationError.value = undefined
   uncertain.value = undefined
-  live?.invalidate()
+  invalidate()
 }, { immediate: true })
-watch(() => props.schema.generation, () => live?.invalidate())
+watch(() => props.schema.generation, () => invalidate())
 watch(() => props.board.access.write, writable => {
   if (writable) return
   editor.value = undefined
@@ -121,7 +128,7 @@ function updateFilters(filters: ActiveFilter[]) {
   tabFilters.set(props.route.tab, filters)
   activeFilters.value = filters
   pages.select(filters.map(filter => filter.selection))
-  live?.invalidate()
+  invalidate()
 }
 function showItem(item: string) {
   const status = lane.value?.columns.find(column => column.items.some(row => row.id === item))?.state
@@ -131,16 +138,16 @@ function showItem(item: string) {
 function visibleColumns(ids: string[]) {
   const previous = pages.visible.value
   pages.visible.value = ids
-  if (previous.length && ids.some(id => !previous.includes(id))) live?.invalidate()
+  if (previous.length && ids.some(id => !previous.includes(id))) invalidate()
 }
 function holdColumns(ids: string[]) {
   const previous = pages.held.value
   if (previous.size === ids.length && ids.every(id => previous.has(id))) return
   pages.held.value = new Set(ids)
-  if (previous.size && !ids.length) live?.invalidate()
+  if (previous.size && !ids.length) invalidate()
 }
 function visibleRow(column: string, row: number) {
-  if (pages.visibleRow(column, row)) live?.invalidate()
+  if (pages.visibleRow(column, row)) invalidate()
 }
 watch(() => props.route.issue, async (issue, previous) => {
   if (issue || !previous) return
@@ -206,7 +213,7 @@ async function write(request: WorkCommand) {
     if (!active || props.board.board_id !== board) return
     uncertain.value = undefined
     editor.value = undefined
-    live?.invalidate(result.seq)
+    invalidate(result.seq ?? result.as_of)
   } catch (failure) {
     if (!active || props.board.board_id !== board) return
     if (failure instanceof WorkError && failure.retryable) {
@@ -214,7 +221,7 @@ async function write(request: WorkCommand) {
       await pages.refresh()
     } else {
       uncertain.value = undefined
-      if (isAccessLoss(failure)) live?.invalidate(undefined, true)
+      if (isAccessLoss(failure)) invalidate(undefined, true)
     }
     mutationError.value = failure
   } finally {
@@ -241,7 +248,7 @@ function apply(operations: WorkOperation[]) {
     <div v-if="error || mutationError && !editor" class="kx-notice error kanban-view-notice" role="alert">
       <span>{{ workFailure(error || mutationError).message }}</span>
       <small v-if="workFailure(error || mutationError).code">{{ workFailure(error || mutationError).code }}</small>
-      <Button v-if="error" label="Retry" text size="small" @click="live?.invalidate(undefined, true)" />
+      <Button v-if="error" label="Retry" text size="small" @click="invalidate(undefined, true)" />
       <Button v-if="uncertain" label="Retry write" text size="small" :disabled="pending.size > 0" @click="write(uncertain)" />
     </div>
     <p v-if="fetching && !lane && !backlog" class="kx-loading" role="status">Loading issues…</p>

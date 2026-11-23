@@ -7,7 +7,7 @@ import { kanbanUiApp } from '../work/client'
 export function subscribeBoard(
   board: string,
   coordinator: ReturnType<typeof createCoordinator>,
-  snapshot: () => { generation: number, title: string },
+  snapshot: () => { generation: number, title: string } | undefined,
 ) {
   const stopBoard = on('component.' + board, message => {
     const event = componentEvent(message, board, { last_event_seq: 'integer', generation: 'integer' })
@@ -18,9 +18,9 @@ export function subscribeBoard(
     const { last_event_seq, generation, ui_app, title, status } = event.meta
     const known = snapshot()
     const revalidate = typeof last_event_seq !== 'number'
-      || typeof generation === 'number' && generation !== known.generation
+      || !!known && typeof generation === 'number' && generation !== known.generation
       || typeof ui_app === 'string' && ui_app !== kanbanUiApp
-      || typeof title === 'string' && title !== known.title
+      || !!known && typeof title === 'string' && title !== known.title
       || typeof status === 'string' && status !== 'ready'
       || event.deleted.includes('ui_app')
     coordinator.invalidate(typeof last_event_seq === 'number' ? last_event_seq : undefined, revalidate)

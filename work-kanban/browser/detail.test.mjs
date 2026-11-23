@@ -68,6 +68,56 @@ test('creates an issue with Work’s root default, patches in the drawer, posts 
   }
 }, 50_000)
 
+test('keeps the neighbor rank in the atomic move when the drawer collects Resolution', async () => {
+  const { app, shell, page, context, errors } = await open({ path: route(small) })
+  const endpoint = origin + '/api/v1/work/boards/' + small + '/apply'
+  const apply = async ops => {
+    const response = await page.request.post(endpoint, {
+      headers: { authorization: 'Bearer ' + process.env.KANBAN_FIRE_OWNER },
+      data: { key: crypto.randomUUID(), mode: 'atomic', ops },
+    })
+    expect(response.ok()).toBe(true)
+    const { data } = await response.json()
+    expect(data.outcomes.every(row => row.status === 'applied')).toBe(true)
+    return data.outcomes
+  }
+  try {
+    const suffix = crypto.randomUUID().slice(0, 8)
+    const [source, neighbor] = await apply([
+      { op: 'create', type: 'epic', values: { title: 'Resolve with rank ' + suffix } },
+      { op: 'create', type: 'epic', values: { title: 'Rank neighbor ' + suffix } },
+    ])
+    for (const { item } of [source, neighbor]) {
+      await apply([
+        { op: 'transition', item, transition: 'start' },
+        { op: 'transition', item, transition: 'review' },
+      ])
+    }
+    await apply([{ op: 'transition', item: neighbor.item, transition: 'finish', values: { resolution: 'fixed' } }])
+    await page.reload()
+    const row = app.locator('[data-card-id="' + source.item + '"]')
+    await button(row, 'Move ' + source.key).click()
+    await app.getByRole('menuitem', { name: 'Done', exact: true }).click()
+    const issue = drawer(app)
+    await issue.getByRole('heading', { name: 'Confirm status change' }).waitFor()
+    await issue.getByRole('combobox', { name: 'Resolution', exact: true }).click()
+    await shell.getByRole('option', { name: 'Fixed', exact: true }).click()
+    const response = page.waitForResponse(result => result.url() === endpoint
+      && result.request().postDataJSON()?.ops?.[0]?.item === source.item)
+    await button(issue, 'Confirm move').click()
+    const result = await response
+    expect(result.request().postDataJSON()).toMatchObject({ mode: 'atomic', ops: [
+      { op: 'transition', item: source.item, transition: 'finish', values: { resolution: 'fixed' } },
+      { op: 'rank', item: source.item, after: neighbor.item },
+    ] })
+    expect((await result.json()).data.outcomes.map(row => row.status)).toEqual(['applied', 'applied'])
+    await issue.getByText('Done', { exact: true }).first().waitFor()
+    expect(errors).toEqual([])
+  } finally {
+    await context.close()
+  }
+}, 55_000)
+
 test('reads parents without card pages and pages an authorized dense Relationships section', async () => {
   const { app, page, context, errors } = await open({ path: route(board, 'search', child) })
   try {

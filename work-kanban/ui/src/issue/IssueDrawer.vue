@@ -7,6 +7,7 @@ import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
 import Tag from 'primevue/tag'
 import { computed, nextTick, onMounted, onScopeDispose, ref, shallowRef, useId, watch } from 'vue'
+import type { MovePlan } from '../board/move'
 import { isAccessLoss } from '../work/client'
 import type { BoardOption, BoardSchema } from '../work/types'
 import FieldControl from './FieldControl.vue'
@@ -20,7 +21,7 @@ import { applyIssue, readIssue, type IssueWork } from './work'
 
 const props = defineProps<{
   board: BoardOption; schema: BoardSchema; work: IssueWork; issue?: string; sequence?: number;
-  plannedMove?: { operations: Operation[]; required: string[] };
+  plannedMove?: MovePlan;
   restoreFocus?: () => void;
 }>()
 const emit = defineEmits<{
@@ -54,6 +55,13 @@ const edges = computed(() => workRows(selected.value?.transitions))
 const mainEdges = computed(() => edges.value.slice(0, 3))
 const extraEdges = computed(() => edges.value.slice(3))
 const writable = computed(() => props.board.access.write && selected.value?.access.write === true)
+const drawerParts = {
+  root: { class: 'kanban-issue-drawer', style: { width: 'min(100%, 36rem)' }, 'aria-labelledby': id + '-identity' },
+  header: { class: 'kanban-issue-header' },
+  content: { class: 'kanban-issue-body' },
+  footer: { class: 'kanban-issue-footer-surface' },
+  transition: { enterActiveClass: 'kanban-issue-transition', leaveActiveClass: 'kanban-issue-transition' },
+}
 const person = usePrincipalNames(() => [
   ...fields.value.filter(row => row.type === 'principal' || row.form === 'principal').map(row => item.value?.values[row.code]),
   ...(item.value?.gate?.approvals.map(row => row.principal) ?? []),
@@ -124,7 +132,7 @@ async function load(minSeq?: number) {
     const planned = resolvedMove.value
     if (planned && planned.item === issue && !form.value) {
       const edge = workRows(detail.transitions).find(row => row.id === planned.transition && row.region === planned.region)
-      if (edge) openTransition(edge, props.plannedMove?.operations)
+      if (edge) openTransition(edge, props.plannedMove?.operations.map(op => ({ ...op })))
       else writeError.value = new Error('This issue cannot move to that status. Review its workflow and try again.')
     }
   } catch (error) {
@@ -136,6 +144,12 @@ async function load(minSeq?: number) {
     if (current()) loading.value = false
   }
 }
+
+defineExpose({
+  refresh: (minSeq?: number) => {
+    if (props.issue && !isAccessLoss(readError.value)) return load(minSeq)
+  },
+})
 
 function trackIssue(issue?: string, previous?: string) {
   begin()
@@ -244,7 +258,7 @@ function save() {
   <span ref="focusAnchor" hidden />
   <Drawer :visible="visible" position="right" modal :dismissable="!busy" :close-on-escape="!busy"
     :show-close-icon="true" :close-button-props="{ 'aria-label': 'Close issue details', disabled: busy }"
-    :pt="{ root: { class: 'kanban-issue-drawer', style: { width: 'min(100%, 36rem)' }, 'aria-labelledby': id + '-identity' }, content: { class: 'kanban-issue-body' } }"
+    :pt="drawerParts"
     @update:visible="dismiss" @after-hide="focusOrigin">
     <template #header>
       <div :id="id + '-identity'" ref="header" class="kanban-issue-identity" tabindex="-1">
