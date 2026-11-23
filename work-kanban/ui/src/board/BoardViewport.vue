@@ -33,8 +33,8 @@ const emit = defineEmits<{
 const viewport = ref<HTMLElement>()
 const menu = ref<InstanceType<typeof Menu>>()
 const actions = shallowRef<MenuItem[]>([])
-const width = ref(1100)
-const height = ref(650)
+const width = ref(0)
+const height = ref(0)
 const x = ref(0)
 const focusItem = ref<string>()
 const y = shallowRef(new Map<string, number>())
@@ -55,6 +55,7 @@ const motion = useBoardMove({
 })
 const { pick, moving, lift, liftItem, liftBox, landing, announcement } = motion
 const visible = computed<number[]>(prior => {
+  if (!width.value || !height.value) return []
   const indices = boardWindow(x.value, width.value, stride.value, props.columns.length)
   const retained = pick.value ? [pick.value.source.column, pick.value.target.column]
     .map(id => props.columns.findIndex(column => column.id === id)) : []
@@ -113,6 +114,8 @@ watch(rowStride, (next, prior) => {
 onMounted(() => {
   const element = viewport.value
   if (!element) return
+  width.value = element.clientWidth
+  height.value = element.clientHeight
   observer = new ResizeObserver(([size]) => {
     if (!size || size.contentRect.width <= 0) return
     width.value = size.contentRect.width
@@ -177,6 +180,9 @@ const rendered = computed<RenderedColumn[]>(prior => {
     return { column, index, rows, window: visibleRows, slots, count: column.count + delta, target: target && !current?.placed, preview }
   }
 })
+function cardTabIndex(item: ItemSummary, column: number, row: number) {
+  return focusItem.value === item.id || (!focusItem.value && column === firstFocusable.value && row === 0) ? 0 : -1
+}
 function canMove(item: string) {
   return props.writable && !props.pendingIds.has(item)
 }
@@ -335,7 +341,10 @@ function pageProblem(column: BoardColumn) {
     :data-moving="!!pick || moving || undefined" :data-compact="compact || undefined"
     aria-label="Workflow board" tabindex="0" @scroll.passive="horizontal" @keydown="motion.keyboard">
     <div class="kanban-board-track" :style="{ width: contentWidth + 'px' }">
-      <section v-for="{ column, index, rows, slots, count, target } in rendered" :key="column.id" class="kanban-column kx-focus-outline"
+      <section v-for="{ column, index, rows, slots, count, target } in rendered" :key="column.id"
+        v-memo="[column, index, rows, slots, count, target, stride, rowStride, context, placements, compact, writable,
+          pendingIds, paging, focusItem, firstFocusable, ...rows.map(({ item }) => item && person(item))]"
+        class="kanban-column kx-focus-outline"
         :style="{ width: stride - gap + 'px', insetInlineStart: index * stride + 'px' }"
         :data-state="column.state" :data-column-index="index" :data-drop-target="target || undefined"
         :aria-label="column.title" tabindex="-1">
@@ -353,7 +362,7 @@ function pageProblem(column: BoardColumn) {
               @keydown="item && rove($event, index, row)">
               <IssueCard v-if="item" :item="item" :context="context" :placements="placements" :compact="compact"
                 :writable="writable" :pending="pendingIds.has(item.id)" :person="person(item)" :move-help="instructions"
-                :tab-index="focusItem === item.id || (!focusItem && index === firstFocusable && row === 0) ? 0 : -1"
+                :tab-index="cardTabIndex(item, index, row)"
                 @open="emit('open', item.id)" @focus="focusItem = item.id"
                 @menu="openMenu($event, column, item, row)"
                 @pickup="motion.pickup($event, { column: column.id, row }, item)"

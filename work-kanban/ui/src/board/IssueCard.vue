@@ -26,6 +26,7 @@ const emit = defineEmits<{
   open: [], menu: [event: MouseEvent], focus: [],
   pointer: [event: PointerEvent], pickup: [event: KeyboardEvent],
 }>()
+const summary = computed(() => titleOf(props.item))
 const badges = computed(() => badgeSlots(props.placements, props.item.type).visible)
 const priority = computed(() => typeof props.item.values.priority === 'string' ? props.item.values.priority : undefined)
 const assignee = computed(() => principalRef(props.item.values.assignee))
@@ -43,10 +44,10 @@ const priorities: Record<string, string> = {
 <template>
   <article class="kanban-card kx-card" :data-key="item.key" :data-card-id="item.id"
     :data-compact="compact || undefined" :aria-busy="pending || undefined">
-    <Button class="kanban-card-title kx-focus-outline" unstyled :tabindex="tabIndex" :aria-label="item.key + ' ' + titleOf(item)"
-      :title="titleOf(item)" @focus="emit('focus')" @click="emit('open')">
-      <span class="kx-card-name" dir="auto">{{ titleOf(item) }}</span>
-    </Button>
+    <button type="button" class="kanban-card-title kx-focus-outline" :tabindex="tabIndex" :aria-label="item.key + ' ' + summary"
+      :title="summary" @focus="emit('focus')" @click="emit('open')">
+      <span class="kx-card-name" dir="auto">{{ summary }}</span>
+    </button>
     <div class="kanban-card-meta">
       <div class="kanban-card-identity">
         <Icon :icon="icons[item.type] ?? 'tabler:point'" role="img" :aria-label="context.typeLabels[item.type] ?? item.type" />
