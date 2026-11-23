@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Kanban
 
 Open **Kanban** in the KickSide shell or follow a Work board link to
