@@ -14,7 +14,7 @@ entries:
     description: The catalog service, including catalog directory filters and policy defaults.
   component: kickside/pim
 - name: dep.kickside.widgets
-  version: '*'
+  version: '>=0.1.72'
   kind: ns.dependency
   meta:
     description: Shared schema forms, principal pickers and sharing loaded by tag.

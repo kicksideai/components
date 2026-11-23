@@ -7,7 +7,7 @@ import { Icon } from '@iconify/vue'
 import { definitionColumns } from './definitions'
 
 import { sectionRow } from './sectionRow'
-const props = defineProps<{ title: string; code?: string; kind?: string; usage?: string; headClass?: string; toggleClass?: string; routeSection?: string; routeId?: string }>()
+const props = defineProps<{ title: string; code?: string; kind?: string; usage?: string; headClass?: string; toggleClass?: string; keepMounted?: boolean; routeSection?: string; routeId?: string }>()
 const columns = inject(definitionColumns, computed(() => [
   ...(props.code ? ['code' as const] : []), ...(props.kind ? ['kind' as const] : []),
 ]))
@@ -44,6 +44,6 @@ function toggle() {
       </InteractiveSurface>
       <div class="pim-definition-actions" data-column="actions"><slot name="actions" /></div>
     </header>
-    <Transition name="pim-expand"><div v-if="open" :id="bodyId" class="pim-definition-body"><slot /></div></Transition>
+    <Transition name="pim-expand"><div v-if="open || keepMounted" v-show="open" :id="bodyId" class="pim-definition-body"><slot /></div></Transition>
   </section>
 </template>

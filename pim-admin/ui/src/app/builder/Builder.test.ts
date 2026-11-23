@@ -108,6 +108,35 @@ async function editPlugin(w: VueWrapper, title: string, config: Record<string, u
   await row.get('wc-schema-form').trigger('config-changed', { detail: config })
 }
 
+it('reveals and reports a hidden invalid plugin draft before reviewing', async () => {
+  vi.clearAllMocks()
+  activePlugins('stock')
+  const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } })
+  await flushPromises()
+  await settingsTab(w, 'Plugins')
+  const row = w.findAll('.pim-definition').find(el => el.get('.pim-definition-toggle').text().startsWith('Inventory'))!
+  const toggle = row.get('.pim-definition-toggle')
+  if (toggle.attributes('aria-expanded') === 'false') await toggle.trigger('click')
+  await flushPromises()
+  const widget = row.get('wc-schema-form')
+  const reportValidity = vi.fn(() => false)
+  Object.assign(widget.element, { reportValidity })
+  await widget.trigger('validity-changed', { detail: { valid: false, errors: { hold_seconds: 'Enter a whole number.' } } })
+  await toggle.trigger('click')
+  expect(toggle.attributes('aria-expanded')).toBe('false')
+  await settingsTab(w, 'Families')
+  await button(w, 'Review changes').trigger('click')
+  await flushPromises()
+  expect(toggle.attributes('aria-expanded')).toBe('true')
+  expect(reportValidity).toHaveBeenCalledOnce()
+  expect(pim.planSchema).not.toHaveBeenCalled()
+  expect(pim.configurePlugin).not.toHaveBeenCalled()
+  await button(w, 'Discard').trigger('click')
+  await flushPromises()
+  expect(button(w, 'Review changes')).toBeUndefined()
+  w.unmount()
+})
+
 it('reviews an active plugin configuration without applying an unchanged declaration', async () => {
   vi.clearAllMocks()
   activePlugins('stock')
