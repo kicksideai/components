@@ -1,0 +1,113 @@
+/* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 */
+@import '@kickside/ui-kit/kx-disclosure.css';
+
+.issue-create-form, .issue-create-field { display: grid; gap: .75rem; }
+.issue-create-field { gap: .375rem; }
+.issue-create-field label { font-weight: 600; }
+.issue-create-support { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.issue-create-description { grid-column: 1 / -1; }
+@media (max-width: 28rem) {
+  .issue-create-support { grid-template-columns: minmax(0, 1fr); }
+}
+.issue-create-form [role='alert'] small { display: block; margin-block-start: .25rem; }
+.issue-field-control { display: grid; gap: .375rem; min-inline-size: 0; }
+.issue-field-control label { font-weight: 600; }
+.issue-principal-picker { display: grid; justify-items: start; gap: .25rem; }
+.issue-principal-picker wc-principal-picker { inline-size: 100%; }
+.issue-selected-principals { list-style: none; padding: 0; margin: 0; }
+.issue-field-value { overflow-wrap: anywhere; white-space: pre-wrap; }
+.issue-field-values { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem; }
+.issue-field-values .p-tag { white-space: normal; max-inline-size: 100%; }
+.issue-field-values .p-tag span { overflow-wrap: anywhere; }
+.issue-streams [role='tabpanel'] { padding-block: .75rem; }
+.issue-streams h3 { font-size: .875rem; margin: .75rem 0 .25rem; }
+.issue-streams :is(p, small) { color: var(--p-text-muted-color); }
+.issue-streams p { margin: .375rem 0; }
+.issue-streams .p-tab { margin: 0; border: 0 solid; background: transparent; font: inherit; }
+.issue-stream-list { list-style: none; padding: 0; margin: 0; }
+.issue-stream-list li { padding-block: .5rem; border-block-end: 1px solid var(--p-content-border-color); }
+.issue-comment { display: grid; justify-items: end; gap: .375rem; }
+.issue-comment-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.issue-history-change { display: flex; align-items: center; flex-wrap: wrap; gap: .375rem; }
+
+.p-drawer.kanban-issue-drawer {
+  inline-size: min(100%, 36rem);
+  max-inline-size: 100%;
+  block-size: 100%;
+  background: var(--p-content-background);
+}
+
+.kanban-issue-drawer .p-drawer-header {
+  border-block-end: 1px solid var(--p-content-border-color);
+  flex: none;
+}
+
+.kanban-issue-drawer .p-drawer-footer {
+  border-block-start: 1px solid var(--p-content-border-color);
+  flex: none;
+}
+
+.p-drawer .kanban-issue-body { min-inline-size: 0; min-block-size: 0; overflow: auto; overscroll-behavior: contain; }
+.kanban-issue-identity { flex: 1; display: flex; align-items: center; gap: .5rem; font-weight: 600; min-inline-size: 0; }
+.kanban-issue-identity small { color: var(--p-text-muted-color); font-weight: 400; }
+.kanban-issue-title { font-size: 1.125rem; line-height: 1.35; margin: 1rem 0 .5rem; overflow-wrap: anywhere; }
+.kanban-issue-body nav .p-button { max-inline-size: 100%; text-align: start; white-space: normal; overflow-wrap: anywhere; }
+.kanban-issue-section { border-block-start: 1px solid var(--p-content-border-color); margin-block-start: 1rem; padding-block: .75rem; }
+.kanban-issue-section h3 { margin: 0; font-size: .875rem; }
+.kanban-issue-section-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.kanban-issue-section p { color: var(--p-text-muted-color); margin: .5rem 0; }
+.kanban-issue-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-block-start: .375rem; }
+.kanban-issue-footer { justify-content: end; margin: 0; }
+.kanban-issue-fields { margin: .75rem 0 0; display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kanban-issue-fields dd { margin: .25rem 0 0; }
+.kanban-issue-fields dt { font-size: .8125rem; color: var(--p-text-muted-color); }
+.kanban-issue-long { grid-column: 1 / -1; }
+.kanban-issue-edit { display: grid; gap: .75rem; margin-block-start: .75rem; }
+.kanban-issue-problem { margin-block: .75rem; }
+.kanban-issue-problem small { display: block; margin-block-start: .25rem; }
+.issue-stream-list button { max-inline-size: 100%; white-space: normal; text-align: start; overflow-wrap: anywhere; }
+
+@media (max-width: 30rem) {
+  .p-drawer.kanban-issue-drawer { inline-size: 100%; }
+  .kanban-issue-drawer :is(.p-drawer-header, .p-drawer-content, .p-drawer-footer) { padding-inline: .875rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kanban-issue-drawer:is(.p-drawer-enter-active, .p-drawer-leave-active) { transition-duration: 0s; }
+}
+
+.kanban-search { flex: 1; min-block-size: 0; min-inline-size: 0; overflow: auto; padding: .875rem 1rem; }
+.kanban-search-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 14rem)); gap: .75rem; }
+.kanban-search-controls label { display: block; margin-block-end: .375rem; font-weight: 600; }
+.kanban-search-results { margin-block-start: .75rem; }
+.kanban-search-results > .p-button { margin-block-start: .75rem; }
+.kanban-search-results .kx-notice small { display: block; }
+.kanban-issue-results table { inline-size: 100%; table-layout: fixed; }
+.kanban-issue-results .kanban-result-status { inline-size: 7rem; }
+.kanban-issue-results .kanban-result-extra { inline-size: 7.5rem; }
+.p-button.kanban-result-link { display: flex; justify-content: start; gap: .5rem; text-align: start; max-inline-size: 100%; padding: 0; }
+.kanban-result-key { color: var(--p-text-muted-color); font-size: .8125rem; }
+.kanban-result-title { overflow-wrap: anywhere; }
+@media (max-width: 36rem) {
+  .kanban-search { padding-inline: .75rem; }
+  .kanban-search-controls { grid-template-columns: minmax(0, 1fr); }
+  .kanban-issue-results .kanban-result-extra { display: none; }
+  .kanban-issue-results .kanban-result-status { inline-size: 6rem; }
+  .kanban-issue-results .kanban-result-link { flex-wrap: wrap; gap: .125rem .5rem; }
+}
+
+.kanban-sprints { flex: 1; min-block-size: 0; min-inline-size: 0; overflow: auto; padding: .875rem 1rem; }
+.kanban-sprint-summary { min-inline-size: 0; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.kanban-sprint-name { display: grid; gap: .125rem; overflow-wrap: anywhere; }
+.kanban-sprint-summary small { color: var(--p-text-muted-color); }
+.kanban-sprint-issues { display: grid; justify-items: start; gap: .5rem; min-inline-size: 0; }
+.kanban-sprint-issues .kanban-issue-results { inline-size: 100%; }
+.kanban-sprint-preview { display: grid; gap: .5rem; }
+.kanban-sprint-preview p { margin: 0; }
+.kanban-sprint-preview small { display: block; }
+
+@media (max-width: 36rem) {
+  .kanban-sprints { padding-inline: .75rem; }
+}
+
+.kanban-plugin-state { margin: 1rem; }
