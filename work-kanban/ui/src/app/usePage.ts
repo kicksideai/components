@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import { computed, onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue'
+import { checkPlacements } from '../extensions/placements'
 import { boardPath, dismissIssue, kanbanRoot, switchBoard, type KanbanRoute, type KanbanTab, type Navigate } from '../route'
 import { isAccessLoss, planningPlugin, searchPlugin, WorkError, type WorkClient } from '../work/client'
 import { BoardDirectory } from '../work/directory'
-import type { BoardOption, BoardSchema } from '../work/types'
+import type { BoardAccess, BoardOption, BoardSchema } from '../work/types'
 
-export function availableTabs(schema?: BoardSchema): KanbanTab[] {
+export function availableTabs(schema?: BoardSchema, access?: BoardAccess): KanbanTab[] {
   const items: KanbanTab[] = ['board', 'backlog']
+  const panels = access && checkPlacements(schema?.extensions, access)
+  const active = new Set(schema?.plugins?.filter(plugin => plugin.active).map(plugin => plugin.plugin))
   for (const [role, pluginId] of [['sprints', planningPlugin], ['search', searchPlugin]] as const) {
-    const panel = schema?.extensions?.some(entry => entry.slot === 'board_panel' && entry.target === 'board:' + role)
-    const active = schema?.plugins?.some(plugin => plugin.plugin === pluginId && plugin.active)
-    if (panel || active) items.push(role)
+    const panel = panels?.some(entry => entry.slot === 'board_panel' && entry.target === 'board:' + role && active.has(entry.plugin))
+    if (panel || active.has(pluginId)) items.push(role)
   }
   return items
 }
@@ -20,7 +22,7 @@ export function usePage(
   route: Readonly<Ref<KanbanRoute | undefined>>,
   work: Pick<WorkClient, 'boards' | 'schema'>,
   navigate: (request: Navigate) => void,
-  subscribe: (board: string, revalidate: () => void) => (() => void) | undefined,
+  subscribe: (board: string, revalidate: () => Promise<void>) => (() => void) | undefined,
 ) {
   let directory = new BoardDirectory(work.boards)
   let stopSubscription: (() => void) | undefined
@@ -35,7 +37,7 @@ export function usePage(
   const paging = ref(false)
   const pagingError = shallowRef<unknown>()
   const hasMore = ref(true)
-  const allowedTabs = computed(() => availableTabs(schema.value))
+  const allowedTabs = computed(() => availableTabs(schema.value, board.value?.access))
 
   function syncDirectory() {
     boards.value = directory.boards
@@ -46,7 +48,7 @@ export function usePage(
     if (subscribed === next) return
     stopSubscription?.()
     subscribed = next
-    stopSubscription = next ? subscribe(next, () => void refresh(true)) : undefined
+    stopSubscription = next ? subscribe(next, () => refresh(true, next)) : undefined
   }
 
   function clearSelection() {
@@ -91,8 +93,8 @@ export function usePage(
       if (!current()) return
       board.value = found
       schema.value = snapshot
-      if (!active.board || selected) {
-        const target = switchBoard(active, found.board_id, availableTabs(snapshot))
+      if (!active.board || selected && active.board !== found.board_id) {
+        const target = switchBoard(active, found.board_id, availableTabs(snapshot, found.access))
         navigate({ path: boardPath(target) })
       }
     } catch (problem) {

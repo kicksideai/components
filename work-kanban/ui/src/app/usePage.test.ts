@@ -18,13 +18,38 @@ const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
 describe('the Kanban page controller', () => {
   it('offers a supported tab for a caller-visible board panel', () => {
-    expect(availableTabs({
+    const schema: BoardSchema = {
       ...snapshot,
+      plugins: [...snapshot.plugins!, { plugin: 'plugin:manifest', active: true }],
       extensions: [{
         id: 'plugin:search_panel', title: 'Search', slot: 'board_panel', target: 'board:search',
-        plugin: 'plugin:manifest', tag: 'plugin-search', access: 'read', order: 1,
+        plugin: 'plugin:manifest', tag: 'plugin-search', access: 'write', order: 1,
       }],
-    })).toEqual(['board', 'backlog', 'sprints', 'search'])
+    }
+    const reader = option('linked').access
+    expect(availableTabs(schema, reader)).toEqual(['board', 'backlog', 'sprints'])
+    expect(availableTabs(schema, { ...reader, write: true })).toEqual(['board', 'backlog', 'sprints', 'search'])
+    expect(availableTabs(snapshot, { ...reader, write: true })).toEqual(['board', 'backlog', 'sprints'])
+  })
+
+  it('revalidates the selected board without replacing its issue deep link', async () => {
+    const route = ref<KanbanRoute>({ tab: 'backlog', board: 'linked', issue: 'issue' })
+    const schema = vi.fn().mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, generation: 2 })
+    const boards = vi.fn().mockResolvedValue({ boards: [option('linked')] })
+    const navigate = vi.fn()
+    const subscribe = vi.fn((_board: string, _refresh: () => Promise<void>) => undefined)
+    const scope = effectScope()
+    try {
+      const page = scope.run(() => usePage(route, { boards, schema }, navigate, subscribe))!
+      await flush()
+      await subscribe.mock.calls[0][1]()
+      expect(subscribe).toHaveBeenCalledTimes(1)
+      expect(page.schema.value?.generation).toBe(2)
+      expect(navigate).not.toHaveBeenCalled()
+      expect(route.value.issue).toBe('issue')
+    } finally {
+      scope.stop()
+    }
   })
 
   it('drops an earlier board response when the shell changes the board', async () => {

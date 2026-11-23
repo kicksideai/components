@@ -2,6 +2,8 @@
 import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
 import { define, WippyVueElement, type WippyElementConfig, type WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
 import pkg from '../../package.json'
+import { issueStyles } from '../issue'
+import { presentationStyles } from '../presentation'
 import type { Navigate } from '../route'
 import KanbanPage from './KanbanPage.vue'
 import styles from './styles.css?inline'
@@ -12,7 +14,7 @@ class KanbanElement extends WippyVueElement<{ route: string }, { navigate: Navig
       propsSchema: pkg.wippy.props as WippyPropsSchema,
       hostCssKeys: ['themeConfigUrl', 'primeVueCssUrl', 'iframeCssUrl'],
       containerClasses: ['kanban-surface'],
-      inlineCss: styles,
+      inlineCss: [styles, presentationStyles, issueStyles].join('\n'),
     }
   }
 
