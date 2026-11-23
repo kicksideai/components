@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.23](https://github.com/kicksideai/components/compare/pim-admin-v0.1.22...pim-admin-v0.1.23) (2026-11-23)
+
+
+### Bug Fixes
+
+* associate plugin configuration errors with fields ([#394](https://github.com/kicksideai/components/issues/394)) ([6b5670d](https://github.com/kicksideai/components/commit/6b5670d88d40c9d6c7ad3a12f94344e47b3e7d67))
+
 ## [0.1.22](https://github.com/kicksideai/components/compare/pim-admin-v0.1.21...pim-admin-v0.1.22) (2026-11-22)
 
 

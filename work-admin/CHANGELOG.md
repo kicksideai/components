@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.26](https://github.com/kicksideai/components/compare/work-admin-v0.1.25...work-admin-v0.1.26) (2026-11-23)
+
+
+### Bug Fixes
+
+* associate plugin configuration errors with fields ([#394](https://github.com/kicksideai/components/issues/394)) ([6b5670d](https://github.com/kicksideai/components/commit/6b5670d88d40c9d6c7ad3a12f94344e47b3e7d67))
+
 ## [0.1.25](https://github.com/kicksideai/components/compare/work-admin-v0.1.24...work-admin-v0.1.25) (2026-11-22)
 
 
