@@ -4,25 +4,32 @@ import { api } from '@wippy-fe/proxy'
 import { useEvents, useHostVisibilityRefresh, useProps } from '@wippy-fe/webcomponent-vue'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
-import { computed, nextTick, ref, shallowRef, watch } from 'vue'
-import { BoardPluginPanel, CreateIssue, FieldControl, IssueDrawer, usePrincipalNames } from '../issue'
+import { computed, defineAsyncComponent, nextTick, ref, shallowRef, watch } from 'vue'
 import { title } from '../issue/model'
+import { usePrincipalNames } from '../issue/principals'
 import type { Issue } from '../issue/types'
 import { createCoordinator } from '../live/coordinator'
 import { subscribeBoard } from '../live/subscribe'
+import BoardPluginPanel from '../planning/BoardPluginPanel.vue'
 import { checkPlacements, DrawerExtensions, KanbanViews, type ItemDetail, type MovePlan } from '../presentation'
 import { parseRoute, type Navigate } from '../route'
 import { createWorkClient, isAccessLoss } from '../work/client'
 import { workFailure } from '../work/errors'
 import BoardShell from './BoardShell.vue'
-import NewBoardDialog from './NewBoardDialog.vue'
 import { usePage } from './usePage'
 
+const CreateIssue = defineAsyncComponent(() => import('../create/CreateIssue.vue'))
+const FieldControl = defineAsyncComponent(() => import('../issue/FieldControl.vue'))
+const IssueDrawer = defineAsyncComponent(() => import('../issue/IssueDrawer.vue'))
+const NewBoardDialog = defineAsyncComponent(() => import('./NewBoardDialog.vue'))
 const props = useProps<{ route: string }>()
 const emit = useEvents<{ navigate: Navigate }>()
 const route = computed(() => parseRoute(props.value.route))
 const work = createWorkClient(options => api.request(options))
 const newBoard = ref(false)
+const newBoardOpened = ref(false)
+const creatingIssue = ref(false)
+const createBoardId = ref<string>()
 const copyStatus = ref('')
 const compact = ref(false)
 const filterHost = ref<HTMLElement>()
@@ -61,13 +68,19 @@ const page = usePage(route, work, request => emit('navigate', request), (id, rev
     }
   }
 })
-const { boards, board, schema, allowedTabs, loading, error, missing, hasMore, paging, pagingError } = page
+const { boards, board, schema, firstView, allowedTabs, loading, error, missing, hasMore, paging, pagingError } = page
 const ready = computed(() => !!route.value && board.value?.board_id === route.value.board && !!schema.value)
 const unavailableTab = computed(() => route.value && !allowedTabs.value.includes(route.value.tab) ? route.value.tab : undefined)
+const drawerBoardId = computed<string | undefined>(previous =>
+  ready.value && !unavailableTab.value && (route.value?.issue || previous === board.value?.board_id) ? board.value?.board_id : undefined)
 const placements = computed(() => board.value ? checkPlacements(schema.value?.extensions, board.value.access) : [])
 const panel = computed(() => placements.value.find(entry => entry.slot === 'board_panel' && entry.target === 'board:' + route.value?.tab))
 watch(() => route.value?.issue, item => {
   if (item !== move.value?.item) move.value = undefined
+})
+watch(() => board.value?.board_id, () => {
+  creatingIssue.value = false
+  createBoardId.value = undefined
 })
 let revealed = false
 useHostVisibilityRefresh(() => {
@@ -101,6 +114,14 @@ function createdIssue(id: string, seq?: number) {
   invalidate(seq)
   page.openIssue(id)
 }
+function openCreate() {
+  createBoardId.value = board.value?.board_id
+  creatingIssue.value = true
+}
+function openNewBoard() {
+  newBoardOpened.value = true
+  newBoard.value = true
+}
 
 async function copy(kind: 'board' | 'issue') {
   const path = page.links()?.[kind]
@@ -120,14 +141,18 @@ async function copy(kind: 'board' | 'issue') {
       :boards="boards" :active="board" :tab="route?.tab" :tabs="allowedTabs"
       :has-more="hasMore" :paging="paging" :page-error="pagingError ? workFailure(pagingError).message : undefined"
       :issue-open="!!route?.issue" :compact="compact" :refreshing="loading"
-      @select="page.select" @load-more="page.loadMore" @create="newBoard = true" @copy="copy" @tab="page.openTab"
+      @select="page.select" @load-more="page.loadMore" @create="openNewBoard" @copy="copy" @tab="page.openTab"
       @density="compact = !compact" @refresh="refresh"
     >
       <template v-if="ready && (route?.tab === 'board' || route?.tab === 'backlog')" #filters>
         <div ref="filterHost" />
       </template>
       <template v-if="ready && board && schema && board.access.write" #create-issue>
-        <CreateIssue :key="board.board_id" :board="board" :schema="schema" :work="work" @created="createdIssue" @denied="denied" />
+        <Button type="button" size="small" label="Create issue" @click="openCreate">
+          <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
+        </Button>
+        <CreateIssue v-if="createBoardId === board.board_id" v-model:visible="creatingIssue" :key="board.board_id"
+          :board="board" :schema="schema" :work="work" @created="createdIssue" @denied="denied" />
       </template>
     </BoardShell>
     <div v-if="copyStatus" class="kanban-copy-status" role="status">{{ copyStatus }}</div>
@@ -151,7 +176,7 @@ async function copy(kind: 'board' | 'issue') {
     </div>
     <template v-else-if="ready && route && board && schema">
       <KanbanViews ref="views" :key="board.board_id" :board="board" :schema="schema" :route="route" :work="work"
-        :field-control="FieldControl" :use-principal-names="usePrincipalNames" :invalidate="invalidate"
+        :first-view="firstView" :field-control="FieldControl" :use-principal-names="usePrincipalNames" :invalidate="invalidate"
         :compact="compact" :filter-host="filterHost"
         @open-issue="page.openIssue" @move-form="openMove" />
       <div v-if="unavailableTab" class="kanban-notice" role="status">
@@ -160,7 +185,7 @@ async function copy(kind: 'board' | 'issue') {
       <BoardPluginPanel v-else-if="route.tab === 'sprints' || route.tab === 'search'" ref="plugin" :key="board.board_id + ':' + route.tab"
         :role="route.tab" :board="board" :schema="schema" :work="work" :sequence="sequence" :placement="panel"
         @open="page.openIssue" @changed="invalidate" @denied="denied" />
-      <IssueDrawer v-if="!unavailableTab" ref="drawer" :key="board.board_id" :board="board" :schema="schema"
+      <IssueDrawer v-if="drawerBoardId" ref="drawer" :key="drawerBoardId" :board="board" :schema="schema"
         :work="work" :issue="route.issue" :sequence="sequence" :planned-move="plannedMove"
         @close="page.closeIssue" @open="page.openIssue" @changed="invalidate" @denied="denied" @copy="copy('issue')"
         @move-finished="move = undefined">
@@ -169,6 +194,6 @@ async function copy(kind: 'board' | 'issue') {
         </template>
       </IssueDrawer>
     </template>
-    <NewBoardDialog v-model:visible="newBoard" :work="work" @created="page.created" />
+    <NewBoardDialog v-if="newBoardOpened" v-model:visible="newBoard" :work="work" @created="page.created" />
   </section>
 </template>

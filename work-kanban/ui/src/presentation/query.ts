@@ -128,7 +128,7 @@ export function bucketQuery(query: ReturnType<typeof queryFor>, bucket: BucketPo
   }
 }
 
-export async function findView(work: WorkClient, board: string, type: 'kanban_board' | 'kanban_backlog') {
+export async function findView(work: Pick<WorkClient, 'boardRead'>, board: string, type: 'kanban_board' | 'kanban_backlog') {
   let after: string | undefined
   do {
     const page: { views: (SavedView | { status: string })[], after?: string } =
@@ -143,6 +143,24 @@ export async function findView(work: WorkClient, board: string, type: 'kanban_bo
     after = page.after
   } while (after)
   throw new Error(type === 'kanban_board' ? 'This board needs a shared Board view.' : 'This board needs a shared Backlog view.')
+}
+
+export type ViewTab = 'board' | 'backlog'
+
+export interface FirstViewRead {
+  board: string
+  tab: ViewTab
+  view: Promise<SavedView>
+  page: Promise<QueryPage | undefined>
+}
+
+export function viewType(tab: ViewTab) {
+  return tab === 'board' ? 'kanban_board' : 'kanban_backlog'
+}
+
+export function runFirstViewPage(work: Pick<WorkClient, 'runView'>, tab: ViewTab, view: SavedView) {
+  if (tab === 'backlog' && view.view.group_by) return
+  return work.runView<QueryPage>(view.view_id, { limit: tab === 'board' ? boardFirstPageSize : backlogPageSize })
 }
 
 export function requireComplete(page: QueryPage) {

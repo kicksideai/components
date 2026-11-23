@@ -8,7 +8,7 @@ import type { Invalidation } from '../live/coordinator'
 import { presentationContext } from './context'
 import {
   and, backlogPageSize, boardFirstPageSize, bucketQuery, columnPageSize, findView, pageIdentity,
-  queryFor, requireComplete, type Cursor, type FilterSelection, type ItemSummary,
+  queryFor, requireComplete, viewType, type Cursor, type FilterSelection, type FirstViewRead, type ItemSummary,
   type Json, type Predicate, type QueryBucket, type QueryPage, type SavedView,
 } from './query'
 
@@ -34,6 +34,7 @@ interface Options {
   schema: () => BoardSchema
   tab: () => KanbanTab
   work: WorkClient
+  firstView?: FirstViewRead
   accessLost: () => void
 }
 
@@ -117,6 +118,7 @@ export function usePages(options: Options) {
     columnEdges, rowOffsets,
   })
   const tabPages = new Map<KanbanTab, ReturnType<typeof snapshot>>()
+  let firstView = options.firstView
 
   function problem(failure: unknown, revalidate = false) {
     if (isAccessLoss(failure)) {
@@ -201,11 +203,13 @@ export function usePages(options: Options) {
     const current = begin()
     const oldView = saved.value
     const selected = filters.value
+    const initial = !revalidate && firstView?.board === board.board_id && firstView.tab === kind ? firstView : undefined
+    firstView = undefined
     fetching.value = true
     error.value = undefined
     try {
       const view = (!revalidate && views.get(key))
-        || await findView(options.work, board.board_id, kind === 'board' ? 'kanban_board' : 'kanban_backlog')
+        || await (initial?.view ?? findView(options.work, board.board_id, viewType(kind)))
       if (!current()) return
       if (oldView && pageIdentity(board.board_id, options.schema().generation, oldView, selected)
           !== pageIdentity(board.board_id, options.schema().generation, view, selected)) {
@@ -219,13 +223,16 @@ export function usePages(options: Options) {
       views.set(key, view)
       const query = queryFor(view, selected)
       const min_seq = fence(minSeq)
+      const prefetched = initial && !selected.length ? await initial.page : undefined
+      if (!current()) return
+      const firstPage = prefetched && prefetched.as_of >= (min_seq ?? 0) ? prefetched : undefined
       if (kind === 'backlog') {
         const pageIndex = targetPage ?? backlogIndex.value
         const after = anchors.value[pageIndex]
         const limit = backlogPageSize
-        const page = requireComplete(selected.length || view.view.group_by
+        const page = requireComplete(firstPage ?? (selected.length || view.view.group_by
           ? await options.work.boardRead<QueryPage>(board.board_id, 'query', { ...query, limit, after, min_seq })
-          : await options.work.runView<QueryPage>(view.view_id, { limit, after, min_seq }))
+          : await options.work.runView<QueryPage>(view.view_id, { limit, after, min_seq })))
         if (!current()) return
         backlog.value = page
         backlogIndex.value = pageIndex
@@ -241,9 +248,9 @@ export function usePages(options: Options) {
           : query.where
         const limit = Math.min(groupedPageLimit, Math.max(boardFirstPageSize, ...visibleColumns.map(column => column.items.length)))
         const grouped = { ...query, where, group_by: 'state', sub_group_by: subgroup, limit, min_seq }
-        let page = targeted || selected.length
+        let page = firstPage ?? (targeted || selected.length
           ? await options.work.boardRead<QueryPage>(board.board_id, 'query', grouped)
-          : await options.work.runView<QueryPage>(view.view_id, { limit, min_seq })
+          : await options.work.runView<QueryPage>(view.view_id, { limit, min_seq }))
         if (!current()) return
         const limited = !!subgroup && (page.group_limited === true || !!page.group_after)
         if (limited) {

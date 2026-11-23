@@ -4,9 +4,7 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import { Icon } from '@iconify/vue'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
-import { computed, nextTick, onScopeDispose, ref, shallowRef, watch, type Component } from 'vue'
-import BacklogEditor from '../backlog/BacklogEditor.vue'
-import BacklogTable from '../backlog/BacklogTable.vue'
+import { computed, defineAsyncComponent, nextTick, onScopeDispose, ref, shallowRef, watch, type Component } from 'vue'
 import { sprintChoices } from '../backlog/sprints'
 import BoardViewport from '../board/BoardViewport.vue'
 import { planMove, type MovePlan } from '../board/move'
@@ -23,9 +21,11 @@ import { principalRef } from './context'
 import FilterBar, { type ActiveFilter } from './FilterBar.vue'
 import { applyWork, command } from './mutation'
 import { readItemDetail } from './query'
-import type { Cursor, ItemDetail, ItemSummary, WorkCommand, WorkOperation } from './query'
+import type { Cursor, FirstViewRead, ItemDetail, ItemSummary, WorkCommand, WorkOperation } from './query'
 import { usePages } from './usePages'
 
+const BacklogEditor = defineAsyncComponent(() => import('../backlog/BacklogEditor.vue'))
+const BacklogTable = defineAsyncComponent(() => import('../backlog/BacklogTable.vue'))
 const props = defineProps<{
   board: BoardOption
   schema: BoardSchema
@@ -35,6 +35,7 @@ const props = defineProps<{
   filterHost?: HTMLElement
   revalidate?: () => Promise<void>
   invalidate?: ReturnType<typeof createCoordinator>['invalidate']
+  firstView?: FirstViewRead
   fieldControl?: Component
   usePrincipalNames?: (values: () => ReturnType<typeof principalRef>[]) =>
     (value: ReturnType<typeof principalRef>) => string | undefined
@@ -58,7 +59,7 @@ const writable = computed(() => props.board.access.read && props.board.access.wr
 const placements = computed(() => checkPlacements(props.schema.extensions, props.board.access))
 const planning = computed(() => props.schema.plugins?.some(plugin => plugin.plugin === planningPlugin && plugin.active) === true)
 const pages = usePages({
-  board: () => props.board, schema: () => props.schema, tab: () => props.route.tab, work: props.work,
+  board: () => props.board, schema: () => props.schema, tab: () => props.route.tab, work: props.work, firstView: props.firstView,
   accessLost: () => {
     editor.value = undefined
     uncertain.value = undefined

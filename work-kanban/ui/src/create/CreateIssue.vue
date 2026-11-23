@@ -17,7 +17,7 @@ import { createFields, initialIssueType, issueTypes, needsParent, parentQuery } 
 const props = defineProps<{ board: BoardOption; schema: BoardSchema; work: IssueWork }>()
 const emit = defineEmits<{ created: [id: string, sequence?: number]; denied: [problem: unknown] }>()
 const id = useId()
-const open = ref(false)
+const open = defineModel<boolean>('visible', { required: true })
 const busy = ref(false)
 const uncertain = ref(false)
 const typeId = ref<string>()
@@ -71,11 +71,9 @@ watch(() => props.board.board_id, () => {
 })
 watch(() => props.board.access.write, writable => { if (!writable) open.value = false })
 
-function show() {
-  if (!props.board.access.write) return
-  if (!kind.value) chooseType(initialIssueType(schema.value)?.id)
-  open.value = true
-}
+watch(open, visible => {
+  if (visible && !kind.value) chooseType(initialIssueType(schema.value)?.id)
+}, { immediate: true })
 
 function dismiss(visible: boolean) {
   if (visible || (!busy.value && !uncertain.value)) open.value = visible
@@ -113,9 +111,6 @@ async function create() {
 </script>
 
 <template>
-  <Button v-if="board.access.write" type="button" size="small" label="Create issue" @click="show">
-    <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
-  </Button>
   <Dialog :visible="open" modal :draggable="false" :closable="!busy && !uncertain"
     :close-on-escape="!busy && !uncertain" :aria-labelledby="id + '-heading'" :style="{ width: 'min(35rem, calc(100% - 1.5rem))' }"
     @update:visible="dismiss">

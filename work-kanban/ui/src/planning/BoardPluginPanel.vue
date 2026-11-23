@@ -1,11 +1,12 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import { loadByTagName } from '@wippy-fe/proxy'
-import { computed, ref, watch } from 'vue'
-import SearchPanel from '../search/SearchPanel.vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { planningPlugin, searchPlugin, type WorkClient } from '../work/client'
 import type { BoardOption, BoardSchema, WorkExtension } from '../work/types'
-import SprintsPanel from './SprintsPanel.vue'
+
+const SprintsPanel = defineAsyncComponent(() => import('./SprintsPanel.vue'))
+const SearchPanel = defineAsyncComponent(() => import('../search/SearchPanel.vue'))
 
 const props = defineProps<{
   role: 'sprints' | 'search'

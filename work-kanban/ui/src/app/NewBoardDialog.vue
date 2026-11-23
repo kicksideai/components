@@ -43,7 +43,7 @@ async function loadCatalog() {
 watch(() => props.visible, visible => {
   if (visible) void loadCatalog()
   else begin()
-})
+}, { immediate: true })
 
 async function submit() {
   if (saving.value || (!uncertain.value && (!readiness.value?.enabled || !validPrefix.value))) return

@@ -2,7 +2,6 @@
 export { default as KanbanViews } from './KanbanViews.vue'
 export { default as BoardViewport } from '../board/BoardViewport.vue'
 export { default as IssueCard } from '../board/IssueCard.vue'
-export { default as BacklogTable } from '../backlog/BacklogTable.vue'
 export { default as FilterBar } from './FilterBar.vue'
 export { default as DrawerExtensions } from '../extensions/DrawerExtensions.vue'
 export { default as ExtensionElement } from '../extensions/ExtensionElement.vue'
