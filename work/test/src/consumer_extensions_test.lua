@@ -16,8 +16,8 @@ local function extensions(session, board)
     return data(session.http("POST", session.route(board.id, "get_schema"), { include_extensions = true })).extensions
 end
 
-local function by_id(list)
-    local map = {}
+local function by_id(list): { [string]: { [string]: unknown } }
+    local map: { [string]: { [string]: unknown } } = {}
     for _, placement in ipairs(list) do
         map[placement.id] = placement
     end
