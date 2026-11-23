@@ -92,6 +92,9 @@ function M.endpoint(method: string, param: string?, contract_id: string?, option
         elseif counts == "false" then input.include_counts = false
         elseif counts ~= nil then input.include_counts = counts end
     end
+    if method == "get_schema" and contract_id == nil and input.include_extensions ~= nil then
+        contract_id = "kickside.work:consumer_board"
+    end
     local status, body = M.call(method, input, contract_id, optional_method)
     if method == "list_packs" and status == http.STATUS.OK then
         local endpoint, endpoint_err = security.can("access", "kickside.work.api:create.endpoint")

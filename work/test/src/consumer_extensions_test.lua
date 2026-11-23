@@ -42,7 +42,17 @@ local function define()
                 { headers = { ["Content-Type"] = "application/json" }, body = '{"include_extensions":true}' }))
             test.is_true(anonymous.status_code == 401 or anonymous.status_code == 403)
             test.is_nil(data(reader.http("POST", route, {})).extensions)
+            test.is_nil(data(reader.http("POST", route, { include_extensions = false })).extensions)
+            test.eq(reader.http("POST", route, { include_extensions = "true" }).status, 400)
+            local _, agent_err = reader.call("get_schema", { include_extensions = true }, board.id)
+            test.eq(assert(agent_err):kind(), errors.INVALID)
+            local native = assert(reader.call("contract_request", {
+                contract = "kickside.work:consumer_board", method = "get_schema",
+                value = { board_id = board.id, include_extensions = true },
+            }))
             local list = extensions(reader, board)
+            test.eq(#native.extensions, #list)
+            for i, placement in ipairs(native.extensions) do test.eq(placement.id, list[i].id) end
             local visible = by_id(list)
             test.eq(#list, 5)
             local expected = { id = "app:consumer_card", slot = "card_badge", title = "Badge",

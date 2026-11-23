@@ -13,7 +13,7 @@ A UI module registers a `registry.entry` with `meta.type: kickside.work.ui.app`,
 
 ## Consumer extension discovery
 
-Call `kickside.work:board.get_schema` or `POST /work/boards/{id}/get_schema` with `{ "include_extensions": true }` to get the active schema and placements in one authenticated board read. The response includes `extensions`, an array of `{ id, slot, tag?, title, order, access, plugin, target }`. When the caller requests a historical generation or omits the flag, Work omits `extensions`. An active request with no eligible placements returns an empty array.
+Call `kickside.work:consumer_board.get_schema` or `POST /work/boards/{id}/get_schema` with `{ "include_extensions": true }` to get the active schema and placements in one authenticated board read. The response includes `extensions`, an array of `{ id, slot, tag?, title, order, access, plugin, target }`. When the caller requests a historical generation or omits the flag, Work omits `extensions`. An active request with no eligible placements returns an empty array.
 
 - `kickside.work.ui.card` declares a `card_badge` targeting `item` by default or `item:<type_id>` when `meta.type_ref` names an existing item type.
 - `kickside.work.ui.panel` declares a `drawer_panel` with the same item targets, or a `board_panel` when `meta.target` is `board:<role>`, such as `board:sprints` or `board:search`.

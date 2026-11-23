@@ -67,6 +67,22 @@ entries:
     search: kickside.work.domain:search
     domain: kickside.work:types
     types: kickside.work.read:types
+- name: consumer_schema
+  kind: function.lua
+  source: file://consumer_schema.lua
+  method: get_schema
+  imports:
+    locate: kickside.work.command:locate
+    reader: kickside.work.read:reader
+    requests: kickside.work.service:requests
+    types: kickside.work.read:types
+- name: consumer_board
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:consumer_board
+    default: true
+    methods:
+      get_schema: kickside.work.read:consumer_schema
 - name: reader
   kind: library.lua
   meta:

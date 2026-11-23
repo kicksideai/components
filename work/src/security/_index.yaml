@@ -54,6 +54,8 @@ entries:
     - kickside.work.domain:validate_tool
     - kickside.work.extensions:plugin_projections
     - kickside.work.persist:publish_meta
+    - kickside.work.read:consumer_board
+    - kickside.work.read:consumer_schema
     - kickside.work.read:resolve_memberships
     - kickside.work.read:resolve_principal
     - kickside.work.service:apply
@@ -113,6 +115,7 @@ entries:
     - kickside.work.source:pull_changes
     - kickside.work.source:pull_items
     - kickside.work:board
+    - kickside.work:consumer_board
     - kickside.work:packs
     - kickside.work:schema_provider
     - kickside.work:search_resolver
