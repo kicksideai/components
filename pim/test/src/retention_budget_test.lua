@@ -268,6 +268,8 @@ local function define()
         test.it("pages across catalogs with durable progress and one overall row budget", function()
             local h = fixture.catalog()
             local db = assert(store.open())
+            local first = "z-retention-001"
+            local saved_position = assert(retention_rows.position(db))
             local compiled = assert(store.catalog(db, h.id)).compiled
             compiled.policy = { audit_days = 1, trash_days = 1, tombstone_days = 1 }
             local encoded = assert(json.encode(compiled))
@@ -286,34 +288,45 @@ local function define()
             end
             test.eq(tonumber(assert(tx:query("SELECT COUNT(*) AS n FROM kickside_pim_catalog WHERE catalog_id LIKE 'z-retention-%'", {}))[1].n), 11)
             assert(tx:commit())
-            db:release()
-            local done = false
-            local previous: string? = nil
-            local advanced = false
-            for _ = 1, 1000 do
-                local out, err = funcs.call("kickside.pim.retention:owner", {})
-                test.is_nil(err, tostring(err))
-                test.is_true(out.success, tostring(out.error))
-                test.is_true(out.deleted <= 500, "overall retention row budget")
-                test.is_true(out.catalogs <= 10, "catalog page budget")
-                local read = assert(store.open())
-                local position = assert(read:query("SELECT catalog_id, inclusive FROM kickside_pim_retention WHERE owner_id = 'pim'", {}))[1]
-                local current = tostring(position.catalog_id) .. ":" .. tostring(position.inclusive)
-                if previous and previous ~= current then advanced = true end
-                previous = current
-                local left = assert(read:query("SELECT COUNT(*) AS n FROM kickside_pim_change WHERE catalog_id LIKE 'z-retention-%'", {}))[1].n
-                read:release()
-                if not out.needs_continue then
-                    test.eq(tonumber(left), 0)
-                    done = true
-                    break
+            start_at(db, first)
+            assert(db:release())
+            local ran, err = pcall(function()
+                local done = false
+                local previous: string? = nil
+                local advanced = false
+                for _ = 1, 1000 do
+                    local out = owner()
+                    test.is_true(out.deleted <= 500, "overall retention row budget")
+                    test.is_true(out.catalogs <= 10, "catalog page budget")
+                    local read = assert(store.open())
+                    local position = assert(retention_rows.position(read))
+                    local current = position.catalog_id .. ":" .. tostring(position.inclusive)
+                    if previous and previous ~= current then advanced = true end
+                    previous = current
+                    local left = count(read, "SELECT COUNT(*) AS n FROM kickside_pim_change WHERE catalog_id LIKE 'z-retention-%'")
+                    -- A completed pass resets the catalog key. Resume the next pass
+                    -- at the fixture's first catalog and keep the owner's sweep cycle.
+                    if out.needs_continue and position.catalog_id == "" then
+                        position.catalog_id = first
+                        position.inclusive = 1
+                        assert(not retention_rows.advance(read, position))
+                    end
+                    assert(read:release())
+                    if not out.needs_continue then
+                        test.eq(left, 0)
+                        done = true
+                        break
+                    end
                 end
-            end
-            test.is_true(done)
-            test.is_true(advanced)
+                test.is_true(done)
+                test.is_true(advanced)
+            end)
             local cleanup = assert(store.open())
-            assert(cleanup:execute("DELETE FROM kickside_pim_catalog WHERE catalog_id LIKE 'z-retention-%'", {}))
-            cleanup:release()
+            execute(cleanup, "DELETE FROM kickside_pim_change WHERE catalog_id LIKE 'z-retention-%'")
+            execute(cleanup, "DELETE FROM kickside_pim_catalog WHERE catalog_id LIKE 'z-retention-%'")
+            assert(not retention_rows.advance(cleanup, saved_position))
+            assert(cleanup:release())
+            assert(ran, tostring(err))
         end)
     end)
 end

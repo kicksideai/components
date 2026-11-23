@@ -4,7 +4,6 @@ WIPPY ?= wippy
 VERSION ?= 0.1.0
 SHELL := bash
 .SHELLFLAGS := -o pipefail -ec
-PIM_PG_PORT ?= 5434
 WIPPY_ARGS ?=
 
 .PHONY: setup lockrefresh lint typecheck strict check check-module test test-pg pack verify release-check
@@ -27,7 +26,8 @@ check-module:
 test:
 	cd test && WIPPY="$(WIPPY)" ./run.sh $(WIPPY_ARGS)
 test-pg:
-	cd test && WIPPY="$(WIPPY)" ./run.sh --profile postgres --set vars.pg_port=$(PIM_PG_PORT) $(WIPPY_ARGS)
+	cd test && WIPPY="$(WIPPY)" PGPORT="$(or $(PIM_PG_PORT),$(PGPORT))" bash ../../test-support/postgres.sh kickside_test_pim \
+		bash -ec './run.sh --profile postgres --set "vars.pg_host=$$PGHOST" --set "vars.pg_port=$$PGPORT" --set "vars.pg_database=$$PGDATABASE" "$$@"' bash $(WIPPY_ARGS)
 pack:
 	mkdir -p .wippy
 	cd test && $(WIPPY) pack --module kickside/pim ../.wippy/pim.wapp

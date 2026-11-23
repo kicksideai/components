@@ -20,10 +20,6 @@ concurrency:
   cancel-in-progress: true
 env:
   WIPPY_REGISTRY: https://hub.wippy.ai
-  PGHOST: 127.0.0.1
-  PGPORT: '5433'
-  PGUSER: kickside
-  PGPASSWORD: kickside
   PYTHONDONTWRITEBYTECODE: '1'
   ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
   RELEASE_PR: ${{ startsWith(github.head_ref, 'release-please--') || startsWith(github.ref_name, 'release-please--')
@@ -443,17 +439,6 @@ jobs:
             createdb "$database"
             trap 'dropdb "$database"' EXIT
             make -C docscout test-pg WIPPY_ARGS="--set vars.pg_database=$database"
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_USER: kickside
-          POSTGRES_PASSWORD: kickside
-          POSTGRES_DB: postgres
-        ports:
-        - 5433:5432
-        options: --health-cmd "pg_isready -U kickside -d postgres" --health-interval 5s --health-timeout
-          5s --health-retries 10
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
@@ -492,7 +477,23 @@ jobs:
         token: ${{ secrets.SOURCE_READ_TOKEN || github.token }}
         persist-credentials: false
     - name: Build, lint and Lua module tests
-      run: ${{ matrix.commands }}
+      env:
+        PGPORT: '5433'
+        MODULE_ENGINE: ${{ matrix.engine }}
+        MODULE_COMMANDS: ${{ matrix.commands }}
+        TEST_POSTGRES_LOG: ${{ runner.temp }}/components-postgres.log
+      run: |
+        if [[ "$MODULE_ENGINE" == postgres ]]; then
+          bash test-support/postgres.sh postgres bash -eo pipefail -c "$MODULE_COMMANDS"
+        else
+          bash -eo pipefail -c "$MODULE_COMMANDS"
+        fi
+    - name: Upload PostgreSQL server log
+      if: ${{ failure() && matrix.engine == 'postgres' }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: postgres-${{ matrix.module }}
+        path: ${{ runner.temp }}/components-postgres.log
     defaults:
       run:
         working-directory: source

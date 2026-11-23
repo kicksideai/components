@@ -170,10 +170,12 @@ local function define()
         test.it("finishes a merge of more than 500 products through the job, as the asking actor", function()
             local h = scoped.catalog(scoped.member())
             fixture.seed_terms(h)
-            for batch = 0, 1 do
+            -- Keep setup within one projection page per command. The merge
+            -- below still exercises a full rewrite page and its deferred tail.
+            for first = 1, 520, 100 do
                 local items: { Map } = {}
-                for i = 1, 260 do
-                    items[#items + 1] = { product = { sku = "S-" .. batch .. "-" .. i }, create = {}, set = { { attr = "core.category", value = "hiking" } } }
+                for i = first, math.min(first + 99, 520) do
+                    items[#items + 1] = { product = { sku = "S-" .. i }, create = {}, set = { { attr = "core.category", value = "hiking" } } }
                 end
                 local applied, err = h.call("apply", { items = items })
                 assert(not err, tostring(err))

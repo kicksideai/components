@@ -83,8 +83,10 @@ Inspect each release outcome. A `queued` model release supplies `request_id` and
 make setup
 make lint
 make test        # SQLite
-make test-pg     # PostgreSQL on port 5434; dedicated database kickside_test_pim
+make test-pg     # Fresh disk-backed PostgreSQL (Docker)
 ```
+
+The PostgreSQL target uses the same launcher as CI. It starts a server on an available loopback port, creates `kickside_test_pim`, and removes the container and its data volume after the run. Set `PIM_PG_PORT` to select a specific port.
 
 License: [KickSide Community License 1.0](LICENSE) · [Third-party notices](https://github.com/kicksideai/components/blob/main/THIRD_PARTY_NOTICES.md).
 
