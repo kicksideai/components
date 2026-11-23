@@ -77,7 +77,7 @@ defineExpose({ restore })
 
 <template>
   <section ref="viewport" class="kanban-backlog kx-focus-outline" aria-label="Backlog" tabindex="-1" :aria-busy="fetching">
-    <DataTable :value="page.items" data-key="id" size="small"
+    <DataTable :value="page.items" data-key="id" size="small" class="kanban-backlog-table"
       :pt="{ table: { 'aria-label': 'Backlog issues' } }">
       <template #empty><slot name="empty">No issues in the backlog.</slot></template>
       <Column header="Issue">
@@ -91,7 +91,7 @@ defineExpose({ restore })
           </div>
         </template>
       </Column>
-      <Column header="Status">
+      <Column header="Status" header-class="kanban-backlog-status" body-class="kanban-backlog-status">
         <template #body="{ data }">
           <Tag class="kx-tag-sm" :value="context.statusLabels[status(data)] ?? status(data)"
             :severity="statusSeverity(context.statuses.find(state => state.id === status(data)))" />
@@ -99,7 +99,8 @@ defineExpose({ restore })
       </Column>
       <Column header="Priority" header-class="kanban-backlog-secondary" body-class="kanban-backlog-secondary">
         <template #body="{ data }">
-          <Tag v-if="data.values.priority" class="kx-tag-sm" severity="secondary"
+          <Tag v-if="data.values.priority" class="kx-tag-sm"
+            :severity="data.values.priority === 'highest' ? 'danger' : data.values.priority === 'high' ? 'warn' : 'secondary'"
             :value="context.priorityLabels[data.values.priority] ?? data.values.priority" />
         </template>
       </Column>
@@ -109,7 +110,7 @@ defineExpose({ restore })
       <Column header="Points" header-class="kanban-backlog-secondary" body-class="kanban-backlog-secondary">
         <template #body="{ data }">{{ data.values.story_points ?? '—' }}</template>
       </Column>
-      <Column v-if="writable && (canEdit || planning)">
+      <Column v-if="writable && (canEdit || planning)" header-class="kanban-backlog-actions" body-class="kanban-backlog-actions">
         <template #header><span class="kanban-visually-hidden">Actions</span></template>
         <template #body="{ data }">
           <Button :aria-label="'Actions for ' + data.key" text size="small" severity="secondary"

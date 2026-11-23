@@ -15,8 +15,51 @@ const snapshot: BoardSchema = {
   plugins: [{ plugin: planningPlugin, active: true }],
 }
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
+const saved = { view_id: 'view', board_id: 'linked', view: { type: 'kanban_board', group_by: 'state' } }
+const viewReads = () => ({
+  boardRead: vi.fn().mockResolvedValue({ views: [saved] }),
+  runView: vi.fn().mockResolvedValue({ as_of: 1, groups: [] }),
+})
 
 describe('the Kanban page controller', () => {
+  it('starts a linked board schema and saved view while the board directory is loading', async () => {
+    const route = ref<KanbanRoute>({ tab: 'board', board: 'linked' })
+    let finishDirectory!: (page: { boards: BoardOption[] }) => void
+    let finishSchema!: (value: BoardSchema) => void
+    const boards = vi.fn(() => new Promise<{ boards: BoardOption[] }>(resolve => { finishDirectory = resolve }))
+    const schema = vi.fn(() => new Promise<BoardSchema>(resolve => { finishSchema = resolve }))
+    const reads = viewReads()
+    const scope = effectScope()
+    try {
+      const page = scope.run(() => usePage(route, { boards, schema, ...reads }, vi.fn(), vi.fn()))!
+      expect(schema).toHaveBeenCalledWith('linked')
+      expect(reads.boardRead).toHaveBeenCalledWith('linked', 'list_views', { limit: 50, after: undefined })
+      expect(reads.runView).not.toHaveBeenCalled()
+      finishDirectory({ boards: [option('linked')] })
+      await flush()
+      expect(reads.runView).toHaveBeenCalledWith('view', { limit: 10 })
+      expect(page.board.value).toBeUndefined()
+      finishSchema(snapshot)
+      await flush()
+      expect(page.board.value?.board_id).toBe('linked')
+    } finally { scope.stop() }
+  })
+
+  it('skips saved view reads on a Sprints deep link', async () => {
+    const route = ref<KanbanRoute>({ tab: 'sprints', board: 'linked' })
+    const boards = vi.fn().mockResolvedValue({ boards: [option('linked')] })
+    const schema = vi.fn().mockResolvedValue(snapshot)
+    const reads = viewReads()
+    const scope = effectScope()
+    try {
+      scope.run(() => usePage(route, { boards, schema, ...reads }, vi.fn(), vi.fn()))
+      await flush()
+      expect(schema).toHaveBeenCalledOnce()
+      expect(reads.boardRead).not.toHaveBeenCalled()
+      expect(reads.runView).not.toHaveBeenCalled()
+    } finally { scope.stop() }
+  })
+
   it('offers a supported tab for a caller-visible board panel', () => {
     const schema: BoardSchema = {
       ...snapshot,
@@ -40,7 +83,7 @@ describe('the Kanban page controller', () => {
     const subscribe = vi.fn((_board: string, _refresh: () => Promise<void>) => undefined)
     const scope = effectScope()
     try {
-      const page = scope.run(() => usePage(route, { boards, schema }, navigate, subscribe))!
+      const page = scope.run(() => usePage(route, { boards, schema, ...viewReads() }, navigate, subscribe))!
       await flush()
       await subscribe.mock.calls[0][1]()
       expect(subscribe).toHaveBeenCalledTimes(1)
@@ -66,7 +109,7 @@ describe('the Kanban page controller', () => {
     })
     const scope = effectScope()
     try {
-      const page = scope.run(() => usePage(route, { boards, schema }, vi.fn(), subscribe))!
+      const page = scope.run(() => usePage(route, { boards, schema, ...viewReads() }, vi.fn(), subscribe))!
       await flush()
       route.value = { tab: 'sprints', board: 'second' }
       await flush()
@@ -89,7 +132,7 @@ describe('the Kanban page controller', () => {
     const navigate = vi.fn()
     const scope = effectScope()
     try {
-      const page = scope.run(() => usePage(route, { boards, schema }, navigate, () => undefined))!
+      const page = scope.run(() => usePage(route, { boards, schema, ...viewReads() }, navigate, () => undefined))!
       await flush()
       expect(page.board.value?.board_id).toBe('linked')
       await page.refresh(true)

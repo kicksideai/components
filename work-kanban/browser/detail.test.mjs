@@ -70,19 +70,27 @@ test('creates an issue with Work’s root default, patches in the drawer, posts 
 
 test('keeps the neighbor rank in the atomic move when the drawer collects Resolution', async () => {
   const { app, shell, page, context, errors } = await open({ path: route(small) })
-  const endpoint = origin + '/api/v1/work/boards/' + small + '/apply'
-  const apply = async ops => {
-    const response = await page.request.post(endpoint, {
-      headers: { authorization: 'Bearer ' + process.env.KANBAN_FIRE_OWNER },
-      data: { key: crypto.randomUUID(), mode: 'atomic', ops },
-    })
-    expect(response.ok()).toBe(true)
-    const { data } = await response.json()
-    expect(data.outcomes.every(row => row.status === 'applied')).toBe(true)
-    return data.outcomes
-  }
   try {
-    const suffix = crypto.randomUUID().slice(0, 8)
+    const idempotencyKey = crypto.randomUUID()
+    const suffix = idempotencyKey.slice(0, 8)
+    const headers = { authorization: 'Bearer ' + process.env.KANBAN_FIRE_OWNER }
+    const created = await page.request.post(origin + '/api/v1/work/boards', {
+      headers,
+      data: {
+        title: 'Ranked transition fixture ' + suffix, idempotency_key: idempotencyKey,
+        pack: 'kickside.work.kanban:pack', version: '1.0.0', starter: false,
+      },
+    })
+    expect(created.ok()).toBe(true)
+    const { data: { board_id: rankBoard } } = await created.json()
+    const endpoint = origin + '/api/v1/work/boards/' + rankBoard + '/apply'
+    const apply = async ops => {
+      const response = await page.request.post(endpoint, { headers, data: { key: crypto.randomUUID(), mode: 'atomic', ops } })
+      expect(response.ok()).toBe(true)
+      const { data } = await response.json()
+      expect(data.outcomes.every(row => row.status === 'applied')).toBe(true)
+      return data.outcomes
+    }
     const [source, neighbor] = await apply([
       { op: 'create', type: 'epic', values: { title: 'Resolve with rank ' + suffix } },
       { op: 'create', type: 'epic', values: { title: 'Rank neighbor ' + suffix } },
@@ -94,11 +102,11 @@ test('keeps the neighbor rank in the atomic move when the drawer collects Resolu
       ])
     }
     await apply([{ op: 'transition', item: neighbor.item, transition: 'finish', values: { resolution: 'fixed' } }])
-    await page.reload()
+    await page.goto(origin + route(rankBoard), { waitUntil: 'domcontentloaded' })
     const row = app.locator('[data-card-id="' + source.item + '"]')
     await button(row, 'Move ' + source.key).click()
     await app.getByRole('menuitem', { name: 'Done', exact: true }).click()
-    const issue = drawer(app)
+    const issue = app.getByRole('dialog', { name: source.key })
     await issue.getByRole('heading', { name: 'Confirm status change' }).waitFor()
     await issue.getByRole('combobox', { name: 'Resolution', exact: true }).click()
     await shell.getByRole('option', { name: 'Fixed', exact: true }).click()

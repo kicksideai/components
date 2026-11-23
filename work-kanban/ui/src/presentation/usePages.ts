@@ -8,7 +8,7 @@ import type { Invalidation } from '../live/coordinator'
 import { presentationContext } from './context'
 import {
   and, backlogPageSize, boardFirstPageSize, bucketQuery, columnPageSize, findView, pageIdentity,
-  queryFor, requireComplete, type Cursor, type FilterSelection, type ItemSummary,
+  queryFor, requireComplete, viewType, type Cursor, type FilterSelection, type FirstViewRead, type ItemSummary,
   type Json, type Predicate, type QueryBucket, type QueryPage, type SavedView,
 } from './query'
 
@@ -20,6 +20,7 @@ export interface BoardColumn {
   items: ItemSummary[]
   lane?: Predicate
   after?: Cursor
+  asOf?: number
 }
 
 export interface Swimlane {
@@ -33,6 +34,7 @@ interface Options {
   schema: () => BoardSchema
   tab: () => KanbanTab
   work: WorkClient
+  firstView?: FirstViewRead
   accessLost: () => void
 }
 
@@ -57,20 +59,20 @@ function subgroupPredicate(field: string, value: Json | undefined): Predicate {
   return value == null ? { field, op: 'is_null', value: true } : { field, op: 'eq', value }
 }
 
-function groupColumns(context: ReturnType<typeof presentationContext>, groups: QueryBucket[], lane?: Predicate) {
+function groupColumns(context: ReturnType<typeof presentationContext>, groups: QueryBucket[], asOf: number, lane?: Predicate) {
   const byStatus = new Map(groups.filter(group => typeof group.value === 'string').map(group => [group.value as string, group]))
   const states = [...new Set([...context.statuses.map(state => state.id), ...byStatus.keys()])]
   return states.map((state): BoardColumn => {
     const group = byStatus.get(state)
     return {
       id: lane ? JSON.stringify([lane, state]) : state, state, title: context.statusLabels[state] ?? state,
-      count: group?.count ?? 0, items: group?.items ?? [], after: group?.after, lane,
+      count: group?.count ?? 0, items: group?.items ?? [], after: group?.after, lane, asOf,
     }
   })
 }
 
 function groupLanes(context: ReturnType<typeof presentationContext>, page: QueryPage, subgroup?: string): Swimlane[] {
-  if (!subgroup) return [{ id: '', columns: groupColumns(context, page.groups ?? []) }]
+  if (!subgroup) return [{ id: '', columns: groupColumns(context, page.groups ?? [], page.as_of) }]
   const groupsByValue = new Map<string, { value?: Json, buckets: QueryBucket[] }>()
   for (const status of page.groups ?? []) {
     for (const bucket of status.groups ?? []) {
@@ -81,12 +83,12 @@ function groupLanes(context: ReturnType<typeof presentationContext>, page: Query
     }
   }
   const field = context.fields.find(entry => entry.code === subgroup)
-  if (!groupsByValue.size) return [{ id: '', columns: groupColumns(context, []) }]
+  if (!groupsByValue.size) return [{ id: '', columns: groupColumns(context, [], page.as_of) }]
   return Array.from(groupsByValue, ([id, lane]) => {
     const value = lane.value
     const title = value == null ? 'No ' + (field?.title ?? subgroup)
       : field?.options?.find(option => option.id === value)?.label ?? String(value)
-    return { id, title, columns: groupColumns(context, lane.buckets, subgroupPredicate(subgroup, value)) }
+    return { id, title, columns: groupColumns(context, lane.buckets, page.as_of, subgroupPredicate(subgroup, value)) }
   })
 }
 
@@ -116,6 +118,7 @@ export function usePages(options: Options) {
     columnEdges, rowOffsets,
   })
   const tabPages = new Map<KanbanTab, ReturnType<typeof snapshot>>()
+  let firstView = options.firstView
 
   function problem(failure: unknown, revalidate = false) {
     if (isAccessLoss(failure)) {
@@ -200,11 +203,13 @@ export function usePages(options: Options) {
     const current = begin()
     const oldView = saved.value
     const selected = filters.value
+    const initial = !revalidate && firstView?.board === board.board_id && firstView.tab === kind ? firstView : undefined
+    firstView = undefined
     fetching.value = true
     error.value = undefined
     try {
       const view = (!revalidate && views.get(key))
-        || await findView(options.work, board.board_id, kind === 'board' ? 'kanban_board' : 'kanban_backlog')
+        || await (initial?.view ?? findView(options.work, board.board_id, viewType(kind)))
       if (!current()) return
       if (oldView && pageIdentity(board.board_id, options.schema().generation, oldView, selected)
           !== pageIdentity(board.board_id, options.schema().generation, view, selected)) {
@@ -218,13 +223,16 @@ export function usePages(options: Options) {
       views.set(key, view)
       const query = queryFor(view, selected)
       const min_seq = fence(minSeq)
+      const prefetched = initial && !selected.length ? await initial.page : undefined
+      if (!current()) return
+      const firstPage = prefetched && prefetched.as_of >= (min_seq ?? 0) ? prefetched : undefined
       if (kind === 'backlog') {
         const pageIndex = targetPage ?? backlogIndex.value
         const after = anchors.value[pageIndex]
         const limit = backlogPageSize
-        const page = requireComplete(selected.length || view.view.group_by
+        const page = requireComplete(firstPage ?? (selected.length || view.view.group_by
           ? await options.work.boardRead<QueryPage>(board.board_id, 'query', { ...query, limit, after, min_seq })
-          : await options.work.runView<QueryPage>(view.view_id, { limit, after, min_seq }))
+          : await options.work.runView<QueryPage>(view.view_id, { limit, after, min_seq })))
         if (!current()) return
         backlog.value = page
         backlogIndex.value = pageIndex
@@ -240,9 +248,9 @@ export function usePages(options: Options) {
           : query.where
         const limit = Math.min(groupedPageLimit, Math.max(boardFirstPageSize, ...visibleColumns.map(column => column.items.length)))
         const grouped = { ...query, where, group_by: 'state', sub_group_by: subgroup, limit, min_seq }
-        let page = targeted || selected.length
+        let page = firstPage ?? (targeted || selected.length
           ? await options.work.boardRead<QueryPage>(board.board_id, 'query', grouped)
-          : await options.work.runView<QueryPage>(view.view_id, { limit, min_seq })
+          : await options.work.runView<QueryPage>(view.view_id, { limit, min_seq }))
         if (!current()) return
         const limited = !!subgroup && (page.group_limited === true || !!page.group_after)
         if (limited) {
@@ -338,6 +346,11 @@ export function usePages(options: Options) {
     rowOffsets.set(column, row)
     return row >= deepWindowStart && Math.floor(row / columnPageSize) !== Math.floor(prior / columnPageSize)
   }
+  function visibleNeedsRefresh(entered: readonly string[]) {
+    if (!entered.length) return false
+    if (fetching.value) return true
+    return lanes.value.some(lane => lane.columns.some(column => entered.includes(column.id) && (column.asOf ?? 0) < sequence))
+  }
 
   async function pageBacklog(direction: -1 | 1) {
     const current = backlog.value
@@ -351,6 +364,6 @@ export function usePages(options: Options) {
 
   return {
     context, lanes, backlog, backlogIndex, error, fetching, paging, subgroupLimited, visible, held,
-    select, refresh, more, pageBacklog, visibleRow,
+    select, refresh, more, pageBacklog, visibleRow, visibleNeedsRefresh,
   }
 }

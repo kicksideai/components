@@ -94,6 +94,10 @@ async function load() {
   if (!selected.value) selected.value = active.rows.value[0]?.id ?? 'backlog'
   await Promise.all([upcoming.load(), closed.load(), totals.load()])
 }
+function refresh() {
+  return Promise.all([load(), selected.value ? members.load() : undefined])
+}
+defineExpose({ refresh })
 function closedSprint(sequence?: number) {
   closing.value = undefined
   emit('changed', sequence)
@@ -119,7 +123,7 @@ watch(() => props.sequence, () => {
 
 <template>
   <section class="kanban-sprints" aria-label="Sprint planning">
-    <p v-if="active.pending.value && !active.loaded.value" role="status">Loading sprints…</p>
+    <p v-if="active.pending.value && !active.loaded.value" class="kx-loading" role="status">Loading sprints…</p>
     <Accordion :value="selected" @update:value="select">
       <AccordionPanel v-for="row in panels" :key="row.id" :value="row.id" :data-sprint="row.id">
         <AccordionHeader>
@@ -131,14 +135,14 @@ watch(() => props.sequence, () => {
         </AccordionHeader>
         <AccordionContent>
           <div v-if="selected === row.id" class="kanban-sprint-issues">
-            <Button v-if="row.state === 'active' && row.sprint && board.access.write" label="Close sprint"
+            <Button v-if="row.state === 'active' && row.sprint && board.access.write" class="kanban-sprint-close" label="Close sprint"
               severity="secondary" outlined size="small" @click="closing = row.sprint" />
             <div v-if="memberError" class="kx-notice error" role="alert">
               {{ issueProblem(memberError).message }}
               <Button text type="button" size="small" label="Retry issues" @click="members.retry()" />
             </div>
-            <p v-else-if="memberPending && !memberLoaded" role="status">Loading issues…</p>
-            <p v-else-if="memberLoaded && !rows.length">No issues in this {{ row.sprint ? 'sprint' : 'backlog' }}.</p>
+            <p v-else-if="memberPending && !memberLoaded" class="kx-loading" role="status">Loading issues…</p>
+            <p v-else-if="memberLoaded && !rows.length" class="kx-empty-sub">No issues in this {{ row.sprint ? 'sprint' : 'backlog' }}.</p>
             <IssueResults v-if="rows.length" :rows="rows" :schema="schema" details="planning" label="Sprint issues" @open="emit('open', $event)" />
             <Button v-if="after" type="button" severity="secondary" outlined size="small" label="Load more issues"
               :loading="memberPending" @click="members.load(true)" />

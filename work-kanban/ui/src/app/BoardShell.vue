@@ -3,9 +3,8 @@
 import { Icon } from '@iconify/vue'
 import SystemTabs from '@kickside/ui-kit/SystemTabs.vue'
 import Button from 'primevue/button'
-import Menu from 'primevue/menu'
 import Select from 'primevue/select'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { tabs, type KanbanTab } from '../route'
 import type { BoardOption } from '../work/types'
 
@@ -18,21 +17,35 @@ const props = defineProps<{
   paging: boolean
   pageError?: string
   issueOpen: boolean
+  compact: boolean
+  refreshing: boolean
 }>()
 const emit = defineEmits<{
-  select: [board: string], loadMore: [], create: [], copy: [kind: 'board' | 'issue'], tab: [tab: KanbanTab]
+  select: [board: string], loadMore: [], create: [], copy: [kind: 'board' | 'issue'], tab: [tab: KanbanTab],
+  density: [], refresh: [],
 }>()
 const picker = ref<InstanceType<typeof Select>>()
-const menu = ref<InstanceType<typeof Menu>>()
 const tabLabels = { board: 'Board', backlog: 'Backlog', sprints: 'Sprints', search: 'Search' }
-const actions = computed(() => [
-  { label: 'Copy board link', command: () => emit('copy', 'board') },
-  ...(props.issueOpen ? [{ label: 'Copy issue link', command: () => emit('copy', 'issue') }] : []),
-])
+const pickerParts = {
+  root: { style: {
+    background: 'var(--kanban-picker-background, transparent)',
+    borderColor: 'var(--kanban-picker-border, transparent)',
+    boxShadow: 'var(--kanban-picker-shadow, none)',
+  } },
+  pcFilter: { root: { 'aria-label': 'Search boards' } },
+  label: { class: 'kanban-picker-title' },
+  dropdown: { class: 'kanban-picker-chevron' },
+  overlay: { class: 'kanban-picker-overlay' },
+  listContainer: { class: 'kanban-picker-list' },
+}
 
 function create() {
   picker.value?.hide()
   emit('create')
+}
+function copy(kind: 'board' | 'issue') {
+  picker.value?.hide()
+  emit('copy', kind)
 }
 
 function changeTab(value: string) {
@@ -43,12 +56,12 @@ function changeTab(value: string) {
 
 <template>
   <header class="kanban-toolbar">
-    <div class="kanban-board-tools">
+    <div class="kanban-board-context">
       <Select
         ref="picker" append-to="self" class="kanban-board-picker" filter
-        :pt="{ pcFilter: { root: { 'aria-label': 'Search boards' } } }" filter-placeholder="Search boards"
+        :pt="pickerParts" filter-placeholder="Search boards"
         :model-value="active?.board_id" :options="boards" option-label="title" option-value="board_id"
-        placeholder="Select a board" aria-label="Board switcher"
+        placeholder="Select a board" aria-label="Board switcher" :title="active?.title"
         empty-message="No boards" empty-filter-message="No matching boards on loaded pages"
         @update:model-value="value => typeof value === 'string' && emit('select', value)"
       >
@@ -62,19 +75,37 @@ function changeTab(value: string) {
             <Button type="button" size="small" text label="New board" @click.stop="create">
               <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
             </Button>
+            <Button v-if="active" type="button" size="small" text severity="secondary" label="Copy board link" @click.stop="copy('board')">
+              <template #icon><Icon icon="tabler:link" aria-hidden="true" /></template>
+            </Button>
+            <Button v-if="issueOpen" type="button" size="small" text severity="secondary" label="Copy issue link" @click.stop="copy('issue')">
+              <template #icon><Icon icon="tabler:link" aria-hidden="true" /></template>
+            </Button>
           </div>
         </template>
       </Select>
-      <Button v-if="active" type="button" text severity="secondary" aria-label="Board actions" @click="menu?.toggle($event)">
-        <template #icon><Icon icon="tabler:dots" aria-hidden="true" /></template>
-      </Button>
-      <Menu ref="menu" popup append-to="self" :model="actions" />
     </div>
-    <SystemTabs
-      v-if="active" class="kanban-tabs" :value="tab ?? ''" label="Work views"
-      :items="props.tabs.map(value => ({ value, label: tabLabels[value] }))"
-      @update:value="changeTab"
-    />
-    <div v-if="active?.access.write" class="kanban-create-issue"><slot name="create-issue" /></div>
+    <div v-if="active" class="kanban-toolbar-secondary">
+      <SystemTabs
+        class="kanban-tabs" :value="tab ?? ''" label="Work views"
+        :items="props.tabs.map(value => ({ value, label: tabLabels[value] }))"
+        @update:value="changeTab"
+      />
+      <div class="kanban-toolbar-controls">
+        <slot name="filters" />
+        <Button v-if="tab === 'board'" class="kanban-icon-action" type="button" text rounded severity="secondary" size="small"
+          aria-label="Compact card density" :aria-pressed="compact" :title="compact ? 'Show standard cards' : 'Show compact cards'"
+          @click="emit('density')">
+          <template #icon><Icon :icon="compact ? 'tabler:layout-rows' : 'tabler:align-justified'" aria-hidden="true" /></template>
+        </Button>
+      </div>
+    </div>
+    <div v-if="active" class="kanban-toolbar-primary">
+      <Button class="kanban-icon-action" type="button" text rounded severity="secondary" size="small"
+        aria-label="Refresh issues" title="Refresh issues" :loading="refreshing" @click="emit('refresh')">
+        <template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template>
+      </Button>
+      <slot name="create-issue" />
+    </div>
   </header>
 </template>

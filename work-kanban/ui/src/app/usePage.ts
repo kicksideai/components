@@ -2,6 +2,7 @@
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import { computed, onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue'
 import { checkPlacements } from '../extensions/placements'
+import { findView, runFirstViewPage, viewType, type FirstViewRead } from '../presentation/query'
 import { boardPath, dismissIssue, kanbanRoot, switchBoard, type KanbanRoute, type KanbanTab, type Navigate } from '../route'
 import { isAccessLoss, planningPlugin, searchPlugin, WorkError, type WorkClient } from '../work/client'
 import { BoardDirectory } from '../work/directory'
@@ -20,7 +21,7 @@ export function availableTabs(schema?: BoardSchema, access?: BoardAccess): Kanba
 
 export function usePage(
   route: Readonly<Ref<KanbanRoute | undefined>>,
-  work: Pick<WorkClient, 'boards' | 'schema'>,
+  work: Pick<WorkClient, 'boards' | 'schema' | 'boardRead' | 'runView'>,
   navigate: (request: Navigate) => void,
   subscribe: (board: string, revalidate: () => Promise<void>) => (() => void) | undefined,
 ) {
@@ -31,6 +32,7 @@ export function usePage(
   const boards = shallowRef<BoardOption[]>([])
   const board = shallowRef<BoardOption>()
   const schema = shallowRef<BoardSchema>()
+  const firstView = shallowRef<FirstViewRead>()
   const loading = ref(false)
   const error = shallowRef<unknown>()
   const missing = ref(false)
@@ -54,6 +56,7 @@ export function usePage(
   function clearSelection() {
     board.value = undefined
     schema.value = undefined
+    firstView.value = undefined
     setSubscription()
   }
 
@@ -72,8 +75,19 @@ export function usePage(
     loading.value = true
     const source = revalidate ? new BoardDirectory(work.boards) : directory
     let found: BoardOption | undefined
+    const tab = active.tab === 'board' || active.tab === 'backlog' ? active.tab : undefined
+    const selection = source.resolve(requested)
+    function readView(id: string) {
+      if (changing && tab) return findView(work, id, viewType(tab))
+    }
+    const earlySchema = requested ? work.schema(requested) : undefined
+    const earlyView = requested ? readView(requested) : undefined
+    // The directory can reject the selection before these reads finish. Their
+    // original promises still carry errors to the page or presentation reader.
+    void earlySchema?.catch(() => {})
+    void earlyView?.catch(() => {})
     try {
-      found = await source.resolve(requested)
+      found = await selection
       if (!current()) return
       directory = source
       syncDirectory()
@@ -88,13 +102,22 @@ export function usePage(
         schema.value = undefined
         return
       }
+      const snapshot = earlySchema ?? work.schema(found.board_id)
+      const view = earlyView ?? readView(found.board_id)
+      if (tab && view) {
+        const page = view.then(saved => {
+          if (current() && route.value?.tab === tab) return runFirstViewPage(work, tab, saved)
+        })
+        void page.catch(() => {})
+        firstView.value = { board: found.board_id, tab, view, page }
+      }
       setSubscription(found.board_id)
-      const snapshot = await work.schema(found.board_id)
+      const next = await snapshot
       if (!current()) return
       board.value = found
-      schema.value = snapshot
+      schema.value = next
       if (!active.board || selected && active.board !== found.board_id) {
-        const target = switchBoard(active, found.board_id, availableTabs(snapshot, found.access))
+        const target = switchBoard(active, found.board_id, availableTabs(next, found.access))
         navigate({ path: boardPath(target) })
       }
     } catch (problem) {
@@ -160,7 +183,7 @@ export function usePage(
   }
 
   return {
-    boards, board, schema, allowedTabs, loading, error, missing, paging, pagingError, hasMore,
+    boards, board, schema, firstView, allowedTabs, loading, error, missing, paging, pagingError, hasMore,
     refresh, loadMore, openTab, openIssue, closeIssue, links,
     select: (id: string) => id !== board.value?.board_id ? refresh(false, id) : undefined,
     created: (id: string) => refresh(true, id),

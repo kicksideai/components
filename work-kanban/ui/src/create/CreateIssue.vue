@@ -17,7 +17,7 @@ import { createFields, initialIssueType, issueTypes, needsParent, parentQuery } 
 const props = defineProps<{ board: BoardOption; schema: BoardSchema; work: IssueWork }>()
 const emit = defineEmits<{ created: [id: string, sequence?: number]; denied: [problem: unknown] }>()
 const id = useId()
-const open = ref(false)
+const open = defineModel<boolean>('visible', { required: true })
 const busy = ref(false)
 const uncertain = ref(false)
 const typeId = ref<string>()
@@ -71,11 +71,9 @@ watch(() => props.board.board_id, () => {
 })
 watch(() => props.board.access.write, writable => { if (!writable) open.value = false })
 
-function show() {
-  if (!props.board.access.write) return
-  if (!kind.value) chooseType(initialIssueType(schema.value)?.id)
-  open.value = true
-}
+watch(open, visible => {
+  if (visible && !kind.value) chooseType(initialIssueType(schema.value)?.id)
+}, { immediate: true })
 
 function dismiss(visible: boolean) {
   if (visible || (!busy.value && !uncertain.value)) open.value = visible
@@ -113,44 +111,45 @@ async function create() {
 </script>
 
 <template>
-  <Button v-if="board.access.write" type="button" size="small" label="Create issue" @click="show">
-    <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
-  </Button>
   <Dialog :visible="open" modal :draggable="false" :closable="!busy && !uncertain"
-    :close-on-escape="!busy && !uncertain" :aria-labelledby="id + '-heading'" :style="{ width: 'min(32rem, calc(100% - 1.5rem))' }"
+    :close-on-escape="!busy && !uncertain" :aria-labelledby="id + '-heading'" :style="{ width: 'min(35rem, calc(100% - 1.5rem))' }"
     @update:visible="dismiss">
     <template #header>
-      <span class="kx-modal-head-icon"><Icon icon="tabler:plus" aria-hidden="true" /></span>
-      <span class="kx-modal-head-text"><span class="kx-modal-head-title" :id="id + '-heading'">Create issue</span></span>
+      <div class="kanban-modal-heading">
+        <span class="kx-modal-head-icon"><Icon icon="tabler:plus" aria-hidden="true" /></span>
+        <span class="kx-modal-head-text"><span class="kx-modal-head-title" :id="id + '-heading'">Create issue</span></span>
+      </div>
     </template>
     <form :id="id + '-form'" class="issue-create-form" @submit.prevent="create">
       <div v-if="error" class="kx-notice error" role="alert">
         {{ issueProblem(error, schema).message }}
         <small v-if="issueProblem(error, schema).code">{{ issueProblem(error, schema).code }}</small>
       </div>
-      <div class="issue-create-field">
-        <label :for="id + '-type'">Issue type</label>
-        <Select :input-id="id + '-type'" aria-label="Issue type" :model-value="typeId" :options="types" option-label="title" option-value="id"
-          fluid :disabled="busy || uncertain" @update:model-value="chooseType" />
-      </div>
-      <div v-if="parentTypes.length" class="issue-create-field">
-        <label :for="id + '-parent'">Parent <span v-if="needsParent(kind)" aria-hidden="true">*</span></label>
-        <Select v-model="parent" :input-id="id + '-parent'" aria-label="Parent" :aria-required="needsParent(kind)" :options="parentOptions"
-          option-label="label" option-value="id" filter fluid placeholder="Select a parent"
-          :show-clear="!needsParent(kind)" :disabled="busy || uncertain" :loading="loadingParents"
-          empty-message="No eligible parents" @show="!parents.loaded.value && parents.load()">
-          <template #footer>
-            <span v-if="parentError" role="alert">Could not load eligible parents.</span>
-            <Button v-if="moreParents || parentError" type="button" size="small" text
-              :label="parentError ? 'Retry' : 'Load more parents'" @click.stop="parentError ? parents.retry() : parents.load(true)" />
-          </template>
-        </Select>
+      <div class="issue-create-context">
+        <div class="issue-create-field">
+          <label :for="id + '-type'">Issue type</label>
+          <Select class="issue-field-select" :input-id="id + '-type'" aria-label="Issue type" :model-value="typeId" :options="types"
+            option-label="title" option-value="id" fluid :disabled="busy || uncertain" @update:model-value="chooseType" />
+        </div>
+        <div v-if="parentTypes.length" class="issue-create-field">
+          <label :for="id + '-parent'">Parent <span v-if="needsParent(kind)" aria-hidden="true">*</span></label>
+          <Select v-model="parent" class="issue-field-select" :input-id="id + '-parent'" aria-label="Parent" :aria-required="needsParent(kind)"
+            :options="parentOptions" option-label="label" option-value="id" filter fluid placeholder="Select a parent"
+            :show-clear="!needsParent(kind)" :disabled="busy || uncertain" :loading="loadingParents"
+            empty-message="No eligible parents" @show="!parents.loaded.value && parents.load()">
+            <template #footer>
+              <span v-if="parentError" role="alert">Could not load eligible parents.</span>
+              <Button v-if="moreParents || parentError" type="button" size="small" text
+                :label="parentError ? 'Retry' : 'Load more parents'" @click.stop="parentError ? parents.retry() : parents.load(true)" />
+            </template>
+          </Select>
+        </div>
       </div>
       <FieldControl v-for="field in fields.required" :key="field.code" v-model="draft[field.code]"
         :field="field" :board="board.board_id" :work="work" required :disabled="busy || uncertain" :autofocus="field.code === 'title'" />
       <div v-if="common.length" class="issue-create-support">
         <FieldControl v-for="field in common" :key="field.code" v-model="draft[field.code]"
-          :class="{ 'issue-create-description': field.code === 'description' }"
+          :class="{ 'issue-create-wide': field.code === 'description' }"
           :field="field" :board="board.board_id" :work="work" :disabled="busy || uncertain" />
       </div>
       <Disclosure v-if="additional.length" label="More fields">

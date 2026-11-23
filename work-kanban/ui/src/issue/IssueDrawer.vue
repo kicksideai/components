@@ -257,7 +257,8 @@ function save() {
 <template>
   <span ref="focusAnchor" hidden />
   <Drawer :visible="visible" position="right" modal :dismissable="!busy" :close-on-escape="!busy"
-    :show-close-icon="true" :close-button-props="{ 'aria-label': 'Close issue details', disabled: busy }"
+    :show-close-icon="true"
+    :close-button-props="{ 'aria-label': 'Close issue details', disabled: busy, severity: 'secondary', variant: 'text', rounded: true }"
     :pt="drawerParts"
     @update:visible="dismiss" @after-hide="focusOrigin">
     <template #header>

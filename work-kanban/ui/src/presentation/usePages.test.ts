@@ -5,13 +5,13 @@ import { WorkError, type WorkClient } from '../work/client'
 import type { KanbanTab } from '../route'
 import type { BoardOption } from '../work/types'
 import { usePages } from './usePages'
-import type { QueryPage } from './query'
+import type { FirstViewRead, QueryPage, SavedView } from './query'
 
 const board: BoardOption = { board_id: 'one', title: 'One', access: { read: true, write: false, delete: false, admin: false } }
 const item = { id: 'one', key: 'K-1', type: 'story', state: 'todo', version: 1, values: {} }
-const view = { view_id: 'view', board_id: 'one', view: { type: 'kanban_backlog' } }
+const view: SavedView = { view_id: 'view', board_id: 'one', title: 'Backlog', view: { type: 'kanban_backlog' } }
 
-function fixture() {
+function fixture(firstView?: FirstViewRead) {
   const scope = effectScope()
   const active = ref(board)
   const tab = ref<KanbanTab>('backlog')
@@ -22,11 +22,27 @@ function fixture() {
   const pages = scope.run(() => usePages({
     board: () => active.value,
     schema: () => ({ as_of: 1, generation: 1, key_prefix: 'K', declaration: {}, compiled: {} }),
-    tab: () => tab.value, work, accessLost,
+    tab: () => tab.value, work, accessLost, firstView,
   }))!
   read.mockResolvedValue({ views: [view] })
   return { tab, active, accessLost, pages, read, run, stop: () => scope.stop() }
 }
+
+it.each([9, 10])('uses a first page at sequence %i only when it satisfies the live fence', async asOf => {
+  const env = fixture({
+    board: 'one', tab: 'backlog', view: Promise.resolve(view),
+    page: Promise.resolve({ as_of: asOf, items: [item] }),
+  })
+  const fresh = { ...item, version: 2 }
+  try {
+    env.run.mockResolvedValueOnce({ as_of: 10, items: [fresh] })
+    await env.pages.refresh({ revalidate: false, minSeq: 10 })
+    expect(env.read).not.toHaveBeenCalled()
+    if (asOf < 10) expect(env.run).toHaveBeenCalledWith('view', { limit: 25, after: undefined, min_seq: 10 })
+    else expect(env.run).not.toHaveBeenCalled()
+    expect(env.pages.backlog.value?.items).toEqual([asOf < 10 ? fresh : item])
+  } finally { env.stop() }
+})
 
 it('ignores a response for an earlier selection even if Work finishes it last', async () => {
   const env = fixture()
@@ -145,5 +161,24 @@ it('keeps a requested column page when a live refresh was already in flight', as
     release(older)
     await refreshing
     expect(env.pages.lanes.value[0].columns[0].items).toEqual([item, next])
+  } finally { env.stop() }
+})
+
+it('refreshes an entering column when a scoped update left its snapshot behind', async () => {
+  const env = fixture()
+  const todo = { field: 'state', value: 'todo', items: [item], count: 1 }
+  const doing = { field: 'state', value: 'doing', items: [], count: 0 }
+  try {
+    env.tab.value = 'board'
+    env.read.mockResolvedValueOnce({ views: [{ ...view, view: { type: 'kanban_board', group_by: 'state' } }] })
+    env.run.mockResolvedValueOnce({ as_of: 9, items: [], groups: [todo, doing] })
+    await env.pages.refresh()
+    expect(env.pages.visibleNeedsRefresh(['doing'])).toBe(false)
+
+    env.pages.visible.value = ['todo']
+    env.read.mockResolvedValueOnce({ as_of: 10, items: [], groups: [todo, doing] })
+    await env.pages.refresh({ revalidate: false, minSeq: 10 })
+    expect(env.pages.visibleNeedsRefresh(['todo'])).toBe(false)
+    expect(env.pages.visibleNeedsRefresh(['doing'])).toBe(true)
   } finally { env.stop() }
 })

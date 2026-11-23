@@ -129,7 +129,7 @@ function personName(value: Scalar) {
     <label :for="id">{{ field.title }} <span v-if="required" aria-hidden="true">*</span></label>
     <div v-if="isPrincipal" :inert="disabled || undefined" class="issue-principal-picker">
       <wc-principal-picker v-if="picker" :id="id" :aria-label="field.title" :value="pickerValue" kinds="user,group"
-        :placeholder="many ? 'Add a person or group…' : 'Select a person or group…'" @config-changed="pick" />
+        :placeholder="many ? 'Add a person or group…' : 'Person or group'" @config-changed="pick" />
       <span v-else :role="pickerError ? 'alert' : 'status'">{{ pickerError ? 'The principal picker is unavailable.' : 'Loading people…' }}</span>
       <Button v-if="!many && modelValue && !required" type="button" size="small" text :label="'Clear ' + field.title" @click="set(undefined)" />
       <ul v-if="many && listValue.length" class="issue-selected-principals">
@@ -138,11 +138,12 @@ function personName(value: Scalar) {
         </li>
       </ul>
     </div>
-    <MultiSelect v-else-if="many && options.length" :input-id="id" :aria-label="field.title" :aria-required="required"
+    <MultiSelect v-else-if="many && options.length" class="issue-field-select" :input-id="id" :aria-label="field.title" :aria-required="required"
       :model-value="listValue" :options="options" option-label="label" option-value="id" :disabled="disabled" fluid
       @update:model-value="set" />
-    <Select v-else-if="options.length" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="stringValue"
-      :options="options" option-label="label" option-value="id" :show-clear="!required" :disabled="disabled" fluid
+    <Select v-else-if="options.length" class="issue-field-select" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="stringValue"
+      :options="options" option-label="label" option-value="id" :placeholder="field.code === 'priority' ? 'Select priority' : 'Choose an option'"
+      :show-clear="!required" :disabled="disabled" fluid
       @update:model-value="set" />
     <Select v-else-if="isItem" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="refValue?.item"
       :options="refOptions" option-label="label" option-value="id" :show-clear="!required" :disabled="disabled" fluid

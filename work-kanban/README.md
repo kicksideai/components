@@ -6,6 +6,12 @@ Open **Kanban** in the KickSide shell or follow a Work board link to
 The switcher lists readable Work boards bound to `kickside.work.kanban:board_app`.
 It searches the loaded pages and can load the next Work directory page.
 
+Use **Filter** to narrow the Board or Backlog. On the Board, drag by the
+grip or focus it and press Space to pick up an issue. Use the arrow keys
+to choose a position, Space to drop, and Escape to cancel. Enter opens
+the move menu. If Work refuses the move, the card returns to its original
+position and the Board shows the reason.
+
 The **New board** dialog uses Work's board creation capability, installs
 `kickside.work.kanban:pack` version 1.0.0 and opens the created board.
 The pack supplies the board app binding and creates an empty board. Work

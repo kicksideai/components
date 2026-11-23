@@ -1,11 +1,12 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import { loadByTagName } from '@wippy-fe/proxy'
-import { computed, ref, watch } from 'vue'
-import SearchPanel from '../search/SearchPanel.vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { planningPlugin, searchPlugin, type WorkClient } from '../work/client'
 import type { BoardOption, BoardSchema, WorkExtension } from '../work/types'
-import SprintsPanel from './SprintsPanel.vue'
+
+const SprintsPanel = defineAsyncComponent(() => import('./SprintsPanel.vue'))
+const SearchPanel = defineAsyncComponent(() => import('../search/SearchPanel.vue'))
 
 const props = defineProps<{
   role: 'sprints' | 'search'
@@ -19,9 +20,11 @@ const emit = defineEmits<{ open: [id: string]; changed: [sequence?: number]; den
 const registered = ref<string>()
 const loading = ref(false)
 const failed = ref(false)
+const panel = ref<InstanceType<typeof SprintsPanel> | InstanceType<typeof SearchPanel>>()
 const title = computed(() => props.role === 'sprints' ? 'Sprints' : 'Search')
 const builtin = computed(() => props.schema.plugins?.some(row => row.active &&
   row.plugin === (props.role === 'sprints' ? planningPlugin : searchPlugin)))
+defineExpose({ refresh: () => panel.value?.refresh() })
 const tag = computed(() => {
   const entry = props.placement
   if (entry?.slot === 'board_panel' && entry.target === 'board:' + props.role
@@ -58,9 +61,9 @@ function changed(event: CustomEvent<{ seq?: unknown }>) {
   <component v-if="registered && !failed" :is="registered" :board-id.attr="board.board_id"
     :can-write.attr="String(board.access.write)" @issue-open="open" @board-changed="changed" @error="failed = true" />
   <p v-else-if="loading" class="kanban-plugin-state" role="status">Loading {{ title }}…</p>
-  <SprintsPanel v-else-if="builtin && role === 'sprints'" :board="board" :schema="schema" :work="work" :sequence="sequence"
+  <SprintsPanel v-else-if="builtin && role === 'sprints'" ref="panel" :board="board" :schema="schema" :work="work" :sequence="sequence"
     @open="emit('open', $event)" @changed="emit('changed', $event)" @denied="emit('denied', $event)" />
-  <SearchPanel v-else-if="builtin" :board="board" :schema="schema" :work="work" :sequence="sequence"
+  <SearchPanel v-else-if="builtin" ref="panel" :board="board" :schema="schema" :work="work" :sequence="sequence"
     @open="emit('open', $event)" @denied="emit('denied', $event)" />
   <p v-else class="kanban-plugin-state" role="status">
     {{ title }} {{ failed ? 'is temporarily unavailable.' : 'is not enabled for this board.' }}

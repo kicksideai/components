@@ -2,7 +2,7 @@
 import { PrimeVuePlugin } from '@wippy-fe/theme/primevue-plugin'
 import { define, WippyVueElement, type WippyElementConfig, type WippyPropsSchema } from '@wippy-fe/webcomponent-vue'
 import pkg from '../../package.json'
-import { issueStyles } from '../issue'
+import issueStyles from '../issue/styles.css?inline'
 import { presentationStyles } from '../presentation'
 import type { Navigate } from '../route'
 import KanbanPage from './KanbanPage.vue'
