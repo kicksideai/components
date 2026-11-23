@@ -1,8 +1,10 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
+import Popover from 'primevue/popover'
 import Select from 'primevue/select'
-import { computed } from 'vue'
+import { computed, ref, useId } from 'vue'
 import ExtensionElement from '../extensions/ExtensionElement.vue'
 import { extensionFilter } from '../extensions/placements'
 import type { WorkExtension } from '../work/types'
@@ -19,8 +21,13 @@ const props = defineProps<{
   context: PresentationContext
   placements: readonly WorkExtension[]
   selection: readonly ActiveFilter[]
+  control?: HTMLElement
 }>()
 const emit = defineEmits<{ apply: [filters: ActiveFilter[]] }>()
+const popover = ref<InstanceType<typeof Popover>>()
+const anchor = ref<HTMLElement>()
+const open = ref(false)
+const id = useId()
 const choices = computed(() => {
   const indexed = props.context.fields.filter(indexedField)
   const fields = [
@@ -60,20 +67,43 @@ function contributed(entry: WorkExtension, raw: unknown) {
   const selection = extensionFilter(entry, raw)
   if (selection) replace(entry.id, { id: entry.id, label: entry.title, selection })
 }
+function focusFilters() {
+  open.value = true
+  anchor.value?.querySelector<HTMLElement>('[role="combobox"]')?.focus({ preventScroll: true })
+}
 </script>
 
 <template>
-  <div class="kanban-filters" aria-label="Filters">
-    <Select v-for="field in choices" :key="field.id" :model-value="selectedValue(field.id)"
-      :options="field.options" option-label="label" option-value="id"
-      :aria-label="field.title" :placeholder="field.title" size="small" show-clear
-      @update:model-value="choose(field, $event)" />
-    <ExtensionElement v-for="entry in extensions" :key="entry.id" :placement="entry"
-      :input="{ board, target: entry.target, selection: selection.find(row => row.id === entry.id)?.selection }"
-      @filter="contributed(entry, $event)" />
-    <Button v-for="filter in selection.filter(row => !choices.some(field => field.id === row.id))" :key="filter.id"
-      :label="filter.label" icon="pi pi-times" icon-pos="right" :aria-label="'Remove ' + filter.label"
-      size="small" severity="secondary" outlined @click="replace(filter.id)" />
+  <Teleport :to="control" :disabled="!control">
+    <div ref="anchor" class="kanban-filter-anchor">
+      <Button class="kanban-filter-trigger" :pt="{ label: { class: 'kanban-filter-label' } }" label="Filter"
+        :aria-label="'Filter' + (selection.length ? ', ' + selection.length + ' active' : '')"
+        aria-haspopup="dialog" :aria-expanded="open" title="Filter issues"
+        type="button" size="small" severity="secondary" text @click.stop="popover?.toggle($event)">
+        <template #icon><Icon icon="tabler:filter" aria-hidden="true" /></template>
+      </Button>
+      <Popover ref="popover" append-to="self" :pt="{ root: { class: 'kanban-filter-popover' } }"
+        aria-label="Issue filters" @show="focusFilters" @hide="open = false">
+        <div class="kanban-filter-fields">
+          <div v-for="field in choices" :key="field.id" class="kanban-filter-field">
+            <label :for="id + '-' + field.id">{{ field.title }}</label>
+            <Select :input-id="id + '-' + field.id" :model-value="selectedValue(field.id)"
+              :options="field.options" option-label="label" option-value="id"
+              :aria-label="field.title" placeholder="Any" size="small" fluid show-clear append-to="self"
+              @update:model-value="choose(field, $event)" />
+          </div>
+          <ExtensionElement v-for="entry in extensions" :key="entry.id" :placement="entry"
+            :input="{ board, target: entry.target, selection: selection.find(row => row.id === entry.id)?.selection }"
+            @filter="contributed(entry, $event)" />
+        </div>
+      </Popover>
+    </div>
+  </Teleport>
+  <div v-if="selection.length" class="kanban-filter-chips" role="group" aria-label="Active filters">
+    <Button v-for="filter in selection" :key="filter.id" :label="filter.label" icon-pos="right"
+      :aria-label="'Remove ' + filter.label" size="small" severity="secondary" outlined rounded @click="replace(filter.id)">
+      <template #icon><Icon icon="tabler:x" aria-hidden="true" /></template>
+    </Button>
     <Button v-if="selection.length" label="Clear filters" size="small" text severity="secondary" @click="emit('apply', [])" />
   </div>
 </template>

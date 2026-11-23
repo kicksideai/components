@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
 import Select from 'primevue/select'
+import { Icon } from '@iconify/vue'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { computed, nextTick, onScopeDispose, ref, shallowRef, watch, type Component } from 'vue'
 import BacklogEditor from '../backlog/BacklogEditor.vue'
@@ -9,6 +10,7 @@ import BacklogTable from '../backlog/BacklogTable.vue'
 import { sprintChoices } from '../backlog/sprints'
 import BoardViewport from '../board/BoardViewport.vue'
 import { planMove, type MovePlan } from '../board/move'
+import type { MoveResult } from '../board/useBoardMove'
 import type { MoveIntent } from '../board/window'
 import { checkPlacements } from '../extensions/placements'
 import { createCoordinator } from '../live/coordinator'
@@ -29,6 +31,8 @@ const props = defineProps<{
   schema: BoardSchema
   route: KanbanRoute
   work: WorkClient
+  compact?: boolean
+  filterHost?: HTMLElement
   revalidate?: () => Promise<void>
   invalidate?: ReturnType<typeof createCoordinator>['invalidate']
   fieldControl?: Component
@@ -138,7 +142,7 @@ function showItem(item: string) {
 function visibleColumns(ids: string[]) {
   const previous = pages.visible.value
   pages.visible.value = ids
-  if (previous.length && ids.some(id => !previous.includes(id))) invalidate()
+  if (previous.length && pages.visibleNeedsRefresh(ids.filter(id => !previous.includes(id)))) invalidate()
 }
 function holdColumns(ids: string[]) {
   const previous = pages.held.value
@@ -181,25 +185,29 @@ function pendingItem(item: string, value: boolean) {
   pending.value = next
 }
 
-async function move(intent: MoveIntent) {
-  if (!writable.value || pending.value.has(intent.item) || uncertain.value) return
+async function move(intent: MoveIntent): Promise<MoveResult> {
+  if (!writable.value || pending.value.has(intent.item) || uncertain.value) return { status: 'rejected' }
   const board = props.board.board_id
   pendingItem(intent.item, true)
   mutationError.value = undefined
   try {
     const current = await detail(intent.item)
-    if (!active || props.board.board_id !== board || !writable.value) return
+    if (!active || props.board.board_id !== board || !writable.value) return { status: 'rejected' }
     const plan = planMove(current, intent, requiredFields(current.item, intent.target))
     if (!plan) throw new Error('Work does not currently allow this move. Check the issue’s status and required fields.')
     if (plan.required.length) {
       originatingItem.value = { item: intent.item, status: intent.source }
       emit('moveForm', { detail: current, plan })
-    } else await write(command(plan.operations))
+      return { status: 'fields' }
+    }
+    const result = await write(command(plan.operations))
+    if (result) return { status: 'applied', sequence: result.seq ?? result.as_of }
   } catch (failure) {
     if (props.board.board_id === board) mutationError.value = failure
   } finally {
     pendingItem(intent.item, false)
   }
+  return { status: 'rejected' }
 }
 
 async function write(request: WorkCommand) {
@@ -214,6 +222,7 @@ async function write(request: WorkCommand) {
     uncertain.value = undefined
     editor.value = undefined
     invalidate(result.seq ?? result.as_of)
+    return result
   } catch (failure) {
     if (!active || props.board.board_id !== board) return
     if (failure instanceof WorkError && failure.retryable) {
@@ -244,23 +253,31 @@ function apply(operations: WorkOperation[]) {
 
 <template>
   <section v-if="board.access.read && (route.tab === 'board' || route.tab === 'backlog')" class="kanban-views" :aria-label="route.tab === 'board' ? 'Board' : 'Backlog view'">
-    <FilterBar :board="board.board_id" :context="context" :placements="placements" :selection="activeFilters" @apply="updateFilters" />
-    <div v-if="error || mutationError && !editor" class="kx-notice error kanban-view-notice" role="alert">
+    <FilterBar :board="board.board_id" :context="context" :placements="placements" :selection="activeFilters"
+      :control="filterHost" @apply="updateFilters" />
+    <div v-if="error || mutationError && !editor" class="kx-notice error kanban-view-notice"
+      :class="{ 'kanban-move-notice': route.tab === 'board' && !error }" role="alert">
+      <Icon icon="tabler:alert-circle" aria-hidden="true" />
       <span>{{ workFailure(error || mutationError).message }}</span>
-      <small v-if="workFailure(error || mutationError).code">{{ workFailure(error || mutationError).code }}</small>
       <Button v-if="error" label="Retry" text size="small" @click="invalidate(undefined, true)" />
       <Button v-if="uncertain" label="Retry write" text size="small" :disabled="pending.size > 0" @click="write(uncertain)" />
+      <Button v-if="!error && !uncertain" text rounded size="small" severity="secondary"
+        aria-label="Dismiss move message" @click="mutationError = undefined">
+        <template #icon><Icon icon="tabler:x" aria-hidden="true" /></template>
+      </Button>
     </div>
-    <p v-if="fetching && !lane && !backlog" class="kx-loading" role="status">Loading issues…</p>
+    <p v-if="fetching && !lane && !backlog" class="kx-loading" role="status">
+      <Icon icon="tabler:loader-2" aria-hidden="true" /> Loading issues…
+    </p>
     <template v-if="route.tab === 'board' && lane">
       <p v-if="subgroupLimited" class="kanban-view-notice" role="status">Work could not load the swimlanes. Showing status columns.</p>
       <p v-if="!hasCards" class="kanban-view-notice" role="status">{{ activeFilters.length ? 'No issues match these filters.' : 'No issues on this board.' }}</p>
       <Select v-if="lanes.length > 1" :model-value="lane.id" :options="lanes" option-value="id" option-label="title"
         aria-label="Swimlane" size="small" @update:model-value="laneId = $event" />
       <BoardViewport ref="boardViewport" :key="lane.id" :columns="lane.columns" :context="context" :placements="placements"
-        :writable="writable" :pending-ids="pending" :paging="paging" :destinations="destinations" :person="person"
+        :writable="writable" :compact="compact" :pending-ids="pending" :paging="paging" :destinations="destinations" :person="person" :move="move"
         @visible="visibleColumns" @hold="holdColumns" @window="visibleRow"
-        @open="showItem" @move="move" @more="pages.more" />
+        @open="showItem" @more="pages.more" />
     </template>
     <BacklogTable v-if="route.tab === 'backlog' && backlog" ref="backlogTable" :page="backlog" :page-index="backlogIndex"
       :context="context" :writable="writable" :can-edit="!!fieldControl" :planning="planning"

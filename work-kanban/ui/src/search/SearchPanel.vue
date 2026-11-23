@@ -44,6 +44,10 @@ function setView(value?: string) {
   selection.value = value
   if (value) text.value = ''
 }
+function refresh() {
+  return Promise.all([views.load(), criteria.value ? results.load() : undefined])
+}
+defineExpose({ refresh })
 
 watch(() => props.board.board_id, () => {
   text.value = ''
@@ -85,8 +89,8 @@ watch(() => props.sequence, () => { if (criteria.value && loaded.value) void res
         <small v-if="searchProblem(error).code">{{ searchProblem(error).code }}</small>
         <Button type="button" label="Retry search" text size="small" @click="results.retry()" />
       </div>
-      <p v-else-if="!loaded" role="status">Searching issues…</p>
-      <p v-else-if="!rows.length" role="status">No matching issues.</p>
+      <p v-else-if="!loaded" class="kx-loading" role="status">Searching issues…</p>
+      <p v-else-if="!rows.length" class="kx-empty-sub" role="status">No matching issues.</p>
       <IssueResults v-if="rows.length" :rows="rows" :schema="schema" details="search" label="Search results" @open="emit('open', $event)" />
       <Button v-if="after" type="button" severity="secondary" outlined size="small" label="Load more"
         :loading="pending" @click="results.load(true)" />

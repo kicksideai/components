@@ -20,6 +20,7 @@ export interface BoardColumn {
   items: ItemSummary[]
   lane?: Predicate
   after?: Cursor
+  asOf?: number
 }
 
 export interface Swimlane {
@@ -57,20 +58,20 @@ function subgroupPredicate(field: string, value: Json | undefined): Predicate {
   return value == null ? { field, op: 'is_null', value: true } : { field, op: 'eq', value }
 }
 
-function groupColumns(context: ReturnType<typeof presentationContext>, groups: QueryBucket[], lane?: Predicate) {
+function groupColumns(context: ReturnType<typeof presentationContext>, groups: QueryBucket[], asOf: number, lane?: Predicate) {
   const byStatus = new Map(groups.filter(group => typeof group.value === 'string').map(group => [group.value as string, group]))
   const states = [...new Set([...context.statuses.map(state => state.id), ...byStatus.keys()])]
   return states.map((state): BoardColumn => {
     const group = byStatus.get(state)
     return {
       id: lane ? JSON.stringify([lane, state]) : state, state, title: context.statusLabels[state] ?? state,
-      count: group?.count ?? 0, items: group?.items ?? [], after: group?.after, lane,
+      count: group?.count ?? 0, items: group?.items ?? [], after: group?.after, lane, asOf,
     }
   })
 }
 
 function groupLanes(context: ReturnType<typeof presentationContext>, page: QueryPage, subgroup?: string): Swimlane[] {
-  if (!subgroup) return [{ id: '', columns: groupColumns(context, page.groups ?? []) }]
+  if (!subgroup) return [{ id: '', columns: groupColumns(context, page.groups ?? [], page.as_of) }]
   const groupsByValue = new Map<string, { value?: Json, buckets: QueryBucket[] }>()
   for (const status of page.groups ?? []) {
     for (const bucket of status.groups ?? []) {
@@ -81,12 +82,12 @@ function groupLanes(context: ReturnType<typeof presentationContext>, page: Query
     }
   }
   const field = context.fields.find(entry => entry.code === subgroup)
-  if (!groupsByValue.size) return [{ id: '', columns: groupColumns(context, []) }]
+  if (!groupsByValue.size) return [{ id: '', columns: groupColumns(context, [], page.as_of) }]
   return Array.from(groupsByValue, ([id, lane]) => {
     const value = lane.value
     const title = value == null ? 'No ' + (field?.title ?? subgroup)
       : field?.options?.find(option => option.id === value)?.label ?? String(value)
-    return { id, title, columns: groupColumns(context, lane.buckets, subgroupPredicate(subgroup, value)) }
+    return { id, title, columns: groupColumns(context, lane.buckets, page.as_of, subgroupPredicate(subgroup, value)) }
   })
 }
 
@@ -338,6 +339,11 @@ export function usePages(options: Options) {
     rowOffsets.set(column, row)
     return row >= deepWindowStart && Math.floor(row / columnPageSize) !== Math.floor(prior / columnPageSize)
   }
+  function visibleNeedsRefresh(entered: readonly string[]) {
+    if (!entered.length) return false
+    if (fetching.value) return true
+    return lanes.value.some(lane => lane.columns.some(column => entered.includes(column.id) && (column.asOf ?? 0) < sequence))
+  }
 
   async function pageBacklog(direction: -1 | 1) {
     const current = backlog.value
@@ -351,6 +357,6 @@ export function usePages(options: Options) {
 
   return {
     context, lanes, backlog, backlogIndex, error, fetching, paging, subgroupLimited, visible, held,
-    select, refresh, more, pageBacklog, visibleRow,
+    select, refresh, more, pageBacklog, visibleRow, visibleNeedsRefresh,
   }
 }

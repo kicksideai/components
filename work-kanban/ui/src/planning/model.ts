@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { issuePageLimit } from '../issue/model'
 import type { QueryCursor } from '../issue/types'
+
+const sprintIssuePageSize = 10
 
 export interface SprintPreview {
   snapshot: Record<string, unknown>
@@ -19,7 +20,7 @@ export function sprintMemberQuery(board: string, sprint?: string, after?: QueryC
   return {
     where: { and: [{ field: 'type', op: 'nin', value: ['sprint', 'milestone'] }, membership] },
     order: [{ field: 'rank', dir: 'asc' }],
-    limit: issuePageLimit,
+    limit: sprintIssuePageSize,
     ...(after === undefined ? {} : { after }),
   }
 }

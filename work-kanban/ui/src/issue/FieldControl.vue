@@ -142,7 +142,7 @@ function personName(value: Scalar) {
       :model-value="listValue" :options="options" option-label="label" option-value="id" :disabled="disabled" fluid
       @update:model-value="set" />
     <Select v-else-if="options.length" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="stringValue"
-      :options="options" option-label="label" option-value="id" :show-clear="!required" :disabled="disabled" fluid
+      :options="options" option-label="label" option-value="id" placeholder="Choose an option" :show-clear="!required" :disabled="disabled" fluid
       @update:model-value="set" />
     <Select v-else-if="isItem" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="refValue?.item"
       :options="refOptions" option-label="label" option-value="id" :show-clear="!required" :disabled="disabled" fluid

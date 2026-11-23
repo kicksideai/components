@@ -147,3 +147,22 @@ it('keeps a requested column page when a live refresh was already in flight', as
     expect(env.pages.lanes.value[0].columns[0].items).toEqual([item, next])
   } finally { env.stop() }
 })
+
+it('refreshes an entering column when a scoped update left its snapshot behind', async () => {
+  const env = fixture()
+  const todo = { field: 'state', value: 'todo', items: [item], count: 1 }
+  const doing = { field: 'state', value: 'doing', items: [], count: 0 }
+  try {
+    env.tab.value = 'board'
+    env.read.mockResolvedValueOnce({ views: [{ ...view, view: { type: 'kanban_board', group_by: 'state' } }] })
+    env.run.mockResolvedValueOnce({ as_of: 9, items: [], groups: [todo, doing] })
+    await env.pages.refresh()
+    expect(env.pages.visibleNeedsRefresh(['doing'])).toBe(false)
+
+    env.pages.visible.value = ['todo']
+    env.read.mockResolvedValueOnce({ as_of: 10, items: [], groups: [todo, doing] })
+    await env.pages.refresh({ revalidate: false, minSeq: 10 })
+    expect(env.pages.visibleNeedsRefresh(['todo'])).toBe(false)
+    expect(env.pages.visibleNeedsRefresh(['doing'])).toBe(true)
+  } finally { env.stop() }
+})

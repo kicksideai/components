@@ -23,41 +23,88 @@
   display: flex;
   flex-direction: column;
   color: var(--p-text-color);
-}
-
-.kanban-toolbar, .kanban-board-tools, .kanban-board-picker-actions {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  min-inline-size: 0;
+  --kanban-gutter: 20px;
+  --kanban-board-inset: 16px;
 }
 
 .kanban-toolbar {
-  flex-wrap: wrap;
-  padding: .5rem 1rem 0;
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) max-content max-content;
+  align-items: center;
+  gap: 4px 12px;
+  min-inline-size: 0;
+  margin-inline: var(--kanban-gutter);
+  box-sizing: border-box;
+  padding-block-start: 12px;
+  min-block-size: 56px;
+  border-block-end: 1px solid var(--p-content-border-color);
 }
 
-.kanban-board-tools { max-inline-size: 100%; }
-.kanban-board-picker { inline-size: min(15rem, 100%); }
-.kanban-board-picker-actions { flex-wrap: wrap; padding: .25rem .5rem; }
-.kanban-create-issue { margin-inline-start: auto; }
-.kanban-tabs { align-self: stretch; }
+.kanban-board-context { min-inline-size: 0; }
+.kanban-toolbar .kanban-board-picker {
+  max-inline-size: min(20rem, 100%);
+  border-radius: var(--p-content-border-radius);
+}
+.kanban-toolbar .kanban-board-picker:not([aria-disabled='true']):hover,
+.kanban-toolbar .kanban-board-picker:has([aria-expanded='true']) {
+  --kanban-picker-background: var(--p-content-hover-background);
+}
+.kanban-toolbar .kanban-board-picker:has(:focus-visible) {
+  --kanban-picker-border: var(--p-focus-ring-color);
+  --kanban-picker-shadow: var(--p-focus-ring-shadow);
+}
+.kanban-board-picker .kanban-picker-title {
+  padding: 6px 2px 6px 0;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--p-text-color);
+}
+.kanban-board-picker .kanban-picker-chevron { inline-size: 24px; }
+.kanban-picker-overlay { min-inline-size: min(19rem, calc(100vw - 2 * var(--kanban-gutter))); }
+.kanban-picker-list { max-block-size: min(16rem, 45vh); }
+
+.kanban-toolbar-secondary { display: contents; }
+.kanban-toolbar-controls, .kanban-toolbar-primary, .kanban-board-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-inline-size: 0;
+}
+.kanban-board-picker-actions { flex-wrap: wrap; padding: 6px 8px; border-block-start: 1px solid var(--p-content-border-color); }
+.kanban-board-picker-actions > small { flex-basis: 100%; }
+.kanban-toolbar-primary { padding-block-end: 4px; }
+.kanban-icon-action { inline-size: var(--kx-control-height-sm); block-size: var(--kx-control-height-sm); padding: 0; }
+.kanban-icon-action[aria-pressed='true'] { background: var(--kx-wash-primary); color: var(--p-primary-color); }
+.kanban-tabs { align-self: end; min-inline-size: 0; overflow: auto hidden; scrollbar-width: none; margin-block-end: -1px; }
 :where(.kanban-tabs button) { margin: 0; border: 0 solid; background: transparent; font: inherit; }
 
-.kanban-notice, .kanban-copy-status { margin: 1rem; }
+.kanban-notice, .kanban-copy-status { margin: 16px var(--kanban-gutter); }
+.kanban-notice[role='alert'] { align-items: center; }
+.kanban-notice[role='alert'] > span { flex: 1; }
 
 .kanban-new-board { inline-size: min(28rem, calc(100% - 2rem)); }
-.kanban-board-form { display: grid; gap: .5rem; }
+.kanban-modal-heading { display: flex; align-items: center; gap: 8px; min-inline-size: 0; }
+.kanban-board-form { display: grid; gap: 12px; }
+.kanban-board-field { display: grid; gap: 4px; min-inline-size: 0; }
 .kanban-board-form label { font-weight: 600; }
 .kanban-board-form :is(p, small) { margin: 0; color: var(--p-text-muted-color); }
 .kanban-board-form [role='alert'] { padding-block: .25rem; }
 
-@media (max-width: 40rem) {
-  .kanban-toolbar { padding-inline: .75rem; }
-  .kanban-board-tools { flex: 1 1 auto; }
-  .kanban-tabs { order: 1; flex: 1 0 100%; }
+@media (max-width: 1023px) {
+  .kanban-toolbar {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 4px 6px;
+    padding-block-start: 10px;
+  }
+  .kanban-toolbar-secondary { grid-row: 2; grid-column: 1 / -1; display: flex; gap: 6px; min-inline-size: 0; }
+  .kanban-toolbar-secondary .kanban-tabs { flex: 1 1 0; }
+  .kanban-toolbar .kanban-board-picker { max-inline-size: 100%; }
+  .kanban-toolbar-primary { grid-column: 2; grid-row: 1; padding-block-end: 0; }
 }
 
 @media (max-width: 767px) {
-  .kanban-board-tools { margin-inline-start: 42px; }
+  .kanban-page { --kanban-gutter: 12px; --kanban-board-inset: 12px; }
+  .kanban-board-context { margin-inline-start: 40px; }
+  .kanban-picker-overlay { min-inline-size: min(19rem, calc(100vw - 64px)); }
 }

@@ -117,11 +117,13 @@ async function create() {
     <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
   </Button>
   <Dialog :visible="open" modal :draggable="false" :closable="!busy && !uncertain"
-    :close-on-escape="!busy && !uncertain" :aria-labelledby="id + '-heading'" :style="{ width: 'min(32rem, calc(100% - 1.5rem))' }"
+    :close-on-escape="!busy && !uncertain" :aria-labelledby="id + '-heading'" :style="{ width: 'min(35rem, calc(100% - 1.5rem))' }"
     @update:visible="dismiss">
     <template #header>
-      <span class="kx-modal-head-icon"><Icon icon="tabler:plus" aria-hidden="true" /></span>
-      <span class="kx-modal-head-text"><span class="kx-modal-head-title" :id="id + '-heading'">Create issue</span></span>
+      <div class="kanban-modal-heading">
+        <span class="kx-modal-head-icon"><Icon icon="tabler:plus" aria-hidden="true" /></span>
+        <span class="kx-modal-head-text"><span class="kx-modal-head-title" :id="id + '-heading'">Create issue</span></span>
+      </div>
     </template>
     <form :id="id + '-form'" class="issue-create-form" @submit.prevent="create">
       <div v-if="error" class="kx-notice error" role="alert">
@@ -150,7 +152,7 @@ async function create() {
         :field="field" :board="board.board_id" :work="work" required :disabled="busy || uncertain" :autofocus="field.code === 'title'" />
       <div v-if="common.length" class="issue-create-support">
         <FieldControl v-for="field in common" :key="field.code" v-model="draft[field.code]"
-          :class="{ 'issue-create-description': field.code === 'description' }"
+          :class="{ 'issue-create-wide': field.code === 'description' }"
           :field="field" :board="board.board_id" :work="work" :disabled="busy || uncertain" />
       </div>
       <Disclosure v-if="additional.length" label="More fields">

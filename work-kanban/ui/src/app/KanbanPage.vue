@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { api } from '@wippy-fe/proxy'
 import { useEvents, useHostVisibilityRefresh, useProps } from '@wippy-fe/webcomponent-vue'
+import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { BoardPluginPanel, CreateIssue, FieldControl, IssueDrawer, usePrincipalNames } from '../issue'
@@ -23,8 +24,11 @@ const route = computed(() => parseRoute(props.value.route))
 const work = createWorkClient(options => api.request(options))
 const newBoard = ref(false)
 const copyStatus = ref('')
+const compact = ref(false)
+const filterHost = ref<HTMLElement>()
 const views = ref<InstanceType<typeof KanbanViews>>()
 const drawer = ref<InstanceType<typeof IssueDrawer>>()
+const plugin = ref<InstanceType<typeof BoardPluginPanel>>()
 const sequence = ref<number>()
 const move = shallowRef<{ item: string; plan: MovePlan }>()
 const plannedMove = computed(() => move.value?.item === route.value?.issue ? move.value?.plan : undefined)
@@ -77,6 +81,11 @@ useHostVisibilityRefresh(() => {
 function invalidate(seq?: number, revalidate = false) {
   live?.invalidate(seq, revalidate)
 }
+function refresh() {
+  if (live) invalidate(undefined, true)
+  else void page.refresh(true)
+  void plugin.value?.refresh()
+}
 function denied(problem: unknown) {
   if (isAccessLoss(problem)) invalidate(undefined, true)
 }
@@ -110,34 +119,45 @@ async function copy(kind: 'board' | 'issue') {
     <BoardShell
       :boards="boards" :active="board" :tab="route?.tab" :tabs="allowedTabs"
       :has-more="hasMore" :paging="paging" :page-error="pagingError ? workFailure(pagingError).message : undefined"
-      :issue-open="!!route?.issue"
+      :issue-open="!!route?.issue" :compact="compact" :refreshing="loading"
       @select="page.select" @load-more="page.loadMore" @create="newBoard = true" @copy="copy" @tab="page.openTab"
+      @density="compact = !compact" @refresh="refresh"
     >
+      <template v-if="ready && (route?.tab === 'board' || route?.tab === 'backlog')" #filters>
+        <div ref="filterHost" />
+      </template>
       <template v-if="ready && board && schema && board.access.write" #create-issue>
         <CreateIssue :key="board.board_id" :board="board" :schema="schema" :work="work" @created="createdIssue" @denied="denied" />
       </template>
     </BoardShell>
     <div v-if="copyStatus" class="kanban-copy-status" role="status">{{ copyStatus }}</div>
     <div v-if="error" class="kanban-notice kx-notice error" role="alert">
-      {{ workFailure(error).message }}
-      <Button label="Retry" text size="small" @click="live ? invalidate(undefined, true) : page.refresh(true)" />
+      <Icon icon="tabler:alert-circle" aria-hidden="true" />
+      <span>{{ workFailure(error).message }}</span>
+      <Button label="Retry" text size="small" @click="live ? refresh() : page.refresh(true)" />
     </div>
     <div v-if="!route" class="kanban-notice" role="status">This Kanban link is not valid.</div>
     <div v-else-if="missing" class="kanban-notice" role="status">This board is no longer available in Kanban.</div>
-    <div v-else-if="!ready && loading" class="kanban-notice" role="status">Loading boards…</div>
+    <div v-else-if="!ready && loading" class="kanban-notice kx-loading" role="status">
+      <Icon icon="tabler:loader-2" aria-hidden="true" /> Loading boards…
+    </div>
     <div v-else-if="board && !schema && !error" class="kanban-notice" role="status">
       Work has not finished setting up this board.
       <Button label="Retry" text size="small" @click="page.refresh(true)" />
     </div>
-    <div v-else-if="!board && !error" class="kanban-notice" role="status">No Kanban boards are available.</div>
+    <div v-else-if="!board && !error" class="kx-empty" role="status">
+      <span class="kx-empty-ico"><Icon icon="tabler:layout-kanban" aria-hidden="true" /></span>
+      <p class="kx-empty-title">No Kanban boards are available.</p>
+    </div>
     <template v-else-if="ready && route && board && schema">
       <KanbanViews ref="views" :key="board.board_id" :board="board" :schema="schema" :route="route" :work="work"
         :field-control="FieldControl" :use-principal-names="usePrincipalNames" :invalidate="invalidate"
+        :compact="compact" :filter-host="filterHost"
         @open-issue="page.openIssue" @move-form="openMove" />
       <div v-if="unavailableTab" class="kanban-notice" role="status">
         {{ unavailableTab === 'sprints' ? 'Sprints' : 'Search' }} is not enabled for this board.
       </div>
-      <BoardPluginPanel v-else-if="route.tab === 'sprints' || route.tab === 'search'" :key="board.board_id + ':' + route.tab"
+      <BoardPluginPanel v-else-if="route.tab === 'sprints' || route.tab === 'search'" ref="plugin" :key="board.board_id + ':' + route.tab"
         :role="route.tab" :board="board" :schema="schema" :work="work" :sequence="sequence" :placement="panel"
         @open="page.openIssue" @changed="invalidate" @denied="denied" />
       <IssueDrawer v-if="!unavailableTab" ref="drawer" :key="board.board_id" :board="board" :schema="schema"

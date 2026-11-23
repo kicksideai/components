@@ -89,7 +89,7 @@ export interface ApplyResult {
 
 const defaultOrder: Sort[] = [{ field: 'rank' }]
 export const columnPageSize = 20
-export const boardFirstPageSize = 8
+export const boardFirstPageSize = 10
 export const backlogPageSize = 25
 
 export function and(...parts: (Predicate | undefined)[]): Predicate | undefined {
