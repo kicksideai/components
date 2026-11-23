@@ -24,6 +24,7 @@ const modelNames=ref<string[]>([])
 const modelClasses=ref<string[]>([])
 const defaultConfigured=computed(()=>modelClasses.value.includes('class:fast'))
 const modelConfigured=computed(()=>modelNames.value.length>0)
+const canManageModels=ref(false)
 const configuring=ref(false)
 const hasModel=computed(()=>model.value?modelNames.value.includes(model.value)||modelClasses.value.includes(model.value):defaultConfigured.value)
 const canCreate=computed(()=>ready.value&&!loading.value&&!busy.value&&!!title.value.trim()&&hasModel.value)
@@ -58,10 +59,12 @@ async function load() {
     modelClasses.value=classesResponse.data.classes
       .filter((c:{name:string;models:{name:string}[]})=>c.models.length>0&&modelNames.value.includes(c.models[0].name))
       .map((c:{name:string})=>`class:${c.name}`)
+    canManageModels.value=modelsResponse.data.can_manage_models===true
     ready.value=true
   } catch(cause) {error.value=message(cause)} finally {loading.value=false}
 }
 async function configureModel() {
+  if(!canManageModels.value) return
   error.value=''
   try {
     await loadByTagName('kickside-onboard-models',{timeoutMs:8000})
@@ -112,13 +115,14 @@ onMounted(load)
     <section v-else-if="view === 'model-setup'" class="model-setup" aria-labelledby="model-setup-title">
       <header class="head">
         <span class="head-icon" aria-hidden="true"><Icon icon="tabler:cpu" /></span>
-        <h2 id="model-setup-title" class="title">Set up a model</h2>
+        <h2 id="model-setup-title" class="title">{{canManageModels?'Set up a model':'A model is required'}}</h2>
       </header>
-      <p class="text">Agents need a language model to respond, and none is connected to this workspace yet. Connect a model provider to continue, or ask an administrator if you do not manage models.</p>
+      <p v-if="canManageModels" class="text">Agents need a language model to respond. Connect a model provider to continue.</p>
+      <p v-else class="text">Agents need a language model to respond. A workspace administrator can set one up under System → Models. Once a model is ready, you can create an agent from the Agents page.</p>
       <p v-if="error" class="error" role="alert">{{error}}</p>
       <div class="actions">
-        <Button type="button" data-dismiss label="Cancel" severity="secondary" @click="dismiss" />
-        <Button type="button" label="Set up a model" @click="configureModel" />
+        <Button type="button" data-dismiss :label="canManageModels?'Cancel':'Close'" severity="secondary" @click="dismiss" />
+        <Button v-if="canManageModels" type="button" label="Set up a model" @click="configureModel" />
       </div>
     </section>
 
