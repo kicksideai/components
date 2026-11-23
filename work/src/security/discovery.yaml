@@ -307,6 +307,9 @@ entries:
     - kickside.work.read:access
     - kickside.work.read:awaiting
     - kickside.work.read:budget
+    - kickside.work.read:consumer_board
+    - kickside.work.read:consumer_extensions
+    - kickside.work.read:consumer_schema
     - kickside.work.read:cross_board
     - kickside.work.read:feeds
     - kickside.work.read:gate
@@ -483,6 +486,7 @@ entries:
     - kickside.work:board_event_retention_days
     - kickside.work:client
     - kickside.work:consts
+    - kickside.work:consumer_board
     - kickside.work:definition
     - kickside.work:dep.kickside.automation
     - kickside.work:dep.kickside.component

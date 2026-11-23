@@ -9,6 +9,22 @@ A UI module registers a `registry.entry` with `meta.type: kickside.work.ui.app`,
 
 `board.list`, `WorkListBoards`, and `GET /work/boards` expose each readable board’s optional `ui_app` ID. Pass that ID as `ui_app` to filter discovery before pagination. Follow `next` with the same filter. Discovery uses Component’s READ-filtered metadata query. Pass `include_counts: false` (HTTP `include_counts=false`) to return board metadata and access without reading items. The default includes exact caller-visible item counts. Pagination uses Component’s offset within the readable, filtered directory.
 
+`GET /work/packs` returns the caller-visible pack catalog and `data.can_create_board`. The flag requires both access to `POST /work/boards` and `work.board.create` on `kickside.work.binding:board`. The Work administration policy grants both. The flag describes the caller's root board creation capability. Pack readiness, selected version and creation inputs are checked by the create command. To create from a pack without sample items, pass its exact ID and version, `starter: false`, an idempotency key, and `declaration.key_prefix` if supplied. Replay the same request and key after an uncertain result.
+
+## Consumer extension discovery
+
+Call `kickside.work:consumer_board.get_schema` or `POST /work/boards/{id}/get_schema` with `{ "include_extensions": true }` to get the active schema and placements in one authenticated board read. The response includes `extensions`, an array of `{ id, slot, tag?, title, order, access, plugin, target }`. When the caller requests a historical generation or omits the flag, Work omits `extensions`. An active request with no eligible placements returns an empty array.
+
+- `kickside.work.ui.card` declares a `card_badge` targeting `item` by default or `item:<type_id>` when `meta.type_ref` names an existing item type.
+- `kickside.work.ui.panel` declares a `drawer_panel` with the same item targets, or a `board_panel` when `meta.target` is `board:<role>`, such as `board:sprints` or `board:search`.
+- `kickside.work.ui.filter` declares a `filter` with `meta.target` set to `field:<code>`, `scope:<registry_id>` or `operand:<registry_id>`.
+
+Use `registry.entry` with a nonblank `meta.title` and the registered custom-element name in `meta.tag`. A filter may omit the tag so the consumer can use its own control. The entry ID is the stable placement ID. `meta.order` is an integer and defaults to 100. `meta.access` defaults to `read` and may require `write`, `delete` or `admin` on that board. Use `meta.plugin` for the owning Work manifest or `meta.plugins` for alternatives in preference order. The singular ID is tried first. The returned `plugin` is the first eligible manifest. Grant discovery on the exact placement and manifest entries and grant the component bundle to the intended audience.
+
+Work discovers these entries in the request caller's registry scope. It checks the active manifest and board attachment in the selected snapshot, the effective board access mask, and each filter target. A field must be queryable under the same board-wide read rules as Work queries. A scope must be an admitted plugin seam that the caller can query. An operand must be an admitted plugin seam callable by the caller. Work omits invalid declarations and returns at most 16 per slot, ordered by ascending order and then registry ID. For each board panel role it returns the first eligible placement in that order.
+
+Load a tag lazily through the shell and give a badge only the already-authorized card summary. The card displays at most two optional badges and the drawer can show the overflow. Mount drawer extensions when the drawer opens. Filter controls send typed predicates through Work query validation. Work commands and plugin endpoints continue to enforce their own access and input checks.
+
 ## Plugin extensions
 
 Manifests with `meta.type: kickside.work.plugin` declare interface version 1, an attachment binding, optional deployment settings and board configuration, dependencies, seam IDs, tools, projections, and a schema source. Schema sources are static templates or `kickside.work:schema_provider` bindings. Packs compose those sources with a board schema and saved views.

@@ -7,6 +7,7 @@ local http = require("http")
 local json = require("json")
 local board_client = require("board_client")
 local security = require("security")
+local consts = require("consts")
 local http_errors = require("http_errors")
 
 local M = {}
@@ -91,7 +92,21 @@ function M.endpoint(method: string, param: string?, contract_id: string?, option
         elseif counts == "false" then input.include_counts = false
         elseif counts ~= nil then input.include_counts = counts end
     end
+    if method == "get_schema" and contract_id == nil and input.include_extensions ~= nil then
+        contract_id = "kickside.work:consumer_board"
+    end
     local status, body = M.call(method, input, contract_id, optional_method)
+    if method == "list_packs" and status == http.STATUS.OK then
+        local endpoint, endpoint_err = security.can("access", "kickside.work.api:create.endpoint")
+        if endpoint_err then return M.reject(res, endpoint_err) end
+        local can_create = false
+        if endpoint then
+            local allowed, err = security.can("work.board.create", consts.BOARD_IMPL)
+            if err then return M.reject(res, err) end
+            can_create = allowed == true
+        end
+        (body.data :: types.Body).can_create_board = can_create
+    end
     M.respond(res, status, body)
 end
 

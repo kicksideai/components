@@ -1,0 +1,161 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: consumer_extensions_test
+  kind: function.lua
+  meta: { type: test, suite: work_consumer_extensions }
+  source: file://consumer_extensions_test.lua
+  method: run
+  modules: [http_client, uuid]
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    gateway: app:gateway_url
+- name: consumer_extensions_discovery
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  policy:
+    resources:
+    - app:consumer_card
+    - app:consumer_drawer
+    - app:consumer_writer
+    - app:consumer_admin
+    - app:consumer_board
+    - app:consumer_duplicate
+    - app:consumer_filter
+    - app:consumer_missing_field
+    - app:consumer_private_field
+    - app:consumer_scope
+    - app:consumer_operand
+    - app:consumer_unknown_operand
+    - app:consumer_inactive
+    - app:consumer_malformed
+    - app:consumer_unauthorized_manifest
+    - app:consumer_01
+    - app:consumer_02
+    - app:consumer_03
+    - app:consumer_04
+    - app:consumer_05
+    - app:consumer_06
+    - app:consumer_07
+    - app:consumer_08
+    - app:consumer_09
+    - app:consumer_10
+    - app:consumer_11
+    - app:consumer_12
+    - app:consumer_13
+    - app:consumer_14
+    - app:consumer_15
+    - app:consumer_16
+    - app:consumer_17
+    actions: [registry.get, registry.find]
+    effect: allow
+- name: consumer_private_manifest_access
+  kind: security.policy
+  groups: [app.security:work_admin]
+  policy: { resources: ['app:consumer_private_manifest'], actions: [registry.get, registry.find], effect: allow }
+- name: consumer_private_manifest
+  kind: registry.entry
+  meta: { type: kickside.work.plugin, interface_version: 1, attachment: 'app:work_attachment' }
+- name: consumer_card
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-badge, title: Badge, type_ref: task, plugin: 'app:work_plugin', order: -5 }
+  data: { internal: excluded }
+- name: consumer_drawer
+  kind: registry.entry
+  meta: { type: kickside.work.ui.panel, tag: fixture-drawer, title: Drawer, plugins: ['app:model_plugin', 'app:work_plugin'], order: 2 }
+- name: consumer_writer
+  kind: registry.entry
+  meta: { type: kickside.work.ui.panel, tag: fixture-writer, title: Writer, plugin: 'app:work_plugin', access: write, order: 2 }
+- name: consumer_admin
+  kind: registry.entry
+  meta: { type: kickside.work.ui.panel, tag: fixture-admin, title: Admin, target: item, plugin: 'app:work_plugin', access: admin }
+- name: consumer_board
+  kind: registry.entry
+  meta: { type: kickside.work.ui.panel, tag: fixture-board, title: Sprints, target: 'board:sprints', plugin: 'app:work_plugin', order: 3 }
+- name: consumer_duplicate
+  kind: registry.entry
+  meta: { type: kickside.work.ui.panel, tag: fixture-duplicate, title: Other sprints, target: 'board:sprints', plugin: 'app:work_plugin', order: 3 }
+- name: consumer_filter
+  kind: registry.entry
+  meta: { type: kickside.work.ui.filter, title: Priority, target: 'field:priority', plugin: 'app:work_plugin' }
+- name: consumer_missing_field
+  kind: registry.entry
+  meta: { type: kickside.work.ui.filter, title: Absent, target: 'field:absent', plugin: 'app:work_plugin' }
+- name: consumer_private_field
+  kind: registry.entry
+  meta: { type: kickside.work.ui.filter, title: Private field, target: 'field:private_flag', plugin: 'app:work_plugin' }
+- name: consumer_scope
+  kind: registry.entry
+  meta: { type: kickside.work.ui.filter, title: Scope, target: 'scope:app:work_scope', plugin: 'app:work_plugin' }
+- name: consumer_operand
+  kind: registry.entry
+  meta: { type: kickside.work.ui.filter, title: Operand, target: 'operand:app:model_operand', plugin: 'app:model_plugin' }
+- name: consumer_unknown_operand
+  kind: registry.entry
+  meta: { type: kickside.work.ui.filter, title: Missing operand, target: 'operand:app:unlisted_guard', plugin: 'app:model_plugin' }
+- name: consumer_hidden
+  kind: registry.entry
+  meta: { type: kickside.work.ui.panel, tag: fixture-hidden, title: Hidden, plugin: 'app:work_plugin' }
+- name: consumer_inactive
+  kind: registry.entry
+  meta: { type: kickside.work.ui.panel, tag: fixture-inactive, title: Inactive, plugin: 'app:missing_plugin' }
+- name: consumer_malformed
+  kind: registry.entry
+  meta: { type: kickside.work.ui.panel, tag: InvalidTag, title: Broken, plugin: 'app:work_plugin' }
+- name: consumer_unauthorized_manifest
+  kind: registry.entry
+  meta: { type: kickside.work.ui.panel, tag: fixture-private, title: Private manifest, plugin: 'app:consumer_private_manifest' }
+- name: consumer_01
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-01, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_02
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-02, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_03
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-03, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_04
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-04, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_05
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-05, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_06
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-06, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_07
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-07, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_08
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-08, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_09
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-09, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_10
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-10, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_11
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-11, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_12
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-12, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_13
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-13, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_14
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-14, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_15
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-15, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_16
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-16, title: Overflow, plugin: 'app:model_plugin' }
+- name: consumer_17
+  kind: registry.entry
+  meta: { type: kickside.work.ui.card, tag: fixture-overflow-17, title: Overflow, plugin: 'app:model_plugin' }
