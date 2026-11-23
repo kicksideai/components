@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.45](https://github.com/kicksideai/components/compare/work-v0.1.44...work-v0.1.45) (2026-11-23)
+
+
+### Bug Fixes
+
+* **work:** discover board consumer extensions ([#397](https://github.com/kicksideai/components/issues/397)) ([1461585](https://github.com/kicksideai/components/commit/1461585147a28febe25bfdd738946beeeda5adb3))
+
 ## [0.1.44](https://github.com/kicksideai/components/compare/work-v0.1.43...work-v0.1.44) (2026-11-22)
 
 
