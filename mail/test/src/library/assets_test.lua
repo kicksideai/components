@@ -35,7 +35,7 @@ local function define(kind, name, html)
         schema = {type = "object", properties = {}}, samples = {}}
 end
 
-return {run = test.run_cases(function()
+local run = test.run_cases(function()
     test.describe("Mail library images", function()
         local owned, sources, storage, uploader, editor, configured
         test.before_each(function()
@@ -114,6 +114,26 @@ return {run = test.run_cases(function()
             test.eq("original", reset.state)
             local preview = call("render_draft", {message = "notice"})
             test.not_nil(preview.inline_assets["mail-library-logo"]:match("^data:image/png;base64,"))
+        end)
+
+        test.it("reads the current immutable asset version through the library byte reader", function()
+            local packaged = call("asset_content", "logo")
+            test.eq("image/png", packaged.content_type)
+            local image = {kind = "asset", name = "asset-content-fixture", upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            local added = call("create", image)
+            local initial = call("asset_content", image.name)
+            test.eq(added.revision, initial.revision)
+            test.eq("image/gif", initial.content_type)
+            test.eq(gif(), initial.bytes)
+            local next_bytes = gif() .. "fixture"
+            image.upload_id = upload("image/gif", next_bytes)
+            image.expected_revision = added.revision
+            local replaced = call("update", image)
+            local current = call("asset_content", image.name)
+            test.eq(replaced.revision, current.revision)
+            test.neq(initial.revision, current.revision)
+            test.eq(next_bytes, current.bytes)
         end)
 
         test.it("finds references in base, part and message output once and guards deletion", function()
@@ -285,4 +305,67 @@ return {run = test.run_cases(function()
             test.eq("asset_adoption_denied", assert(err):details().code)
         end)
     end)
-end)}
+end)
+
+local expiry = test.run_cases(function()
+    test.describe("Mail asset expiry", function()
+        test.it("keeps an asset reference when a message enters the expiry batch after unlink starts", function()
+            local db = assert(sql.get("app:db"))
+            local postgres = assert(db:type()) == "postgres"
+            local day = 86400000
+            local now = time.now():unix_nano() // 1000000
+            local cutoff = now - 29 * day
+            local first, late, version = uuid.v4(), uuid.v4(), uuid.v4()
+            assert(db:execute([[INSERT INTO mail_asset_file
+                (upload_id,filename,content_type,size_bytes) VALUES ($1,'fixture','image/gif',1)]], {version}))
+            for i, id in ipairs({first, late}) do
+                assert(db:execute([[INSERT INTO mail_message
+                    (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments)
+                    VALUES ($1,$2,$2,'failed','fixture','{}','Expiry','mail@example.org','[]')]], {id, cutoff + i - 2}))
+                assert(db:execute([[INSERT INTO mail_message_asset
+                    (message_id,name,content_id,upload_id) VALUES ($1,'fixture','fixture',$2)]], {id, version}))
+            end
+            assert(db:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff + 1, late}))
+            local exec = assert(funcs.new():with_context({mail_test_now = now + day}))
+            local report
+            if postgres then
+                local lock = assert(db:begin())
+                local blocker = assert(lock:query("SELECT pg_backend_pid() AS pid"))[1].pid
+                assert(lock:query("SELECT message_id FROM mail_message_asset WHERE message_id=$1 FOR UPDATE", {first}))
+                local sweep = assert(exec:async("kickside.mail.outbox:owner", {}))
+                local deadline = time.now():add(25 * time.SECOND):unix_nano()
+                local waiting = {}
+                repeat
+                    waiting = assert(db:query([[SELECT pid FROM pg_stat_activity
+                        WHERE $1 = ANY(pg_blocking_pids(pid)) AND query LIKE 'DELETE FROM mail_message_asset%']], {blocker}))
+                until #waiting > 0 or time.now():unix_nano() >= deadline
+                if #waiting > 0 then
+                    assert(db:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff, late}))
+                end
+                assert(lock:commit())
+                sweep:response():receive()
+                report = assert(assert(sweep:result()):data())
+                test.eq(1, #waiting, "The expiry unlink waits on the first message")
+            else
+                report = assert(exec:call("kickside.mail.outbox:owner", {}))
+                assert(db:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff, late}))
+            end
+            local refs = assert(db:query("SELECT message_id FROM mail_message_asset WHERE upload_id=$1", {version}))
+            local schedule = assert(db:query("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {version}))
+            local next_report = assert(exec:call("kickside.mail.outbox:owner", {}))
+            local released = assert(db:query("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {version}))
+            assert(db:execute("DELETE FROM mail_message WHERE id IN ($1,$2)", {first, late}))
+            assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id=$1", {version}))
+            assert(db:release())
+            test.is_true(report.success, tostring(report.error))
+            test.eq(1, #refs, "The next expiry pass must still be able to release the late message reference")
+            test.eq(late, refs[1].message_id)
+            test.is_nil(schedule[1].due_at)
+            if postgres then test.is_true(report.needs_continue) end
+            test.is_true(next_report.success, tostring(next_report.error))
+            test.eq(now + day, released[1].due_at)
+        end)
+    end)
+end)
+
+return {run = run, expiry = expiry}

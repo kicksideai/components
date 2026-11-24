@@ -16,15 +16,16 @@ local settings = fixtures.settings
 local API = "/api/mail"
 local ZERO = "00000000-0000-0000-0000-000000000000"
 
-local function request(who, method, path, payload)
+local function request(who, method, path, payload, headers)
     local state = assert(system.supervisor.state("app:gateway"))
     local address = assert(state.details:match("^service listening on (127%.0%.0%.1:[1-9]%d*)$"), state.details)
-    local headers = {["Content-Type"] = "application/json"}
+    headers = headers or {}
+    headers["Content-Type"] = "application/json"
     if who then headers.Authorization = "Bearer " .. who.token end
     local res = assert(http.request(method, "http://" .. address .. API .. path, {
         headers = headers, body = payload and assert(json.encode(payload)) or nil,
     }))
-    return res.status_code, res.body ~= "" and json.decode(res.body) or nil, res.body
+    return res.status_code, res.body ~= "" and json.decode(res.body) or nil, res.body, res.headers
 end
 
 local function data(who, method, path, payload, expected)
@@ -65,18 +66,18 @@ return {run = test.run_cases(function()
             configured = true
             settings("capture", "mail@example.org")
         end
-        local function failed(sender, subject, recipient, at)
+        local function failed(sender, subject, recipient, at, template)
             local id = uuid.v4()
             activity_rows[#activity_rows + 1] = id
             local now = at or time.now():unix_nano() // 1000000
             local db = assert(sql.get("app:db"))
             assert(db:execute([[INSERT INTO mail_message
-                (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments,driver_id,
-                error_kind,error_code,error_message,provider_detail,failed_html,failed_text)
-                VALUES ($1,$2,$2,'failed',$3,$4,$5,'mail@example.org','[]','fixture',
+                (id,created_at,finished_at,sender,recipients,subject,from_address,attachments,driver_id,
+                error_kind,error_code,error_message,provider_detail,failed_html,failed_text,template,status,sent_at)
+                VALUES ($1,$2,$2,$3,$4,$5,'mail@example.org','[]','fixture',
                 'PERMISSION_DENIED','credentials_invalid','Provider authorization refused','Provider response',
-                '<p>Saved content</p>','Saved content')]],
-                {id, now, sender, assert(json.encode({to = {recipient}})), subject}))
+                '<p>Saved content</p>','Saved content',$6,$7,$8)]],
+                {id, now, sender, assert(json.encode({to = {recipient}})), subject, template or sql.NULL, template and "sent" or "failed", template and now or sql.NULL}))
             assert(db:release())
             return id
         end
@@ -109,7 +110,7 @@ return {run = test.run_cases(function()
                     end
                 end
             end
-            test.eq(18, count)
+            test.eq(19, count)
             local predicate = "kickside.mail.api:library_list.endpoint"
             test.eq("allow", editor.scope:evaluate(editor.actor, "access", predicate))
             test.neq("allow", sender.scope:evaluate(sender.actor, "access", predicate))
@@ -146,6 +147,29 @@ return {run = test.run_cases(function()
                 end
             end
             test.is_true(faces > 0)
+        end)
+
+        test.it("reads shipped source before and during customization", function()
+            local editor = session("editor")
+            local route = "/library/message/notice"
+            local shipped = data(editor, "GET", route)
+            own(shipped)
+            local edit = {kind = shipped.kind, name = shipped.name, title = shipped.title, description = shipped.description,
+                html = shipped.html, text = shipped.text, subject = "Customized subject", base = shipped.base,
+                schema = shipped.schema, samples = shipped.samples, expected_revision = shipped.revision}
+            data(editor, "PUT", route, edit)
+            local current = data(editor, "GET", route)
+            test.eq("customized", current.state)
+            test.eq("Customized subject", current.subject)
+            for _, field in ipairs({"html", "text", "subject", "base"}) do
+                test.eq(shipped[field], current.original[field], field)
+            end
+            test.eq(shipped.schema.properties.subject.type, current.original.schema.properties.subject.type)
+            test.eq(shipped.samples.subject, current.original.samples.subject)
+            test.eq(403, (request(session("sender"), "GET", route)))
+            local part = own(fixture("part", "original-source-local", "Local part"))
+            data(editor, "POST", "/library", part, 201)
+            test.is_nil(data(editor, "GET", "/library/part/" .. part.name).original)
         end)
 
         test.it("labels shipped resources with their owning module title", function()
@@ -251,6 +275,24 @@ return {run = test.run_cases(function()
             test.eq(page.failed_today, empty.failed_today)
         end)
 
+        test.it("encodes empty sample and schema maps as JSON objects", function()
+            local editor = session("editor")
+            local part = own(fixture("part", "empty-maps", "Part"))
+            local route = "/library/part/" .. part.name
+            local function assert_maps(method, path, content, expected)
+                local status, _, raw = request(editor, method, path, content)
+                test.eq(expected, status, raw)
+                test.not_nil(raw:match('"samples"%s*:%s*{}'), raw)
+                test.not_nil(raw:match('"properties"%s*:%s*{}'), raw)
+            end
+            assert_maps("GET", "/library/part/header", nil, 200)
+            assert_maps("GET", "/library/asset/logo", nil, 200)
+            assert_maps("POST", "/library", part, 201)
+            assert_maps("GET", route, nil, 200)
+            assert_maps("GET", "/library?kind=part&q=empty-maps", nil, 200)
+            assert_maps("GET", route .. "/history", nil, 200)
+        end)
+
         test.it("records per-resource versions and the action that produced each revision", function()
             local editor = session("editor")
             local item = own(fixture("message", "history-actions", "{{ block body() }}Initial{{ end }}"))
@@ -317,6 +359,64 @@ return {run = test.run_cases(function()
             for _, entry in ipairs(page.items) do test.not_nil(entry.sender_label) end
         end)
 
+        test.it("labels the recent senders alongside the editor of a message", function()
+            local editor = session("editor")
+            local sender = session("sender")
+            local item = own(fixture("message", "recent-sender-labels", "{{ block body() }}Content{{ end }}"))
+            item.base, item.subject = "plain", "Sender labels"
+            data(editor, "POST", "/library", item, 201)
+            failed(sender.id, "Recent", "reader@example.org", nil, item.name)
+            failed(ZERO, "Recent unknown", "unknown@example.org", nil, item.name)
+            local resource = data(editor, "GET", "/library/message/" .. item.name)
+            test.eq(editor.id, resource.author_label.id)
+            local senders = {}
+            for _, row in ipairs(resource.used_by.recent_senders) do senders[row.sender] = row end
+            test.eq("Mail fixture", senders[sender.id].sender_label.label)
+            test.eq(sender.id, senders[sender.id].sender_label.id)
+            test.eq("user", senders[sender.id].sender_label.kind)
+            test.eq(1, senders[sender.id].count)
+            test.eq("Unknown account", senders[ZERO].sender_label.label)
+        end)
+
+        test.it("serves packaged image bytes only to editors and honors the validator", function()
+            local path = "/library/asset/logo/content"
+            local editor = session("editor")
+            local sender = session("sender")
+            local status, _, bytes, headers = request(editor, "GET", path)
+            test.eq(200, status, bytes)
+            test.eq("image/png", headers["Content-Type"])
+            test.eq("\137PNG\r\n\26\n", bytes:sub(1, 8))
+            local etag = headers.Etag
+            test.not_nil(etag:match('^"0%-[a-f0-9]+"$'))
+            local cached, _, body = request(editor, "GET", path, nil, {["If-None-Match"] = '"old", W/' .. etag})
+            test.eq(304, cached)
+            test.eq("", body or "")
+            test.eq(403, (request(sender, "GET", path, nil, {["If-None-Match"] = etag})))
+            test.eq(401, (request(nil, "GET", path)))
+            test.eq(404, (request(editor, "GET", "/library/asset/missing-image/content")))
+        end)
+
+        test.it("lists assets when the draft overlay is occupied and clears old scratch on reconciliation", function()
+            local editor = session("editor")
+            local owner = "kickside.mail.library:projection"
+            local id = "kickside.mail.draft:html"
+            local overlay = assert(registry.overlay(owner))
+            local changes = overlay:changes()
+            assert(changes:create({id = id, kind = "template.set", data = {engine = {escape = "html"}}}))
+            assert(changes:apply())
+            local summary, body, raw = request(editor, "GET", "/library?kind=asset&view=summary")
+            local boot = assert(funcs.call("kickside.mail.library:reconcile"))
+            test.eq("success", boot.status, boot.message)
+            local entries = assert(assert(registry.overlay(owner)):entries())
+            for _, entry in ipairs(entries) do test.neq(id, entry.id) end
+            test.eq(200, summary, raw)
+            test.eq("logo", body.data.items[1].name)
+            local rendered = data(editor, "POST", "/library/preview", {message = "notice"})
+            test.not_nil(rendered.html)
+            local item = data(editor, "GET", "/library/asset/logo")
+            test.eq("notice", item.used_by.messages[1])
+        end)
+
         test.it("lists the packaged asset and previews its CID under the editor capability", function()
             local editor = session("editor")
             local sender = session("sender")
@@ -333,6 +433,26 @@ return {run = test.run_cases(function()
             test.not_nil(preview.inline_assets["mail-library-logo"]:match("^data:image/png;base64,"))
             test.eq(403, (request(sender, "GET", "/library/asset/logo")))
             test.eq(403, (request(sender, "POST", "/library", {kind = "asset", name = "proof"})))
+        end)
+
+        test.it("names the candidate sources when a draft message include fails", function()
+            local editor = session("editor")
+            local part = own(fixture("part", "candidate-part", "Static"))
+            data(editor, "POST", "/library", part, 201)
+            local base = own(fixture("base", "candidate-base",
+                '{{ include "/part/candidate-part" }}{{ block body() }}{{ end }}'))
+            data(editor, "POST", "/library", base, 201)
+            local message = own(fixture("message", "candidate-message", "{{ block body() }}Content{{ end }}"))
+            message.base, message.subject = base.name, "Candidate diagnostic"
+            data(editor, "POST", "/library", message, 201)
+            part.html = "{{ missing_value }}"
+            local _, body = request(editor, "POST", "/library/preview", {message = message.name, resource = part})
+            test.eq(message.name, body.details.resource.name)
+            local candidates = body.details.candidate_resources
+            test.eq(3, #candidates)
+            test.eq(message.name, candidates[1].name)
+            test.eq(base.name, candidates[2].name)
+            test.eq(part.name, candidates[3].name)
         end)
 
         test.it("serves library edits and candidate previews through the router", function()

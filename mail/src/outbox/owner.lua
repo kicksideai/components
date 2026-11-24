@@ -67,7 +67,9 @@ local function sweep(now: integer, retention_ms: integer): (types.OwnerResult?, 
         local unlink_err = asset_store.drop_expired_links(tx, now - retention_ms, policy.BATCH, now)
         if unlink_err then return nil, unlink_err end
         local result, delete_err = tx:execute([[DELETE FROM mail_message WHERE id IN (
-            SELECT id FROM mail_message WHERE finished_at <= $1 ORDER BY finished_at,id LIMIT $2
+            SELECT id FROM mail_message WHERE finished_at <= $1
+                AND NOT EXISTS (SELECT 1 FROM mail_message_asset WHERE message_id=mail_message.id)
+            ORDER BY finished_at,id LIMIT $2
         )]], {now - retention_ms, policy.BATCH})
         if delete_err then return nil, delete_err end
         local rows, read_err = tx:query([[SELECT

@@ -371,10 +371,9 @@ local function sampled_asset_usage(): ({[string]: {string}}?, error?)
     end)
 end
 
-local function used_by(item: types.Resource, asset_usage: {[string]: {string}}?): (types.UsedBy?, error?)
+local function used_by(item: types.Resource): (types.UsedBy?, error?)
     if item.kind == "asset" then
-        local usage, err = asset_usage, nil
-        if not usage then usage, err = sampled_asset_usage() end
+        local usage, err = sampled_asset_usage()
         if err then return nil, err end
         return {messages = usage[item.name] or {}}, nil
     elseif item.kind == "base" then
@@ -396,13 +395,31 @@ end
 function M.get(input: types.ResourceKey): (types.Resource?, error?)
     local denied = client.require_library()
     if denied then return nil, denied end
-    local found, err = resources.get(input)
+    local found, err, declared = resources.get(input)
     if err then return nil, err end
     local item = found :: types.Resource
+    if declared and item.kind ~= "asset" then
+        local source = declared.resource
+        item.original = {html = source.html, text = source.text, subject = source.subject,
+            base = source.base, schema = source.schema, samples = source.samples}
+    end
     local usage, usage_err = used_by(item)
     if usage_err then return nil, usage_err end
     item.used_by = usage
     return item, nil
+end
+
+function M.asset_content(name: string): (types.AssetContent?, error?)
+    local denied = client.require_library()
+    if denied then return nil, denied end
+    local found, err = resources.get({kind = "asset", name = name})
+    if err then return nil, err end
+    local item = found :: types.Resource
+    local ref = asset_refs.reference(item, asset_refs.cid(item.name))
+    local file, read_err = funcs.call("kickside.mail.library:read_asset_file", {ref = ref, bytes = true})
+    if read_err then return nil, read_err end
+    local part = file :: types.AssetPart
+    return {revision = item.revision, content_type = part.content_type, bytes = part.content :: string}, nil
 end
 
 function M.list(input: types.ResourceFilter?): ({types.Resource}?, error?)
@@ -427,7 +444,6 @@ function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, erro
         return resources.key(row :: types.ResourceKey)
     end, limit :: integer, cursor)
     local rows: {types.LibraryListRow} = {}
-    local asset_usage: {[string]: {string}}?
     local base_counts: {[string]: integer}?
     for i, value in ipairs(page) do
         local item = value :: types.Resource
@@ -442,14 +458,9 @@ function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, erro
                     base_counts[base] = (base_counts[base] or 0) + 1
                 end
             end
-        else
-            if item.kind == "asset" and not asset_usage then
-                local asset_err
-                asset_usage, asset_err = sampled_asset_usage()
-                if asset_err then return nil, asset_err end
-            end
+        elseif item.kind == "message" then
             local usage_err
-            usage, usage_err = used_by(item, asset_usage)
+            usage, usage_err = used_by(item)
             if usage_err then return nil, usage_err end
         end
         rows[i] = {kind = item.kind, name = item.name, title = item.title, description = item.description,
@@ -615,7 +626,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         local vars = input.vars
         if vars == nil then vars = item.samples end
         if not bind then
-            return draft.render(items :: types.ResourceMap, item, vars, values :: types.RenderGlobals, input.attachments)
+            return draft.render(items :: types.ResourceMap, item, vars, candidates, values :: types.RenderGlobals, input.attachments)
         end
         local dependent = dependants(items :: types.ResourceMap, keys, changed)
         local result, draft_err = draft.preview(items :: types.ResourceMap, item, vars, candidates, dependent,

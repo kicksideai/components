@@ -4,6 +4,7 @@ local json = require("json")
 local security = require("security")
 local types = require("types")
 local http_errors = require("http_errors")
+local canonical = require("canonical_json")
 
 local M = {}
 
@@ -19,7 +20,30 @@ local function fail(res: http.Response, err: error, status: integer?)
     res:write_json(body)
 end
 
-function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error?), status: integer?)
+local function shape_content(value: unknown)
+    if type(value) ~= "table" then return end
+    local content = value :: types.Record
+    if type(content.schema) == "table" then content.schema = canonical.normalize_schema(content.schema) end
+    if type(content.samples) == "table" then content.samples = canonical.object(content.samples) end
+end
+
+local function shape_row(row: types.Record)
+    shape_content(row)
+    shape_content(row.original)
+    shape_content(row.content)
+end
+
+local function shape_result(result: unknown)
+    if type(result) ~= "table" then return end
+    local row = result :: types.Record
+    shape_row(row)
+    if type(row.items) == "table" then
+        for _, item in ipairs(row.items :: {types.Record}) do shape_row(item) end
+    end
+end
+
+function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error?), status: integer?,
+    respond: ((http.Request, http.Response, unknown) -> error?)?)
     local req, res = http.request(), http.response()
     if not req or not res then return nil, errors.new({kind = errors.UNAVAILABLE, message = "HTTP context required"}) end
     res:set_content_type(http.CONTENT.JSON)
@@ -33,7 +57,9 @@ function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error
     if denied then return fail(res, denied) end
     local result, err = run(req)
     if err then return fail(res, err) end
+    if respond then return respond(req, res, result) end
     res:set_status(status or 200)
+    shape_result(result)
     res:write_json({success = true, data = result})
 end
 

@@ -170,7 +170,7 @@ function M.load(db: types.Executor): (types.ResourceMap?, error?, types.Original
     return items, merge_err, originals
 end
 
-function M.get(key: types.ResourceKey): (types.Resource?, error?)
+function M.get(key: types.ResourceKey): (types.Resource?, error?, types.Original?)
     local bad_key = M.check_key(key)
     if bad_key then return nil, bad_key end
     local originals, err = M.originals()
@@ -181,9 +181,9 @@ function M.get(key: types.ResourceKey): (types.Resource?, error?)
     if item and item.state == "original" then
         if declared then declared.resource.revision = item.revision end
     elseif item then
-        return item, M.match_origin(item, declared)
+        return item, M.match_origin(item, declared), declared
     end
-    if declared then return declared.resource, nil end
+    if declared then return declared.resource, nil, declared end
     return nil, M.error(errors.NOT_FOUND, "mail_resource_not_found", "Mail library resource was not found", key)
 end
 

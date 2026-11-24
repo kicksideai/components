@@ -9,6 +9,7 @@ entries:
     imports:
       types: kickside.mail:types
       http_errors: kickside.contract:http_errors
+      canonical_json: kickside.contract:canonical_json
   - name: principals
     kind: library.lua
     source: file://principals.lua
@@ -62,6 +63,20 @@ entries:
     method: GET
     func: library_get
     path: /mail/library/{kind}/{name}
+  - name: library_asset_content
+    kind: function.lua
+    source: file://library_asset_content.lua
+    method: handler
+    modules: [funcs, hash, http]
+    imports:
+      client: kickside.mail:client
+      request: kickside.mail.api:request
+      types: kickside.mail:types
+  - name: library_asset_content.endpoint
+    kind: http.endpoint
+    method: GET
+    func: library_asset_content
+    path: /mail/library/asset/{name}/content
   - name: library_create
     kind: function.lua
     source: file://library_create.lua
