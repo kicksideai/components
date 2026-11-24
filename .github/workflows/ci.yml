@@ -240,6 +240,7 @@ jobs:
             export TMPDIR="$source_root/work/.wippy/tmp"
             mkdir -p "$TMPDIR"
             make -C work setup
+            cp -R work-planning/test/src work/test/src/planning_backend
             cd work/test
             mkdir -p .wippy
             wippy lint --ns kickside.work --ns 'kickside.work.*'
@@ -248,9 +249,9 @@ jobs:
             awk '/No tests found/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$)/ { failed=1 } /^[[:space:]]*PASSED([[:space:]]|$)/ { passed=1 } END { exit(empty || failed || !passed) }' .wippy-test.clean.log
             cd "$source_root"
             version=$(jq -er --arg path work '.[$path]' .release-please-manifest.json)
-            wippy publish --config work --version "$version" --dry-run --create --module-visibility private --module-type plugin
+            wippy publish --config work --version "$version" --dry-run --create --module-visibility public --module-type plugin
             planning_version=$(jq -r '."work-planning" // "0.1.0"' .release-please-manifest.json)
-            wippy publish --config work-planning --version "$planning_version" --dry-run --create --module-visibility private --module-type plugin
+            wippy publish --config work-planning --version "$planning_version" --dry-run --create --module-visibility public --module-type plugin
         - module: work
           engine: postgres
           timeout_minutes: 45
@@ -260,6 +261,7 @@ jobs:
             export TMPDIR="$source_root/work/.wippy/tmp"
             mkdir -p "$TMPDIR"
             make -C work setup
+            cp -R work-planning/test/src work/test/src/planning_backend
             cd work/test
             databases=()
             cleanup_databases() { for database in "${databases[@]}"; do dropdb "$database"; done; }
@@ -273,7 +275,7 @@ jobs:
             awk '/No tests found/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$)/ { failed=1 } /^[[:space:]]*PASSED([[:space:]]|$)/ { passed=1 } END { exit(empty || failed || !passed) }' .wippy-test.clean.log
             cd "$source_root"
             version=$(jq -er --arg path work '.[$path]' .release-please-manifest.json)
-            wippy publish --config work --version "$version" --dry-run --create --module-visibility private --module-type plugin
+            wippy publish --config work --version "$version" --dry-run --create --module-visibility public --module-type plugin
         - module: work-kanban
           engine: sqlite
           commands: |
@@ -290,23 +292,34 @@ jobs:
         - module: work-time
           engine: sqlite
           commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/work-time/.wippy/tmp"
+            mkdir -p "$TMPDIR"
             make -C work-time setup lint test
+            make -C work-time test TEST_ARGS="--profile combined work_time_combined"
+            version=$(jq -r '."work-time" // "0.1.0"' .release-please-manifest.json)
+            wippy publish --config work-time --version "$version" --dry-run --create --module-visibility public --module-type plugin
         - module: work-time
           engine: postgres
           commands: |
             set -euo pipefail
+            export TMPDIR="$PWD/work-time/.wippy/tmp"
+            mkdir -p "$TMPDIR"
             make -C work-time setup
             database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_work_time"
+            combined="${database}_combined"
             createdb "$database"
-            trap 'dropdb "$database"' EXIT
+            trap 'dropdb --if-exists "$combined"; dropdb "$database"' EXIT
+            createdb "$combined"
             make -C work-time test TEST_ARGS="--profile postgres --set vars.pg_database=$database --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
+            make -C work-time test TEST_ARGS="--profile combined --profile postgres --set vars.pg_database=$combined --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT work_time_combined"
         - module: work-search
           engine: sqlite
           commands: |
             set -euo pipefail
             make -C work-search setup lint test
             version=$(jq -r '."work-search" // "0.1.0"' .release-please-manifest.json)
-            wippy publish --config work-search --version "$version" --dry-run --create --module-visibility private --module-type plugin
+            wippy publish --config work-search --version "$version" --dry-run --create --module-visibility public --module-type plugin
         - module: work-search
           engine: postgres
           commands: |

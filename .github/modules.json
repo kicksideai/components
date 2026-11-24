@@ -188,7 +188,7 @@
       "organization": "kickside",
       "module": "work",
       "type": "plugin",
-      "visibility": "private",
+      "visibility": "public",
       "embed": [],
       "targets": [
         "setup",
@@ -241,7 +241,7 @@
       "organization": "kickside",
       "module": "work-search",
       "type": "plugin",
-      "visibility": "private",
+      "visibility": "public",
       "embed": [],
       "targets": [
         "setup",
@@ -261,7 +261,7 @@
       "organization": "kickside",
       "module": "work-planning",
       "type": "plugin",
-      "visibility": "private",
+      "visibility": "public",
       "embed": [],
       "targets": [],
       "harness": "../work/test",
@@ -269,6 +269,27 @@
         "postgres"
       ],
       "pg_database": "kickside_test_work",
+      "extra_tests": []
+    },
+    "work-time": {
+      "path": "work-time",
+      "organization": "kickside",
+      "module": "work-time",
+      "type": "plugin",
+      "visibility": "public",
+      "embed": [],
+      "targets": [
+        "setup",
+        "lint",
+        "test",
+        "test-pg"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres",
+        "combined"
+      ],
+      "pg_database": "kickside_test_work_time",
       "extra_tests": []
     },
     "pim": {
