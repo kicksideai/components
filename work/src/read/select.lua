@@ -25,11 +25,12 @@ local function marks(n: integer): string
     return table.concat(out, ", ")
 end
 
--- scope_predicate builds the membership test one admitted scope query adds:
--- the item is among the scope table's items matching every named filter.
+-- Probe the plugin's item index while walking the ordered Work page.
+-- OFFSET 0 keeps PostgreSQL from flattening EXISTS into a join that can
+-- scan the whole plugin scope. SQLite requires LIMIT when using OFFSET.
 local function scope_predicate(r: domain.Reader, sq: domain.AdmittedScope): (string?, { unknown }?, error?)
     local scope = sq.scope
-    local parts: { string } = { scope.board_column .. " = ?" }
+    local parts: { string } = { "s." .. scope.board_column .. " = ?", "s." .. scope.item_column .. " = i.item_id" }
     local args: { unknown } = { r.board_id }
     local names: { string } = {}
     for name in pairs(sq.where or {}) do names[#names + 1] = name end
@@ -58,13 +59,13 @@ local function scope_predicate(r: domain.Reader, sq: domain.AdmittedScope): (str
                 args[#args + 1] = v
             end
             if op == "in" then
-                parts[#parts + 1] = f.column .. " IN (" .. marks(#list) .. ")"
+                parts[#parts + 1] = "s." .. f.column .. " IN (" .. marks(#list) .. ")"
             else
-                parts[#parts + 1] = f.column .. " " .. OPS[op] .. " ?"
+                parts[#parts + 1] = "s." .. f.column .. " " .. OPS[op] .. " ?"
             end
         end
     end
-    return "i.item_id IN (SELECT " .. scope.item_column .. " FROM " .. scope.table .. " WHERE " .. table.concat(parts, " AND ") .. ")",
+    return "EXISTS (SELECT 1 FROM " .. scope.table .. " s WHERE " .. table.concat(parts, " AND ") .. " LIMIT 1 OFFSET 0)",
         args, nil
 end
 
