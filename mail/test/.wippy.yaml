@@ -22,6 +22,7 @@ override:
   kickside.core.jobs:policy:meta.proc.max_execution: 3s
   kickside.core.jobs:lease_release_signal:imports.hint: kickside.mail.harness:lease_hint
   kickside.core.jobs:lease_release_signal:source: 'return require("hint")'
+  kickside.mail.outbox:owner:imports.policy: kickside.mail.harness:owner_clock
 vars:
   pg_host: localhost
   pg_port: 5433

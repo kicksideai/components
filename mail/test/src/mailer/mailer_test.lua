@@ -11,7 +11,8 @@ local sql = require("sql")
 local time = require("time")
 local uuid = require("uuid")
 local jobs = require("jobs")
-local notifier = require("notifier")
+local database = require("database")
+local jobs_cancel = require("jobs_cancel")
 local canonical_json = require("canonical_json")
 
 local TOOL_NS = "kickside.mail.traits:"
@@ -100,7 +101,7 @@ local function caller(policy_ids, id)
     assert(db:release())
     local actor = assert(security.new_actor(id, {security_groups = groups}))
     local scope = assert(security.new_scope(policies))
-    return assert(funcs.new():with_actor(actor):with_scope(scope))
+    return assert(funcs.new():with_actor(actor):with_scope(scope)), id
 end
 
 local function invoke(executor, operation, message)
@@ -197,13 +198,14 @@ return {
     probe = probe,
     run = test.run_cases(function()
         test.describe("System-managed mailer", function()
-            local admin, sender, denied, log_admin, editor
+            local admin, sender, sender_id, denied, log_admin, editor
+            local settlement_rows = {}
             test.before_each(function()
                 admin = caller({"kickside.mail.harness:admin"})
                 log_admin = caller({"kickside.mail.security:log_admin", "kickside.mail.security:module_runtime"})
                 denied = caller({"kickside.mail.security:module_runtime"})
                 editor = caller(READER_POLICIES)
-                sender = caller({
+                sender, sender_id = caller({
                     "kickside.mail.security:module_runtime",
                     "kickside.mail.security:template_access",
                     "kickside.mail.security:send_access",
@@ -212,6 +214,21 @@ return {
                     local result = change(admin, key)
                     test.is_true(result.success, result.error :: string?)
                 end
+            end)
+            test.after_each(function()
+                if #settlement_rows == 0 then return end
+                assert(database.transaction(function(tx)
+                    for _, row in ipairs(settlement_rows) do
+                        local _, mail_err = tx:execute("DELETE FROM mail_message WHERE id=$1", {row.id})
+                        if mail_err then return nil, mail_err end
+                        if row.job_id then
+                            local _, job_err = tx:execute("DELETE FROM kickside_job WHERE id=$1", {row.job_id})
+                            if job_err then return nil, job_err end
+                        end
+                    end
+                    return true, nil
+                end))
+                settlement_rows = {}
             end)
 
             test.it("uses its own member scope without joining the shared HTTP endpoint scope", function()
@@ -533,37 +550,66 @@ return {
             end)
 
             test.it("settles jobs that are cancelled or no longer stored", function()
-                capture_with(admin)
-                local input = body()
-                input.subject = "Fixture exhaust"
-                local queued = assert(invoke(sender, "send", input))
-                await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
-                local row = persisted(queued.message_id)
-                assert(jobs.cancel(row.job_id))
-                await_job(row.job_id, "cancelled")
+                local admitted_at = policy.now() + 3600000
+                local recheck_at = admitted_at + policy.RECHECK_MS
+                local hinted, cancelled, missing = {id = uuid.v7()}, {id = uuid.v7()}, {id = uuid.v7()}
+                settlement_rows = {hinted, cancelled, missing}
+                assert(database.transaction(function(tx, dialect)
+                    for _, row in ipairs(settlement_rows) do
+                        local job_id: string = uuid.v7()
+                        if row ~= missing then
+                            local job, enqueue_err = jobs.enqueue_tx(tx, dialect, {
+                                namespace = "mail", scope = row.id, key = "deliver",
+                                owner_locator = {kind = "mail-message", id = row.id},
+                                job_type = "kickside.mail.outbox:deliver",
+                                immutable_payload = {message_id = row.id}, parked = true,
+                            })
+                            if enqueue_err then return nil, enqueue_err end
+                            job_id = job.id :: string
+                            row.job_id = job_id
+                            local ok, cancel_err = jobs_cancel.cancel_job_tx(tx, dialect, {id = job_id})
+                            if cancel_err then return nil, cancel_err end
+                            assert(ok)
+                        end
+                        local _, insert_err = tx:execute([[INSERT INTO mail_message
+                            (id,created_at,status,next_attempt_at,next_check_at,sender,actor_context,
+                            recipients,subject,from_address,attachments,job_id,html,text)
+                            VALUES ($1,$2,'queued',$2,$3,$4,'{}','{"to":["reader@example.org"]}',
+                            'Settlement fixture','mail@example.org','[]',$5,'<p>Ready</p>','Ready')]],
+                            {row.id, admitted_at, recheck_at, sender_id, job_id})
+                        if insert_err then return nil, insert_err end
+                    end
+                    return true, nil
+                end))
 
-                local cancelled = terminal(sender, queued)
-                test.eq("failed", cancelled.status)
-                test.eq("delivery_interrupted", cancelled.last_error.code)
-                test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", cancelled.last_error.message)
-                no_body(queued.message_id)
+                local function owner(now, change)
+                    local executor = assert(funcs.new():with_context({mail_test_now = now}))
+                    local result = assert(executor:call("kickside.mail.outbox:owner", {change = change}))
+                    assert(result.success, tostring(result.error))
+                    return result
+                end
+                local function interrupted(row, at)
+                    local message = assert(invoke(sender, "get_message", row.id))
+                    test.eq("failed", message.status)
+                    test.eq("delivery_interrupted", message.last_error.code)
+                    test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", message.last_error.message)
+                    test.eq(at, persisted(row.id).finished_at)
+                    no_body(row.id)
+                end
 
-                local missing_id = uuid.v7()
-                local now = time.now():unix_nano() // 1000000
-                local db = assert(sql.get("app:db"))
-                assert(db:execute([[INSERT INTO mail_message
-                    (id,created_at,status,next_attempt_at,next_check_at,sender,actor_context,
-                     recipients,subject,from_address,attachments,job_id,html,text)
-                    VALUES ($1,$2,'queued',$2,$2,$3,'{}','{"to":["reader@example.org"]}',
-                    'Missing job','mail@example.org','[]',$4,'<p>Ready</p>','Ready')]],
-                    {missing_id, now, row.sender, uuid.v7()}))
-                assert(db:release())
-                assert(notifier.notify({kind = "owner_eligibility_changed"}))
-
-                local missing = await_message(sender, missing_id, function(message) return message.status == "failed" end)
-                test.eq("delivery_interrupted", missing.last_error.code)
-                test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", missing.last_error.message)
-                no_body(missing_id)
+                local hinted_at = admitted_at + 1
+                owner(hinted_at, {kind = "lease_released", job_id = hinted.job_id,
+                    owner_locator = {kind = "mail-message", id = hinted.id}})
+                interrupted(hinted, hinted_at)
+                owner(recheck_at - 1)
+                for _, row in ipairs({cancelled, missing}) do
+                    local before_recheck = persisted(row.id)
+                    test.eq("queued", before_recheck.status)
+                    test.eq(recheck_at, before_recheck.next_check_at)
+                end
+                owner(recheck_at)
+                interrupted(cancelled, recheck_at)
+                interrupted(missing, recheck_at)
             end)
 
             test.it("refuses another delivery attempt after the sender becomes inactive", function()
