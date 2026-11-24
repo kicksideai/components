@@ -9,6 +9,7 @@ entries:
     imports:
       types: kickside.mail:types
       http_errors: kickside.contract:http_errors
+      canonical_json: kickside.contract:canonical_json
   - name: principals
     kind: library.lua
     source: file://principals.lua

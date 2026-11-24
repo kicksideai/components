@@ -4,6 +4,7 @@ local json = require("json")
 local security = require("security")
 local types = require("types")
 local http_errors = require("http_errors")
+local canonical = require("canonical_json")
 
 local M = {}
 
@@ -17,6 +18,28 @@ local function fail(res: http.Response, err: error, status: integer?)
     body.code = detail.code or err:kind()
     res:set_status(status or http_errors.classify(err))
     res:write_json(body)
+end
+
+local function shape_content(value: unknown)
+    if type(value) ~= "table" then return end
+    local content = value :: types.Record
+    if type(content.schema) == "table" then content.schema = canonical.normalize_schema(content.schema) end
+    if type(content.samples) == "table" then content.samples = canonical.object(content.samples) end
+end
+
+local function shape_row(row: types.Record)
+    shape_content(row)
+    shape_content(row.original)
+    shape_content(row.content)
+end
+
+local function shape_result(result: unknown)
+    if type(result) ~= "table" then return end
+    local row = result :: types.Record
+    shape_row(row)
+    if type(row.items) == "table" then
+        for _, item in ipairs(row.items :: {types.Record}) do shape_row(item) end
+    end
 end
 
 function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error?), status: integer?)
@@ -34,6 +57,7 @@ function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error
     local result, err = run(req)
     if err then return fail(res, err) end
     res:set_status(status or 200)
+    shape_result(result)
     res:write_json({success = true, data = result})
 end
 
