@@ -23,10 +23,12 @@ end
 local function recipients(input: types.SendRequest): (types.Addresses?, error?)
     local users: types.Users?
     local addresses = {}
+    local seen: {[string]: boolean} = {}
     for _, field in ipairs({"to", "cc", "bcc"}) do
         if input[field] ~= nil then
             local resolved = {}
-            for i, recipient in ipairs(input[field]) do
+            for _, recipient in ipairs(input[field]) do
+                local address: string
                 if type(recipient) == "table" then
                     if not users then
                         local definition, definition_err = contract.get("kickside.users:user_provisioning")
@@ -35,14 +37,19 @@ local function recipients(input: types.SendRequest): (types.Addresses?, error?)
                         if open_err then return nil, open_err end
                         users = opened :: types.Users
                     end
-                    local address, err = user_address(users, recipient.user_id)
+                    local email, err = user_address(users, recipient.user_id)
                     if err then return nil, err end
-                    resolved[i] = address
+                    address = email :: string
                 else
-                    resolved[i] = recipient
+                    address = recipient :: string
+                end
+                local key = address:lower()
+                if not seen[key] then
+                    seen[key] = true
+                    resolved[#resolved + 1] = address
                 end
             end
-            addresses[field] = resolved
+            if #resolved > 0 then addresses[field] = resolved end
         end
     end
     return addresses :: types.Addresses, nil

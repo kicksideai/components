@@ -806,16 +806,20 @@ return {
                 })
                 local input = body()
                 input.to[2] = {user_id = id}
-                input.cc = {{user_id = id}}
-                input.bcc = {{user_id = id}}
+                input.to[3] = "READER@example.org"
+                input.cc = {"Cc@example.org", {user_id = id}, "CC@example.org"}
+                input.bcc = {{user_id = id}, "cc@example.org", "Bcc@example.org", "BCC@example.org"}
                 local refused, err = invoke(sender, "send", input)
                 refusal(refused, err, errors.PERMISSION_DENIED)
                 local delivered = assert(reader:call(TOOL_NS .. "mail_send", input))
                 local captured = assert(json.decode(terminal(reader, delivered).provider_message_id))
                 test.eq("reader@example.org", captured.to[1])
                 test.eq("resolved@example.org", captured.to[2])
-                test.eq("resolved@example.org", captured.cc[1])
-                test.eq("resolved@example.org", captured.bcc[1])
+                test.eq(2, #captured.to)
+                test.eq("Cc@example.org", captured.cc[1])
+                test.eq(1, #captured.cc)
+                test.eq("Bcc@example.org", captured.bcc[1])
+                test.eq(1, #captured.bcc)
 
                 for _, recipient in ipairs({blank, "resolved@example.org"}) do
                     input.to[2] = {user_id = recipient}
