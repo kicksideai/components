@@ -9,7 +9,11 @@ import { parseYamlDocuments, run } from '../../scripts/module-rules.mjs'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const capture = `
 local direction, engine = arg[2], arg[3]
-local db = { query = function() return arg[4] == "bound" and {{ name = "ui_app" }} or {}, nil end, execute = function(_, statement, params)
+local db = { query = function()
+    if arg[4] == "bound" then return {{ name = "ui_app" }}, nil end
+    if arg[4] == "snapshot" then return {{ name = "snapshot_seq" }}, nil end
+    return {}, nil
+end, execute = function(_, statement, params)
     for i, value in ipairs(params or {}) do statement = statement:gsub("%$" .. i, "'" .. value .. "'") end
     io.write(statement, "\\0"); return {}, nil
 end }
@@ -81,6 +85,30 @@ test('Work initializes the active plugin attachment index in the base migration'
     const up = await statements('01_work', 'up', engine)
     assert.ok(up.includes(index), `Base Work migration must create the active plugin attachment index on ${engine}`)
   }
+})
+
+test('Work adds a Planning snapshot checkpoint to an already-migrated board', async () => {
+  const initial = await statements('01_work', 'up')
+  const migration = await statements('05_snapshot_seq', 'up')
+  const result = await run('python3', ['-c', `
+import json,sqlite3,sys
+initial,migration=json.load(sys.stdin)
+db=sqlite3.connect(':memory:')
+for sql in initial:
+  db.execute(sql)
+# Emulate the exact old table shape. Existing 01_work never had snapshot_seq.
+db.execute('ALTER TABLE kickside_work_board DROP COLUMN snapshot_seq')
+db.execute("INSERT INTO kickside_work_board (board_id,key_prefix,generation,schema_version,compiled,digest,applied_seq,counter,tombstone_floor_seq,created_at,updated_at) VALUES ('old','W',1,1,'{}','digest',73,0,0,'','')")
+for sql in migration:
+  db.execute(sql)
+print(json.dumps(db.execute("SELECT snapshot_seq FROM kickside_work_board WHERE board_id='old'").fetchone()))
+`], {}, JSON.stringify([initial, migration]))
+  assert.deepEqual(JSON.parse(result), [73])
+})
+
+test('Work snapshot checkpoint migration is safe after a fresh base migration', async () => {
+  const replay = await statements('05_snapshot_seq', 'up', 'sqlite', 'snapshot')
+  assert.deepEqual(replay, [])
 })
 
 test('Work rollback removes every fixed table including board metadata', async () => {

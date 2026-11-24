@@ -42,3 +42,14 @@ entries:
   imports:
     migration: wippy.migration:migration
   method: migrate
+- name: 05_snapshot_seq
+  kind: function.lua
+  meta:
+    type: migration
+    tags: [work, board]
+    comment: Adds the retained snapshot checkpoint used by Planning reads.
+    timestamp: '2026-11-24T00:00:05Z'
+  source: file://05_snapshot_seq.lua
+  imports:
+    migration: wippy.migration:migration
+  method: migrate
