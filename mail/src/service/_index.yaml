@@ -54,7 +54,7 @@ entries:
   - name: delivery
     kind: library.lua
     source: file://delivery.lua
-    modules: [http_client, json, base64]
+    modules: [http_client, json, base64, time]
     imports:
       types: kickside.mail:types
       error_envelope: kickside.contract:error_envelope

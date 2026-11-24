@@ -3,13 +3,14 @@ local time = require("time")
 local types = require("types")
 
 local M = {
-    MAX_ATTEMPTS = 5,
+    MAX_ATTEMPTS = 32,
     RECHECK_MS = 30000,
     BATCH = 200,
     DAY_MS = 86400000,
 }
 local BASE_MS = 1000
-local CAP_MS = 8000
+local CAP_MS = 300000
+local MAX_HINT_MS = 900000
 local MAX_RETENTION_DAYS = 3650
 local RETRYABLE = {
     [errors.RATE_LIMITED] = true,
@@ -25,7 +26,12 @@ function M.retry_at(err: error, attempts: integer, now: integer): integer?
     if attempts >= M.MAX_ATTEMPTS or not err:retryable() then return nil end
     local details = err:details()
     if not RETRYABLE[err:kind()] and not (details and details.code == "send_in_progress") then return nil end
-    return now + math.floor(math.min(CAP_MS, BASE_MS * 2 ^ (attempts - 1)))
+    local delay = math.min(CAP_MS, BASE_MS * 2 ^ (attempts - 1))
+    local hint = details and details.retry_after_ms
+    if type(hint) == "number" and hint >= 0 and hint < math.huge then
+        delay = math.max(delay, math.min(hint, MAX_HINT_MS))
+    end
+    return now + math.ceil(delay)
 end
 
 function M.retention_days(value: unknown): integer?

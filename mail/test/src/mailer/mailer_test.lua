@@ -287,14 +287,48 @@ return {
                 no_body(queued.message_id)
             end)
 
+            local policy = require("policy")
+
+            test.it("uses the retry policy through an hour-long provider outage", function()
+                for _, kind in ipairs({errors.UNAVAILABLE, errors.RATE_LIMITED, errors.TIMEOUT}) do
+                    local failure = errors.new({kind = kind, message = "Test outage", retryable = true})
+                    local attempt, now = 1, 0
+                    while now <= 3600000 do
+                        now = assert(policy.retry_at(failure, attempt, now), "Delivery exhausted within one hour")
+                        attempt = attempt + 1
+                    end
+                    test.is_true(attempt <= policy.MAX_ATTEMPTS)
+                    test.is_nil(policy.retry_at(failure, policy.MAX_ATTEMPTS, now))
+                end
+            end)
+
+            test.it("honors bounded retry hints without shortening backoff or retrying permanent errors", function()
+                local function failure(hint, retryable)
+                    return errors.new({kind = errors.RATE_LIMITED, message = "Test rate limit", retryable = retryable,
+                        details = {retry_after_ms = hint}})
+                end
+                test.eq(121000, policy.retry_at(failure(120000, true), 1, 1000))
+                test.eq(901000, policy.retry_at(failure(7200000, true), 1, 1000))
+                test.eq(3000, policy.retry_at(failure(10, true), 2, 1000))
+                test.eq(2000, policy.retry_at(failure("invalid", true), 1, 1000))
+                test.is_nil(policy.retry_at(failure(120000, false), 1, 1000))
+            end)
+
             test.it("stops retrying at the attempt limit", function()
                 capture_with(admin)
                 local input = body()
                 input.subject = "Fixture exhaust"
                 local queued = assert(invoke(sender, "send", input))
+                await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
+                local job_id = persisted(queued.message_id).job_id
+                local db = assert(sql.get("app:db"))
+                assert(db:execute("UPDATE mail_message SET attempts=$1 WHERE id=$2",
+                    {policy.MAX_ATTEMPTS - 1, queued.message_id}))
+                assert(db:release())
                 local failed = terminal(sender, queued)
                 test.eq("failed", failed.status)
-                test.eq(5, failed.attempts)
+                test.eq(policy.MAX_ATTEMPTS, failed.attempts)
+                test.eq("done", await_job(job_id, "done").status)
                 test.eq("rate_limited", failed.last_error.code)
                 no_body(queued.message_id)
             end)

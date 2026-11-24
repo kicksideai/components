@@ -29,7 +29,7 @@ Send validates and renders the message, commits it with a delivery job, and retu
 
 Read the log entry with `get_message(message_id)`. It becomes `sent` when the provider accepts the message, or `failed` with a structured `last_error`. `provider_message_id` is available once the status is `sent`. `list_messages({limit, status?, since?, cursor?})` gives most recent entries first. Dates and `since` use Unix milliseconds. Use the returned `next_cursor` for the next page. The log exposes metadata and attachment references. Terminal rows discard the rendered bodies.
 
-On each attempt the worker selects the active driver and checks the sender’s current **Send mail** capability before delivery. It passes the message ID to providers with idempotency support. It allows up to five attempts with delays of 1, 2, 4, and 8 seconds for retryable rate limits, timeouts, provider unavailability, or sends already in progress.
+On each attempt the worker selects the active driver and checks the sender’s current **Send mail** capability before delivery. It passes the message ID to providers with idempotency support. For retryable rate limits, timeouts, provider unavailability, or sends already in progress, Mail allows up to 32 attempts with exponential delays from one second to five minutes. A provider retry hint can extend an interval up to 15 minutes.
 
 The `notice` template supplies plain-text and HTML parts. Set `subject` and any combination of an opening message, headings, paragraphs, labeled details, a web action link, or an inline image. Use `MailGetTemplate` for its variable schema and `MailPreview` for the rendered parts.
 
