@@ -29,13 +29,20 @@ entries:
   - name: assets_test
     kind: function.lua
     meta: { type: test, suite: mail_assets }
-    source: file://assets_test.lua
+    source: &assets_source file://assets_test.lua
     method: run
-    modules: [fs, funcs, security, sql, uuid, base64, time, json]
-    imports:
+    modules: &assets_modules [fs, funcs, security, sql, uuid, base64, time, json]
+    imports: &assets_imports
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       records: kickside.uploads.persist:upload_record_repo
       upload_types: kickside.uploads:types
       lookup: kickside.uploads.persist:upload_query_repo
       settings: app.mail_api:fixtures
+  - name: asset_expiry_test
+    kind: function.lua
+    meta: { type: test, suite: mail_asset_expiry }
+    source: *assets_source
+    method: expiry
+    modules: *assets_modules
+    imports: *assets_imports
