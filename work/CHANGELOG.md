@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.47](https://github.com/kicksideai/components/compare/work-v0.1.46...work-v0.1.47) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** validate provider configuration through schema admission ([#422](https://github.com/kicksideai/components/issues/422)) ([fa1f1f3](https://github.com/kicksideai/components/commit/fa1f1f3b408a2d63163a71f2705ed80f928c1b4f))
+
 ## [0.1.46](https://github.com/kicksideai/components/compare/work-v0.1.45...work-v0.1.46) (2026-11-24)
 
 
