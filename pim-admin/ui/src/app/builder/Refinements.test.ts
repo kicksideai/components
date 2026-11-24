@@ -82,8 +82,7 @@ it('shows effective inherited policy without adding an override until editing', 
 it('shows plugin and scope titles with one state label and an accessible switch', () => {
   const w = mount(BuilderPlugins, { props: { draft: {}, schema: createSchema(), options: { ...options, plugins: [{ ...pluginFixture('kickside.pim.inventory:plugin'), title: 'Inventory' }], scopes: [{ id: 'kickside.pim.inventory:stock', title: 'Stock', access: 'read', filters: {} }] } } })
   expect(w.text()).not.toMatch(/kickside\.[\w.]+:[\w-]+/)
-  expect(w.text().match(/Disabled/g)).toHaveLength(1)
-  expect(w.text().match(/Available/g)).toHaveLength(1)
+  expect(w.findAll('.pim-plugin-state').map(state => state.text())).toEqual(['Available', 'Available'])
   expect(w.find('[role=switch][aria-label="Enable Inventory"]').exists()).toBe(true)
   expect(w.find('[role=switch][aria-label="Use Stock"]').exists()).toBe(true)
   expect(w.find('em').exists()).toBe(false)
@@ -101,7 +100,7 @@ it('uses readable fallbacks when registry declarations have no human title', asy
   try {
     await fields.get('.field-toggle').trigger('click')
     for (const wrapper of [plugins, fields]) expect(wrapper.text()).not.toContain(id)
-    expect(plugins.findAll('.pim-row-title').map(row => row.text())).toEqual(['Plugin', 'Filter set'])
+    expect(plugins.findAll('.kx-settings-item-title').map(row => row.text())).toEqual(['Plugin', 'Filter set'])
     expect(fields.get('[data-column=kind]').text()).toBe('Field type')
     expect(plugins.get('[role=switch]').attributes('aria-label')).toBe('Enable Plugin')
   } finally { plugins.unmount(); fields.unmount() }
@@ -113,7 +112,7 @@ it('does not repeat the plugin state in the expanded configuration', async () =>
     options: { ...options, plugins: [{ ...pluginFixture('stock'), title: 'Inventory' }] },
   } })
   try {
-    expect(w.text().match(/Configuration needed/g)).toHaveLength(1)
+    expect(w.text().match(/Needs configuration/g)).toHaveLength(1)
     expect(w.text()).not.toContain('Enabled')
     expect(w.get('[role=alert]').text()).toContain('The saved settings don’t meet the plugin’s requirements.')
     expect(w.get('.kx-disclosure').text()).toContain('Configuration needs attention.')

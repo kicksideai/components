@@ -68,7 +68,7 @@ export interface PluginReferences {
   fields: string[]; scopes: string[]; shell_bindings: string[]; checks?: string[]; plugins?: string[]
 }
 export interface PluginView {
-  plugin: string; interface_version?: number; title?: string; description?: string; icon?: string; installed: boolean; active: boolean
+  plugin: string; interface_version?: number; title?: string; description?: string; icon?: string; category?: string; installed: boolean; active: boolean
   attachment_id?: string; config?: Record<string, unknown>; requires: string[]; tools: string[]
   lifecycle: { state: 'pending' | 'ready' | 'failed'; error?: PluginIssue & { kind: string } }
   projections: Record<string, PluginProjection>
