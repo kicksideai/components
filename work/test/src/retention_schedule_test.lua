@@ -117,22 +117,27 @@ local function define()
         end)
 
         test.it("serves an elapsed board deadline ahead of the rest of discovery", function()
-            local h = first_of_trash_boards()
+            local a, b = trash_board(), trash_board()
+            local h = a.id < b.id and a or b
             batch_board = h
             local id = steps.create(h, "task")
             steps.retention_sweep()
             assert(h.call("set_setting", { namespace = "kickside.work", key = "cleanup_batch", value = 1 }))
-            local future = clock.deadline(5000)
-            trash_at(h, id, future.at)
+            -- Projection writes elsewhere in the harness use the real clock.
+            local at = "2000-01-01T00:00:00.123456789Z"
+            local deadline_ms = assert(time.parse(time.RFC3339, at)):unix_nano() // 1000000 + 1
+            trash_at(h, id, at)
             start_at(h)
-            local visited = steps.retention_run()
+            local visited = steps.retention_run(deadline_ms - 1)
             test.is_true(visited.needs_continue)
-            test.eq(visited.deadline_ms, future.ns // 1000000 + 1)
+            test.eq(visited.deadline_ms, deadline_ms)
             test.eq(life(h, id), "trashed")
-            steps.wait_for("deadline during discovery", function(): boolean
-                return clock.deadline(0).ns // 1000000 >= visited.deadline_ms
-            end)
-            steps.retention_run()
+            local db = assert(store.open())
+            local position = assert(db:query("SELECT board_after, inclusive FROM kickside_work_retention WHERE owner_id='work'", {}))[1]
+            db:release()
+            test.eq(position.board_after, h.id, "discovery has passed the target")
+            test.eq(store.int(position.inclusive), 0)
+            steps.retention_run(deadline_ms)
             test.eq(life(h, id), "purged", "the next callback must serve the elapsed deadline")
         end)
 
