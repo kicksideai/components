@@ -20,19 +20,19 @@ export function pluginIssue(option: PluginState, state?: PluginState) {
     return { kind: 'missing', status: 'Not installed', cause: 'This board still references a plugin that is no longer installed.' } as const
   }
   if (problem?.code === 'plugin_config_invalid' || failure?.code === 'plugin_config_invalid') {
-    return { kind: 'configuration', status: 'Misconfigured', cause: problem?.message ?? failure?.message } as const
+    return { kind: 'configuration', status: 'Needs configuration', cause: problem?.message ?? failure?.message } as const
   }
-  if (problem) return { kind: 'manifest', status: 'Plugin unavailable', cause: problem.message } as const
+  if (problem) return { kind: 'manifest', status: 'Unavailable', cause: problem.message } as const
   if (failure?.source === 'schema_provider') {
-    return { kind: 'provider', status: 'Schema provider failed', cause: failure.message } as const
+    return { kind: 'provider', status: 'Setup failed', cause: 'The plugin could not prepare its fields: ' + failure.message } as const
   }
   if (failure?.code === 'plugin_projection_gap') {
-    return { kind: 'history', status: 'History gap', cause: failure.message, floor: failure.floor } as const
+    return { kind: 'history', status: 'Needs attention', cause: failure.message, floor: failure.floor } as const
   }
   if (state?.lifecycle.state === 'failed') {
-    return { kind: 'setup', status: 'Attachment setup failed', cause: failure?.message ?? 'Work could not prepare the plugin attachment.' } as const
+    return { kind: 'setup', status: 'Setup failed', cause: failure?.message ?? 'Work could not prepare the plugin attachment.' } as const
   }
   const projections = Object.values(state?.projections ?? {})
-  if (projections.some(projection => projection.parked)) return { kind: 'reset', status: 'Needs reset' } as const
-  if (projections.some(projectionError)) return { kind: 'degraded', status: 'Degraded' } as const
+  if (projections.some(projection => projection.parked)) return { kind: 'reset', status: 'Stopped' } as const
+  if (projections.some(projectionError)) return { kind: 'degraded', status: 'Needs attention' } as const
 }

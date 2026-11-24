@@ -8,12 +8,12 @@ import { requestGeneration } from '../../shared/requests'
 
 const statuses = {
   failed: { label: 'Setup failed', severity: 'danger' },
-  paused: { label: 'Background update paused', severity: 'warn' },
-  degraded: { label: 'Degraded', severity: 'warn' },
+  paused: { label: 'Paused', severity: 'warn' },
+  degraded: { label: 'Needs attention', severity: 'warn' },
   catchingUp: { label: 'Catching up', severity: 'info' },
-  config: { label: 'Configuration needed', severity: 'warn' },
-  reset: { label: 'Reset required', severity: 'warn' },
-  uninstalled: { label: 'Uninstalled · still referenced', severity: 'warn' },
+  config: { label: 'Needs configuration', severity: 'warn' },
+  reset: { label: 'Stopped', severity: 'warn' },
+  uninstalled: { label: 'Not installed', severity: 'warn' },
   pending: { label: 'Setting up', severity: 'info' },
 } as const
 

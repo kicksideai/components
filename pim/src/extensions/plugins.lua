@@ -248,7 +248,7 @@ function M.load(id: string): (types.Plugin?, error?)
         local leak = secret(schema, "config", schema, {})
         if leak then return nil, invalid(id .. " declares secret " .. leak .. "; secrets belong in its attachment or a connection", { field = "config_schema" }) end
     end
-    for _, field in ipairs({ "title", "settings" }) do
+    for _, field in ipairs({ "title", "category", "settings" }) do
         if m[field] ~= nil and type(m[field]) ~= "string" then return nil, invalid(id .. " " .. field .. " must be a string") end
     end
     local tools, tool_err = tool_declarations(id, m.tools)
@@ -262,7 +262,7 @@ function M.load(id: string): (types.Plugin?, error?)
         projections = declared :: { types.PluginProjection }
     end
     return { id = id, interface_version = M.INTERFACE_VERSION,
-        title = m.title :: string?, description = m.description :: string?, icon = m.icon :: string?, settings = m.settings :: string?,
+        title = m.title :: string?, description = m.description :: string?, icon = m.icon :: string?, category = m.category :: string?, settings = m.settings :: string?,
         attachment = m.attachment :: string, requires = requires, seams = seams, config_schema = schema, schema = source, projections = projections, tools = tools }, nil
 end
 
@@ -326,7 +326,7 @@ function M.list(states: { [string]: types.PluginIntent }?, membership: { [string
             end
             if p then
                 entry.interface_version = p.interface_version
-                entry.title, entry.description, entry.icon = p.title, p.description, p.icon
+                entry.title, entry.description, entry.icon, entry.category = p.title, p.description, p.icon, p.category
                 entry.requires, entry.tools, entry.config_schema = p.requires or {}, p.tools or {}, p.config_schema
             end
             if lerr then

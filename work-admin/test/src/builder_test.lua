@@ -53,6 +53,7 @@ local function cases()
             test.eq(refusal.what, "field.remove")
             test.eq(refusal.class, "refused")
             test.eq(refusal.resolution, "keep")
+            test.eq(refusal.count, 1)
             local removal_path = refusal.path :: string
             test.is_true(type(removal_path) == "string" and removal_path ~= "")
 

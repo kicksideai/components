@@ -1579,12 +1579,20 @@ entries:
       plugins: kickside.pim.extensions:plugins
       types: kickside.pim:types
 
+  - name: probe_numeric_category_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      comment: Harness manifest - a category that is not text.
+      category: 3
+      attachment: app:probe_shelf_attachment
   - name: probe_shelf_plugin
     kind: registry.entry
     meta:
       type: kickside.pim.plugin
       comment: Harness manifest - per-catalog shelf settings.
       title: Shelf
+      category: Stock
       settings: app.probe_shelf
       attachment: app:probe_shelf_attachment
       config_schema:

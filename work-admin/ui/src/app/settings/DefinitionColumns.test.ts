@@ -4,7 +4,6 @@ import { mount } from '@vue/test-utils'
 import FieldsEditor from './FieldsEditor.vue'
 import TypesEditor from './TypesEditor.vue'
 import RelationsEditor from './RelationsEditor.vue'
-import PluginsEditor from './PluginsEditor.vue'
 import { schema } from '../../test/fixtures'
 
 const wrappers: ReturnType<typeof mount>[] = []
@@ -29,8 +28,6 @@ it('uses one list per definition family and omits unused columns for the entire 
   const draft = schema().declaration
   const types = mount(TypesEditor, { props: { draft } }); wrappers.push(types)
   const relations = mount(RelationsEditor, { props: { draft } }); wrappers.push(relations)
-  const plugins = mount(PluginsEditor, { props: { draft, schema: schema(), boardId: 'b', options: [], configs: {} } }); wrappers.push(plugins)
   expect(types.get('.work-field-builder').classes()).toContain('work-definitions-types')
   expect(relations.get('.work-field-builder').classes()).toContain('work-definitions-relations')
-  expect(plugins.get('.work-field-builder').classes()).toContain('work-definitions-plugins')
 })

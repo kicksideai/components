@@ -23,7 +23,7 @@ assert.equal(entries.filter(entry => entry.kind === 'ns.definition').length, 1)
 assert(source.every(doc => /^kickside\.pim\.admin(?:\.|$)/.test(doc.namespace)))
 const dependencies = entries.filter(entry => entry.kind === 'ns.dependency')
 assert.equal(dependencies.find(dep => dep.component === 'kickside/pim')?.version, '>=0.1.10')
-assert.equal(dependencies.find(dep => dep.component === 'kickside/widgets')?.version, '>=0.1.72')
+assert.equal(dependencies.find(dep => dep.component === 'kickside/widgets')?.version, '>=0.1.74')
 for (const dep of dependencies.filter(dep => !['kickside/pim', 'kickside/widgets'].includes(dep.component))) {
   assert.equal(dep.version, '*', dep.id)
 }
@@ -69,7 +69,7 @@ assert.equal(harness.workspace.replacements['kickside/pim-admin'], '..')
 assert.equal(harness.workspace.replacements['kickside/pim'], '../../pim')
 assert(Object.keys(harness.workspace.replacements).every(id => ['kickside/pim-admin', 'kickside/pim'].includes(id)))
 const lock = parse(read('test/wippy.lock'))
-const floors = { 'kickside/component': '0.3.20', 'kickside/core': '0.3.17', 'kickside/jobs': '0.1.80', 'kickside/widgets': '0.1.72' }
+const floors = { 'kickside/component': '0.3.20', 'kickside/core': '0.3.17', 'kickside/jobs': '0.1.80', 'kickside/widgets': '0.1.74' }
 const version = value => value.split('.').map(Number)
 for (const [name, floor] of Object.entries(floors)) {
   const current = version(lock.modules.find(module => module.name === name).version), minimum = version(floor)

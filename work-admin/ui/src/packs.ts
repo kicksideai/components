@@ -5,6 +5,7 @@ export interface PackPlugin { plugin: string; installed: boolean; title?: string
 export interface AvailablePack { id: string; title: string; version: string; icon: string; description: string; requires: string[]; plugins: PackPlugin[] }
 export interface UnavailablePack { id: string; title?: string; version?: string; icon?: string; description?: string; problem: { code: string; message: string } }
 export type Pack = AvailablePack | UnavailablePack
+export interface InstalledPack { id: string; title: string; description?: string; version?: string; requires: string[]; outdated?: boolean; canUpgrade?: boolean; upgradeReason?: string }
 export const availablePack = (pack: Pack): pack is AvailablePack => !('problem' in pack)
 export interface PackSelection { pack?: string; version?: string; starter?: boolean; plugin_configs?: Record<string, Record<string, unknown>> }
 export interface PackRequest { pack: string; version?: string; expected_generation: number; maps?: Record<string, Record<string, string>>; plugin_configs?: Record<string, Record<string, unknown>>; resolutions?: Record<string, 'local' | 'incoming'> }

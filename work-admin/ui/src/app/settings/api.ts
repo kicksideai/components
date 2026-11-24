@@ -4,7 +4,8 @@ import { post } from '../../transport'
 import type { SchemaPlan, reviewSnapshot } from './model'
 const board = (id: string) => `/api/v1/work/boards/${encodeURIComponent(id)}`
 type Reviewed = ReturnType<typeof reviewSnapshot>
-const body = (review: Reviewed) => ({ declaration: review.declaration, expected_generation: review.expected_generation, plugin_configs: review.plugin_configs })
+const body = (review: Reviewed) => ({ declaration: review.declaration, expected_generation: review.expected_generation, plugin_configs: review.plugin_configs,
+  ...(Object.keys(review.resolutions).length ? { resolutions: review.resolutions } : {}) })
 export const settings = {
   packPlan: (id: string, request: PackRequest) => post<PackPlan>(`${board(id)}/pack_plan`, request, 'Pack plan'),
   packApply: (id: string, request: PackRequest, key: string) => post<PackResult>(`${board(id)}/pack_apply`, { ...request, key }, 'Apply pack'),

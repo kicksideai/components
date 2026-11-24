@@ -29,10 +29,10 @@ for (const [name, component] of [['dimensions', BuilderDimensions], ['families',
 }
 it('keeps plugin configuration collapsed while its state and switch remain visible', async () => {
   const w = mount(BuilderPlugins, { props: { draft: {}, schema: createSchema(), options: { ...options, plugins: [{ ...pluginFixture('stock'), title: 'Stock' }] } } })
-  expect(w.find('.pim-definition-body').exists()).toBe(false)
+  expect(w.find('.kx-settings-item-panel').exists()).toBe(false)
   expect(w.find('[role=switch]').exists()).toBe(true)
-  await w.get('.pim-definition-toggle').trigger('click')
-  expect(w.find('.pim-definition-body').exists()).toBe(true)
+  await w.get('.kx-settings-item-expand').trigger('click')
+  expect(w.find('.kx-settings-item-panel').exists()).toBe(true)
   w.unmount()
 })
 it('moves fields within their group without opening their forms', async () => {

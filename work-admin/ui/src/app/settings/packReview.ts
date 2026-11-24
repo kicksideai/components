@@ -48,6 +48,7 @@ export function usePackReview(context: {
     .filter(plugin => !schema.value?.plugins?.some(state => state.plugin === plugin.plugin && state.active))
     .map(plugin => ({ use: plugin.plugin })) ?? [])
   const title = computed(() => packs.value.find(pack => pack.id === schema.value?.pack?.id)?.title || 'Installed pack')
+  const installed = computed(() => packs.value.find(pack => pack.id === schema.value?.pack?.id))
   const upgradeAvailable = computed(() => !error.value && !!schema.value?.outdated
     && choices.value.some(pack => pack.id === schema.value?.pack?.id && !pack.disabled))
   const upgradeReason = computed(() => error.value ? 'Reload packs to check available upgrades.'
@@ -148,7 +149,7 @@ export function usePackReview(context: {
     finally { busy.value = false }
   }
   return {
-    choices, loading, error, load, installing, installPack, installChoice, canManage, title, upgradeAvailable, upgradeReason,
+    choices, loading, error, load, installing, installPack, installChoice, canManage, title, installed, upgradeAvailable, upgradeReason,
     request, preview, plan, reviewError, isReviewed, canApply, plugins, result, inProgress, operationError,
     install, upgrade, review, apply, continueInstallation, changed, invalidate, clearReviewError, clear, reset,
   }

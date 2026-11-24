@@ -132,7 +132,7 @@ function M.review(db: sql.DB, board: domain.Board, proposed: domain.Model, usage
         if found.used[target.path] then
             local choice = choices[target.path]
             findings[#findings + 1] = { code = target.field.code, what = "field.remove", class = choice and "semantic" or "refused",
-                path = target.path, item_type = target.item_type, resolution = choice or "keep",
+                path = target.path, item_type = target.item_type, resolution = choice or "keep", count = usage.fields[target.field.id],
                 detail = target.item_type and "stored values on " .. target.item_type or "stored values across the board" }
         end
     end
