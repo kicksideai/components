@@ -386,6 +386,25 @@ return {
                 test.eq("too_many_recipients", failed.last_error.code)
             end)
 
+            test.it("bounds raw and rendered subjects and bodies before queuing", function()
+                capture_with(admin)
+                for _, case in ipairs({{"subject", 256, "subject_too_long"},
+                    {"text", 262145, "text_too_large"}, {"html", 262145, "html_too_large"}}) do
+                    local input = body()
+                    input[case[1]] = string.rep("a", case[2])
+                    local value, err = invoke(sender, "send", input)
+                    refusal(value, err, errors.INVALID, case[3])
+                end
+                local template = template_request()
+                template.vars.subject = string.rep("é", 256)
+                local value, err = invoke(sender, "send", template)
+                refusal(value, err, errors.INVALID, "subject_too_long")
+                template.vars.subject = "Status"
+                template.vars.message = string.rep("a", 262145)
+                value, err = invoke(sender, "send", template)
+                refusal(value, err, errors.INVALID, "text_too_large")
+            end)
+
             test.it("lists and reads only the sender's messages unless the viewer holds log administration", function()
                 capture_with(admin)
                 local other = caller({"kickside.mail.security:send_access",

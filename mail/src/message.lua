@@ -4,6 +4,8 @@ local M = {
     MAX_ATTACHMENTS = 10,
     MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024,
     MAX_KEY_BYTES = 2048,
+    MAX_SUBJECT_CHARACTERS = 255,
+    MAX_BODY_BYTES = 256 * 1024,
 }
 
 local function invalid(code: string, message: string): error
@@ -58,6 +60,12 @@ end
 function M.subject_error(value: unknown): error?
     if not nonempty(value) then return invalid("subject_required", "A subject is required") end
     if value:find("[%c]") then return invalid("invalid_subject", "Subject contains a control character") end
+    local length = utf8.len(value)
+    if not length then return invalid("invalid_subject", "Subject must be UTF-8") end
+    if length > M.MAX_SUBJECT_CHARACTERS then
+        return M.limit_error("subject_too_long", "Subject exceeds the character limit",
+            "max_subject_characters", M.MAX_SUBJECT_CHARACTERS)
+    end
     return nil
 end
 
@@ -70,6 +78,42 @@ end
 function M.recipients_error(addresses: types.Addresses, maximum: integer?): error?
     if maximum and #addresses.to + #(addresses.cc or {}) + #(addresses.bcc or {}) > maximum then
         return M.limit_error("too_many_recipients", "The mail driver recipient limit is exceeded", "max_recipients", maximum)
+    end
+    return nil
+end
+
+function M.body_error(text: string?, html: string?): error?
+    if text and #text > M.MAX_BODY_BYTES then
+        return M.limit_error("text_too_large", "Text body exceeds the byte limit", "max_text_bytes", M.MAX_BODY_BYTES)
+    end
+    if html and #html > M.MAX_BODY_BYTES then
+        return M.limit_error("html_too_large", "HTML body exceeds the byte limit", "max_html_bytes", M.MAX_BODY_BYTES)
+    end
+    return nil
+end
+
+-- Budget the larger of JSON escaping, multipart framing, and generated MIME transfer encoding.
+function M.delivery_size(input: types.TransportRequest): integer
+    local size = 4096 + 6 * (#input.from.address + #(input.from.name or "") + #(input.reply_to or "")
+        + #input.subject + #(input.text or "") + #(input.html or ""))
+    for _, field in ipairs({"to", "cc", "bcc"}) do
+        for _, address in ipairs(input[field] or {}) do
+            size = size + 128 + 6 * #address
+        end
+    end
+    return size
+end
+
+function M.attachment_size(size: number, filename: string, content_type: string, content_id: string?): integer
+    local encoded = 4 * math.ceil(size / 3)
+    local line_endings = 2 * math.ceil(encoded / 76)
+    return encoded + line_endings + 1024 + 6 * (#filename + #content_type + #(content_id or ""))
+end
+
+function M.message_size_error(size: integer, maximum: integer?): error?
+    if maximum and size > maximum then
+        return M.limit_error("message_too_large", "The mail driver message byte limit is exceeded",
+            "max_message_bytes", maximum)
     end
     return nil
 end
@@ -169,7 +213,7 @@ function M.validate(raw: unknown): (types.SendRequest?, error?)
         if input.vars ~= nil then
             return nil, invalid("invalid_template", "Template variables require a template")
         end
-        local err = M.subject_error(input.subject)
+        local err = M.subject_error(input.subject) or M.body_error(input.text :: string?, input.html :: string?)
         if err then return nil, err end
         if not nonempty(input.text) and not nonempty(input.html) then
             return nil, invalid("body_required", "An HTML or text body is required")

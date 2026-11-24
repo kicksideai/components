@@ -89,7 +89,8 @@ type Mailer = {
 type Transport = {send: (self: Transport, input: TransportRequest) -> (TransportResult?, error?)}
 type UserResult = {ok: boolean, user: {user_id: string, email: string}?, error: string?}
 type Users = {get_user: (self: Users, input: {identifier: string}) -> (UserResult?, error?)}
-type ContentInfo = {size: number, filename: string}
+type AttachmentInput = {refs: {AttachmentRef}?, message_bytes: integer, max_message_bytes: integer?}
+type ContentInfo = {size: number, filename: string, content_type: string}
 type Content = {content: string, content_type: string, truncated: boolean?}
 type ContentFailure = {success: boolean, error: error}
 type ContentProvider = {
@@ -119,7 +120,7 @@ return {
     ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, LayoutImage = LayoutImage, SchemaIssue = SchemaIssue,
     Driver = Driver, Availability = Availability, Settings = Settings, ApiSettings = ApiSettings,
     SettingsResult = SettingsResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
-    Mailer = Mailer, Transport = Transport, Users = Users, ContentInfo = ContentInfo, Content = Content,
+    Mailer = Mailer, Transport = Transport, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
     ContentFailure = ContentFailure, ContentProvider = ContentProvider, SinkRequest = SinkRequest,
     SinkResult = SinkResult, SinkFailure = SinkFailure, WritableSink = WritableSink, HttpAuth = HttpAuth, HttpResponse = HttpResponse,
 }

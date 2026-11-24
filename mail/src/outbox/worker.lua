@@ -37,19 +37,21 @@ local function send(row: types.MessageRow, driver: types.Driver, lease: types.Le
     if limit_err then return nil, limit_err end
     local execution, identity_err = identity.from_row(row.sender, row.actor_context)
     if identity_err then return nil, identity_err :: error end
-    local files, read_err = identity.run_as(execution, "kickside.mail.outbox:read_attachments", refs,
-        {deferred_owner = store.WORKER})
+    local request: types.TransportRequest = {
+        from = {address = row.from_address, name = row.from_name},
+        to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = row.reply_to,
+        subject = row.subject, html = row.html, text = row.text, idempotency_key = row.id,
+    }
+    local files, read_err = identity.run_as(execution, "kickside.mail.outbox:read_attachments", {
+        refs = refs, message_bytes = message.delivery_size(request), max_message_bytes = driver.max_message_bytes,
+    }, {deferred_owner = store.WORKER})
     if read_err then return nil, read_err :: error end
     local transport, open_err = drivers.transport(driver)
     if open_err then return nil, open_err end
     local inactive = check_lease(row.job_id, lease)
     if inactive then return nil, inactive end
-    return (transport :: types.Transport):send({
-        from = {address = row.from_address, name = row.from_name},
-        to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = row.reply_to,
-        subject = row.subject, html = row.html, text = row.text,
-        attachments = files :: {types.Attachment}, idempotency_key = row.id,
-    })
+    request.attachments = files :: {types.Attachment}
+    return (transport :: types.Transport):send(request)
 end
 
 local function deliver(input: types.JobInput): (types.Record?, error?)

@@ -93,12 +93,21 @@ local function send(request: unknown): (types.SendResult?, error?)
     end
 
     local parts = rendered :: types.Rendered
-    local attachment_err = attachments.validate(parts.attachments, input.attachments)
+    local body_err = message.body_error(parts.text, parts.html)
+    if body_err then return nil, body_err end
+    local from = {address = config.from_address, name = name}
+    local bytes = message.delivery_size({
+        from = from, reply_to = reply_to, to = addresses.to, cc = addresses.cc, bcc = addresses.bcc,
+        subject = parts.subject, html = parts.html, text = parts.text,
+    })
+    local attachment_err = attachments.validate(parts.attachments, {
+        refs = input.attachments, message_bytes = bytes, max_message_bytes = driver.max_message_bytes,
+    })
     if attachment_err then return nil, attachment_err end
 
     local saved, save_err = store.insert({
         sender = actor.actor_id, actor_context = actor.actor_context, template = input.template,
-        from = {address = config.from_address, name = name},
+        from = from,
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = reply_to,
         subject = parts.subject, html = parts.html, text = parts.text, attachments = input.attachments,
         idempotency_key = input.idempotency_key, content_hash = hash,

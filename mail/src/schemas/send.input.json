@@ -14,9 +14,9 @@
   "properties": {
     "template": {"type": "string", "minLength": 1},
     "vars": {"type": "object"},
-    "subject": {"type": "string", "minLength": 1},
-    "text": {"type": "string"},
-    "html": {"type": "string"},
+    "subject": {"type": "string", "minLength": 1, "maxLength": 255},
+    "text": {"type": "string", "description": "Text body, at most 262144 bytes."},
+    "html": {"type": "string", "description": "HTML body, at most 262144 bytes."},
     "to": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/recipient"}},
     "cc": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},
     "bcc": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},

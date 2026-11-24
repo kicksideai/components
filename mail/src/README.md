@@ -23,7 +23,7 @@ Under **Integrations → Mail**, choose the installed driver ID and set the From
 
 `kickside.mail:mailer` exposes `send`, `get_message`, `list_messages`, `list_templates`, `get_template`, and `preview`. The corresponding tools are `MailSend`, `MailListTemplates`, `MailGetTemplate`, and `MailPreview`. The `kickside.mail.traits:mail` trait includes all four. The `kickside.mail.traits:mail_readonly` trait includes the three template tools.
 
-Supply a nonempty `to` list and either a `template` with its `vars`, or a `subject` with `text`, `html`, or both. `cc` and `bcc` use the same address or `{user_id}` entries as `to`. After resolving user IDs, Mail includes each address once, comparing case-insensitively in To, Cc, then Bcc order. `attachments` accepts up to ten upload references with a 25 MiB combined limit including the layout image. An inline reference supplies a `content_id` that the HTML can address as `cid:<content_id>`.
+Supply a nonempty `to` list and either a `template` with its `vars`, or a `subject` with `text`, `html`, or both. `cc` and `bcc` use the same address or `{user_id}` entries as `to`. After resolving user IDs, Mail includes each address once, comparing case-insensitively in To, Cc, then Bcc order. Subjects allow up to 255 characters and each raw or rendered body allows up to 256 KiB. `attachments` accepts up to ten upload references with a 25 MiB raw combined limit including the layout image. The configured driver’s total message limit also applies, including attachment encoding overhead. An inline reference supplies a `content_id` that the HTML can address as `cid:<content_id>`.
 
 Send validates and renders the message, commits it with a delivery job, and returns `{message_id, status = "queued"}`. An optional `idempotency_key` of up to 2048 bytes names the write for that sender while its log row exists. Repeating the key and message content returns the original ID and current status. Different content with the same key returns `idempotency_conflict`.
 
@@ -50,6 +50,7 @@ duplicate_content_id           Invalid            No
 duplicate_driver_id            Invalid            No
 duplicate_template_name        Invalid            No
 from_not_allowed               Invalid            No
+html_too_large                 Invalid            No
 incomplete_attachment          Internal           No
 idempotency_conflict            Conflict           No
 invalid_address                Invalid            No
@@ -67,16 +68,19 @@ invalid_template_declaration   Invalid            No
 invalid_template_vars          Invalid            No
 mail_send_denied               PermissionDenied   No
 message_not_found              NotFound           No
+message_too_large              Invalid            No
 provider_endpoint_invalid      Invalid            No
 recipient_address_missing      Invalid            No
 recipient_lookup_failed        Unavailable        No
 recipient_required             Invalid            No
 settings_read_failed           Internal           No
 subject_required               Invalid            No
+subject_too_long               Invalid            No
 template_body_conflict         Invalid            No
 template_not_found             NotFound           No
 template_open_failed           Source error       Source flag
 template_render_failed         Source error       Source flag
+text_too_large                 Invalid            No
 too_many_attachments           Invalid            No
 too_many_recipients            Invalid            No
 ```
