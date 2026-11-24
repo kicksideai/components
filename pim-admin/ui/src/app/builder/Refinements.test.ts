@@ -158,3 +158,17 @@ it('groups catalog choices first and opens advanced limits without changing the 
   expect(draft.policy?.command_deadline_ms).toBe(false)
   w.unmount()
 })
+it('shows only the help text the plugin manifest declares for its configuration', async () => {
+  const plugin = { ...pluginFixture('kickside.pim.inventory:plugin'), title: 'Inventory', config_schema: { type: 'object', properties: {
+    hold_seconds: { type: 'integer', minimum: 60 },
+    location: { type: 'string', description: 'Where stock ships from.' },
+  } } }
+  const w = mount(BuilderPlugins, { props: { draft: { plugins: [{ use: plugin.plugin }] }, schema: createSchema(), options: { ...options, plugins: [plugin] } } })
+  try {
+    await w.get('.kx-settings-item-expand').trigger('click')
+    await flushPromises()
+    const properties = JSON.parse(w.get('wc-schema-form').attributes('schema')!).properties
+    expect(properties.hold_seconds).not.toHaveProperty('description')
+    expect(properties.location.description).toBe('Where stock ships from.')
+  } finally { w.unmount() }
+})

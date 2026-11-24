@@ -14,7 +14,7 @@ interface SchemaForm extends HTMLElement {
 }
 interface FieldValidity { valid: boolean; errors: Record<string, string> }
 
-const props = defineProps<{ schema: Record<string, unknown>; modelValue: Record<string, unknown>; disabled?: boolean; problem?: PluginIssue; pluginId?: string; refusal?: { field: string; message: string }; fieldHelp?: Record<string, string> }>()
+const props = defineProps<{ schema: Record<string, unknown>; modelValue: Record<string, unknown>; disabled?: boolean; problem?: PluginIssue; pluginId?: string; refusal?: { field: string; message: string } }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Record<string, unknown>]; validity: [valid: boolean, localErrors: boolean] }>()
 const widget = ref<SchemaForm>()
 const widgetVersion = ref(0)
@@ -27,7 +27,6 @@ const formSchema = computed(() => {
     properties: Object.fromEntries(Object.entries(fields).map(([key, field]) => [
       key, field && typeof field === 'object' ? {
         ...field, title: configFieldLabel(props.schema, key),
-        ...(!('description' in field) && props.fieldHelp?.[key] ? { description: props.fieldHelp[key] } : {}),
       } : field,
     ])),
   }

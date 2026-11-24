@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
+import { schemaForm } from '../../test/controls'
 import { reactive } from 'vue'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
@@ -83,13 +84,19 @@ it('uses the custom type’s form, index choices and configuration for a new fie
     const index = control('Allow filters to use')
     expect(index.props('options')?.map(option => option.value)).toEqual(['none', 'number'])
     await index.setValue('number')
+    await flushPromises()
+    const editor = schemaForm(w)
+    expect(editor.schema()).toEqual(installedTypes[0].config_schema)
+    await editor.report({ limit: 'A value is required.' })
     expect(w.emitted('validity')?.at(-1)).toEqual(['config-0', false])
-    const limit = w.get('input[aria-label="Score limit"]')
-    await limit.setValue('5')
-    await limit.trigger('blur')
+    await editor.change({ limit: 5 })
+    await editor.report()
     expect(draft.fields![0]).toMatchObject({ index: 'number', config: { limit: 5 } })
     expect(w.emitted('validity')?.at(-1)).toEqual(['config-0', true])
+    await editor.report({ limit: 'Enter at least 1.' })
     await kind.setValue('text')
+    expect(w.find('wc-schema-form').exists()).toBe(false)
+    expect(w.emitted('validity')?.filter(([key]) => key === 'config-0').at(-1)).toEqual(['config-0', true])
     expect(draft.fields![0]).toMatchObject({ form: 'text' })
     expect(draft.fields![0]).not.toHaveProperty('type')
     expect(draft.fields![0]).not.toHaveProperty('config')

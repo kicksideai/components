@@ -158,10 +158,6 @@ label.work-stack, .work-settings-grid label, .work-chip-picker legend { font-siz
 .work-definitions-plugins .work-definition-actions { grid-area: control; justify-self: end; }
 .work-config-widget { display: block; max-width: 440px; }
 .work-config-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; max-width: 760px; }
-.work-config-field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.work-config-label { font-size: 11.5px; font-weight: 680; color: var(--p-text-muted-color); }
-.work-config-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.work-config-chips .p-inputtext { min-width: 100px; flex: 1; }
 .work-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .work-map-zoom { display: flex; align-items: center; gap: 2px; }
 .work-pack-review-field { width: min(100%, 360px); }

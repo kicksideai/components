@@ -9,7 +9,7 @@ import ConditionEditor from './ConditionEditor.vue'
 import HoldersPicker from './HoldersPicker.vue'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import ChipPicker from './ChipPicker.vue'
 import AddDefinitionRow from './AddDefinitionRow.vue'
 import Button from 'primevue/button'
@@ -19,9 +19,9 @@ import { useReorder } from './reorder'
 import OptionsEditor from './OptionsEditor.vue'
 import type { Declaration, Field, FieldTypeOption } from '../../types'
 import { move, renameField, removeEntry, type RemovalGuard, type SchemaChange, changeReason } from './model'
-import ConfigForm from './ConfigForm.vue'
 import JsonInput from './JsonInput.vue'
-import { configFields } from './config'
+import { configFields, eventDetail, type FormValidity } from './config'
+import { useTag } from '../mount'
 const props = defineProps<{ draft: Declaration; guardRemoval?: RemovalGuard; issues?: SchemaChange[]; boardId?: string; installedTypes?: FieldTypeOption[]; itemType?: string; createForItemType?: boolean }>()
 const emit = defineEmits<{ validity: [key: string, valid: boolean]; 'update:itemType': [type: string]; created: []; 'cancel-creation': [] }>()
 const fields = computed(() => props.draft.fields ?? [])
@@ -47,6 +47,8 @@ const numericForms = ['int', 'dec', 'quantity']
 const descriptors = computed(() => new Map(props.installedTypes?.map(type => [type.id, type])))
 const kindOptions = computed(() => [...forms, ...(props.installedTypes ?? []).map(type => ({ value: type.id, label: type.title }))])
 const emptyConfig: Record<string, unknown> = {}
+const schemaForm = useTag('wc-schema-form')
+watch(() => fields.value.some(field => configSchema(field)), needed => { if (needed) void schemaForm.load() }, { immediate: true })
 function kind(field: Field) { return field.type && field.type !== 'value' ? field.type : field.form ?? 'text' }
 function customType(field: Field) { return field.type ? descriptors.value.get(field.type) : undefined }
 function configSchema(field: Field) {
@@ -159,7 +161,14 @@ const openedField = ref('')
           :options="[{ value: '', label: 'Any item type' }, ...typeChoices]" @update:model-value="setReferenceTarget(field, $event)" />
         <span class="work-muted work-small">A reference stores the selected item as a value. To show a named relationship on both items, use Links.</span>
       </label>
-      <ConfigForm v-if="configSchema(field)" :key="field.type" :schema="configSchema(field)!" :model-value="field.config ?? emptyConfig" @update:model-value="field.config = $event" @validity="emit('validity', 'config-' + index, $event)" />
+      <template v-if="configSchema(field)">
+        <wc-schema-form v-if="schemaForm.state.value === 'ready'" :key="field.type" class="work-config-widget" :schema="JSON.stringify(configSchema(field))" :config="JSON.stringify(field.config ?? emptyConfig)"
+          @config-changed="field.config = eventDetail($event)" @validity-changed="emit('validity', 'config-' + index, eventDetail<FormValidity>($event).valid)"
+          @vue:before-unmount="emit('validity', 'config-' + index, true)" />
+        <p v-else-if="schemaForm.state.value === 'failed'" role="alert" class="kx-err">The configuration form is unavailable.
+          <Button label="Reload configuration form" severity="secondary" outlined size="small" @click="schemaForm.load()" /></p>
+        <p v-else role="status" class="work-muted work-small">The configuration form is loading.</p>
+      </template>
       <OptionsEditor v-if="field.type === 'option'" :field="field" @validity="(valid, key) => emit('validity', key, valid)" />
       <label v-if="field.type === 'formula' || field.type === 'rollup'" class="work-stack work-tight">Result type<Select :model-value="field.form" @update:model-value="setResultForm(field, $event)" aria-label="Result type" :options="forms.slice(0, 8)" optionLabel="label" optionValue="value" appendTo="self" /></label>
       <label v-if="field.type === 'formula'" class="work-stack work-tight">Expression<InputText v-model="field.expression" aria-label="Expression" /></label>

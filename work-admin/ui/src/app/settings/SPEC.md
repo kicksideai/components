@@ -131,10 +131,12 @@ same transition inspector. Installed checks and query filters come from Work
 registry metadata. Each plugin row places its title and description beside the
 activation switch. Turning on a plugin opens its row. A badge below the description
 signals a pending change, configuration needed, or a health issue. An invalid
-configuration shows its first field error even when the row is collapsed. Required
-fields are marked, and manifest suggestions appear beside the control. Only entered
-overrides are sent for newly activated plugins, so Work can apply deployment
-settings to omitted optional fields. Technical details shows projection health and
+configuration shows its first field error even when the row is collapsed and
+blocks review. Plugin, packed creation and field type configuration render in the
+shared `wc-schema-form` from the manifest schema, including its titles, help and
+defaults. Fields that declare `x-choices: board_item_types` choose from the board's
+item types. Only entered overrides are sent for newly activated plugins, so Work can
+apply deployment settings to omitted optional fields. Technical details shows projection health and
 indexed progress. Reset projection explains the effect and asks for confirmation
 before starting recovery.
 
