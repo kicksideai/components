@@ -151,12 +151,14 @@ type PluginView = { plugin: string, interface_version: integer?, title: string?,
 type Column = { attribute_id: integer, ctx: string, kind: string, column: string }
 type Layout = { columns: { Column }, sets: { Column }, search: { Column }, flags: { Column } }
 type RebuildStorage = { active: Layout, other: { base: string, layout: Layout, retired_after: string? }? }
+-- First owners by aspect namespace and vocabulary code, including removed names.
+type SchemaOwners = { aspects: { [string]: string }, vocabularies: { [string]: string } }
 type Compiled = {
     policy: PolicyOverrides,
     dimensions: { Dimension }, vocabularies: { [string]: Vocabulary }, aspects: { [string]: Aspect },
     attributes: { [string]: Attribute }, families: { [string]: Family }, sources: { [string]: Source },
     channels: { [string]: Channel }, scopes: { [string]: boolean }, plugins: { [string]: PluginEntry }, seam_owners: { [string]: string }?,
-    layout: Layout, next_attribute_id: integer, layout_digest: string, digest: string,
+    schema_owners: SchemaOwners, layout: Layout, next_attribute_id: integer, layout_digest: string, digest: string,
     by_id: { [integer]: Attribute }?, has_assets: boolean?,
 }
 type Catalog = {
@@ -524,7 +526,7 @@ return {
     PolicyDecl = PolicyDecl, Declaration = Declaration, Attribute = Attribute, Dimension = Dimension,
     Level = Level, Requirement = Requirement, Check = Check, Family = Family, Channel = Channel,
     Aspect = Aspect, Source = Source, Vocabulary = Vocabulary, Column = Column, Layout = Layout, RebuildStorage = RebuildStorage,
-    Compiled = Compiled, Catalog = Catalog, Product = Product, Lineage = Lineage, Resolution = Resolution,
+    SchemaOwners = SchemaOwners, Compiled = Compiled, Catalog = Catalog, Product = Product, Lineage = Lineage, Resolution = Resolution,
     PatchStep = PatchStep, Receipt = Receipt, SchemaBody = SchemaBody, ProductBody = ProductBody, ProductPatchBody = ProductPatchBody,
     ModelReleaseBody = ModelReleaseBody, ModelReleaseEvent = ModelReleaseEvent, TermBody = TermBody, ReleaseBody = ReleaseBody, WithdrawBody = WithdrawBody, EventBody = EventBody,
     External = External, Event = Event, SchemaEvent = SchemaEvent, ProductCreatedBody = ProductCreatedBody, CreatedEvent = CreatedEvent,

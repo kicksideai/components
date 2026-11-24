@@ -11,6 +11,7 @@ local json = require("json")
 local uuid = require("uuid")
 
 local SHELF = "app:shelf_plugin"
+local SHELF_REPLACEMENT = "app:shelf_replacement_plugin"
 local DYNAMIC = "app:dynamic_plugin"
 local ZONES = "app:zones_plugin"
 local SEAM_OWNER = "app:seam_owner_plugin"
@@ -54,6 +55,26 @@ end
 local function choice(h: fixture.Handle, id: string): types.PluginEntry?
     for _, entry in ipairs(schema(h).declaration.plugins or {}) do if entry.use == id then return entry end end
     return nil
+end
+
+local function refuse_owner_change(h: fixture.Handle, draft: types.Declaration, kind: string, name: string,
+    previous_owner: string, proposed_owner: string)
+    local generation = schema(h).schema_generation
+    local before = #fixture.events(h)
+    for _, op in ipairs({ "plan_schema", "apply_schema" }) do
+        local result, err = h.call(op, { declaration = draft, expected_generation = generation })
+        test.is_nil(result, op .. " admitted a new owner for " .. kind .. " " .. name)
+        local refusal = assert(err)
+        test.eq(refusal:kind(), errors.INVALID)
+        local details = refusal:details()
+        test.eq(details.code, "schema_owner_changed")
+        test.eq(details.kind, kind)
+        test.eq(details.name, name)
+        test.eq(details.previous_owner, previous_owner)
+        test.eq(details.proposed_owner, proposed_owner)
+    end
+    test.eq(schema(h).schema_generation, generation)
+    test.eq(#fixture.events(h), before)
 end
 
 local function define()
@@ -430,6 +451,41 @@ local function define()
             test.is_nil((select(2, other.call("apply_schema", { declaration = { vocabularies = { { code = "zones" } } } }))))
             local _, collision = other.call("apply_schema", { declaration = { plugins = { { use = ZONES } } } })
             test.is_true(tostring(collision):find("vocabulary zones", 1, true) ~= nil, tostring(collision))
+        end)
+
+        test.it("refuses a replacement plugin claiming the removed plugin's aspect and attribute", function()
+            local h = fixture.catalog({ bare = true })
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = SHELF } } } }))
+            local original = assert(schema(h).attributes["shelf.bin"])
+            refuse_owner_change(h, { plugins = { { use = SHELF_REPLACEMENT } }, remove = { plugins = { SHELF } } },
+                "aspect", "shelf", SHELF, SHELF_REPLACEMENT)
+            local retained = assert(schema(h).attributes["shelf.bin"])
+            test.eq(retained.id, original.id)
+            test.eq(retained.plugin, SHELF)
+        end)
+
+        test.it("refuses the catalog claiming the removed plugin's vocabulary", function()
+            local h = fixture.catalog({ bare = true })
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = ZONES } } } }))
+            refuse_owner_change(h, { vocabularies = { { code = "zones" } }, remove = { plugins = { ZONES } } },
+                "vocabulary", "zones", ZONES, "catalog")
+        end)
+
+        test.it("refuses a plugin claiming a vocabulary formerly declared by the catalog", function()
+            local h = fixture.catalog({ bare = true })
+            assert(h.call("apply_schema", { declaration = { vocabularies = { { code = "zones" } } } }))
+            assert(h.call("apply_schema", { declaration = { remove = { vocabularies = { "zones" } } } }))
+            refuse_owner_change(h, { plugins = { { use = ZONES } } }, "vocabulary", "zones", "catalog", ZONES)
+        end)
+
+        test.it("reserves removed aspects for their original owner across later generations", function()
+            local h = fixture.catalog({ bare = true })
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = ZONES } } } }))
+            assert(h.call("apply_schema", { declaration = { remove = { plugins = { ZONES } } } }))
+            assert(h.call("apply_schema", { declaration = { aspects = { { namespace = "other" } } } }))
+            refuse_owner_change(h, { aspects = { { namespace = "placement" } } }, "aspect", "placement", ZONES, "catalog")
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = ZONES } } } }))
+            test.eq(assert(schema(h).attributes["placement.zone"]).plugin, ZONES)
         end)
 
         test.it("refuses two plugins contributing one namespace, and dropping a plugin whose aspect a family lists", function()

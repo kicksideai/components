@@ -126,6 +126,7 @@ Native error codes identify conditions across entrypoints. Local infrastructure 
 | Required plugin is not active, or deactivation leaves a dependent active | `INVALID` | `plugin_required` | false |
 | Schema names a seam without its owning plugin active | `INVALID` | `plugin_seam_unowned` | false |
 | Deactivation leaves an owned seam in the schema | `INVALID` | `plugin_seam_in_use` | false |
+| A schema proposal changes the owner of an aspect or vocabulary | `INVALID` | `schema_owner_changed` | false |
 | Effective plugin configuration fails `config_schema` | `INVALID` | `plugin_config_invalid` | false |
 | Plugin is inactive on the catalog | `NOT_FOUND` | `plugin_inactive` | false |
 | Type id names no type entry | `INVALID` | `unknown_type` | false |
@@ -545,11 +546,16 @@ copy the catalog holds - and stores the answer on the membership entry as
 catalog's own aspects: its attributes keep their ids by code across
 resolutions, carry `plugin` in `get_schema.attributes`, index like any other
 attribute (layout columns, rebuild) and are adopted by families like any
-other aspect. A namespace or vocabulary both the catalog and a plugin, or
-two plugins, declare is refused by name; a fragment attribute carrying an id
-is refused; a request carrying `schema` on an entry is refused unless the
-copy equals the one the catalog holds, so the declaration `get_schema`
-answers re-applies as `unchanged`.
+other aspect. An aspect namespace or vocabulary code has one owner in a
+catalog. The compiler records its first owner, either the catalog or a plugin
+ID, across generations, including after removal. Only that owner can declare
+the name again. Planning and applying a proposal with a different owner return
+`schema_owner_changed` with `kind` (`aspect` or `vocabulary`), `name`,
+`previous_owner` and `proposed_owner`. The literal `catalog` identifies
+catalog-owned names. The compiler also rejects duplicate declarations by name
+and fragment attributes carrying an ID. A request can carry `schema` on an
+entry only if the copy equals the one the catalog holds, so the declaration
+`get_schema` answers re-applies as `unchanged`.
 
 The copy is catalog data: the fold never calls a provider, a plugin release
 or a change in the provider's own store reaches a catalog only when an ADMIN
