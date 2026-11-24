@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.29](https://github.com/kicksideai/components/compare/work-admin-v0.1.28...work-admin-v0.1.29) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-admin:** keep install pack choices clickable ([#444](https://github.com/kicksideai/components/issues/444)) ([5af18cb](https://github.com/kicksideai/components/commit/5af18cb12162ca433e0019cae35c2695d719a7f0))
+
 ## [0.1.28](https://github.com/kicksideai/components/compare/work-admin-v0.1.27...work-admin-v0.1.28) (2026-11-24)
 
 
