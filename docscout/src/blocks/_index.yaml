@@ -33,7 +33,10 @@ entries:
         additionalProperties: false
         required: [extractor_id]
         properties:
-          extractor_id: { type: string, title: Extractor, picker: wc-component-picker, class: kickside.docscout }
+          # Extractors are registered components rather than Core threads. Their
+          # own access-scoped catalog preserves the component's keyset cursor and
+          # returns the display metadata used by the picker.
+          extractor_id: { type: string, title: Extractor, picker: wc-component-picker, source: /api/v1/docscout }
           pages: {"type": "object", "additionalProperties": false, "required": ["first", "last"], "properties": {"first": {"type": "integer", "minimum": 1}, "last": {"type": "integer", "minimum": 1}}}
       output: &extract_output
         type: object
