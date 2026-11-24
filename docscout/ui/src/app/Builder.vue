@@ -172,7 +172,7 @@ const tags=computed({get:()=>props.config.tags.join(', '),set:(v:string)=>{props
         <ShapeTree :shape="config.fields[i]" :field="i" :trail="[]" :path="fieldPath(config.fields[i])||'New field'" :selected="selectedKey" :readonly="readonly" :error="rowError(i)" :first="!config.fields.slice(0,i).some(f=>f.group===config.fields[i].group)" :last="!config.fields.slice(i+1).some(f=>f.group===config.fields[i].group)" @select="selectShape" @add="addProperty" @reorder="reorder"/>
        </template>
       </FieldGroups></div>
-      <details class="shape-preview" open><summary class="kx-focus-outline"><Icon icon="tabler:braces"/>Output preview</summary>
+      <details class="shape-preview"><summary class="kx-focus-outline"><Icon icon="tabler:braces"/><span>Output preview</span><span class="preview-summary">Shape and example</span></summary>
        <p v-if="previewError" class="field-error" role="alert">{{previewError}}</p>
        <div v-else class="preview-grid"><div><h3>Output shape</h3><pre aria-label="Output shape">{{JSON.stringify(preview,null,2)}}</pre></div><div><h3>Example value</h3><pre aria-label="Example output">{{JSON.stringify(example,null,2)}}</pre></div></div>
        <small>Example values illustrate the shape; extracted values come from your document.</small>
