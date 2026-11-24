@@ -55,6 +55,8 @@ entries:
     path: .meta.target_db
   - entry: kickside.work.migrations:03_move_alias_indexes
     path: .meta.target_db
+  - entry: kickside.work.migrations:04_plugin_attachments
+    path: .meta.target_db
   - entry: kickside.work.templates:migrate_catalog
     path: .meta.target_db
   - entry: kickside.work.persist:config

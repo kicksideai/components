@@ -232,6 +232,7 @@ entries:
 - name: configure
   kind: library.lua
   source: file://configure.lua
+  modules: [funcs]
   imports:
     limits: kickside.work.settings:limits
     manifests: kickside.work.domain:manifests

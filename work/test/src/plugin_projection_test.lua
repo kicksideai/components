@@ -93,6 +93,56 @@ local function define()
             assert(changes:apply())
         end
 
+        test.it("reconciles existing attachments when a plugin update replaces a projection", function()
+            local boards = { fixture.board(), fixture.board() }
+            local attachments_before, heads = {}, {}
+            for i, h in ipairs(boards) do
+                activate(h, true, { marker = "saved" })
+                local item = steps.create(h, "task")
+                ready(h, false)
+                attachments_before[i] = view(h).attachment_id
+                heads[i] = assert(steps.get(h, item)).item.updated_seq
+            end
+
+            revise(PLUGIN, function(meta)
+                meta.projections = { { kind = "app:updated_fold", worker_ref = "func://app:plugin_projection_worker", input = "state" } }
+            end)
+
+            for i, h in ipairs(boards) do
+                steps.wait_for("updated projection catches up on the existing attachment", function(): boolean
+                    local state = view(h).projections["app:updated_fold"]
+                    return state ~= nil and state.error == nil and not state.bootstrapping and state.last_seq >= heads[i]
+                end)
+                local _, body = projection(h, "app:updated_fold")
+                test.eq(body.worker_config.attachment_id, attachments_before[i])
+                test.eq(body.worker_config.config.marker, "saved")
+                for _, p in ipairs(assert(h.call("plugin_projections", {})).projections) do
+                    test.is_true(p.kind ~= "app:item_fold")
+                end
+            end
+        end)
+
+        test.it("lets a board admin resync an active plugin through HTTP", function()
+            local admin, member = scoped.admin(), scoped.member()
+            local h = scoped.board(admin)
+            assert(h.call("grant", { subject_id = member.id, mask = 1 }))
+            activate(h, true, { marker = "saved" })
+            ready(h, false)
+            local id = projection(h, "app:item_fold")
+            local path = admin.route(h.id, "configure_plugin")
+            test.eq(member.http("POST", path, { plugin = PLUGIN }).status, 403)
+            local reply = admin.http("POST", path, { plugin = PLUGIN })
+            test.eq(reply.status, 200, reply.raw)
+            test.eq(reply.body.data.attachment_id, view(h).attachment_id)
+            local seq = reply.body.data.seq :: integer
+            steps.wait_for("board admin resync catches up", function(): boolean
+                return view(h).projections["app:item_fold"].last_seq >= seq
+            end)
+            local after, body = projection(h, "app:item_fold")
+            test.eq(after, id)
+            test.eq(body.worker_config.config.marker, "saved")
+        end)
+
         test.it("refuses an unknown manifest interface before loading its declarations", function()
             local h = fixture.board()
             local plugin = "app:event_projection_plugin"
@@ -719,16 +769,8 @@ local function define()
             steps.create(h, "task", {})
             activate(h, true)
             ready(h, false)
-            local original = assert(h.call("declaration", { id = PLUGIN }))
-            local revised = assert(h.call("declaration", { id = PLUGIN }))
-            revised.meta.projections[1].revision = 2
-            local registry = require("registry")
-            local changes = assert(registry.snapshot()):changes()
-            changes:update(revised); assert(changes:apply())
-            assert(h.call("plugin_sync", {}))
+            revise(PLUGIN, function(meta) meta.projections[1].revision = 2 end)
             steps.wait_for("revision rebuild", function(): boolean return #rows(h) == 1 and tonumber(rows(h)[1].deliveries) == 2 end)
-            changes = assert(registry.snapshot()):changes()
-            changes:update(original); assert(changes:apply())
             local events = assert(h.call("events", {})).events
             local rebuilt = 0
             for _, event in ipairs(events) do if event.type == "kickside.work.events:plugin.rebuild" then rebuilt = rebuilt + 1 end end
