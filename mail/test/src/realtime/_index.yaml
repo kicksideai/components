@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.realtime
+entries:
+  - name: fixture_migration
+    kind: function.lua
+    meta: { type: migration, timestamp: '2026-11-23T23:00:00Z', target_db: app:db }
+    source: file://fixture_migration.lua
+    method: migrate
+    imports: { migration: wippy.migration:migration }
+  - name: realtime_binding
+    kind: contract.binding
+    contracts:
+      - contract: kickside.contract:realtime
+        default: true
+        methods: { broadcast: kickside.realtime:broadcast, notify: kickside.realtime:notify }
+  - name: broadcast
+    kind: function.lua
+    source: file://broadcast.lua
+    method: broadcast
+    modules: [json, security, sql]
+    security:
+      policies: [kickside.mail.harness:fixture_db]
+  - name: notify
+    kind: function.lua
+    source: file://broadcast.lua
+    method: notify
+    modules: [json, security, sql]

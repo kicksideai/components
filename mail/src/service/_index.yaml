@@ -23,8 +23,11 @@ entries:
       store: kickside.mail.outbox:store
       log: kickside.mail.outbox:log
       resources: kickside.mail.library:resources
+      realtime: kickside.mail:realtime
     security: &send_security
       policies:
+        - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_topics
         - kickside.mail.security:site_url
         - kickside.mail.security:template_access
         - kickside.mail.security:driver_dispatch
@@ -67,6 +70,7 @@ entries:
       client: kickside.mail:client
       jet: kickside.mail.library:jet
       resources: kickside.mail.library:resources
+      realtime: kickside.mail:realtime
     security: &catalog_security
       policies:
         - kickside.mail.security:outbox_db

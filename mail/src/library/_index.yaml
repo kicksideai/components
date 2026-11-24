@@ -84,6 +84,7 @@ entries:
       outbox: kickside.mail.outbox:store
       settings: kickside.mail:settings
       policy: kickside.mail.outbox:policy
+      realtime: kickside.mail:realtime
     security: &read_security
       policies:
         - kickside.mail.security:outbox_db
@@ -120,6 +121,8 @@ entries:
     imports: *service_imports
     security: &write_security
       policies:
+        - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_topics
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access

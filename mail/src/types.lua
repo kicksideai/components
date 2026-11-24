@@ -142,6 +142,7 @@ type WritableSink = {
     origin: (SinkRequest) -> (string?, SinkFailure?),
     fail: (string, string?, boolean?, string?, Record?) -> SinkFailure,
 }
+type Realtime = {broadcast: (self: Realtime, input: {topic: string, data: Record}) -> ({success: boolean, error: string?}?, error?)}
 type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, from: Mailbox?, reply_to: string?, reason: string?}
 type TestSend = {message: string, vars: JsonObject?}
 
@@ -169,5 +170,5 @@ return {
     SettingsResult = SettingsResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
     Mailer = Mailer, Transport = Transport, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
     ContentFailure = ContentFailure, ContentProvider = ContentProvider, SinkRequest = SinkRequest,
-    SinkResult = SinkResult, SinkFailure = SinkFailure, WritableSink = WritableSink, DeliveryStatus = DeliveryStatus, TestSend = TestSend, HttpAuth = HttpAuth, HttpResponse = HttpResponse,
+    SinkResult = SinkResult, SinkFailure = SinkFailure, WritableSink = WritableSink, Realtime = Realtime, DeliveryStatus = DeliveryStatus, TestSend = TestSend, HttpAuth = HttpAuth, HttpResponse = HttpResponse,
 }

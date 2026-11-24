@@ -12,6 +12,7 @@ local store = require("store")
 local log = require("log")
 local security = require("security")
 local resources = require("resources")
+local realtime = require("realtime")
 local message = require("message")
 local render = require("render")
 local attachments = require("attachments")
@@ -100,6 +101,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     })
     if save_err then return nil, save_err end
     if saved.inserted then
+        realtime.message(saved.message.message_id, saved.message.status)
         local _, notify_err = notifier.notify({kind = "owner_eligibility_changed"})
         if notify_err then logger:error("Mail retention notification failed", {error = tostring(notify_err)}) end
         local _, nudge_err = jobs.nudge_workers()

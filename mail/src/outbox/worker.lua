@@ -13,6 +13,7 @@ local sql = require("sql")
 local store = require("store")
 local time = require("time")
 local types = require("types")
+local realtime = require("realtime")
 
 local function active_driver(): (types.Driver?, error?)
     local config, err = settings.read("kickside.mail")
@@ -104,6 +105,7 @@ local function deliver(input: types.JobInput): (types.Record?, error?)
         return done :: types.Record, nil
     end)
     if commit_err then return nil, commit_err end
+    if not next_at then realtime.message(row.id, delivered and "sent" or "failed") end
     local release_err = lease_release.notify(job.id, job.execution_seq, completion.owner_locator :: table)
     if release_err then logger:error("Mail lease release notification failed", {error = tostring(release_err)}) end
     if next_at then

@@ -6,6 +6,7 @@ local settings = require("settings")
 local sql = require("sql")
 local store = require("store")
 local types = require("types")
+local realtime = require("realtime")
 
 local INTERRUPTED = {dead = true, cancelled = true, missing = true, done = true}
 
@@ -34,15 +35,18 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
     for index, row in ipairs(pending) do ids[index] = row.job_id end
     local states, status_err = jobs.get_job_statuses(ids)
     if status_err then return status_err end
-    local _, write_err = database.transaction(function(tx: sql.Transaction, _dialect: string): (boolean?, error?)
+    local changed, write_err = database.transaction(function(tx: sql.Transaction, _dialect: string): ({string}?, error?)
+        local failed: {string} = {}
         for _, row in ipairs(pending) do
             local status = states[row.job_id] or "missing"
             local _, update_err
             if INTERRUPTED[status] then
-                _, update_err = store.finish(tx, row.id, row.job_id, now, nil, {
+                local settled
+                settled, update_err = store.finish(tx, row.id, row.job_id, now, nil, {
                     kind = errors.UNAVAILABLE, code = "delivery_interrupted",
                     message = "Delivery was interrupted; the email may have been sent",
                 })
+                if settled then failed[#failed + 1] = row.id end
             elseif row.next_check_at <= now then
                 _, update_err = tx:execute([[UPDATE mail_message SET next_check_at=$1
                     WHERE id=$2 AND status='queued' AND next_check_at=$3]],
@@ -50,9 +54,11 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
             end
             if update_err then return nil, update_err end
         end
-        return true, nil
+        return failed, nil
     end)
-    return write_err
+    if write_err then return write_err end
+    for _, id in ipairs(changed) do realtime.message(id, "failed") end
+    return nil
 end
 
 local function sweep(now: integer, retention_ms: integer): (types.OwnerResult?, error?)

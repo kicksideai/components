@@ -13,6 +13,7 @@ local globals = require("globals")
 local outbox = require("outbox")
 local settings = require("settings")
 local policy = require("policy")
+local realtime = require("realtime")
 
 local M = {}
 
@@ -200,6 +201,7 @@ local function change(edits: {types.LibraryEdit}, operation: string): ({types.Re
         return nil, errors.new({kind = projection_err:kind(), retryable = false, message = projection_err:message(),
             details = {code = "mail_projection_failed", resource = keys[1], revision = saved[1].revision, resources = revisions}})
     end
+    for _, item in ipairs(saved) do realtime.library(item) end
     return saved, nil
 end
 

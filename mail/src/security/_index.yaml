@@ -331,3 +331,17 @@ entries:
       resources: [kickside.mail.settings:delivery_status, kickside.mail.service:delivery_send_test]
       actions: [funcs.call, registry.get]
       effect: allow
+  - name: realtime_calls
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.contract:realtime, kickside.realtime:realtime_binding, kickside.realtime:broadcast, broadcast]
+      actions: [registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+      effect: allow
+  - name: realtime_topics
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.realtime:mail.library.changed, kickside.realtime:mail.message.changed]
+      actions: [realtime.broadcast]
+      effect: allow

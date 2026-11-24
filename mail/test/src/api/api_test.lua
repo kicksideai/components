@@ -165,6 +165,54 @@ return {run = test.run_cases(function()
             data(editor, "DELETE", "/library/base/" .. base.name, {expected_revision = result.items[2].revision})
         end)
 
+        test.it("emits library and delivery wake-ups only for committed state", function()
+            local db = assert(sql.get("app:db"))
+            assert(db:execute("DELETE FROM mail_realtime_fixture"))
+            assert(db:release())
+            local editor = session("editor_sender")
+            local admin = session("delivery")
+            settings("capture", "mail@example.org")
+            local item = fixture("base", "event-frame", "{{ block body() }}{{ end }}")
+            local saved = data(editor, "POST", "/library", item, 201)
+            item.expected_revision = 0
+            test.eq(409, (request(editor, "PUT", "/library/base/" .. item.name, item)))
+            local send = data(editor, "POST", "/library/send-test", {message = "notice"}, 202)
+            local deadline = time.now():add(10 * time.SECOND):unix_nano()
+            local events
+            repeat
+                db = assert(sql.get("app:db"))
+                events = assert(db:query("SELECT topic, data, observed FROM mail_realtime_fixture WHERE subject IN ($1,$2)",
+                    {item.name, send.message_id}))
+                assert(db:release())
+                if #events < 3 then time.sleep("20ms") end
+            until #events >= 3 or time.now():unix_nano() >= deadline
+            test.eq(3, #events)
+            local seen = {}
+            for _, event in ipairs(events) do
+                local payload = assert(json.decode(event.data))
+                if event.topic == "mail.library.changed" then
+                    test.eq("base", payload.kind)
+                    test.eq(item.name, payload.name)
+                    test.eq(saved.revision, payload.revision)
+                    test.eq(tostring(saved.revision), event.observed)
+                    test.is_nil(payload.html)
+                    seen.library = true
+                else
+                    test.eq("mail.message.changed", event.topic)
+                    test.eq(send.message_id, payload.message_id)
+                    test.is_nil(payload.subject)
+                    if payload.status == "sent" then test.eq("sent", event.observed) end
+                    seen[payload.status] = true
+                end
+            end
+            test.is_true(seen.library)
+            test.is_true(seen.queued)
+            test.is_true(seen.sent)
+            test.eq("sent", data(admin, "GET", "/activity/" .. send.message_id).status)
+            data(editor, "DELETE", "/library/base/" .. item.name, {expected_revision = saved.revision})
+            settings("", "")
+        end)
+
         test.it("authorizes delivery administration and sends tests only to the acting address", function()
             local editor = session("editor_sender")
             local admin = session("delivery_sender")
