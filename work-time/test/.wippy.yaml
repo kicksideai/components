@@ -18,6 +18,7 @@ override:
   kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false
 workspace:
   replacements:
+    kickside/work: ../../work
     kickside/work-time: ..
     kickside/agent-onboarding: ../../agent-onboarding
     kickside/sso: ../../sso
@@ -32,7 +33,6 @@ profiles:
   combined:
     workspace:
       replacements:
-        kickside/work: ../../work
         kickside/work-planning: ../../work-planning
     disable:
       entries: ['app:work_time_sprint_reference_test', 'app:work_time_estimate_failure_test']

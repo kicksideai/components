@@ -2,7 +2,7 @@
 # Work Time
 
 `kickside/work-time` adds time tracking to KickSide Work and requires Work
-0.1.50 or newer. Bind
+0.1.52 or newer. Bind
 `kickside.work.time:target_db` to the same SQLite or PostgreSQL database as
 `kickside.work:target_db`. Bind `kickside.work.time.api:api_router` to Work's
 authenticated HTTP router. Work Time can be enabled on a board without Planning
@@ -12,6 +12,8 @@ The item summary returns direct minutes and estimate fields in one batch.
 Item totals also include readable live descendants. Timesheet reports support
 board, person by week and sprint selectors. CSV uses the same authorization
 and pagination as the report.
+Sprint totals can use Planning membership across an index rebuild and require
+a fresh report after a Work content change.
 Worklog lists default to oldest first. Set `sort=newest` to reverse the order.
 
 In Work Admin, enable `kickside.work.time:plugin` and select the existing item

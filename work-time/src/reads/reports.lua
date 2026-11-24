@@ -243,7 +243,8 @@ end
 
 local function compare(tx: sql.Transaction, ctx: types.Context, sprint: Sprint, attributed: { [string]: boolean },
     group: types.Group): error?
-    if sprint.as_of ~= ctx.board.applied_seq then
+    -- Every position from snapshot_seq through applied_seq has the same Work content.
+    if sprint.as_of < ctx.board.snapshot_seq or sprint.as_of > ctx.board.applied_seq then
         return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "Sprint membership changed during the report",
             details = { code = "planning_snapshot_changed" } })
     end
