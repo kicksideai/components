@@ -254,11 +254,9 @@ a product's references to itself do not hold it, and survive its trash and resto
 personal upload owned by the caller. Before copying bytes, PIM requires the
 catalog ledger to contain the live reservation for this version. A missing
 reservation returns `CONFLICT` with code `asset_reservation_unavailable`.
-For populated catalogs upgraded with an older projection selector, the owner
-must update the selector before retrying. Previously created versions missing
-from the ledger require separate reconciliation. The result carries a new `asset` reference
-for product apply. Catalog READ authorizes its original bytes through Uploads
-for product, channel, release and agent consumers. PIM validates ownership,
+The result carries a new `asset` reference for product apply. Catalog READ
+authorizes its original bytes through Uploads for product, channel, release and
+agent consumers. PIM validates ownership,
 existence, media type and size at assignment, including nested record members.
 Media fields accept exact MIME types or major-type wildcards in `media_types`
 and a `max_bytes` ceiling of at most 25 MiB. Asset references require authored

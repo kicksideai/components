@@ -13,7 +13,7 @@ local callbacks = {
     "kickside.pim.extensions:plugin_batch","kickside.pim.jobs:import","kickside.pim.jobs:import_batch",
     "kickside.pim.jobs:rebuild",
     "kickside.pim.jobs:term_merge", "kickside.pim.jobs:release_model",
-    "kickside.pim.retention:owner", "kickside.pim.binding:delete_func", "kickside.pim.migrations:01_catalog", "kickside.pim.migrations:02_assets", "kickside.pim.jobs:rebuild_batch", "kickside.pim.jobs:term_merge_batch", "kickside.pim.jobs:release_model_batch",
+    "kickside.pim.retention:owner", "kickside.pim.binding:delete_func", "kickside.pim.migrations:01_catalog", "kickside.pim.jobs:rebuild_batch", "kickside.pim.jobs:term_merge_batch", "kickside.pim.jobs:release_model_batch",
 }
 local function call(member: scoped.Session, scope: security.Scope, id: string, input: unknown, action: string?): (unknown, error?)
     local caller = assert(security.policy("app:caller_only"))

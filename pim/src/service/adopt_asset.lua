@@ -23,7 +23,7 @@ local function run(input: unknown): (types.JsonObject?, error?)
     local lease = clock.offset(15 * 60)
     local reserved, reserve_err = writer.reserve_asset(catalog_id, version, lease)
     if reserve_err or not reserved then return nil, reserve_err end
-    -- An older catalog selector can reach the appended sequence without folding the reservation.
+    -- Confirm the live reservation before copying bytes outside the catalog transaction.
     local pending, pending_err = store.with_db(function(db: types.Executor)
         return asset_rows.require_reservation(db, catalog_id, version, lease)
     end)
