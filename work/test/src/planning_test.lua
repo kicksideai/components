@@ -244,6 +244,19 @@ local function define()
             test.is_nil(persisted)
         end)
 
+        test.it("refuses the pack's own item types through the declared configuration schema", function()
+            local admin = scoped.admin()
+            local board = custom_board(admin)
+            local plugins = { { use = PLUGIN } }
+            assert(board.call("apply_schema", { declaration = { plugins = plugins } }))
+            for _, own in ipairs({ "issue", "sprint", "milestone" }) do
+                local reply = admin.http("POST", admin.route(board.id, "configure_plugin"), { plugin = PLUGIN, config = { issue_types = { own } } })
+                test.eq(reply.status, 400, reply.raw)
+                test.eq(reply.body.kind, errors.INVALID)
+                test.eq(reply.body.details.code, "plugin_config_invalid", reply.raw)
+            end
+        end)
+
         test.it("provisions a board-owned root attachment and reaps it on board deletion", function()
             local admin = scoped.admin()
             local board = custom_board(admin)
