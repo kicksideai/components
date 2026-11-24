@@ -61,6 +61,19 @@ function M.subject_error(value: unknown): error?
     return nil
 end
 
+function M.limit_error(code: string, label: string, limit: string, maximum: integer): error
+    return errors.new({kind = errors.INVALID, retryable = false,
+        message = label .. " (maximum " .. tostring(maximum) .. ")",
+        details = {code = code, limit = limit, maximum = maximum}})
+end
+
+function M.recipients_error(addresses: types.Addresses, maximum: integer?): error?
+    if maximum and #addresses.to + #(addresses.cc or {}) + #(addresses.bcc or {}) > maximum then
+        return M.limit_error("too_many_recipients", "The mail driver recipient limit is exceeded", "max_recipients", maximum)
+    end
+    return nil
+end
+
 function M.add_attachment_size(total: number, size: unknown): (number?, error?)
     if type(size) ~= "number" or size < 0 or size % 1 ~= 0 then
         return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = "Content provider returned an invalid size",

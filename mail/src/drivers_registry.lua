@@ -6,6 +6,7 @@ local funcs = require("funcs")
 local settings = require("settings")
 
 local M = {}
+local LIMITS = {"max_recipients", "max_message_bytes"}
 local REQUIRED = {"id", "label", "icon", "description", "binding", "settings_ns", "available_func"}
 
 local function discover(): ({[string]: types.Driver}?, error?)
@@ -18,6 +19,14 @@ local function discover(): ({[string]: types.Driver}?, error?)
             if type(data[field]) ~= "string" or not (data[field] :: string):find("%S") then
                 return nil, errors.new({kind = errors.INVALID, retryable = false,
                     message = "Mail driver " .. tostring(entry.id) .. " requires " .. field,
+                    details = {code = "invalid_driver_descriptor"}})
+            end
+        end
+        for _, field in ipairs(LIMITS) do
+            local value = data[field]
+            if value ~= nil and (type(value) ~= "number" or value < 1 or value % 1 ~= 0) then
+                return nil, errors.new({kind = errors.INVALID, retryable = false,
+                    message = "Mail driver " .. tostring(entry.id) .. " requires a positive integer for " .. field,
                     details = {code = "invalid_driver_descriptor"}})
             end
         end

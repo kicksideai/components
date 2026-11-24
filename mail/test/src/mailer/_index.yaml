@@ -16,6 +16,8 @@ entries:
     kind: registry.entry
     meta: { type: "kickside.mail:driver" }
     id: second
+    max_recipients: 2
+    max_message_bytes: 100000
     label: Second
     icon: lucide:mail
     description: Second test transport.

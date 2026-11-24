@@ -70,7 +70,7 @@ type TemplateSet = {
 type LayoutImage = {filename: string, content_type: string, content_id: string, filesystem: string}
 type SchemaIssue = {schema_path: string, instance_path: string}
 type Driver = {id: string, label: string, icon: string, description: string, binding: string,
-    settings_ns: string, available_func: string}
+    settings_ns: string, available_func: string, max_recipients: integer?, max_message_bytes: integer?}
 type Availability = {available: boolean, reason: string?}
 type Settings = {driver: string, from_address: string, from_name: string, reply_to: string}
 type ApiSettings = {api_key: string?}

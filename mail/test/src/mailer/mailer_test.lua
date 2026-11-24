@@ -361,6 +361,31 @@ return {
                 test.eq("second|mail@example.org||", sent.provider_message_id)
             end)
 
+            test.it("refuses excess recipients before queuing and after a driver change", function()
+                capture_with(admin)
+                assert(change(admin, "driver", "second").success)
+                local input = body()
+                input.cc = {"cc@example.org"}
+                input.bcc = {"bcc@example.org"}
+                local count_sql = "SELECT COUNT(*) AS n FROM mail_message WHERE subject=$1"
+                input.subject = "Recipient limit test"
+                local before = query(count_sql, {input.subject})[1].n
+                local result, err = invoke(sender, "send", input)
+                refusal(result, err, errors.INVALID, "too_many_recipients")
+                test.eq("max_recipients", err:details().limit)
+                test.eq(2, err:details().maximum)
+                test.eq(before, query(count_sql, {input.subject})[1].n)
+                assert(change(admin, "driver", "capture").success)
+                input.subject = "Fixture exhaust"
+                local queued = assert(invoke(sender, "send", input))
+                await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
+                assert(change(admin, "driver", "second").success)
+                local failed = terminal(sender, queued)
+                test.eq("failed", failed.status)
+                test.eq(2, failed.attempts)
+                test.eq("too_many_recipients", failed.last_error.code)
+            end)
+
             test.it("lists and reads only the sender's messages unless the viewer holds log administration", function()
                 capture_with(admin)
                 local other = caller({"kickside.mail.security:send_access",

@@ -62,7 +62,10 @@ local function send(request: unknown): (types.SendResult?, error?)
     config = config :: types.Settings
     local driver, driver_err = drivers.resolve(config.driver)
     if driver_err then return nil, driver_err end
-    local unavailable = drivers.check_available(driver :: types.Driver)
+    driver = driver :: types.Driver
+    local limit_err = message.recipients_error(addresses, driver.max_recipients)
+    if limit_err then return nil, limit_err end
+    local unavailable = drivers.check_available(driver)
     if unavailable then return nil, unavailable end
     if not config.from_address or not config.from_address:find("%S") then
         return nil, settings.missing("A mail From address is required")

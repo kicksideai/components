@@ -60,6 +60,7 @@ entries:
       identity: kickside.execution:execution_identity
       jobs: kickside.core.jobs:jobs
       lease_release: kickside.core.jobs:lease_release
+      message: kickside.mail:message
       policy: kickside.mail.outbox:policy
       settings: kickside.mail:settings
       store: kickside.mail.outbox:store

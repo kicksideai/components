@@ -5,6 +5,7 @@ local identity = require("identity")
 local jobs = require("jobs")
 local lease_release = require("lease_release")
 local logger = require("logger")
+local message = require("message")
 local policy = require("policy")
 local settings = require("settings")
 local sql = require("sql")
@@ -32,6 +33,8 @@ end
 local function send(row: types.MessageRow, driver: types.Driver, lease: types.Lease): (types.TransportResult?, error?)
     local addresses, refs, decode_err = store.content(row)
     if decode_err then return nil, decode_err end
+    local limit_err = message.recipients_error(addresses, driver.max_recipients)
+    if limit_err then return nil, limit_err end
     local execution, identity_err = identity.from_row(row.sender, row.actor_context)
     if identity_err then return nil, identity_err :: error end
     local files, read_err = identity.run_as(execution, "kickside.mail.outbox:read_attachments", refs,

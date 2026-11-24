@@ -35,7 +35,7 @@ The `notice` template supplies plain-text and HTML parts. Set `subject` and any 
 
 `MailSend` appears as a virtual Block. A Workflow can pass the message from a preceding step and fix optional fields in Block configuration. The `kickside.mail.sink:send_email` automation destination reports success when the message is committed and returns `dest_ref.message_id`. Its `kickside.data:writable` binding declares at-least-once delivery and reuses the automation’s per-delivery idempotency key within the log retention window.
 
-Drivers declare `registry.entry` with `meta.type: kickside.mail:driver` and implement `send` on `kickside.mail:transport`. The descriptor supplies `id`, `label`, `icon`, `description`, `binding`, `settings_ns`, and `available_func`. The driver contributes its exact descriptor, binding, send, and availability function IDs to Mail’s private discovery and dispatch policies. The availability function checks configuration and returns `{available: boolean, reason?: string}`.
+Drivers declare `registry.entry` with `meta.type: kickside.mail:driver` and implement `send` on `kickside.mail:transport`. The descriptor supplies `id`, `label`, `icon`, `description`, `binding`, `settings_ns`, and `available_func`. Declare `max_recipients` and `max_message_bytes` as positive integers for the provider. Mail enforces the declared limits on admission and delivery. The driver contributes its exact descriptor, binding, send, and availability function IDs to Mail’s private discovery and dispatch policies. The availability function checks configuration and returns `{available: boolean, reason?: string}`.
 
 ## Error codes
 
@@ -78,6 +78,7 @@ template_not_found             NotFound           No
 template_open_failed           Source error       Source flag
 template_render_failed         Source error       Source flag
 too_many_attachments           Invalid            No
+too_many_recipients            Invalid            No
 ```
 
 ## Development
