@@ -196,6 +196,54 @@ return {run = test.run_cases(function()
             assert(changes:apply())
         end)
 
+        test.it("retains the newest 25 revisions, including reset and restore", function()
+            local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
+                assert(security.policy("kickside.mail.security:library_calls"))}))
+            local actor = assert(security.new_actor("history-editor", {}))
+            local editor = assert(funcs.new():with_actor(actor):with_scope(scope))
+            local function read(method, input)
+                local result, err = editor:call(NS .. method, input)
+                if err then error(method .. ": " .. err:message() .. " (" .. tostring((err:details() or {}).code) .. ")") end
+                return result
+            end
+            local key = {kind = "base", name = "plain"}
+            local initial = read("get", key)
+            local edit = candidate("base", key.name, "First [{{ block body() }}{{ end }}]",
+                "First text [{{ block body() }}{{ end }}]")
+            edit.expected_revision, edit.note = initial.revision, "First customization"
+            local saved = read("update", edit)
+            local first = saved.revision
+            local reset = read("reset", {
+                kind = key.kind, name = key.name, expected_revision = first, note = "Reset layout",
+            })
+            test.is_true(reset.revision > first)
+            test.eq(reset.revision, read("get", key).revision)
+            local history = read("history", key)
+            test.eq(2, #history)
+            test.eq("Reset layout", history[1].note)
+            test.eq("history-editor", history[1].author)
+            test.eq(initial.html, history[1].content.html)
+            test.eq("First customization", history[2].note)
+            test.is_true(history[1].created_at > 0)
+            local restore = {kind = key.kind, name = key.name, revision = first, expected_revision = reset.revision}
+            local restored = read("restore", restore)
+            test.eq(edit.html, restored.html)
+            test.eq("customized", restored.state)
+            local rejected, conflict = editor:call(NS .. "restore", restore)
+            test.is_nil(rejected)
+            test.eq("mail_revision_conflict", conflict:details().code)
+            for i = 1, 26 do
+                edit.expected_revision = restored.revision
+                edit.title = "Layout " .. i
+                restored = read("update", edit)
+            end
+            history = read("history", key)
+            test.eq(25, #history)
+            test.eq(restored.revision, history[1].revision)
+            test.eq("Layout 2", history[25].content.title)
+            read("reset", {kind = key.kind, name = key.name, expected_revision = restored.revision})
+        end)
+
         test.it("requires library access even when the caller can send", function()
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:send_access")),
                 assert(security.policy("kickside.mail.security:library_calls"))}))

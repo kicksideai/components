@@ -47,11 +47,14 @@ local function dependants(tx: sql.Transaction, key: types.ResourceKey, items: ty
 end
 
 local function change(key: types.ResourceKey, operation: string, edit: types.ResourceContent?, revision: integer?,
-    base: string?): (types.Resource?, error?)
+    base: string?, note: string?, restore_revision: integer?): (types.Resource?, error?)
     local denied = client.require_library()
     if denied then return nil, denied end
     local bad_key = resources.check_key(key)
     if bad_key then return nil, bad_key end
+    if note ~= nil and type(note) ~= "string" then
+        return nil, resources.error(errors.INVALID, "invalid_revision_note", "A revision note must be text", key)
+    end
     local actor, actor_err = security.actor()
     if actor_err then return nil, actor_err end
     if not actor then return nil, resources.error(errors.PERMISSION_DENIED, "mail_library_denied", "A principal must edit the mail library") end
@@ -84,7 +87,14 @@ local function change(key: types.ResourceKey, operation: string, edit: types.Res
                 return nil, resources.error(errors.INVALID, "mail_resource_is_shipped", "A shipped resource can only be reset", key)
             end
         else
-            if base then
+            if operation == "restore" then
+                local history, history_err = store.history(tx, key, restore_revision)
+                if history_err then return nil, history_err end
+                if not history[1] then
+                    return nil, resources.error(errors.NOT_FOUND, "mail_revision_not_found", "Mail library revision was not found", key)
+                end
+                edit = history[1].content
+            elseif base then
                 local copy: types.Record = {}
                 for field, value in pairs(current) do copy[field] = value end
                 copy.base = base
@@ -111,10 +121,10 @@ local function change(key: types.ResourceKey, operation: string, edit: types.Res
         items[id] = candidate :: types.Resource
         local validation_err = draft.validate(items, key, candidate, dependent, values :: types.RenderGlobals)
         if validation_err then return nil, validation_err end
-        if operation == "reset" or operation == "delete" then
-            local remove_err = store.remove(tx, key)
+        if operation == "delete" then
+            local remove_err = store.remove(tx, key, true)
             if remove_err then return nil, remove_err end
-            return (candidate or current) :: types.Resource, nil
+            return current, nil
         end
 
         local timestamp = time.now():unix_nano() // 1000000
@@ -123,7 +133,16 @@ local function change(key: types.ResourceKey, operation: string, edit: types.Res
         stored.created_at = current and current.created_at or timestamp
         stored.state = original and "customized" or "created"
         stored.origin = original and original.resource.origin or nil
-        return store.write(tx, stored)
+        local resetting = operation == "reset"
+        local saved, write_err = store.write(tx, stored, note, resetting)
+        if write_err then return nil, write_err end
+        if resetting then
+            local remove_err = store.remove(tx, key, false)
+            if remove_err then return nil, remove_err end
+            local effective = saved :: types.Resource
+            effective.state, effective.author, effective.created_at, effective.updated_at = "original", nil, nil, nil
+        end
+        return saved, nil
     end)
     if error_before_commit then return nil, error_before_commit end
     local _, projection_err = projection.reconcile()
@@ -146,20 +165,45 @@ function M.list(input: types.ResourceFilter?): ({types.Resource}?, error?)
     return resources.list(input or {})
 end
 
-function M.create(input: types.ResourceContent): (types.Resource?, error?)
-    return change(input, "create", input)
+function M.create(input: types.ResourceCreate): (types.Resource?, error?)
+    return change(input, "create", input, nil, nil, type(input) == "table" and input.note or nil)
 end
 
 function M.update(input: types.ResourceEdit): (types.Resource?, error?)
-    return change(input, "update", input :: types.ResourceContent, type(input) == "table" and input.expected_revision or nil)
+    return change(input, "update", input :: types.ResourceContent, type(input) == "table" and input.expected_revision or nil, nil,
+        type(input) == "table" and input.note or nil)
 end
 
 function M.set_base(input: types.ResourceBaseEdit): (types.Resource?, error?)
-    return change({kind = "message", name = input.name}, "update", nil, input.expected_revision, input.base)
+    if type(input) ~= "table" then return change({kind = "message", name = ""}, "update") end
+    return change({kind = "message", name = input.name}, "update", nil, input.expected_revision, input.base, input.note)
 end
 
 function M.reset(input: types.ResourceRevision): (types.Resource?, error?)
-    return change(input, "reset", nil, type(input) == "table" and input.expected_revision or nil)
+    return change(input, "reset", nil, type(input) == "table" and input.expected_revision or nil, nil,
+        type(input) == "table" and input.note or nil)
+end
+
+function M.history(input: types.ResourceKey): ({types.Revision}?, error?)
+    local denied = client.require_library()
+    if denied then return nil, denied end
+    local bad_key = resources.check_key(input)
+    if bad_key then return nil, bad_key end
+    local _, err = resources.get(input)
+    if err then return nil, err end
+    return database.read(function(db: sql.DB): ({types.Revision}?, error?)
+        return store.history(db, input)
+    end)
+end
+
+function M.restore(input: types.ResourceRestore): (types.Resource?, error?)
+    local denied = client.require_library()
+    if denied then return nil, denied end
+    if type(input) ~= "table" or type(input.revision) ~= "number" or math.tointeger(input.revision) == nil
+        or input.revision < 1 then
+        return nil, resources.error(errors.INVALID, "invalid_mail_revision", "A positive revision number is required")
+    end
+    return change(input, "restore", nil, input.expected_revision, nil, input.note, input.revision)
 end
 
 function M.delete(input: types.ResourceRevision): (boolean?, error?)

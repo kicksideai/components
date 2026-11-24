@@ -111,9 +111,16 @@ function M.match_origin(item: types.Resource, declared: types.Original?): error?
     return nil
 end
 
-function M.merge(originals: types.OriginalMap, rows: {types.Resource}): (types.ResourceMap?, error?)
+local function merge(db: types.Executor, originals: types.OriginalMap, rows: {types.Resource}): (types.ResourceMap?, error?)
     local effective: types.ResourceMap = {}
-    for key, declared in pairs(originals) do effective[key] = declared.resource end
+    local revisions, read_err = store.original_revisions(db)
+    if read_err then return nil, read_err end
+    for key, declared in pairs(originals) do
+        local item = declared.resource
+        local by_name = revisions[item.kind]
+        item.revision = by_name and by_name[item.name] or 0
+        effective[key] = item
+    end
     for _, row in ipairs(rows) do
         local key = M.key(row)
         local err = M.match_origin(row, originals[key])
@@ -128,7 +135,7 @@ function M.load(db: types.Executor): (types.ResourceMap?, error?, types.Original
     if err then return nil, err end
     local rows, read_err = store.find(db, {})
     if read_err then return nil, read_err end
-    local items, merge_err = M.merge(originals :: types.OriginalMap, rows :: {types.Resource})
+    local items, merge_err = merge(db, originals :: types.OriginalMap, rows :: {types.Resource})
     return items, merge_err, originals
 end
 
@@ -140,7 +147,11 @@ function M.get(key: types.ResourceKey): (types.Resource?, error?)
     local item, read_err = store.read(key)
     if read_err then return nil, read_err end
     local declared = originals[M.key(key)]
-    if item then return item, M.match_origin(item, declared) end
+    if item and item.state == "original" then
+        if declared then declared.resource.revision = item.revision end
+    elseif item then
+        return item, M.match_origin(item, declared)
+    end
     if declared then return declared.resource, nil end
     return nil, M.error(errors.NOT_FOUND, "mail_resource_not_found", "Mail library resource was not found", key)
 end
@@ -159,7 +170,7 @@ function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
             end
             return rows, nil
         end
-        local items, merge_err = M.merge(originals :: types.OriginalMap, rows :: {types.Resource})
+        local items, merge_err = merge(db, originals :: types.OriginalMap, rows :: {types.Resource})
         if merge_err then return nil, merge_err end
         local selected = {}
         for _, item in pairs(items) do

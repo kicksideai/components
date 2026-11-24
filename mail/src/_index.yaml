@@ -41,6 +41,7 @@ entries:
       - { entry: kickside.mail:db_config, path: ".meta.db_id" }
       - { entry: kickside.mail.migrations:01_messages, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:02_library, path: ".meta.target_db" }
+      - { entry: kickside.mail.migrations:03_library_revisions, path: ".meta.target_db" }
       - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
   - name: db_config
     kind: registry.entry

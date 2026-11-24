@@ -204,6 +204,8 @@ entries:
         - kickside.mail.library:update
         - kickside.mail.library:set_base
         - kickside.mail.library:reset
+        - kickside.mail.library:history
+        - kickside.mail.library:restore
         - kickside.mail.library:delete
         - kickside.mail.library:render
         - kickside.mail.library:render_draft

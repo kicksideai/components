@@ -119,6 +119,20 @@ entries:
         - kickside.mail.security:overlay_projection
         - kickside.mail.security:overlay_originals
         - kickside.mail.security:overlay_drafts
+  - name: history
+    kind: function.lua
+    method: history
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *read_security
+  - name: restore
+    kind: function.lua
+    method: restore
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *write_security
   - name: update
     kind: function.lua
     method: update

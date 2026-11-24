@@ -67,14 +67,18 @@ type ResourceFilter = {kind: string?, state: string?, base: string?}
 type Original = {resource: Resource, entries: {[string]: string}}
 type ResourceMap = {[string]: Resource}
 type OriginalMap = {[string]: Original}
-type ResourceRevision = ResourceKey & {expected_revision: integer}
-type ResourceEdit = ResourceContent & {expected_revision: integer}
-type ResourceBaseEdit = {name: string, base: string, expected_revision: integer}
+type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?}
+type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?}
+type ResourceCreate = ResourceContent & {note: string?}
+type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?}
+type ResourceRestore = ResourceRevision & {revision: integer}
+type Revision = {kind: string, name: string, revision: integer, content: ResourceContent, author: string, note: string?, created_at: integer}
+type OriginalRevisions = {[string]: {[string]: integer}}
 type DraftRequest = {resource: ResourceContent, message: string, vars: JsonObject?}
 type LibraryRow = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema_json: string, samples_json: string, state: string,
-    origin: string?, revision: integer, author: string, created_at: integer, updated_at: integer,
+    origin: string?, revision: integer, author: string, created_at: integer, updated_at: integer, note: string?,
 }
 type JetEntry = {id: string, kind: string, meta: Record, data: Record}
 type TemplateRequest = {template: string}
@@ -139,7 +143,8 @@ return {
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, OwnerResult = OwnerResult,
     ResourceKey = ResourceKey, ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
-    ResourceEdit = ResourceEdit, ResourceBaseEdit = ResourceBaseEdit, DraftRequest = DraftRequest,
+    ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
+    ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     AttachmentRef = AttachmentRef, Attachment = Attachment, SendRequest = SendRequest, Addresses = Addresses,
