@@ -251,6 +251,42 @@ return {run = test.run_cases(function()
             test.eq(page.failed_today, empty.failed_today)
         end)
 
+        test.it("records per-resource versions and the action that produced each revision", function()
+            local editor = session("editor")
+            local item = own(fixture("message", "history-actions", "{{ block body() }}Initial{{ end }}"))
+            item.base, item.subject = "plain", "Initial subject"
+            local route = "/library/message/" .. item.name
+            local created = data(editor, "POST", "/library", item, 201)
+            data(editor, "POST", "/library", own(fixture("part", "history-interleave", "Part")), 201)
+            item.expected_revision = created.revision
+            item.note = "Reword subject"
+            item.subject = "Edited subject"
+            local edited = data(editor, "PUT", route, item)
+            local moved = data(editor, "POST", route .. "/base", {base = "standard", expected_revision = edited.revision})
+            local restored = data(editor, "POST", route .. "/restore", {revision = created.revision, expected_revision = moved.revision})
+            local history = data(editor, "GET", route .. "/history").items
+            test.eq(4, #history)
+            test.eq("restored", history[1].action)
+            test.eq(1, history[1].restored_from)
+            test.eq(4, history[1].version)
+            test.eq("created", history[1].state)
+            test.eq(restored.revision, history[1].revision)
+            test.eq("base_changed", history[2].action)
+            test.eq("edited", history[3].action)
+            test.eq("Reword subject", history[3].note)
+            test.eq("created", history[4].action)
+            test.eq(1, history[4].version)
+            test.eq(created.revision, history[4].revision)
+            local original = own(data(editor, "GET", "/library/base/plain"))
+            original.expected_revision = original.revision
+            local custom = data(editor, "PUT", "/library/base/plain", original)
+            data(editor, "POST", "/library/base/plain/reset", {expected_revision = custom.revision})
+            local reset = data(editor, "GET", "/library/base/plain/history").items[1]
+            test.eq("reset", reset.action)
+            test.eq("original", reset.state)
+            test.eq(2, reset.version)
+        end)
+
         test.it("lists the packaged asset and previews its CID under the editor capability", function()
             local editor = session("editor")
             local sender = session("sender")

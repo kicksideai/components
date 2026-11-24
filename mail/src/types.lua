@@ -86,7 +86,9 @@ type AssetWrite = {name: string, upload_id: string, expected_revision: integer?,
     title: string?, description: string?}
 type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?}
 type ResourceRestore = ResourceRevision & {revision: integer}
-type Revision = {kind: string, name: string, revision: integer, content: ResourceContent, author: string, note: string?, created_at: integer}
+type RevisionChange = {action: string, state: string, restored_from: integer?, note: string?}
+type Revision = RevisionChange & {kind: string, name: string, revision: integer, version: integer,
+    content: ResourceContent, author: string, created_at: integer}
 type OriginalRevisions = {[string]: {[string]: integer}}
 type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, resources: {ResourceContent}?, message: string, vars: JsonObject?}
 type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
@@ -107,6 +109,7 @@ type LibraryRow = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema_json: string, samples_json: string, state: string,
     origin: string?, revision: integer, author: string, created_at: integer, updated_at: integer, note: string?,
+    version: integer, action: string, restored_from: integer?,
 }
 type JetEntry = {id: string, kind: string, meta: Record, data: Record}
 type TemplateRequest = {template: string}

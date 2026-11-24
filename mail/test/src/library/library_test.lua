@@ -298,6 +298,8 @@ return {run = test.run_cases(function()
             end
             history = read("history", key)
             test.eq(25, #history)
+            test.eq(initial_history + 29, history[1].version)
+            test.eq(initial_history + 5, history[25].version)
             test.eq(restored.revision, history[1].revision)
             test.eq("Layout 2", history[25].content.title)
             read("reset", {kind = key.kind, name = key.name, expected_revision = restored.revision})

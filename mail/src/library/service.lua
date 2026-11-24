@@ -67,7 +67,7 @@ local function message_names(items: {types.Resource}): {string}
 end
 
 local function prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: string,
-    items: types.ResourceMap, originals: types.OriginalMap): (types.ResourceContent?, error?)
+    items: types.ResourceMap, originals: types.OriginalMap): (types.ResourceContent?, error?, integer?)
     local key = edit.key
     local id = resources.key(key)
     local current, original = items[id], originals[id]
@@ -97,6 +97,7 @@ local function prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: 
         return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide an upload to add or replace an asset", key)
     end
     local content = edit.content
+    local restored_from: integer?
     if operation == "create" and edit.from then
         local bad_from = resources.check_key(edit.from)
         if bad_from then return nil, bad_from end
@@ -116,9 +117,10 @@ local function prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: 
             return nil, resources.error(errors.NOT_FOUND, "mail_revision_not_found", "Mail library revision was not found", key)
         end
         content = history[1].content
+        restored_from = history[1].version
         if content.asset and content.asset.source == "original" then
             if not original then return nil, missing(key) end
-            return original.resource, nil
+            return original.resource, nil, restored_from
         end
     elseif edit.base ~= nil then
         local copy: types.Record = {}
@@ -126,7 +128,8 @@ local function prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: 
         copy.base = edit.base
         content = copy :: types.ResourceContent
     end
-    return resources.normalize(content :: types.ResourceContent)
+    local normalized, err = resources.normalize(content :: types.ResourceContent)
+    return normalized, err, restored_from
 end
 
 local function change(edits: {types.LibraryEdit}, operation: string, receipt: string?): ({types.Resource}?, error?)
@@ -171,14 +174,16 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
         end
         local candidates: {types.ResourceContent} = {}
         local previous: {types.Resource} = {}
+        local restore_versions: {[integer]: integer} = {}
         local asset_usage: {[string]: {string}}?
         for i, edit in ipairs(edits) do
-            local candidate, err = prepare(tx, edit, operation, items :: types.ResourceMap, originals :: types.OriginalMap)
+            local candidate, err, restored_from = prepare(tx, edit, operation, items :: types.ResourceMap, originals :: types.OriginalMap)
             if err then return nil, err end
             local id = resources.key(edit.key)
             previous[i] = items[id]
             items[id] = candidate :: types.Resource
             candidates[i] = candidate
+            if restored_from then restore_versions[i] = restored_from end
         end
         if key.kind == "asset" and edits[1].content then
             local usage_err
@@ -226,7 +231,20 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
                 if activate_err then return nil, activate_err end
             end
             local resetting = operation == "reset" or (stored.asset ~= nil and stored.asset.source == "original")
-            local item, write_err = store.write(tx, stored, edits[i].note, resetting)
+            local action = "edited"
+            if restore_versions[i] then
+                action = "restored"
+            elseif resetting then
+                action = "reset"
+            elseif not current then
+                action = "created"
+            elseif current.base ~= stored.base then
+                action = "base_changed"
+            end
+            local item, write_err = store.write(tx, stored, {
+                action = action, state = resetting and "original" or stored.state,
+                restored_from = restore_versions[i], note = edits[i].note,
+            })
             if write_err then return nil, write_err end
             if resetting then
                 local remove_err = store.remove(tx, keys[i], false)

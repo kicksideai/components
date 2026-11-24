@@ -513,9 +513,9 @@ entries:
       title: Read Mail Library History
       llm_alias: MailLibraryHistory
       llm_description: >-
-        Read up to 25 retained revisions of one resource, newest first. Each includes its revision, content,
-        acting author ID, time and optional note. Pass the revision to MailLibraryRestore to restore that
-        content. Missing resources and denied access are tool errors.
+        Read up to 25 retained versions of one resource, newest first. A row records its display version,
+        resulting state, action, content, acting author ID, time and optional note. Pass the separate
+        revision token to MailLibraryRestore. Missing resources and denied access are tool errors.
       input_schema: *resource_key
       output_schema:
         type: object
@@ -531,6 +531,10 @@ entries:
                 kind: *resource_kind
                 name: *resource_name
                 revision: *resource_revision
+                version: {type: integer, minimum: 1}
+                state: *resource_state
+                action: {enum: [created, edited, base_changed, reset, restored, previous_change]}
+                restored_from: {type: integer, minimum: 1}
                 author: *text
                 note: *text
                 created_at: {type: integer}

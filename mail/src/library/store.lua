@@ -130,7 +130,8 @@ function M.history(db: types.Executor, key: types.ResourceKey, revision: integer
         local saved = row :: types.LibraryRow
         local item, read_err = resource(saved)
         if read_err then return nil, read_err end
-        history[i] = {kind = saved.kind, name = saved.name, revision = saved.revision,
+        history[i] = {kind = saved.kind, name = saved.name, revision = saved.revision, version = saved.version,
+            action = saved.action, state = saved.state, restored_from = saved.restored_from,
             content = {kind = item.kind, name = item.name, title = item.title, description = item.description,
                 html = item.html, text = item.text, subject = item.subject, base = item.base,
                 schema = item.schema, samples = item.samples, asset = item.asset},
@@ -147,7 +148,8 @@ local function trim(tx: sql.Transaction, key: types.ResourceKey): error?
     return asset_store.release(tx, removed :: {types.Record})
 end
 
-local function write_asset(tx: sql.Transaction, item: types.Resource, note: string?, reset: boolean): (types.Resource?, error?)
+local function write_asset(tx: sql.Transaction, item: types.Resource, change: types.RevisionChange,
+    version: integer): (types.Resource?, error?)
     local upload = (item.asset :: types.Asset).upload_id
     local rows, err = tx:query([[INSERT INTO mail_library_asset
         (name,title,description,origin,author,created_at,updated_at,upload_id)
@@ -159,11 +161,11 @@ local function write_asset(tx: sql.Transaction, item: types.Resource, note: stri
     if err then return nil, err end
     local revision = rows[1].revision :: integer
     local _, record_err = tx:execute([[INSERT INTO mail_library_revision
-        (kind,name,revision,title,description,html,text,schema_json,samples_json,state,origin,author,created_at,updated_at,note,asset_upload_id)
-        VALUES ('asset',$1,$2,$3,$4,'','','{"type":"object","properties":{}}','{}',$5,$6,$7,$8,$9,$10,$11)]],
-        {item.name, revision, item.title, item.description, reset and "original" or item.state,
-            item.origin or sql.NULL, item.author, item.created_at, item.updated_at, note or sql.NULL,
-            not reset and upload or sql.NULL})
+        (kind,name,revision,title,description,html,text,schema_json,samples_json,state,origin,author,created_at,updated_at,note,asset_upload_id,version,action,restored_from)
+        VALUES ('asset',$1,$2,$3,$4,'','','{"type":"object","properties":{}}','{}',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)]],
+        {item.name, revision, item.title, item.description, change.state,
+            item.origin or sql.NULL, item.author, item.created_at, item.updated_at, change.note or sql.NULL,
+            change.state ~= "original" and upload or sql.NULL, version, change.action, change.restored_from or sql.NULL})
     if record_err then return nil, record_err end
     local trim_err = trim(tx, item)
     if trim_err then return nil, trim_err end
@@ -171,8 +173,12 @@ local function write_asset(tx: sql.Transaction, item: types.Resource, note: stri
     return item, nil
 end
 
-function M.write(tx: sql.Transaction, item: types.Resource, note: string?, reset: boolean): (types.Resource?, error?)
-    if item.kind == "asset" then return write_asset(tx, item, note, reset) end
+function M.write(tx: sql.Transaction, item: types.Resource, change: types.RevisionChange): (types.Resource?, error?)
+    local history, history_err = tx:query([[SELECT version FROM mail_library_revision
+        WHERE kind=$1 AND name=$2 ORDER BY revision DESC LIMIT 1]], {item.kind, item.name})
+    if history_err then return nil, history_err end
+    local version = (history[1] and (history[1].version :: integer) or 0) + 1
+    if item.kind == "asset" then return write_asset(tx, item, change, version) end
     local encoded_schema, schema_err = json.encode(item.schema)
     if schema_err then return nil, schema_err end
     local encoded_samples, sample_err = json.encode(item.samples)
@@ -191,9 +197,11 @@ function M.write(tx: sql.Transaction, item: types.Resource, note: string?, reset
     if err then return nil, err end
     item.revision = rows[1].revision :: integer
     local _, snapshot_err = tx:execute([[INSERT INTO mail_library_revision
-        (kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,state,origin,author,created_at,updated_at,note)
-        SELECT kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,$1,origin,author,created_at,updated_at,$2
-        FROM mail_library WHERE revision=$3]], {reset and "original" or item.state, note or sql.NULL, item.revision})
+        (kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,state,origin,author,
+            created_at,updated_at,note,version,action,restored_from)
+        SELECT kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,$1,origin,author,
+            created_at,updated_at,$2,$3,$4,$5 FROM mail_library WHERE revision=$6]],
+        {change.state, change.note or sql.NULL, version, change.action, change.restored_from or sql.NULL, item.revision})
     if snapshot_err then return nil, snapshot_err end
     local trim_err = trim(tx, item)
     if trim_err then return nil, trim_err end
