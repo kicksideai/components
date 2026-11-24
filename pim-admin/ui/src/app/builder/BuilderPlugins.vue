@@ -38,9 +38,6 @@ const filterOperators = new Map([
   ['lte', 'At most'],
 ])
 const expanded = ref<Record<string, boolean>>({})
-const inventoryHelp = {
-  hold_seconds: 'Default and maximum time stock stays set aside after a reservation starts. Leave empty to use the deployment default.',
-}
 const forms = new Map<string, InstanceType<typeof ConfigForm>>()
 const invalidFields = ref(new Set<string>())
 const invalidDrafts = ref(new Set<string>())
@@ -253,7 +250,7 @@ function reviewRemoval(plugin: PluginView) {
             :disabled="!canEdit" :schema="option.config_schema" :model-value="pluginConfigs[plugin.plugin] ?? plugin.config ?? {}"
             :problem="status?.kind === 'config' && !Object.hasOwn(pluginConfigs, plugin.plugin) ? status.error : undefined"
             :plugin-id="status?.kind === 'config' ? plugin.plugin : undefined"
-            :refusal="refusal" :field-help="plugin.plugin === 'kickside.pim.inventory:plugin' ? inventoryHelp : undefined"
+            :refusal="refusal"
             @validity="(valid, local) => validity(plugin.plugin, valid, local)" @update:model-value="setConfig(plugin.plugin, $event)" />
           <p v-else-if="!status || status.kind === 'pending'" class="muted small">
             {{ chosen ? 'This plugin has no settings for this catalog.' : 'Turn the plugin on to use it in this catalog.' }}
