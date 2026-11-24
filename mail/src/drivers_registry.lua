@@ -70,14 +70,4 @@ function M.check_available(driver: types.Driver): error?
     return open_err
 end
 
-function M.validate_setting(args: types.SettingInput): (types.SettingValidation?, error?)
-    local _, err = M.resolve(args.value :: string?)
-    if err then
-        local details = err:details()
-        if details and details.code == "invalid_config" then return {valid = false, error = err:message()}, nil end
-        return nil, err
-    end
-    return {valid = true}, nil
-end
-
 return M

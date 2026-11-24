@@ -69,7 +69,7 @@ local function probe(input)
         return funcs.call("kickside.mail.harness:send_first", input.message)
     end
     if input.operation == "driver_validation" then
-        return funcs.call("kickside.mail:validate_driver", {value = "first"})
+        return funcs.call("kickside.mail.settings:validate_driver", {value = "first"})
     end
     local mailer, err = open("kickside.mail:mailer")
     if err then return nil, err end
@@ -653,7 +653,7 @@ return {
 
             test.it("returns the same configuration error through mailer and writable destination", function()
                 local missing_driver = unconfigured(sender)
-                local port = assert(registry.get("kickside.mail.sink:send_email"))
+                local port = assert(registry.get("kickside.mail.ports:send_email"))
                 test.is_nil(port.data.config_schema and port.data.config_schema.connection_id)
                 local destination = assert(invoke(sender, "write", body()))
                 test.is_false(destination.success)

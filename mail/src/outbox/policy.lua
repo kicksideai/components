@@ -1,9 +1,9 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local time = require("time")
-local types = require("types")
 
 local M = {
     MAX_ATTEMPTS = 32,
+    MAX_RETENTION_DAYS = 3650,
     RECHECK_MS = 30000,
     BATCH = 200,
     DAY_MS = 86400000,
@@ -11,7 +11,6 @@ local M = {
 local BASE_MS = 1000
 local CAP_MS = 300000
 local MAX_HINT_MS = 900000
-local MAX_RETENTION_DAYS = 3650
 local RETRYABLE = {
     [errors.RATE_LIMITED] = true,
     [errors.UNAVAILABLE] = true,
@@ -35,13 +34,8 @@ function M.retry_at(err: error, attempts: integer, now: integer): integer?
 end
 
 function M.retention_days(value: unknown): integer?
-    if type(value) ~= "number" or value < 1 or value > MAX_RETENTION_DAYS then return nil end
+    if type(value) ~= "number" or value < 1 or value > M.MAX_RETENTION_DAYS then return nil end
     return math.tointeger(value)
-end
-
-function M.validate_retention(input: types.SettingInput): types.SettingValidation
-    if M.retention_days(input.value) then return {valid = true} end
-    return {valid = false, error = "Retention days must be an integer from 1 to " .. tostring(MAX_RETENTION_DAYS)}
 end
 
 return M

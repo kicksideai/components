@@ -6,13 +6,6 @@ entries:
     kind: library.lua
     source: file://policy.lua
     modules: [time]
-    imports: { types: kickside.mail:types }
-  - name: validate_retention
-    kind: function.lua
-    source: file://policy.lua
-    method: validate_retention
-    modules: [time]
-    imports: { types: kickside.mail:types }
   - name: database
     kind: library.lua
     source: file://database.lua

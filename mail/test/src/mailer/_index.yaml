@@ -182,10 +182,14 @@ entries:
         - kickside.settings:*
         - kickside.settings.api:put_settings.endpoint
         - kickside.settings.persist:*
-        - kickside.mail:setting_*
-        - kickside.mail:validate_driver
-        - kickside.mail.config:validate_address
-        - kickside.mail.outbox:validate_retention
+        - kickside.mail.settings:setting_driver
+        - kickside.mail.settings:setting_from_address
+        - kickside.mail.settings:setting_from_name
+        - kickside.mail.settings:setting_reply_to
+        - kickside.mail.settings:setting_log_retention_days
+        - kickside.mail.settings:validate_driver
+        - kickside.mail.settings:validate_address
+        - kickside.mail.settings:validate_retention
         - app:db
         - set
         - unset

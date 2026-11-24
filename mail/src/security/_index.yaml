@@ -11,7 +11,7 @@ entries:
       includes: [kickside.mail.security:module_runtime]
     groups: []
     policy:
-      resources: [kickside.mail.sink:send_email, kickside.mail.traits:mail, kickside.mail.traits:mail_readonly]
+      resources: [kickside.mail.ports:send_email, kickside.mail.traits:mail, kickside.mail.traits:mail_readonly]
       actions: [registry.get, registry.find]
       effect: allow
   - name: module_runtime
@@ -108,15 +108,15 @@ entries:
     groups: []
     policy:
       resources:
-        - kickside.mail:settings_block
-        - kickside.mail:setting_driver
-        - kickside.mail:setting_from_address
-        - kickside.mail:setting_from_name
-        - kickside.mail:setting_reply_to
-        - kickside.mail:setting_log_retention_days
-        - kickside.mail.outbox:validate_retention
-        - kickside.mail:validate_driver
-        - kickside.mail.config:validate_address
+        - kickside.mail.settings:settings_block
+        - kickside.mail.settings:setting_driver
+        - kickside.mail.settings:setting_from_address
+        - kickside.mail.settings:setting_from_name
+        - kickside.mail.settings:setting_reply_to
+        - kickside.mail.settings:setting_log_retention_days
+        - kickside.mail.settings:validate_retention
+        - kickside.mail.settings:validate_driver
+        - kickside.mail.settings:validate_address
       actions: [registry.get, registry.find, funcs.call]
       effect: allow
   - name: driver_discovery
