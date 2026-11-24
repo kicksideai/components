@@ -6,6 +6,10 @@ two host-mounted web components: `kickside-pim-admin` selects and creates catalo
 `kickside-pim-catalog-settings` edits one catalog, with `catalog-id` and `embedded`
 inputs. It does not install a product navigation item or consumer pages.
 
+Each opening of the Create catalog dialog starts a new create intent. Retrying
+the same creation in the open dialog reuses its idempotency key, so a lost
+response can be recovered with the original catalog ID.
+
 The settings builder covers fields and types, dimensions, vocabularies and terms,
 families and requirements, channels and sources, plugins and scopes, policy, form layout, history, and
 the declaration. Schema edits remain one draft until review and apply. Applying

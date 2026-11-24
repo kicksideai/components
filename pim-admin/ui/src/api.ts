@@ -26,8 +26,8 @@ export const pim = {
     ...(after == null ? {} : { after: String(after) }),
     ...(text ? { text } : {}),
   }),
-  createCatalog: (title: string, declaration?: Declaration, pluginConfigs: PluginConfigs = {}) =>
-    post<{ catalog_id: string; title: string }>(BASE, { idempotency_key: `ui-${Date.now()}`, title, declaration, plugin_configs: pluginConfigs }, 'catalog create'),
+  createCatalog: (title: string, idempotencyKey: string, declaration?: Declaration, pluginConfigs: PluginConfigs = {}) =>
+    post<{ catalog_id: string; title: string }>(BASE, { idempotency_key: idempotencyKey, title, declaration, plugin_configs: pluginConfigs }, 'catalog create'),
   history: (id: string, query: { limit?: number; before?: string } = {}) =>
     get<HistoryResult>(`${BASE}/${encodeURIComponent(id)}/history`, 'catalog history', Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]))),
   schema: (id: string) => get<SchemaView>(`${BASE}/${encodeURIComponent(id)}/schema`, 'schema'),
