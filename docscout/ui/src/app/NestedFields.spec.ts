@@ -146,7 +146,11 @@ describe('Saved nested runs',()=>{
   const {default:RunsPanel}=await import('./RunsPanel.vue')
   const w=mount(RunsPanel,{props:{retention:'2h',runs:[{id:'r',caller:'agent',status:'completed',upload_id:'u',config_revision:1,duration_ms:10,tokens:12,created_at:'2026-01-01T00:00:00Z',expires_at:'2026-01-02T00:00:00Z',result:{fields:[{name:'terms',path:'parties.borrower.terms',value:{amount:12},confidence:1,verified:true,evidence:[]}],values:{parties:{borrower:{terms:{amount:12}}}}}}]}})
   await w.get('button[aria-label="Show values for run r"]').trigger('click')
-  expect(w.text()).toContain('borrower');expect(w.text()).toContain('amount');expect(w.text()).toContain('12')
+  expect(w.text()).toContain('borrower')
+  expect(w.find('.structured-value').exists()).toBe(false)
+  await w.get('.value-main').trigger('click')
+  expect(w.get('.structured-value').text()).toContain('amount')
+  expect(w.get('.structured-value').text()).toContain('12')
  })
 })
 
