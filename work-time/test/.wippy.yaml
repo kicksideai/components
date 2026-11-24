@@ -9,6 +9,8 @@ registry:
   - security.scope
   enable_history: true
   history_type: memory
+disable:
+  entries: ['app:work_time_combined_integration_test', 'app:work_time_combined_stress_test']
 override:
   kickside.work.time.api:http_export:imports.handlers: app:work_time_export_fixture
   kickside.work.settings:read_deadline_ms:default: 10000
@@ -27,6 +29,19 @@ vars:
   pg_username: kickside
   pg_password: kickside
 profiles:
+  combined:
+    workspace:
+      replacements:
+        kickside/work: ../../work
+        kickside/work-planning: ../../work-planning
+    disable:
+      entries: ['app:work_time_sprint_reference_test']
+      meta:
+        type: [test_support] # Omit the simulated Planning capability from the dependency harness.
+    override:
+      app:dep.planning:parameters:
+      - name: kickside.work.planning.api:api_router
+        value: app:api
   postgres:
     override:
       app:db:kind: db.sql.postgres

@@ -111,6 +111,16 @@
         "work-planning/wippy.lock"
       ]
     },
+    "work-time": {
+      "component": "work-time",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "exclude-paths": [
+        "work-time/test",
+        "work-time/.wippy",
+        "work-time/wippy.lock"
+      ]
+    },
     "work-admin": {
       "component": "work-admin",
       "changelog-path": "CHANGELOG.md",
