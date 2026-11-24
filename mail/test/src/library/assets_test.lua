@@ -116,6 +116,26 @@ local run = test.run_cases(function()
             test.not_nil(preview.inline_assets["mail-library-logo"]:match("^data:image/png;base64,"))
         end)
 
+        test.it("reads the current immutable asset version through the library byte reader", function()
+            local packaged = call("asset_content", "logo")
+            test.eq("image/png", packaged.content_type)
+            local image = {kind = "asset", name = "asset-content-fixture", upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            local added = call("create", image)
+            local initial = call("asset_content", image.name)
+            test.eq(added.revision, initial.revision)
+            test.eq("image/gif", initial.content_type)
+            test.eq(gif(), initial.bytes)
+            local next_bytes = gif() .. "fixture"
+            image.upload_id = upload("image/gif", next_bytes)
+            image.expected_revision = added.revision
+            local replaced = call("update", image)
+            local current = call("asset_content", image.name)
+            test.eq(replaced.revision, current.revision)
+            test.neq(initial.revision, current.revision)
+            test.eq(next_bytes, current.bytes)
+        end)
+
         test.it("finds references in base, part and message output once and guards deletion", function()
             local source = upload("image/gif", gif())
             local image = {kind = "asset", name = "sample-mark", upload_id = source}

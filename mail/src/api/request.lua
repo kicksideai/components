@@ -42,7 +42,8 @@ local function shape_result(result: unknown)
     end
 end
 
-function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error?), status: integer?)
+function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error?), status: integer?,
+    respond: ((http.Request, http.Response, unknown) -> error?)?)
     local req, res = http.request(), http.response()
     if not req or not res then return nil, errors.new({kind = errors.UNAVAILABLE, message = "HTTP context required"}) end
     res:set_content_type(http.CONTENT.JSON)
@@ -56,6 +57,7 @@ function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error
     if denied then return fail(res, denied) end
     local result, err = run(req)
     if err then return fail(res, err) end
+    if respond then return respond(req, res, result) end
     res:set_status(status or 200)
     shape_result(result)
     res:write_json({success = true, data = result})

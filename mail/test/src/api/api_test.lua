@@ -16,15 +16,16 @@ local settings = fixtures.settings
 local API = "/api/mail"
 local ZERO = "00000000-0000-0000-0000-000000000000"
 
-local function request(who, method, path, payload)
+local function request(who, method, path, payload, headers)
     local state = assert(system.supervisor.state("app:gateway"))
     local address = assert(state.details:match("^service listening on (127%.0%.0%.1:[1-9]%d*)$"), state.details)
-    local headers = {["Content-Type"] = "application/json"}
+    headers = headers or {}
+    headers["Content-Type"] = "application/json"
     if who then headers.Authorization = "Bearer " .. who.token end
     local res = assert(http.request(method, "http://" .. address .. API .. path, {
         headers = headers, body = payload and assert(json.encode(payload)) or nil,
     }))
-    return res.status_code, res.body ~= "" and json.decode(res.body) or nil, res.body
+    return res.status_code, res.body ~= "" and json.decode(res.body) or nil, res.body, res.headers
 end
 
 local function data(who, method, path, payload, expected)
@@ -109,7 +110,7 @@ return {run = test.run_cases(function()
                     end
                 end
             end
-            test.eq(18, count)
+            test.eq(19, count)
             local predicate = "kickside.mail.api:library_list.endpoint"
             test.eq("allow", editor.scope:evaluate(editor.actor, "access", predicate))
             test.neq("allow", sender.scope:evaluate(sender.actor, "access", predicate))
@@ -375,6 +376,24 @@ return {run = test.run_cases(function()
             test.eq("user", senders[sender.id].sender_label.kind)
             test.eq(1, senders[sender.id].count)
             test.eq("Unknown account", senders[ZERO].sender_label.label)
+        end)
+
+        test.it("serves packaged image bytes only to editors and honors the validator", function()
+            local path = "/library/asset/logo/content"
+            local editor = session("editor")
+            local sender = session("sender")
+            local status, _, bytes, headers = request(editor, "GET", path)
+            test.eq(200, status, bytes)
+            test.eq("image/png", headers["Content-Type"])
+            test.eq("\137PNG\r\n\26\n", bytes:sub(1, 8))
+            local etag = headers.Etag
+            test.not_nil(etag:match('^"0%-[a-f0-9]+"$'))
+            local cached, _, body = request(editor, "GET", path, nil, {["If-None-Match"] = '"old", W/' .. etag})
+            test.eq(304, cached)
+            test.eq("", body or "")
+            test.eq(403, (request(sender, "GET", path, nil, {["If-None-Match"] = etag})))
+            test.eq(401, (request(nil, "GET", path)))
+            test.eq(404, (request(editor, "GET", "/library/asset/missing-image/content")))
         end)
 
         test.it("lists assets when the draft overlay is occupied and clears old scratch on reconciliation", function()

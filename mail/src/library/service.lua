@@ -409,6 +409,19 @@ function M.get(input: types.ResourceKey): (types.Resource?, error?)
     return item, nil
 end
 
+function M.asset_content(name: string): (types.AssetContent?, error?)
+    local denied = client.require_library()
+    if denied then return nil, denied end
+    local found, err = resources.get({kind = "asset", name = name})
+    if err then return nil, err end
+    local item = found :: types.Resource
+    local ref = asset_refs.reference(item, asset_refs.cid(item.name))
+    local file, read_err = funcs.call("kickside.mail.library:read_asset_file", {ref = ref, bytes = true})
+    if read_err then return nil, read_err end
+    local part = file :: types.AssetPart
+    return {revision = item.revision, content_type = part.content_type, bytes = part.content :: string}, nil
+end
+
 function M.list(input: types.ResourceFilter?): ({types.Resource}?, error?)
     local denied = client.require_library()
     if denied then return nil, denied end

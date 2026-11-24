@@ -156,6 +156,18 @@ entries:
         - kickside.mail.security:settings_admin_read
         - kickside.mail.security:overlay_owner
         - kickside.mail.security:overlay_drafts
+  - name: asset_content
+    kind: function.lua
+    method: asset_content
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:asset_bytes
   - name: list_page
     kind: function.lua
     method: list_page

@@ -290,6 +290,7 @@ entries:
       resources:
         - kickside.mail.library:list
         - kickside.mail.library:list_page
+        - kickside.mail.library:asset_content
         - kickside.mail.library:get
         - kickside.mail.library:create
         - kickside.mail.library:update
@@ -406,6 +407,7 @@ entries:
       resources:
         - kickside.mail.api:library_list.endpoint
         - kickside.mail.api:library_get.endpoint
+        - kickside.mail.api:library_asset_content.endpoint
         - kickside.mail.api:library_create.endpoint
         - kickside.mail.api:library_update.endpoint
         - kickside.mail.api:library_save.endpoint
@@ -431,6 +433,7 @@ entries:
         - kickside.ui.api:list_settings_tabs.endpoint
         - kickside.mail.api:library_list.endpoint
         - kickside.mail.api:library_get.endpoint
+        - kickside.mail.api:library_asset_content.endpoint
         - kickside.mail.api:library_create.endpoint
         - kickside.mail.api:library_update.endpoint
         - kickside.mail.api:library_save.endpoint

@@ -54,14 +54,18 @@ function M.from_items(items: types.ResourceMap): {types.Resource}
     return selected
 end
 
+function M.reference(item: types.Resource, content_id: string): types.AssetRef
+    local asset = item.asset :: types.Asset
+    return {name = item.name, content_id = content_id, upload_id = asset.upload_id,
+        original = asset.source == "original" and item.origin or nil}
+end
+
 function M.select(html: string, items: {types.Resource}, context: types.JsonObject): {types.AssetRef}
     local selected: {types.AssetRef} = {}
     for _, item in ipairs(items) do
         local id = (context[item.name] :: string):sub(#"cid:" + 1)
         if M.referenced(html, id) then
-            local asset = item.asset :: types.Asset
-            selected[#selected + 1] = {name = item.name, content_id = id, upload_id = asset.upload_id,
-                original = asset.source == "original" and item.origin or nil}
+            selected[#selected + 1] = M.reference(item, id)
         end
     end
     return selected
