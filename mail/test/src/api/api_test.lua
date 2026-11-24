@@ -262,6 +262,8 @@ return {run = test.run_cases(function()
             end
             local activity = data(admin, "GET", "/activity?status=sent&message=notice&limit=1&since=0")
             test.eq("notice", activity.items[1].template)
+            settings("", "")
+            configured = false
             test.is_false(data(admin, "GET", "/delivery").configured)
         end)
     end)
