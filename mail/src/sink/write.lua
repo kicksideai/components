@@ -15,10 +15,14 @@ local CLASSIFICATION = {
 local function write(request: types.SinkRequest): types.SinkResult | types.SinkFailure
     local origin, origin_err = sink.origin(request)
     if origin_err then return origin_err end
-    if request.sink_op ~= "create" or type(request.input) ~= "table"
-        or type(request.idempotency_key) ~= "string" or request.idempotency_key == "" then
-        return sink.fail("A create write requires a message record and an idempotency key", "invalid_request")
+    local operation = request.sink_op
+    if operation ~= "upsert" and operation ~= "create" and operation ~= "delete" then
+        return sink.fail("Unsupported mail write operation", "unsupported_operation")
     end
+    if type(request.input) ~= "table" or type(request.idempotency_key) ~= "string" or request.idempotency_key == "" then
+        return sink.fail("A mail write requires a record and an idempotency key", "invalid_request")
+    end
+    if operation == "delete" then return {success = true, result = "noop"} end
     local input = {}
     for key, value in pairs(request.input) do input[key] = value end
     input.idempotency_key = request.idempotency_key

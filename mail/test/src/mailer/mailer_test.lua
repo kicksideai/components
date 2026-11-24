@@ -36,12 +36,13 @@ local function probe(input)
             namespace = "kickside.mail", key = input.key, value = input.value,
         })
     end
-    if input.operation == "write" then
+    if input.operation == "write" or input.operation == "write_request" then
         local writable = assert(open("kickside.data:writable", "kickside.mail.sink:writable"))
-        return writable:write({
+        local request = input.operation == "write_request" and input.message or {
             config = {}, sink_op = "create", input = input.message,
             idempotency_key = "delivery-key", identity_key = "record-key", origin = "automation",
-        })
+        }
+        return writable:write(request)
     end
     if input.operation == "blocks" then
         local catalog, catalog_err = blocks.catalog()
@@ -750,6 +751,45 @@ return {
                 test.eq("automation", message.origin.id)
                 test.is_nil(result.dest_ref.provider_message_id)
                 test.is_nil(result.dest_ref.transport_metadata)
+            end)
+
+            test.it("sends each Sync upsert once and acknowledges deletes without sending", function()
+                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "from_address", "mail@example.org").success)
+                local port = assert(registry.get("kickside.mail.ports:send_email"))
+                local request = {
+                    config = {}, sink_op = "upsert", input = body(), idempotency_key = "source-item-v1",
+                    identity_key = "source-item", origin = "automation",
+                    automation_ref = {kind = "automation", id = "automation", revision = 1},
+                }
+                local first = assert(invoke(sender, "write_request", request))
+                test.is_true(first.success, tostring(first.error and first.error.message))
+                test.eq("created", first.result)
+                test.eq("sent", terminal(sender, {message_id = first.dest_ref.message_id, status = "queued"}).status)
+                local replay = assert(invoke(sender, "write_request", request))
+                test.eq(first.dest_ref.message_id, replay.dest_ref.message_id)
+
+                request.dest_ref = first.dest_ref
+                request.idempotency_key = "source-item-v2"
+                request.input.subject = "Changed source item"
+                local changed = assert(invoke(sender, "write_request", request))
+                test.is_true(changed.success, tostring(changed.error and changed.error.message))
+                test.is_true(first.dest_ref.message_id ~= changed.dest_ref.message_id)
+                test.eq("sent", terminal(sender, {message_id = changed.dest_ref.message_id, status = "queued"}).status)
+
+                request.dest_ref = changed.dest_ref
+                request.input = assert(json.decode("{}"))
+                request.idempotency_key = "source-item-v3"
+                request.sink_op = "delete"
+                local deleted = assert(invoke(sender, "write_request", request))
+                test.is_true(deleted.success, tostring(deleted.error and deleted.error.message))
+                test.eq("noop", deleted.result)
+                test.is_nil(deleted.dest_ref)
+                local logged = assert(invoke(sender, "list_messages", {limit = 10}))
+                test.eq(2, #logged.items)
+                test.not_nil(port.data.operations.upsert)
+                test.not_nil(port.data.operations.delete)
+                test.is_nil(port.data.operations.create)
             end)
 
             test.it("records display origin from module and workflow send surfaces", function()

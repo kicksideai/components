@@ -170,8 +170,8 @@ type ContentProvider = {
     get_info: (self: ContentProvider, input: {format: string}) -> (ContentInfo | ContentFailure | nil, error?),
     get_content: (self: ContentProvider, input: {format: string, max_size: number}) -> (Content | ContentFailure | nil, error?),
 }
-type SinkRequest = {sink_op: string, input: SendRequest, idempotency_key: string, origin: string, automation_ref: {id: string}?}
-type SinkResult = {success: true, result: string, dest_ref: MessageRef}
+type SinkRequest = {sink_op: string, input: Record, idempotency_key: string, origin: string, automation_ref: {id: string}?}
+type SinkResult = {success: true, result: string, dest_ref: MessageRef?}
 type SinkFailure = {success: false, error: {code: string, message: string, retriable: boolean, scope: string, details: Record?}}
 type WritableSink = {
     origin: (SinkRequest) -> (string?, SinkFailure?),
