@@ -75,6 +75,29 @@ local function visible_messages(names: {string}, items: types.ResourceMap): {str
     return visible
 end
 
+local function asset_sources(tx: sql.Transaction, name: string, items: types.ResourceMap,
+    originals: types.OriginalMap): ({types.ResourceKey}?, error?)
+    local sources: {types.ResourceKey} = {}
+    local seen: {[string]: boolean} = {}
+    local function add(item: types.ResourceContent)
+        local id = resources.key(item)
+        if not seen[id] and (asset_refs.source_reference(item.html, name) or asset_refs.source_reference(item.text, name)
+            or asset_refs.source_reference(item.subject, name)) then
+            seen[id] = true
+            sources[#sources + 1] = {kind = item.kind, name = item.name}
+        end
+    end
+    for _, item in pairs(items) do add(item) end
+    for _, original in pairs(originals) do add(original.resource) end
+    local pattern = "%" .. name:gsub("([!%%_])", "!%1") .. "%"
+    local revisions, err = tx:query([[SELECT kind,name,html,text,subject FROM mail_library_revision
+        WHERE html LIKE $1 ESCAPE '!' OR text LIKE $1 ESCAPE '!' OR subject LIKE $1 ESCAPE '!']], {pattern})
+    if err then return nil, err end
+    for _, revision in ipairs(revisions) do add((revision :: unknown) :: types.ResourceContent) end
+    table.sort(sources, function(a, b) return resources.key(a) < resources.key(b) end)
+    return sources, nil
+end
+
 local function prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: string,
     items: types.ResourceMap, originals: types.OriginalMap): (types.ResourceContent?, error?, integer?)
     local key = edit.key
@@ -192,10 +215,12 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
         if operation == "delete" and key.kind == "asset" then
             local references, usage_err = store.asset_usage(tx, key.name)
             if usage_err then return nil, usage_err end
-            local messages = references[key.name] or {}
-            if #messages > 0 then
-                return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = "Messages use this mail asset",
-                    details = {code = "mail_resource_in_use", resource = key, messages = visible_messages(messages, items :: types.ResourceMap)}})
+            local messages = visible_messages(references[key.name] or {}, items :: types.ResourceMap)
+            local sources, source_err = asset_sources(tx, key.name, items :: types.ResourceMap, originals :: types.OriginalMap)
+            if source_err then return nil, source_err end
+            if #messages > 0 or #sources > 0 then
+                return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = "Library sources or rendered samples use this mail asset",
+                    details = {code = "mail_resource_in_use", resource = key, messages = messages, resources = sources}})
             end
         end
         local candidates: {types.ResourceContent} = {}
