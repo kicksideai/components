@@ -469,6 +469,63 @@ return {run = test.run_cases(function()
             test.eq(403, (request(sender, "POST", "/library", {kind = "asset", name = "proof"})))
         end)
 
+        test.it("refuses malformed draft shapes and library filters consistently", function()
+            local editor = session("editor")
+            for _, body in ipairs({
+                {message = "notice", resource = 12},
+                {message = "notice", resource = false},
+                {message = "notice", resources = {12}},
+                {message = {}, resources = {}},
+            }) do
+                local status, result = request(editor, "POST", "/library/preview", body)
+                test.eq(400, status, json.encode(result))
+                test.is_true(result.code == "invalid_mail_draft" or result.code == "invalid_mail_resources",
+                    json.encode(result))
+            end
+            for _, view in ipairs({"", "&view=summary"}) do
+                local status, result = request(editor, "GET", "/library?kind=unknown" .. view)
+                test.eq(400, status)
+                test.eq("invalid_mail_filter", result.code)
+            end
+            for _, view in ipairs({"", "&view=summary"}) do
+                local status, result = request(editor, "GET", "/library?q=%00" .. view)
+                test.eq(400, status)
+                test.eq("invalid_mail_filter", result.code)
+            end
+            local status, result = request(editor, "PUT", "/library/part/header", {kind = "part", name = "footer"})
+            test.eq(400, status)
+            test.eq("invalid_request", result.code)
+            status, result = request(editor, "POST", "/library/preview", "notice")
+            test.eq(400, status)
+            test.eq("invalid_request", result.code)
+        end)
+
+        test.it("checks source, name, schema and note byte limits", function()
+            local editor = session("editor")
+            for _, case in ipairs({
+                {field = "name", value = string.rep("n", 129)},
+                {field = "html", value = string.rep("h", 65537)},
+                {field = "text", value = string.rep("t", 65537)},
+                {field = "schema", value = {type = "object", properties = {}, description = string.rep("s", 32768)}},
+                {field = "note", value = string.rep("n", 4097), code = "invalid_revision_note"},
+            }) do
+                local part = own(fixture("part", "rejected-library-size", "Fixture"))
+                part[case.field] = case.value
+                local status, err = request(editor, "POST", "/library", part)
+                test.eq(400, status, case.field)
+                test.eq(case.code or "invalid_mail_resource", err.code)
+            end
+            local exact = own(fixture("part", string.rep("p", 128), string.rep("h", 65536)))
+            exact.note = string.rep("n", 4096)
+            local created = data(editor, "POST", "/library", exact, 201)
+            test.eq(65536, #created.html)
+            test.eq(128, #created.name)
+            local status, err = request(editor, "POST", "/library/preview",
+                {message = "notice", vars = {message = string.rep("p", 3 * 1024 * 1024)}})
+            test.eq(400, status)
+            test.eq("invalid_request", err.code)
+        end)
+
         test.it("names the candidate sources when a draft message include fails", function()
             local editor = session("editor")
             local part = own(fixture("part", "candidate-part", "Static"))

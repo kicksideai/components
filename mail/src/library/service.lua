@@ -148,8 +148,25 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
         local key = edit.key
         local bad_key = resources.check_key(key)
         if bad_key then return nil, bad_key end
-        if edit.note ~= nil and type(edit.note) ~= "string" then
-            return nil, resources.error(errors.INVALID, "invalid_revision_note", "A revision note must be text", key)
+        local note_err = resources.check_note(edit.note)
+        if note_err then return nil, note_err end
+        if operation == "create" then
+            local name_err = resources.check_input_key(key)
+            if name_err then return nil, name_err end
+            if edit.from ~= nil then
+                local from_err = resources.check_key(edit.from)
+                if from_err then return nil, from_err end
+            end
+        elseif type(edit.expected) ~= "number" or math.tointeger(edit.expected) == nil or edit.expected < 0 then
+            return nil, resources.error(errors.INVALID, "invalid_mail_revision", "Provide an expected revision", key)
+        end
+        if edit.content then
+            local content_err = resources.check_content(edit.content)
+            if content_err then return nil, content_err end
+        end
+        if edit.base ~= nil then
+            local base_err = resources.check_input_key({kind = "base", name = edit.base})
+            if base_err then return nil, base_err end
         end
         local id = resources.key(key)
         if changed[id] then
@@ -311,13 +328,20 @@ local function adopt(input: types.AssetWrite, operation: string): (types.Resourc
     local denied = client.require_library()
     if denied then return nil, denied end
     local key = {kind = "asset", name = input.name}
-    local bad = resources.check_key(key)
+    local bad = operation == "create" and resources.check_input_key(key) or resources.check_key(key)
     if bad then return nil, bad end
+    local note_err = resources.check_note(input.note)
+    if note_err then return nil, note_err end
+    if operation == "update" and (type(input.expected_revision) ~= "number"
+        or math.tointeger(input.expected_revision) == nil or input.expected_revision < 0) then
+        return nil, resources.error(errors.INVALID, "invalid_mail_revision", "Provide an expected revision", key)
+    end
+    local content_err = resources.check_content((input :: unknown) :: types.ResourceContent)
+    if content_err then return nil, content_err end
     if type(input.upload_id) ~= "string" or not uuid.validate(input.upload_id)
         or not dimension(input.width) or not dimension(input.height)
         or (input.title ~= nil and (type(input.title) ~= "string" or not input.title:find("%S")))
-        or (input.description ~= nil and type(input.description) ~= "string")
-        or (input.note ~= nil and type(input.note) ~= "string") then
+        or (input.description ~= nil and type(input.description) ~= "string") then
         return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide an upload ID and optional image dimensions", key)
     end
     local current, read_err = resources.get(key)
@@ -370,6 +394,7 @@ end
 local function count(input: unknown): integer
     if type(input) ~= "table" then return 0 end
     local size = #input
+    if size > resources.MAX_EDITS then return 0 end
     for i in pairs(input) do
         if type(i) ~= "number" or math.tointeger(i) == nil or i < 1 or i > size then return 0 end
     end
@@ -446,17 +471,17 @@ end
 function M.list(input: types.ResourceFilter?): ({types.Resource}?, error?)
     local denied = client.require_library()
     if denied then return nil, denied end
-    return resources.list(input or {})
+    if input == nil then input = {} end
+    local invalid = resources.check_filter(input)
+    if invalid then return nil, invalid end
+    return resources.list(input)
 end
 
 function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, error?)
     local denied = client.require_library()
     if denied then return nil, denied end
-    if type(input) ~= "table" or (input.q ~= nil and type(input.q) ~= "string")
-        or (input.kind and input.kind ~= "base" and input.kind ~= "message" and input.kind ~= "part" and input.kind ~= "asset")
-        or (input.state and input.state ~= "original" and input.state ~= "customized" and input.state ~= "created") then
-        return nil, resources.error(errors.INVALID, "invalid_mail_filter", "Provide a valid resource kind, state and search query")
-    end
+    local invalid = resources.check_filter(input)
+    if invalid then return nil, invalid end
     local limit, cursor, page_err = keyset.args(input)
     if page_err then return nil, page_err end
     local items, read_err = M.list(input)
@@ -540,6 +565,10 @@ end
 
 function M.set_base(input: types.ResourceBaseEdit): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceBaseEdit
+    local denied = client.require_library()
+    if denied then return nil, denied end
+    local bad = resources.check_input_key({kind = "base", name = fields.base})
+    if bad then return nil, bad end
     return change_one({key = {kind = "message", name = fields.name}, expected = fields.expected_revision,
         base = fields.base, note = fields.note}, "update")
 end
@@ -596,15 +625,15 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
     local denied = client.require_library()
     if denied then return nil, denied end
     if type(input) ~= "table" or type(input.message) ~= "string"
-        or (input.resource and (input.resources or input.create))
-        or (input.create and (not bind or input.resources)) then
+        or (input.resource ~= nil and (type(input.resource) ~= "table" or input.resources ~= nil or input.create ~= nil))
+        or (input.create ~= nil and (not bind or type(input.create) ~= "table" or input.resources ~= nil)) then
         return nil, resources.error(errors.INVALID, "invalid_mail_draft", "Provide a message and either edited resources or one new resource")
     end
     if input.attachments ~= nil then
         local invalid = message.attachments_error(input.attachments)
         if invalid then return nil, invalid end
     end
-    if (input.resources and count(input.resources) == 0) or (bind and not (input.resources or input.create)) then
+    if (input.resources ~= nil and count(input.resources) == 0) or (bind and not (input.resources or input.create)) then
         return nil, resources.error(errors.INVALID, "invalid_mail_resources", "Provide draft resources or a new resource to preview")
     end
     local edits: {types.ResourceContent} = input.resource and {input.resource} or input.resources or {}
@@ -615,6 +644,8 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         if edit.kind == "asset" then
             return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Assets are added from an upload", edit)
         end
+        local content_err = resources.check_content(edit)
+        if content_err then return nil, content_err end
         local candidate, invalid = resources.normalize(edit)
         if invalid then return nil, invalid end
         local id = resources.key(candidate)
@@ -622,6 +653,18 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
             return nil, resources.error(errors.INVALID, "duplicate_mail_resource", "A resource can appear only once per draft", candidate)
         end
         changed[id], candidates[i], keys[i] = true, candidate, candidate
+    end
+    if input.create then
+        local key_err = resources.check_input_key(input.create)
+        if key_err then return nil, key_err end
+        local content_err = resources.check_content(input.create :: types.ResourceContent)
+        if content_err then return nil, content_err end
+        local note_err = resources.check_note(input.create.note)
+        if note_err then return nil, note_err end
+        if input.create.from ~= nil then
+            local from_err = resources.check_key(input.create.from)
+            if from_err then return nil, from_err end
+        end
     end
     local values, globals_err = globals.read()
     if globals_err then return nil, globals_err end
@@ -634,8 +677,6 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
             if input.create.kind == "asset" then
                 return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Assets are added from an upload", input.create)
             end
-            local key_err = resources.check_key(input.create)
-            if key_err then return nil, key_err end
             local candidate, create_err = prepare(tx, create_edit(input.create), "create",
                 items :: types.ResourceMap, originals :: types.OriginalMap)
             if create_err then return nil, create_err end

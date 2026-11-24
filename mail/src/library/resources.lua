@@ -8,6 +8,14 @@ local jet = require("jet")
 
 local M = {}
 
+local MAX_NAME_BYTES = 128
+local MAX_DISPLAY_BYTES = 4096
+local MAX_FACE_BYTES = 64 * 1024
+local MAX_SCHEMA_BYTES = 32 * 1024
+local MAX_NOTE_BYTES = 4096
+M.MAX_VARIABLE_BYTES = 64 * 1024
+M.MAX_EDITS = 12
+
 function M.error(kind: string, code: string, message: string, key: types.ResourceKey?): error
     return errors.new({kind = kind, retryable = false, message = message,
         details = {code = code, resource = key and {kind = key.kind, name = key.name} or nil}})
@@ -24,6 +32,60 @@ end
 function M.check_key(key: types.ResourceKey): error?
     if type(key) ~= "table" or (key.kind ~= "base" and key.kind ~= "message" and key.kind ~= "part" and key.kind ~= "asset") or not valid_name(key.name) then
         return M.error(errors.INVALID, "invalid_mail_resource", "A library resource requires a kind and a stable name")
+    end
+    return nil
+end
+
+function M.check_input_key(key: types.ResourceKey): error?
+    local invalid = M.check_key(key)
+    if invalid then return invalid end
+    if #key.name > MAX_NAME_BYTES then
+        return M.error(errors.INVALID, "invalid_mail_resource", "Resource names may use at most 128 bytes")
+    end
+    return nil
+end
+
+function M.check_filter(filter: types.ResourceFilter): error?
+    if type(filter) ~= "table" or (filter.q ~= nil and (type(filter.q) ~= "string"
+        or #filter.q > MAX_DISPLAY_BYTES or filter.q:find("%z") or not utf8.len(filter.q)))
+        or (filter.kind ~= nil and filter.kind ~= "base" and filter.kind ~= "message" and filter.kind ~= "part" and filter.kind ~= "asset")
+        or (filter.state ~= nil and filter.state ~= "original" and filter.state ~= "customized" and filter.state ~= "created")
+        or (filter.base ~= nil and not valid_name(filter.base)) then
+        return M.error(errors.INVALID, "invalid_mail_filter", "Provide a valid resource kind, state, base and search query")
+    end
+    return nil
+end
+
+function M.check_json(value: unknown, maximum: integer, code: string, message: string): error?
+    local encoded, err = canonical.encode(value)
+    if err or #encoded > maximum then return M.error(errors.INVALID, code, message) end
+    return nil
+end
+
+function M.check_note(note: unknown): error?
+    if note ~= nil and (type(note) ~= "string" or #note > MAX_NOTE_BYTES or not utf8.len(note)) then
+        return M.error(errors.INVALID, "invalid_revision_note", "A revision note must be UTF-8 text of at most 4096 bytes")
+    end
+    return nil
+end
+
+function M.check_content(input: types.ResourceContent): error?
+    for name, maximum in pairs({title = MAX_DISPLAY_BYTES, description = MAX_DISPLAY_BYTES,
+        base = MAX_NAME_BYTES, subject = MAX_FACE_BYTES, html = MAX_FACE_BYTES, text = MAX_FACE_BYTES}) do
+        local value = ((input :: unknown) :: types.Record)[name]
+        if value ~= nil and (type(value) ~= "string" or #value > maximum or not utf8.len(value)) then
+            return M.error(errors.INVALID, "invalid_mail_resource",
+                "The resource " .. name .. " must be UTF-8 text of at most " .. maximum .. " bytes", input)
+        end
+    end
+    if input.schema ~= nil then
+        local err = M.check_json(input.schema, MAX_SCHEMA_BYTES, "invalid_mail_resource",
+            "The variable schema must be valid JSON of at most 32768 bytes")
+        if err then return err end
+    end
+    if input.samples ~= nil then
+        return M.check_json(input.samples, M.MAX_VARIABLE_BYTES, "invalid_mail_resource",
+            "Sample variables must be valid JSON of at most 65536 bytes")
     end
     return nil
 end
