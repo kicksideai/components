@@ -15,29 +15,29 @@ import ca from "primevue/toggleswitch";
 const va = ["aria-labelledby"], ya = {
   key: 0,
   class: "kx-settings-group-head"
-}, fa = ["id"], ma = {
+}, fa = ["id"], pa = {
   key: 0,
   class: "kx-settings-group-count"
-}, pa = { class: "kx-settings-group-list" }, re = /* @__PURE__ */ X({
+}, ma = { class: "kx-settings-group-list" }, re = /* @__PURE__ */ X({
   __name: "SettingsGroup",
   props: {
     title: {},
     count: {}
   },
   setup(d) {
-    const m = Se();
+    const p = Se();
     return (c, N) => (s(), n("section", {
       class: "kx-settings-group",
-      "aria-labelledby": d.title ? i(m) : void 0
+      "aria-labelledby": d.title ? i(p) : void 0
     }, [
       d.title ? (s(), n("div", ya, [
         u("h2", {
-          id: i(m),
+          id: i(p),
           class: "kx-settings-group-title"
         }, y(d.title), 9, fa),
-        d.count !== void 0 ? (s(), n("span", ma, y(d.count), 1)) : f("", !0)
+        d.count !== void 0 ? (s(), n("span", pa, y(d.count), 1)) : f("", !0)
       ])) : f("", !0),
-      u("div", pa, [
+      u("div", ma, [
         G(c.$slots, "default")
       ])
     ], 8, va));
@@ -61,7 +61,7 @@ const va = ["aria-labelledby"], ya = {
   }),
   emits: ["update:open"],
   setup(d) {
-    const m = d, c = Pe(d, "open"), N = ze(), O = Se(), M = h(c.value);
+    const p = d, c = Pe(d, "open"), N = ze(), O = Se(), M = h(c.value);
     return Q(c, (x) => {
       x && (M.value = !0);
     }), (x, k) => (s(), n("article", {
@@ -102,7 +102,7 @@ const va = ["aria-labelledby"], ya = {
         name: "kx-settings-item-motion"
       }, {
         default: $(() => [
-          M.value || m.keepMounted ? qe((s(), n("div", {
+          M.value || p.keepMounted ? qe((s(), n("div", {
             key: 0,
             id: i(O),
             inert: !c.value,
@@ -123,29 +123,29 @@ const va = ["aria-labelledby"], ya = {
   }
 }), de = /* @__PURE__ */ new Map();
 function Ta(d) {
-  let m = de.get(d);
-  return m || (m = Promise.resolve(ia(d)).then(() => !0, () => (de.delete(d), !1)), de.set(d, m)), m;
+  let p = de.get(d);
+  return p || (p = Promise.resolve(ia(d)).then(() => !0, () => (de.delete(d), !1)), de.set(d, p)), p;
 }
 const Da = () => Ee(() => Z.get("/api/v1/mail/delivery/drivers"), "Delivery services").then((d) => d.items);
 async function Ea(d) {
   try {
-    const { data: m } = await Z.get("/api/v1/settings", { params: { namespace: d } });
-    if (m?.success && Array.isArray(m.settings)) return m.settings.filter((c) => c.namespace === d);
-    throw new Te({ error: m?.error, kind: "INTERNAL" }, "Settings");
-  } catch (m) {
-    throw De(m, "Settings");
+    const { data: p } = await Z.get("/api/v1/settings", { params: { namespace: d } });
+    if (p?.success && Array.isArray(p.settings)) return p.settings.filter((c) => c.namespace === d);
+    throw new Te({ error: p?.error, kind: "INTERNAL" }, "Settings");
+  } catch (p) {
+    throw De(p, "Settings");
   }
 }
 async function Na(d) {
   try {
-    const { data: m } = await Z.put("/api/v1/settings", { values: d });
-    if (m?.success) return;
-    throw new Te({ error: m?.error, kind: "INVALID" }, "Save settings");
-  } catch (m) {
-    const c = m?.response?.data;
+    const { data: p } = await Z.put("/api/v1/settings", { values: d });
+    if (p?.success) return;
+    throw new Te({ error: p?.error, kind: "INVALID" }, "Save settings");
+  } catch (p) {
+    const c = p?.response?.data;
     if (c && typeof c.namespace == "string" && typeof c.key == "string")
       return { namespace: c.namespace, key: c.key, error: typeof c.message == "string" ? c.message : String(c.error ?? "") };
-    throw De(m, "Save settings");
+    throw De(p, "Save settings");
   }
 }
 const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send test email"), Ma = { class: "mail-setting-control" }, Ra = {
@@ -167,16 +167,16 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
     disabled: { type: Boolean }
   },
   emits: ["change", "validity"],
-  setup(d, { emit: m }) {
-    const c = d, N = m, O = (o) => !!o.is_secret || o.value_type === "secret", M = C(() => c.settings.filter((o) => o.editable !== !1).sort((o, v) => (o.order ?? 100) - (v.order ?? 100))), x = (o) => O(o) ? "" : o.value ?? o.default ?? "", k = h(Object.fromEntries(c.settings.map((o) => [o.key, c.draft?.[o.key] ?? x(o)]))), j = h(Object.fromEntries(c.settings.filter(O).map((o) => [o.key, c.draft?.[o.key] !== void 0])));
+  setup(d, { emit: p }) {
+    const c = d, N = p, O = (o) => !!o.is_secret || o.value_type === "secret", M = C(() => c.settings.filter((o) => o.editable !== !1).sort((o, v) => (o.order ?? 100) - (v.order ?? 100))), x = (o) => O(o) ? "" : o.value ?? o.default ?? "", k = h(Object.fromEntries(c.settings.map((o) => [o.key, c.draft?.[o.key] ?? x(o)]))), j = h(Object.fromEntries(c.settings.filter(O).map((o) => [o.key, c.draft?.[o.key] !== void 0])));
     function D(o) {
       j.value[o.key] = !1, k.value[o.key] = "";
     }
-    function p(o) {
+    function m(o) {
       const v = k.value[o.key], t = o.schema?.pattern;
       return t && typeof v == "string" && v && !new RegExp(t).test(v) ? "This value does not have the expected form." : "";
     }
-    const S = (o) => p(o) || c.errors[o.key] || "";
+    const S = (o) => m(o) || c.errors[o.key] || "";
     Q(k, (o) => {
       const v = {};
       for (const t of c.settings) {
@@ -187,7 +187,7 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
         }
         w !== x(t) && (v[t.key] = w);
       }
-      N("change", v), N("validity", c.settings.every((t) => !p(t)));
+      N("change", v), N("validity", c.settings.every((t) => !m(t)));
     }, { deep: !0 });
     const F = (o) => (o.schema?.enum ?? []).map((v) => ({ label: String(v), value: v }));
     return (o, v) => (s(), n(P, null, [
@@ -311,62 +311,62 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
   key: 2,
   class: "kx-notice warn mail-block",
   role: "status"
-}, Ka = ["disabled", "inert"], Ha = {
+}, Ka = ["disabled", "inert"], Ha = { class: "mail-setting-control" }, Wa = {
   key: 0,
   class: "mail-kind"
-}, Wa = { key: 1 }, Ya = { class: "mail-kind" }, Qa = {
+}, Ya = { key: 1 }, Qa = { class: "mail-kind" }, Xa = {
   key: 0,
   class: "kx-loading mail-driver-state",
   role: "status"
-}, Xa = {
+}, Za = {
   key: 1,
   class: "kx-err inline mail-driver-state",
   role: "alert"
-}, Za = { class: "mail-setting-control" }, et = {
+}, et = { class: "mail-setting-control" }, at = {
   key: 0,
   class: "mail-field-error",
   role: "alert"
-}, at = { class: "mail-setting-control" }, tt = { class: "mail-setting-control" }, lt = {
+}, tt = { class: "mail-setting-control" }, lt = { class: "mail-setting-control" }, st = {
   key: 0,
   class: "mail-field-error",
   role: "alert"
-}, st = {
+}, it = {
   key: 0,
   class: "mail-test-result",
   role: "status"
-}, it = {
+}, nt = {
   key: 0,
   class: "kx-notice error mail-block"
-}, nt = {
+}, ot = {
   key: 1,
   class: "kx-notice mail-block"
-}, ot = {
+}, rt = {
   key: 2,
   class: "kx-notice info mail-block"
-}, rt = {
+}, dt = {
   key: 3,
   class: "kx-notice error mail-block"
-}, dt = { class: "mail-failure-body" }, ut = { class: "kx-modal-head-icon" }, ct = { class: "mail-change-list" }, vt = {
+}, ut = { class: "mail-failure-body" }, ct = { class: "kx-modal-head-icon" }, vt = { class: "mail-change-list" }, yt = {
   key: 0,
   class: "mail-outcome",
   role: "status"
-}, yt = {
+}, ft = {
   key: 0,
   class: "kx-notice info mail-block"
-}, ft = {
+}, pt = {
   key: 1,
   class: "kx-notice error mail-block"
 }, mt = {
   key: 2,
   class: "kx-notice warn mail-block"
-}, pt = {
+}, kt = {
   key: 1,
   class: "kx-err inline",
   role: "alert"
-}, q = "kickside.mail", kt = /* @__PURE__ */ X({
+}, q = "kickside.mail", gt = /* @__PURE__ */ X({
   __name: "DeliverySettings",
   setup(d) {
-    const m = Ye(), c = ["from_address", "from_name", "reply_to"], N = { from_address: "From address", from_name: "From name", reply_to: "Reply-to" }, O = h(!0), M = h(!1), x = h(""), k = oe([]), j = oe(), D = h({ driver: "", from_address: "", from_name: "", reply_to: "" }), p = h({ ...D.value }), S = h({}), F = h(!0), o = h({}), v = h(), t = h();
+    const p = Ye(), c = ["from_address", "from_name", "reply_to"], N = { from_address: "From address", from_name: "From name", reply_to: "Reply-to" }, O = h(!0), M = h(!1), x = h(""), k = oe([]), j = oe(), D = h({ driver: "", from_address: "", from_name: "", reply_to: "" }), m = h({ ...D.value }), S = h({}), F = h(!0), o = h({}), v = h(), t = h();
     function w(e) {
       const a = (l) => {
         const g = e.find((R) => R.key === l);
@@ -381,7 +381,7 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
     async function ce() {
       O.value = !0, x.value = "";
       try {
-        D.value = await ue(), p.value = { ...D.value }, M.value = !1;
+        D.value = await ue(), m.value = { ...D.value }, M.value = !1;
       } catch (e) {
         M.value = aa(e), x.value = M.value ? "" : W(e, "Delivery settings could not be loaded.");
       } finally {
@@ -389,7 +389,7 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
       }
     }
     He(ce);
-    const V = C(() => k.value.find((e) => e.id === p.value.driver)), K = C(() => V.value?.settings ?? []), ee = h(!1), ae = h(!1), H = h("");
+    const V = C(() => k.value.find((e) => e.id === m.value.driver)), K = C(() => V.value?.settings ?? []), ee = h(!1), ae = h(!1), H = h("");
     Q(() => V.value?.id, async () => {
       const e = V.value;
       if (S.value = {}, F.value = !0, o.value = {}, ee.value = !1, ae.value = !!e?.settings_view, H.value = "", !e?.settings_view) return;
@@ -402,32 +402,32 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
       a === "change" && l?.values && typeof l.values == "object" && (S.value = { ...l.values }), a === "validity" && typeof l?.valid == "boolean" && (F.value = l.valid);
     }
     const fe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/, I = C(() => ({
-      from_address: p.value.from_address && !fe.test(p.value.from_address) ? "Enter an email address such as support@example.com." : o.value.from_address ?? "",
-      reply_to: p.value.reply_to && !fe.test(p.value.reply_to) ? "Enter an email address, or leave it empty." : o.value.reply_to ?? ""
-    })), me = (e) => `${V.value?.label}: ${K.value.find((a) => a.key === e)?.title ?? e}`, A = h(!1);
+      from_address: m.value.from_address && !fe.test(m.value.from_address) ? "Enter an email address such as support@example.com." : o.value.from_address ?? "",
+      reply_to: m.value.reply_to && !fe.test(m.value.reply_to) ? "Enter an email address, or leave it empty." : o.value.reply_to ?? ""
+    })), pe = (e) => `${V.value?.label}: ${K.value.find((a) => a.key === e)?.title ?? e}`, A = h(!1);
     Qe(() => A.value);
     const je = C(() => {
       const e = [];
-      p.value.driver !== D.value.driver && e.push(`Service: ${V.value?.label ?? "none"}`);
-      for (const a of c) p.value[a] !== D.value[a] && e.push(N[a]);
-      for (const a of Object.keys(S.value)) e.push(me(a));
+      m.value.driver !== D.value.driver && e.push(`Service: ${V.value?.label ?? "none"}`);
+      for (const a of c) m.value[a] !== D.value[a] && e.push(N[a]);
+      for (const a of Object.keys(S.value)) e.push(pe(a));
       return e;
-    }), z = C(() => JSON.stringify(p.value) !== JSON.stringify(D.value) || Object.keys(S.value).length > 0);
-    Q(z, (e) => m("dirty-change", { dirty: e }), { immediate: !0 });
-    const pe = C(() => !!I.value.from_address || !!I.value.reply_to || !F.value), le = h(0);
+    }), z = C(() => JSON.stringify(m.value) !== JSON.stringify(D.value) || Object.keys(S.value).length > 0);
+    Q(z, (e) => p("dirty-change", { dirty: e }), { immediate: !0 });
+    const me = C(() => !!I.value.from_address || !!I.value.reply_to || !F.value), le = h(0);
     function ke() {
       ve.value = JSON.stringify(S.value), le.value++;
     }
     function Ue() {
-      p.value = { ...D.value }, S.value = {}, o.value = {}, t.value = void 0, ke();
+      m.value = { ...D.value }, S.value = {}, o.value = {}, t.value = void 0, ke();
     }
     function Ie() {
       const e = [], a = V.value?.settings_ns;
       if (a) for (const [l, g] of Object.entries(S.value))
-        e.push({ write: { namespace: a, key: l, value: g === "" ? null : g }, label: me(l) });
+        e.push({ write: { namespace: a, key: l, value: g === "" ? null : g }, label: pe(l) });
       for (const l of c)
-        p.value[l] !== D.value[l] && e.push({ write: { namespace: q, key: l, value: p.value[l] || null }, label: N[l] });
-      return p.value.driver !== D.value.driver && e.push({ write: { namespace: q, key: "driver", value: p.value.driver || null }, label: `Service: ${V.value?.label ?? "none"}` }), e;
+        m.value[l] !== D.value[l] && e.push({ write: { namespace: q, key: l, value: m.value[l] || null }, label: N[l] });
+      return m.value.driver !== D.value.driver && e.push({ write: { namespace: q, key: "driver", value: m.value.driver || null }, label: `Service: ${V.value?.label ?? "none"}` }), e;
     }
     function Le(e, a) {
       if (e.namespace === q) return (a[e.key] || null) === e.value;
@@ -435,7 +435,7 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
       return l ? te(l) ? e.value === null ? !l.has_value : !!l.has_value : (l.value ?? l.default ?? null) === e.value || e.value === null && (l.value ?? null) === (l.default ?? null) : !1;
     }
     async function Fe() {
-      if (v.value || pe.value) return;
+      if (v.value || me.value) return;
       v.value = "save", x.value = "", o.value = {}, t.value = void 0;
       const e = Ie();
       let a, l = "";
@@ -448,7 +448,7 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
         const g = await ue(), R = e.filter((_) => !Le(_.write, g)), xe = { ...g }, we = {};
         for (const { write: _ } of R)
           _.namespace === q ? xe[_.key] = typeof _.value == "string" ? _.value : "" : we[_.key] = _.value ?? "";
-        D.value = g, p.value = xe, S.value = we;
+        D.value = g, m.value = xe, S.value = we;
         const ne = a && e.find((_) => _.write.namespace === a.namespace && _.write.key === a.key);
         a && (o.value = { [a.key]: a.error }), t.value = {
           saved: e.filter((_) => !R.includes(_)).map((_) => _.label),
@@ -510,7 +510,7 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
           z.value ? (s(), T(ea, {
             key: 0,
             busy: v.value === "save",
-            "review-disabled": pe.value,
+            "review-disabled": me.value,
             onDiscard: Ue,
             onReview: a[0] || (a[0] = (l) => {
               t.value = void 0, A.value = !0;
@@ -603,49 +603,51 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
                 description: V.value?.description || "Choose the service that delivers your email."
               }, {
                 actions: $(() => [
-                  r(i(Ne), {
-                    modelValue: p.value.driver,
-                    "onUpdate:modelValue": a[3] || (a[3] = (l) => p.value.driver = l),
-                    options: ie.value,
-                    "option-label": "label",
-                    "option-value": "value",
-                    "append-to": "self",
-                    placeholder: "Choose a service…",
-                    class: "mail-setting-control",
-                    "aria-label": "Service",
-                    "empty-message": "No delivery service is installed"
-                  }, {
-                    value: $(({ value: l, placeholder: g }) => [
-                      l ? (s(), n("span", Ha, [
-                        r(i(b), {
-                          icon: ie.value.find((R) => R.value === l)?.icon ?? "tabler:mail",
-                          "aria-hidden": "true"
-                        }, null, 8, ["icon"]),
-                        U(y(ie.value.find((R) => R.value === l)?.label ?? l), 1)
-                      ])) : (s(), n("span", Wa, y(g), 1))
-                    ]),
-                    option: $(({ option: l }) => [
-                      u("span", Ya, [
-                        r(i(b), {
-                          icon: l.icon,
-                          "aria-hidden": "true"
-                        }, null, 8, ["icon"]),
-                        U(y(l.label), 1)
-                      ])
-                    ]),
-                    _: 1
-                  }, 8, ["modelValue", "options"])
+                  u("span", Ha, [
+                    r(i(Ne), {
+                      modelValue: m.value.driver,
+                      "onUpdate:modelValue": a[3] || (a[3] = (l) => m.value.driver = l),
+                      options: ie.value,
+                      "option-label": "label",
+                      "option-value": "value",
+                      "append-to": "self",
+                      placeholder: "Choose a service…",
+                      fluid: "",
+                      "aria-label": "Service",
+                      "empty-message": "No delivery service is installed"
+                    }, {
+                      value: $(({ value: l, placeholder: g }) => [
+                        l ? (s(), n("span", Wa, [
+                          r(i(b), {
+                            icon: ie.value.find((R) => R.value === l)?.icon ?? "tabler:mail",
+                            "aria-hidden": "true"
+                          }, null, 8, ["icon"]),
+                          U(y(ie.value.find((R) => R.value === l)?.label ?? l), 1)
+                        ])) : (s(), n("span", Ya, y(g), 1))
+                      ]),
+                      option: $(({ option: l }) => [
+                        u("span", Qa, [
+                          r(i(b), {
+                            icon: l.icon,
+                            "aria-hidden": "true"
+                          }, null, 8, ["icon"]),
+                          U(y(l.label), 1)
+                        ])
+                      ]),
+                      _: 1
+                    }, 8, ["modelValue", "options"])
+                  ])
                 ]),
                 _: 1
               }, 8, ["description"]),
-              ae.value ? (s(), n("p", Qa, [
+              ae.value ? (s(), n("p", Xa, [
                 r(i(b), {
                   icon: "tabler:loader-2",
                   class: "spin",
                   "aria-hidden": "true"
                 }),
                 U("Loading " + y(V.value?.label) + " settings…", 1)
-              ])) : H.value ? (s(), n("p", Xa, y(H.value), 1)) : V.value ? (s(), n(P, { key: 2 }, [
+              ])) : H.value ? (s(), n("p", Za, y(H.value), 1)) : V.value ? (s(), n(P, { key: 2 }, [
                 V.value.settings_view && ee.value ? (s(), T(We(V.value.settings_view), {
                   key: V.value.id + ":" + le.value,
                   class: "mail-driver-view",
@@ -676,17 +678,17 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
                 description: "The address recipients see and reply to by default. The service must accept mail from it."
               }, {
                 actions: $(() => [
-                  u("span", Za, [
+                  u("span", et, [
                     r(i(Y), {
-                      modelValue: p.value.from_address,
-                      "onUpdate:modelValue": a[8] || (a[8] = (l) => p.value.from_address = l),
+                      modelValue: m.value.from_address,
+                      "onUpdate:modelValue": a[8] || (a[8] = (l) => m.value.from_address = l),
                       modelModifiers: { trim: !0 },
                       fluid: "",
                       placeholder: "support@example.com",
                       "aria-label": "From address",
                       invalid: !!I.value.from_address
                     }, null, 8, ["modelValue", "invalid"]),
-                    I.value.from_address ? (s(), n("small", et, y(I.value.from_address), 1)) : f("", !0)
+                    I.value.from_address ? (s(), n("small", at, y(I.value.from_address), 1)) : f("", !0)
                   ])
                 ]),
                 _: 1
@@ -696,10 +698,10 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
                 description: "Shown next to the address, for example your company’s name."
               }, {
                 actions: $(() => [
-                  u("span", at, [
+                  u("span", tt, [
                     r(i(Y), {
-                      modelValue: p.value.from_name,
-                      "onUpdate:modelValue": a[9] || (a[9] = (l) => p.value.from_name = l),
+                      modelValue: m.value.from_name,
+                      "onUpdate:modelValue": a[9] || (a[9] = (l) => m.value.from_name = l),
                       fluid: "",
                       "aria-label": "From name"
                     }, null, 8, ["modelValue"])
@@ -712,16 +714,16 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
                 description: "Where replies go when it is not the From address. Optional."
               }, {
                 actions: $(() => [
-                  u("span", tt, [
+                  u("span", lt, [
                     r(i(Y), {
-                      modelValue: p.value.reply_to,
-                      "onUpdate:modelValue": a[10] || (a[10] = (l) => p.value.reply_to = l),
+                      modelValue: m.value.reply_to,
+                      "onUpdate:modelValue": a[10] || (a[10] = (l) => m.value.reply_to = l),
                       modelModifiers: { trim: !0 },
                       fluid: "",
                       "aria-label": "Reply-to",
                       invalid: !!I.value.reply_to
                     }, null, 8, ["modelValue", "invalid"]),
-                    I.value.reply_to ? (s(), n("small", lt, y(I.value.reply_to), 1)) : f("", !0)
+                    I.value.reply_to ? (s(), n("small", st, y(I.value.reply_to), 1)) : f("", !0)
                   ])
                 ]),
                 _: 1
@@ -756,32 +758,32 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
               ]),
               _: 1
             }, 8, ["description"]),
-            E.value || J.value ? (s(), n("div", st, [
-              J.value ? (s(), n("p", it, [
+            E.value || J.value ? (s(), n("div", it, [
+              J.value ? (s(), n("p", nt, [
                 r(i(b), {
                   icon: "tabler:alert-triangle",
                   "aria-hidden": "true"
                 }),
                 U(y(J.value), 1)
-              ])) : E.value?.status === "queued" ? (s(), n("p", nt, [
+              ])) : E.value?.status === "queued" ? (s(), n("p", ot, [
                 r(i(b), {
                   icon: "tabler:loader-2",
                   class: "spin",
                   "aria-hidden": "true"
                 }),
                 a[17] || (a[17] = U("Sending the test…", -1))
-              ])) : E.value?.status === "sent" ? (s(), n("p", ot, [
+              ])) : E.value?.status === "sent" ? (s(), n("p", rt, [
                 r(i(b), {
                   icon: "tabler:circle-check",
                   "aria-hidden": "true"
                 }),
                 a[18] || (a[18] = U("The test was accepted for delivery. Check your inbox.", -1))
-              ])) : E.value?.status === "failed" && se.value ? (s(), n("div", rt, [
+              ])) : E.value?.status === "failed" && se.value ? (s(), n("div", dt, [
                 r(i(b), {
                   icon: "tabler:alert-triangle",
                   "aria-hidden": "true"
                 }),
-                u("div", dt, [
+                u("div", ut, [
                   u("strong", null, y(se.value.lead), 1),
                   u("span", null, y(se.value.next), 1),
                   r(i(L), {
@@ -811,7 +813,7 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
         })
       }, {
         header: $(() => [
-          u("span", ut, [
+          u("span", ct, [
             r(i(b), {
               icon: "tabler:checklist",
               "aria-hidden": "true"
@@ -838,19 +840,19 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
           }, null, 8, ["loading"]))
         ]),
         default: $(() => [
-          u("ul", ct, [
+          u("ul", vt, [
             (s(!0), n(P, null, Ce(je.value, (l) => (s(), n("li", { key: l }, y(l), 1))), 128))
           ]),
           a[20] || (a[20] = u("p", { class: "mail-muted mail-review-note" }, "Email sent after you save uses these settings.", -1)),
-          t.value ? (s(), n("div", vt, [
-            t.value.saved.length ? (s(), n("p", yt, [
+          t.value ? (s(), n("div", yt, [
+            t.value.saved.length ? (s(), n("p", ft, [
               r(i(b), {
                 icon: "tabler:circle-check",
                 "aria-hidden": "true"
               }),
               u("span", null, "Saved: " + y(t.value.saved.join(", ")) + ".", 1)
             ])) : f("", !0),
-            t.value.refused ? (s(), n("p", ft, [
+            t.value.refused ? (s(), n("p", pt, [
               r(i(b), {
                 icon: "tabler:alert-triangle",
                 "aria-hidden": "true"
@@ -865,12 +867,12 @@ const Oa = () => Ee(() => Z.post("/api/v1/mail/delivery/send-test", {}), "Send t
               u("span", null, "Still in your draft: " + y(t.value.pending.join(", ")) + ".", 1)
             ])) : f("", !0)
           ])) : f("", !0),
-          x.value ? (s(), n("p", pt, y(x.value), 1)) : f("", !0)
+          x.value ? (s(), n("p", kt, y(x.value), 1)) : f("", !0)
         ]),
         _: 1
       }, 8, ["visible", "closable"])
     ]));
   }
-}), gt = sa(kt, { type: "object", properties: { config: { type: "object" } } });
-na(import.meta.url, gt);
+}), bt = sa(gt, { type: "object", properties: { config: { type: "object" } } });
+na(import.meta.url, bt);
 //# sourceMappingURL=delivery.js.map

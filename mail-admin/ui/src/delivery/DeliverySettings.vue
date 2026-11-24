@@ -290,14 +290,16 @@ const statusNotice = computed(() => {
         <SettingsGroup title="Delivery service">
           <SettingsItem title="Service" :description="active?.description || 'Choose the service that delivers your email.'">
             <template #actions>
-              <Select v-model="draft.driver" :options="serviceOptions" option-label="label" option-value="value" append-to="self"
-                placeholder="Choose a service…" class="mail-setting-control" aria-label="Service" :empty-message="'No delivery service is installed'">
-                <template #value="{ value, placeholder }">
-                  <span v-if="value" class="mail-kind"><Icon :icon="serviceOptions.find(item => item.value === value)?.icon ?? 'tabler:mail'" aria-hidden="true" />{{ serviceOptions.find(item => item.value === value)?.label ?? value }}</span>
-                  <span v-else>{{ placeholder }}</span>
-                </template>
-                <template #option="{ option }"><span class="mail-kind"><Icon :icon="option.icon" aria-hidden="true" />{{ option.label }}</span></template>
-              </Select>
+              <span class="mail-setting-control">
+                <Select v-model="draft.driver" :options="serviceOptions" option-label="label" option-value="value" append-to="self"
+                  placeholder="Choose a service…" fluid aria-label="Service" :empty-message="'No delivery service is installed'">
+                  <template #value="{ value, placeholder }">
+                    <span v-if="value" class="mail-kind"><Icon :icon="serviceOptions.find(item => item.value === value)?.icon ?? 'tabler:mail'" aria-hidden="true" />{{ serviceOptions.find(item => item.value === value)?.label ?? value }}</span>
+                    <span v-else>{{ placeholder }}</span>
+                  </template>
+                  <template #option="{ option }"><span class="mail-kind"><Icon :icon="option.icon" aria-hidden="true" />{{ option.label }}</span></template>
+                </Select>
+              </span>
             </template>
           </SettingsItem>
           <p v-if="driverLoading" class="kx-loading mail-driver-state" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading {{ active?.label }} settings…</p>
