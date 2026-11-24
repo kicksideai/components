@@ -36,6 +36,7 @@ entries:
     value_type: string
     default: ""
     order: 30
+    validate_func: kickside.mail.settings:validate_from_name
   - name: setting_reply_to
     kind: registry.entry
     meta: { type: "kickside.settings:definition" }
@@ -68,6 +69,17 @@ entries:
       message: kickside.mail:message
       drivers: kickside.mail:drivers_registry
       policy: kickside.mail.outbox:policy
+      settings: kickside.mail:settings
+  - name: validate_from_name
+    kind: function.lua
+    source: file://validate.lua
+    method: from_name
+    imports: *validation_imports
+  - name: validate_api_key
+    kind: function.lua
+    source: file://validate.lua
+    method: api_key
+    imports: *validation_imports
   - name: validate_driver
     kind: function.lua
     source: file://validate.lua

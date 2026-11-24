@@ -5,6 +5,7 @@ local M = {
     MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024,
     MAX_KEY_BYTES = 2048,
     MAX_SUBJECT_CHARACTERS = 255,
+    MAX_NAME_CHARACTERS = 255,
     MAX_BODY_BYTES = 256 * 1024,
     MAX_FILENAME_BYTES = 255,
 }
@@ -58,11 +59,31 @@ function M.mailbox(from: types.Mailbox): string
     return name .. " <" .. from.address .. ">"
 end
 
+function M.header_length(value: unknown): (integer?, error?)
+    if type(value) ~= "string" then return nil, invalid("invalid_header_text", "must be text") end
+    local length = utf8.len(value)
+    if not length then return nil, invalid("invalid_header_text", "must be UTF-8") end
+    for _, codepoint in utf8.codes(value) do
+        if codepoint < 32 or (codepoint >= 127 and codepoint <= 159) or codepoint == 0x2028 or codepoint == 0x2029 then
+            return nil, invalid("invalid_header_text", "must contain no control characters or line separators")
+        end
+    end
+    return length, nil
+end
+
+function M.from_name_issue(value: unknown): string?
+    local length, issue = M.header_length(value)
+    if issue then return "From name " .. issue:message() end
+    if length > M.MAX_NAME_CHARACTERS then
+        return "From name must be at most " .. tostring(M.MAX_NAME_CHARACTERS) .. " characters"
+    end
+    return nil
+end
+
 function M.subject_error(value: unknown): error?
     if not nonempty(value) then return invalid("subject_required", "A subject is required") end
-    if value:find("[%c]") then return invalid("invalid_subject", "Subject contains a control character") end
-    local length = utf8.len(value)
-    if not length then return invalid("invalid_subject", "Subject must be UTF-8") end
+    local length, issue = M.header_length(value)
+    if issue then return invalid("invalid_subject", "Subject " .. issue:message()) end
     if length > M.MAX_SUBJECT_CHARACTERS then
         return M.limit_error("subject_too_long", "Subject exceeds the character limit",
             "max_subject_characters", M.MAX_SUBJECT_CHARACTERS)

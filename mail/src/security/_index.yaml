@@ -129,6 +129,7 @@ entries:
         - kickside.mail.settings:validate_retention
         - kickside.mail.settings:validate_driver
         - kickside.mail.settings:validate_address
+        - kickside.mail.settings:validate_from_name
       actions: [registry.get, registry.find, funcs.call]
       effect: allow
   - name: driver_discovery

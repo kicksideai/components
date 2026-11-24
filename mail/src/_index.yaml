@@ -110,7 +110,7 @@ entries:
     kind: library.lua
     source: file://settings.lua
     modules: [contract, registry]
-    imports: { types: kickside.mail:types }
+    imports: { types: kickside.mail:types, message: kickside.mail:message }
   - name: drivers_registry
     kind: library.lua
     source: file://drivers_registry.lua

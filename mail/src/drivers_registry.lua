@@ -100,9 +100,9 @@ function M.sender(config: types.Settings): (types.Mailbox?, error?)
             "Enter a valid From address, such as support@example.com.")
     end
     local name = config.from_name
-    if name and name:find("%c") then
-        return nil, settings.missing("The mail From name contains a control character", "from_name_invalid",
-            "Enter a From name without line breaks or control characters.")
+    if name ~= nil then
+        local issue = message.from_name_issue(name)
+        if issue then return nil, settings.missing(issue, "from_name_invalid") end
     end
     return {address = address, name = name and name:find("%S") and name or nil}, nil
 end

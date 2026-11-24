@@ -199,6 +199,7 @@ entries:
         - kickside.mail.settings:setting_log_retention_days
         - kickside.mail.settings:validate_driver
         - kickside.mail.settings:validate_address
+        - kickside.mail.settings:validate_from_name
         - kickside.mail.settings:validate_retention
         - app:db
         - set

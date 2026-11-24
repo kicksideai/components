@@ -936,6 +936,16 @@ return {
                 end
             end)
 
+            test.it("validates optional UTF-8 sender display names on write", function()
+                local name = string.rep("é", 255)
+                test.is_true(change(admin, "from_name", name).success)
+                for _, value in ipairs({"Name\u{0085}Next", "Name\u{2028}Next", "Name\u{2029}Next",
+                    "Name" .. string.char(255), name .. "é", 42}) do
+                    test.is_false(change(admin, "from_name", value).success)
+                end
+                test.is_true(change(admin, "from_name", "").success)
+            end)
+
             test.it("returns the same configuration error through mailer and writable destination", function()
                 local missing_driver = unconfigured(sender)
                 local port = assert(registry.get("kickside.mail.ports:send_email"))

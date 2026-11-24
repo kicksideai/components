@@ -2,6 +2,7 @@
 local types = require("types")
 local contract = require("contract")
 local registry = require("registry")
+local message = require("message")
 
 local M = {}
 
@@ -30,13 +31,25 @@ function M.missing(text: string, reason_code: string?, reason: string?): error
         details = {code = "invalid_config", reason_code = reason_code, reason = reason}})
 end
 
+local function valid_key(value: unknown): boolean
+    if type(value) ~= "string" or not message.header_length(value) then return false end
+    for _, codepoint in utf8.codes(value) do
+        if codepoint == 0x20 or codepoint == 0xA0 or codepoint == 0x1680
+            or (codepoint >= 0x2000 and codepoint <= 0x200A)
+            or codepoint == 0x202F or codepoint == 0x205F or codepoint == 0x3000 then
+            return false
+        end
+    end
+    return true
+end
+
 function M.api_key(values: types.ApiSettings, service: string?): (string?, error?)
     local key = values.api_key
     local credential = service and ("a " .. service .. " API key") or "an API key"
     if not key or key == "" then
         return nil, M.missing("Add " .. credential .. " to send mail.", "api_key_required")
     end
-    if key:find("[%s%c]") then
+    if not valid_key(key) then
         return nil, M.missing("Enter " .. credential .. " without spaces or line breaks.", "api_key_invalid")
     end
     return key, nil
