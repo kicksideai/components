@@ -3,6 +3,7 @@ import { getButton as button, schemaForm } from '../../test/controls'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import Select from 'primevue/select'
+import Listbox from 'primevue/listbox'
 import BoardSettings from './BoardSettings.vue'
 import { work } from '../../api'
 import { settings } from './api'
@@ -109,8 +110,7 @@ it('installs a discovered pack on an existing empty board through the reviewed p
   const w = mount(BoardSettings, { props: { boardId: 'b' } }); await flushPromises()
   try {
     await button(w, 'Install pack').trigger('click'); await flushPromises()
-    const choice = w.findAllComponents(Select).find(s => s.props('ariaLabel') === 'Pack to install')!
-    await choice.setValue(pack.id)
+    await w.getComponent(Listbox).get('[role="option"]').trigger('click')
     await w.get('form.work-dialog-box').trigger('submit'); await flushPromises()
     const request = vi.mocked(settings.packPlan).mock.calls.at(-1)![1]
     expect(request).toMatchObject({ pack: pack.id, expected_generation: 1 })
