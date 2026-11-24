@@ -59,7 +59,7 @@ local function estimates(board_id: string, schema: work_reads.SchemaView): (mapp
     local client, open_err = definition:open()
     if not client then return nil, open_err end
     local result, field_err = client:fields({ board_id = board_id })
-    if field_err or not result then return nil, field_err end
+    if field_err or not result then return nil, field_err :: error? end
     return result :: mapping.EstimateFields, nil
 end
 
