@@ -1,0 +1,129 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.time
+entries:
+- name: definition
+  kind: ns.definition
+  meta: {title: Work Time}
+- name: dep.work
+  kind: ns.dependency
+  component: kickside/work
+  version: '>=0.1.47'
+- name: target_db
+  kind: ns.requirement
+  meta:
+    value_kind: db.sql
+    comment: The same SQL target as kickside.work:target_db.
+  targets:
+  - {entry: 'kickside.work.time:storage_config', path: .meta.db_id}
+  - {entry: 'kickside.work.time:migrate_storage', path: .meta.target_db}
+  - {entry: 'kickside.work.time:storage_db_access', path: .policy.resources}
+- name: user_security_scope
+  kind: ns.requirement
+  meta: {value_kind: security.scope}
+  default: kickside.security.groups:members
+  targets:
+  - {entry: 'kickside.work.time:module_access', path: '.groups +='}
+  - {entry: 'kickside.work.time:provider_access', path: '.groups +='}
+- name: plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    interface_version: 1
+    title: Work Time
+    description: Log time and track original and remaining estimates on Work items.
+    icon: tabler:clock
+    attachment: kickside.work.time:attachment
+    schema:
+      provider: kickside.work.time:schema_provider
+    config_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        rounding_minutes:
+          title: Rounding increment in minutes
+          description: Round new durations to the nearest increment, with ties rounded up and a minimum of one increment.
+          type: integer
+          enum: [1, 5, 15, 30]
+          default: 1
+        entry_visibility:
+          title: Worklog visibility
+          description: All shows entries on items you can read. Self limits timesheets and CSV to your own entries unless you are a board administrator. Item totals, badges and filters are shared with everyone who can read the item.
+          type: string
+          enum: [all, self]
+          default: all
+        item_types:
+          title: Allowed item types
+          description: IDs of existing board item types that accept worklogs and estimates.
+          type: array
+          items: {type: string, pattern: '^[a-z][a-z0-9_]{0,39}$'}
+          maxItems: 50
+          uniqueItems: true
+          default: []
+- name: attachment
+  kind: contract.binding
+  meta:
+    title: Work Time attachment
+    placement: {parents: [root], fixed: true}
+  contracts:
+  - contract: kickside.contract:component
+    methods: {get_status: 'kickside.core.threads:thread_status'}
+- name: schema_provider
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work:schema_provider
+    methods: {resolve: 'kickside.work.time:resolve_schema'}
+- name: resolve_schema
+  kind: function.lua
+  source: file://schema/provider.lua
+  method: resolve
+  imports:
+    work: kickside.work:types
+    config: kickside.work.time:config
+- name: config
+  kind: library.lua
+  source: file://schema/config.lua
+  imports:
+    work: kickside.work:types
+- name: module_access
+  kind: security.policy
+  meta: {title: Work Time, surface: kickside.work.time, intent: module_access}
+  groups: []
+  policy:
+    resources: [kickside.work.time:plugin, kickside.work.time:attachment, kickside.work.time:schema_provider]
+    actions: [registry.get, registry.find]
+    effect: allow
+- name: provider_access
+  kind: security.policy
+  groups: []
+  policy:
+    resources: [kickside.work.time:schema_provider, kickside.work.time:resolve_schema]
+    actions: [contract.get, contract.open, contract.call, funcs.call]
+    effect: allow
+- name: storage_config
+  kind: registry.entry
+  meta: {private: true}
+- name: storage_config_access
+  kind: security.policy
+  meta: {private: true, service_only: true}
+  groups: []
+  policy: {resources: [kickside.work.time:storage_config], actions: [registry.get], effect: allow}
+- name: storage_db_access
+  kind: security.policy
+  meta: {private: true, service_only: true}
+  groups: []
+  policy: {resources: [], actions: [db.get], effect: allow}
+- name: storage
+  kind: library.lua
+  source: file://storage/database.lua
+  modules: [registry, sql]
+- name: migrate_storage
+  kind: function.lua
+  meta:
+    type: migration
+    tags: [work-time]
+    timestamp: '2026-11-24T00:00:00Z'
+  source: file://storage/create_tables.lua
+  method: migrate
+  imports:
+    migration: wippy.migration:migration

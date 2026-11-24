@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: work_time_schema_test
+  kind: function.lua
+  meta: {type: test, suite: work_time_schema, timeout: 600s}
+  source: file://schema_time_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+    storage: kickside.work.time:storage

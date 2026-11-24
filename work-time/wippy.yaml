@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: work-time
+type: plugin
+description: Worklogs, estimates and timesheets for KickSide Work boards.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords: [kickside, work, time]
+exclude_meta:
+  type: [test, test_helper, test_support]
+exclude:
+- wippy.lock
+- app:**
+- "app.**:**"
+- test/**
+- test:**
+- .wippy/**
+- .wippy:**
