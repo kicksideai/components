@@ -45,7 +45,7 @@ end
 return {
     capture = capture,
     first = function(message)
-        if message.subject == "Fixture resend" then
+        if message.subject == "Resend fixture" then
             return nil, errors.new({kind = errors.INVALID, retryable = false, message = "Fixture transport refused delivery",
                 details = {code = "message_rejected"}})
         end

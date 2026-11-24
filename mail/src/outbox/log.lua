@@ -4,6 +4,7 @@ local identity = require("identity")
 local security = require("security")
 local sql = require("sql")
 local store = require("store")
+local failure = require("failure")
 local types = require("types")
 local uuid = require("uuid")
 
@@ -31,7 +32,7 @@ local function message(row: types.MessageRow, admin: boolean): (types.LogMessage
     if err then return nil, err end
     local last_error: types.MessageError?
     if row.error_kind then
-        last_error = {kind = row.error_kind, code = row.error_code :: string, message = row.error_message :: string,
+        last_error = {kind = row.error_kind, code = row.error_code :: string, message = admin and row.error_message :: string or failure.text(row.error_code :: string),
             provider_detail = admin and row.provider_detail or nil}
     end
     return {

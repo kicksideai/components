@@ -22,6 +22,9 @@ entries:
       jobs: kickside.core.jobs:jobs
       policy: kickside.mail.outbox:policy
       types: kickside.mail:types
+  - name: failure
+    kind: library.lua
+    source: file://failure.lua
   - name: log
     kind: library.lua
     source: &log_source file://log.lua
@@ -29,6 +32,7 @@ entries:
     imports: &log_imports
       database: kickside.mail.outbox:database
       identity: kickside.execution:execution_identity
+      failure: kickside.mail.outbox:failure
       store: kickside.mail.outbox:store
       types: kickside.mail:types
   - name: get_message

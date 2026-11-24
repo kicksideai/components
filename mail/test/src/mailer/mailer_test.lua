@@ -357,6 +357,7 @@ return {
                 local sender_items = assert(invoke(sender, "list_messages", {limit = 5, status = "failed"})).items
                 test.eq(admitted.message_id, sender_items[1].message_id)
                 test.is_nil(sender_items[1].last_error.provider_detail)
+                test.eq("Ask a mail administrator to check why the message was refused.", sender_items[1].last_error.message)
                 local final = assert(invoke(admin_view, "get_message", admitted.message_id))
                 test.eq("Fixture refusal detail", final.last_error.provider_detail)
                 local items = assert(invoke(admin_view, "list_messages", {limit = 200, status = "failed"})).items
@@ -378,7 +379,8 @@ return {
                 test.eq("failed", failed.status)
                 test.eq(1, failed.attempts)
                 test.eq("credentials_invalid", failed.last_error.code)
-                test.eq("Test authorization refused", failed.last_error.message)
+                test.eq("Ask a mail administrator to check delivery authorization.", failed.last_error.message)
+                test.eq("Test authorization refused", assert(invoke(log_admin, "get_message", failed.message_id)).last_error.message)
                 no_body(queued.message_id)
             end)
 
@@ -391,7 +393,7 @@ return {
                 test.eq("sent", captured.status)
                 local request = assert(json.decode(captured.provider_message_id))
                 assert(change(admin, "driver", "first").success)
-                input.subject = "Fixture resend"
+                input.subject = "Resend fixture"
                 local failed = terminal(sender, assert(invoke(sender, "send", input)))
                 test.eq("failed", failed.status)
                 local stored = persisted(failed.message_id)
@@ -541,7 +543,7 @@ return {
                 local cancelled = terminal(sender, queued)
                 test.eq("failed", cancelled.status)
                 test.eq("delivery_interrupted", cancelled.last_error.code)
-                test.eq("Delivery was interrupted; the email may have been sent", cancelled.last_error.message)
+                test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", cancelled.last_error.message)
                 no_body(queued.message_id)
 
                 local missing_id = uuid.v7()
@@ -558,7 +560,7 @@ return {
 
                 local missing = await_message(sender, missing_id, function(message) return message.status == "failed" end)
                 test.eq("delivery_interrupted", missing.last_error.code)
-                test.eq("Delivery was interrupted; the email may have been sent", missing.last_error.message)
+                test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", missing.last_error.message)
                 no_body(missing_id)
             end)
 
@@ -644,7 +646,7 @@ return {
                     end
                     local failed = await_message(sender, queued.message_id, function(row) return row.status == "failed" end, 35)
                     test.eq("delivery_interrupted", failed.last_error.code)
-                    test.eq("Delivery was interrupted; the email may have been sent", failed.last_error.message)
+                    test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", failed.last_error.message)
                     test.eq(5, failed.attempts)
                     if lost then
                         test.is_true(failed.finished_at >= pending.next_check_at)
