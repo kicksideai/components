@@ -275,6 +275,12 @@ entries:
   version: '*'
   parameters:
   - { name: 'kickside.work_search:target_db', value: 'app:db' }
+- name: dep.planning
+  kind: ns.dependency
+  component: kickside/work-planning
+  version: '*'
+  parameters:
+  - {name: 'kickside.work.planning.api:api_router', value: 'app:api'}
 - name: dep.kanban
   kind: ns.dependency
   version: '*'
