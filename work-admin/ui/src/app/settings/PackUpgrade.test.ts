@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { getButton as button } from '../../test/controls'
+import { getButton as button, schemaForm } from '../../test/controls'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import Select from 'primevue/select'
@@ -83,11 +83,11 @@ it('reviews and applies initial plugin configuration for a pack upgrade', async 
   vi.mocked(work.packs).mockResolvedValue([{ ...pack, plugins: [{ plugin: plugin.plugin, installed: true }] }])
   const w = mount(BoardSettings, { props: { boardId: 'b' } }); await flushPromises()
   await button(w, 'Update pack').trigger('click'); await flushPromises()
-  const { default: ConfigForm } = await import('./ConfigForm.vue')
-  const form = w.findComponent(ConfigForm)
-  expect(form.exists()).toBe(true)
+  const form = schemaForm(w)
+  expect(form.schema()).toEqual(plugin.config_schema)
+  await form.report({ folder: 'A value is required.' })
   expect(button(w, 'Check impact').attributes('disabled')).toBeDefined()
-  form.vm.$emit('update:modelValue', { folder: 'Documents' }); await flushPromises()
+  await form.change({ folder: 'Documents' }); await form.report(); await flushPromises()
   await button(w, 'Check impact').trigger('click'); await flushPromises()
   const request = vi.mocked(settings.packPlan).mock.calls.at(-1)![1]
   expect(request).toMatchObject({ plugin_configs: { [plugin.plugin]: { folder: 'Documents' } } })

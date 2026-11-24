@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { getButton as button } from '../../test/controls'
 import InputNumber from 'primevue/inputnumber'
-import { selectControl } from '../../test/controls'
+import { schemaForm, selectControl } from '../../test/controls'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import { expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import FieldsEditor from './FieldsEditor.vue'
-import ConfigForm from './ConfigForm.vue'
 import StateSettings from './StateSettings.vue'
 import DurationControl from './DurationControl.vue'
 import ProcessEditor from './ProcessEditor.vue'
@@ -58,11 +57,13 @@ it.each([
   } }
   const w = mount(FieldsEditor, { props: { draft, installedTypes: [type] } })
   await selectControl(w, 'Kind').setValue(type.id)
-  await w.get('input[aria-label="' + (form === 'ref' ? 'Reference target' : 'Canonical unit') + '"]').setValue(
-    form === 'ref' ? config.target : config.canonical,
-  )
-  if (form === 'quantity') await w.get('textarea[aria-label="Units"]').setValue(JSON.stringify(config.units))
-  expect(w.getComponent(ConfigForm).props('schema')).toEqual(type.config_schema)
+  await flushPromises()
+  const editor = schemaForm(w)
+  expect(editor.schema()).toEqual(type.config_schema)
+  await editor.change(config)
+  await editor.report()
+  expect(w.emitted('validity')?.filter(([key]) => key === 'config-0').at(-1)).toEqual(['config-0', true])
+  expect(editor.config()).toEqual(config)
   expect(requestDeclaration(draft, {}).fields).toEqual([{ code: 'custom', type: type.id, cardinality: 'one', config }])
   w.unmount()
 })
@@ -125,7 +126,7 @@ it('stages an active plugin configuration and clears it when deactivating', asyn
   vi.mocked(settings.configure).mockResolvedValue({ attachment_id: 'attachment' })
   const w = mount(PluginsEditor, { props: { boardId: 'b', draft, schema: view, options: [{ plugin: 'app:plugin', installed: true, active: false, requires: [], tools: [], lifecycle: { state: 'ready' as const }, projections: {}, title: 'Enhancement', config_schema: { type: 'object', properties: { threshold: { type: 'integer' } } } }], configs } })
   await flushPromises()
-  await w.getComponent(InputNumber).setValue(3)
+  await schemaForm(w).change({ threshold: 3 })
   expect(configs).toEqual({ 'app:plugin': { threshold: 3 } })
   expect(settings.configure).not.toHaveBeenCalled()
   await w.get('input[type=checkbox]').setValue(false)
@@ -143,7 +144,7 @@ it('shows host lifecycle and per-kind projection progress', async () => {
   expect(w.text()).not.toContain('Ready to use')
   expect(button(w, 'Reset background updates').attributes('disabled')).toBeUndefined()
   expect(w.text()).toContain('23'); expect(w.text()).toContain('Stopped: Projection paused'); expect(w.text()).toContain('Projection paused')
-  expect(w.find('.work-config-fields').exists()).toBe(false)
+  expect(w.find('wc-schema-form').exists()).toBe(false)
   await w.setProps({ schema: { ...view, plugins: [{ ...view.plugins![0], lifecycle: { state: 'pending' }, projections: {} }] } })
   expect(w.text()).toContain('Setting up')
   expect(w.text()).not.toContain('Last sequence')

@@ -6,15 +6,18 @@ WORK_ADMIN_PG_PORT ?= 5434
 SHELL := bash
 .SHELLFLAGS := -o pipefail -ec
 
-.PHONY: setup lockrefresh ui-kit ui-setup ui-lock ui-test test-ui typecheck build lint strict check test test-pg test-published test-scope pack verify publish
+.PHONY: setup lockrefresh ui-kit ui-widgets ui-setup ui-lock ui-test test-ui typecheck build lint strict check test test-pg test-published test-scope pack verify publish
 setup: ui-setup
 	cd test && $(WIPPY) install
+	$(MAKE) ui-widgets
 lockrefresh:
 	cd test && $(WIPPY) update
 ui-kit:
 	cd build-inputs && if [[ -f wippy.lock ]]; then $(WIPPY) install; else $(WIPPY) update; fi
 	@version="$$(awk '$$1 == "version:" {print $$2; exit}' build-inputs/wippy.lock)"; \
 	$(WIPPY) artifacts materialize "build-inputs/.wippy/vendor/kickside/ui-kit-$$version.wapp" kickside.ui_kit:package_fs --root ui/.wippy
+ui-widgets:
+	cd test && $(WIPPY) run widgets-fixture
 ui-setup: ui-kit
 	npm --prefix ui ci --cache "$(CURDIR)/.wippy/npm-cache"
 	./ui/node_modules/.bin/playwright install chromium

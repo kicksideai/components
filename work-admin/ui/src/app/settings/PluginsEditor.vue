@@ -8,10 +8,10 @@ import { host } from '@wippy-fe/proxy'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
-import { computed, inject, nextTick, ref, useId, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import ChipPicker from './ChipPicker.vue'
 import { humanize } from '../../forms'
-import { configFields } from './config'
+import { configFields, eventDetail, firstConfigError, type FormValidity } from './config'
 import Button from 'primevue/button'
 import type { Declaration, InstalledRule, PluginOption, PluginState, Schema } from '../../types'
 import type { PluginConfigs } from './model'
@@ -19,17 +19,16 @@ import { pluginIssue, projectionError, projectionHealth } from './plugin-state'
 import { groupByCategory, listNames } from '@kickside/ui-kit/settingsGroups'
 import type { InstalledPack } from '../../packs'
 import { settings } from './api'
-import ConfigForm from './ConfigForm.vue'
+import { useTag } from '../mount'
 import { sectionRow } from './sectionRow'
 const props = defineProps<{ boardId: string; draft: Declaration; schema: Schema; options: PluginOption[]; configs: PluginConfigs; disabled?: boolean; activationLocked?: boolean; filters?: InstalledRule[]; pack?: InstalledPack }>()
-const emit = defineEmits<{ configured: []; refresh: []; review: [opener?: HTMLElement]; upgrade: []; validity: [key: string, valid: boolean]; 'widget-validity': [key: string, valid: boolean] }>()
+const emit = defineEmits<{ configured: []; refresh: []; review: [opener?: HTMLElement]; upgrade: []; validity: [key: string, valid: boolean] }>()
 const busy = ref(''), error = ref(''), saved = ref('')
 const expanded = ref<Record<string, boolean>>({})
 const location = inject(sectionRow, undefined)
 const invalid = ref(new Set<string>())
-const widgetInvalid = ref(new Set<string>())
 const configVersions = ref<Record<string, number>>({})
-const forms = new Map<string, InstanceType<typeof ConfigForm>>()
+const schemaForm = useTag('wc-schema-form')
 const validationMessages = ref<Record<string, string>>({})
 const severities = { Enabled: 'success', Available: 'secondary', 'Setting up': 'info', 'Catching up': 'info', 'Turns on when applied': 'info', 'Turns off when applied': 'info' } as const
 const rows = computed(() => props.options.map(plugin => {
@@ -50,12 +49,10 @@ const groups = computed(() => groupByCategory(rows.value, row => row.plugin.cate
 const readOnly = computed(() => !!busy.value || props.disabled)
 const activationDisabled = computed(() => readOnly.value || props.activationLocked)
 const emptyConfig: Record<string, unknown> = {}
-const planningHelpId = useId()
-const planningPlugin = 'kickside.work.planning:plugin'
-const planningTypes = computed(() => (props.draft.item_types ?? []).filter(type => !['issue', 'sprint', 'milestone'].includes(type.id))
-  .map(type => ({ value: type.id, label: type.title || humanize(type.id) })))
-const hasPlanningFields = computed(() => ['current_sprint', 'milestone'].every(code =>
-  props.schema.compiled?.fields?.some(field => field.code === code)))
+const choices = computed(() => JSON.stringify({
+  board_item_types: (props.draft.item_types ?? []).map(type => ({ value: type.id, label: type.title || humanize(type.id) })),
+}))
+watch(() => rows.value.some(row => row.configurable), needed => { if (needed) void schemaForm.load() }, { immediate: true })
 const orphanedFilters = computed(() => {
   const filters = props.filters
   if (!filters) return []
@@ -79,14 +76,8 @@ function setFilters(id: string, selected: string[]) {
   const next = [...current.filter(filter => !owned.has(filter)), ...selected]
   if (next.length !== current.length || next.some(filter => !current.includes(filter))) props.draft.scopes = next
 }
-function toggleConfig(id: string, value: string[]) {
-  update(id, { ...config(id), issue_types: value })
-}
 function hasConfig(plugin: PluginOption): plugin is PluginOption & { config_schema: Record<string, unknown> } {
   return !!plugin.config_schema && configFields(plugin.config_schema).length > 0
-}
-function fieldTitle(plugin: PluginOption, key: string) {
-  return configFields(plugin.config_schema ?? {}).find(field => field.key === key)?.title ?? humanize(key)
 }
 function catchingUp(current: PluginState) {
   return Object.values(current.projections).some(projection => !projection.parked && (projection.bootstrapping || projection.last_seq < props.schema.as_of))
@@ -110,7 +101,7 @@ function toggle(id: string, enabled: boolean) {
     props.draft.plugins = [...plugins, { use: id }]
     if (props.options.some(plugin => plugin.plugin === id && hasConfig(plugin))) setOpen(id, true)
   }
-  if (!enabled) { props.draft.plugins = plugins.filter(p => p.use !== id); delete props.configs[id]; invalid.value.delete(id); emit('validity', id, true); widgetValidity(id, true); setFilters(id, []) }
+  if (!enabled) { props.draft.plugins = plugins.filter(p => p.use !== id); delete props.configs[id]; invalid.value.delete(id); emit('validity', id, true); setFilters(id, []) }
 }
 function reviewRemoval(id: string, event: MouseEvent) {
   toggle(id, false)
@@ -127,20 +118,10 @@ function resetConfig(id: string) {
   delete props.configs[id]
   configVersions.value[id] = (configVersions.value[id] ?? 0) + 1
 }
-function widgetValidity(id: string, valid: boolean) {
-  if (valid || !selected(id)) widgetInvalid.value.delete(id)
-  else widgetInvalid.value.add(id)
-  emit('widget-validity', id, !widgetInvalid.value.has(id))
+function formValidity(plugin: PluginOption, detail: FormValidity) {
+  validationMessages.value[plugin.plugin] = firstConfigError(plugin.config_schema ?? {}, detail.errors)
+  validity(plugin.plugin, detail.valid)
 }
-async function reportValidity() {
-  const first = rows.value.find(({ plugin, chosen }) => chosen && widgetInvalid.value.has(plugin.plugin))
-  if (!first) return true
-  expanded.value[first.plugin.plugin] = true
-  await nextTick()
-  forms.get(first.plugin.plugin)?.reportValidity()
-  return false
-}
-defineExpose({ reportValidity })
 
 function validity(id: string, valid: boolean) {
   if (valid) invalid.value.delete(id)
@@ -236,16 +217,13 @@ async function recover(id: string) {
         </Message>
 
         <section v-if="configurable" class="work-stack work-plugin-config" :aria-label="title + ' settings'">
-          <template v-if="plugin.plugin === planningPlugin">
-            <p v-if="!hasPlanningFields" class="work-muted">The Planning pack supplies sprint and milestone fields for item types.</p>
-            <ChipPicker v-else :label="fieldTitle(plugin, 'issue_types')"
-              :aria-describedby="planningHelpId" :options="planningTypes" :model-value="config(plugin.plugin).issue_types as string[] | undefined"
-              :disabled="!!busy || disabled" @update:model-value="toggleConfig(plugin.plugin, $event)" />
-            <p :id="planningHelpId" class="work-muted work-small">Selected types get Current sprint and Milestone fields.</p>
-          </template>
-          <ConfigForm v-else :key="configVersions[plugin.plugin]" :ref="form => { if (form) forms.set(plugin.plugin, form as InstanceType<typeof ConfigForm>); else forms.delete(plugin.plugin) }" :disabled="!!busy || disabled" :schema="plugin.config_schema ?? {}" :model-value="config(plugin.plugin)" suggest-defaults
-            @update:model-value="update(plugin.plugin, $event)" @validity="validity(plugin.plugin, $event)"
-            @widget-validity="widgetValidity(plugin.plugin, $event)" @validation-message="validationMessages[plugin.plugin] = $event" />
+          <wc-schema-form v-if="schemaForm.state.value === 'ready'" :key="configVersions[plugin.plugin]"
+            class="work-config-widget" :disabled="readOnly || undefined" :schema="JSON.stringify(plugin.config_schema)" :config="JSON.stringify(config(plugin.plugin))" :choices="choices"
+            @config-changed="update(plugin.plugin, eventDetail($event))" @validity-changed="formValidity(plugin, eventDetail($event))"
+            @vue:before-unmount="formValidity(plugin, { valid: true, errors: {} })" />
+          <p v-else-if="schemaForm.state.value === 'failed'" role="alert" class="kx-err">The configuration form is unavailable.
+            <Button label="Reload configuration form" severity="secondary" outlined size="small" @click="schemaForm.load()" /></p>
+          <p v-else role="status" class="work-muted work-small">The configuration form is loading.</p>
           <div class="work-row">
             <Button label="Restore saved settings" severity="secondary" outlined size="small" :disabled="!!busy || disabled" @click="resetConfig(plugin.plugin)" />
           </div>

@@ -8,8 +8,8 @@ import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
-import ConfigForm from './settings/ConfigForm.vue'
-import { configErrors, configFields } from './settings/config'
+import { configFields, eventDetail, type FormValidity } from './settings/config'
+import { useTag } from './mount'
 import type { PluginConfigs } from './settings/model'
 import NativeDialog from '../NativeDialog.vue'
 import { work } from '../api'
@@ -29,12 +29,21 @@ const requiredConfigs = computed(() => {
     ? [{ id: plugin.plugin, title: plugin.title || 'Required plugin', schema: plugin.config_schema }]
     : [])
 })
+const schemaForm = useTag('wc-schema-form')
+const pendingConfigs = ref(new Set<string>())
+watch(requiredConfigs, plugins => {
+  pendingConfigs.value = new Set(plugins.map(plugin => plugin.id))
+  if (plugins.length) void schemaForm.load()
+}, { immediate: true })
 watch(selected, () => { configs.value = {}; invalid.value.clear() })
-function validity(id: string, valid: boolean) { if (valid) invalid.value.delete(id); else invalid.value.add(id) }
+function validity(id: string, detail: FormValidity) {
+  pendingConfigs.value.delete(id)
+  if (detail.valid) invalid.value.delete(id); else invalid.value.add(id)
+}
 let key = crypto.randomUUID(), attempted = ''
 const choices = computed(() => [{ id: '', title: 'Empty board', description: 'Set up the fields and process in Board settings.', icon: 'tabler:square', version: '', disabled: false }, ...packs.value.map(packChoice)])
 const chosen = computed(() => choices.value.find(pack => pack.id === selected.value))
-const valid = computed(() => !!title.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(prefix.value) && !!chosen.value && !chosen.value.disabled && !invalid.value.size && (step.value === 1 || requiredConfigs.value.every(plugin => !Object.keys(configErrors(plugin.schema, configs.value[plugin.id] ?? emptyConfig, false)).length)))
+const valid = computed(() => !!title.value.trim() && /^[A-Z][A-Z0-9]{1,9}$/.test(prefix.value) && !!chosen.value && !chosen.value.disabled && !invalid.value.size && (step.value === 1 || !pendingConfigs.value.size))
 watch(() => props.visible, visible => {
   resetPacks()
   if (!visible) return
@@ -136,8 +145,12 @@ async function create() {
         <fieldset v-if="requiredConfigs.length" :disabled="busy || !!created" class="work-settings-fieldset work-stack">
           <section v-for="plugin in requiredConfigs" :key="selected + ':' + plugin.id" class="work-settings-card work-stack work-tight">
             <h3>{{ plugin.title }}</h3>
-            <ConfigForm :schema="plugin.schema" :model-value="configs[plugin.id] ?? emptyConfig" :disabled="busy || !!created" suggest-defaults
-              @update:model-value="configs[plugin.id] = $event" @validity="validity(plugin.id, $event)" />
+            <wc-schema-form v-if="schemaForm.state.value === 'ready'" class="work-config-widget" :disabled="busy || !!created || undefined" :schema="JSON.stringify(plugin.schema)"
+              :config="JSON.stringify(configs[plugin.id] ?? emptyConfig)" :choices="JSON.stringify({ board_item_types: [] })"
+              @config-changed="configs[plugin.id] = eventDetail($event)" @validity-changed="validity(plugin.id, eventDetail($event))" />
+            <p v-else-if="schemaForm.state.value === 'failed'" role="alert" class="kx-err">The configuration form is unavailable.
+              <Button label="Reload configuration form" severity="secondary" outlined size="small" @click="schemaForm.load()" /></p>
+            <p v-else role="status" class="work-muted work-small">The configuration form is loading.</p>
           </section>
         </fieldset>
         <div class="work-settings-card work-stack work-tight">

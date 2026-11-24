@@ -5,8 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { host } from '@wippy-fe/proxy'
 import type { PluginOption } from '../../types'
 import { schema } from '../../test/fixtures'
-import { getButton } from '../../test/controls'
-import InputNumber from 'primevue/inputnumber'
+import { getButton, schemaForm } from '../../test/controls'
 import { settings } from './api'
 import PluginsEditor from './PluginsEditor.vue'
 
@@ -138,9 +137,10 @@ it('repairs invalid effective config through Work and disables editing without b
         expect(wrapper.get('.work-plugin-state').text()).toBe('Needs configuration')
     expect(wrapper.get('.work-plugin-issue').text()).toContain('Threshold is required')
     await wrapper.setProps({ disabled: true })
-    expect(wrapper.getComponent(InputNumber).props('disabled')).toBe(true)
+    expect(schemaForm(wrapper).disabled()).toBe(true)
     await wrapper.setProps({ disabled: false })
-    await wrapper.getComponent(InputNumber).setValue(4)
+    expect(schemaForm(wrapper).disabled()).toBe(false)
+    await schemaForm(wrapper).change({ threshold: 4 })
     await flushPromises()
     expect(wrapper.props('configs')).toEqual({ [id]: { threshold: 4 } })
     expect(settings.configure).not.toHaveBeenCalled()
@@ -152,7 +152,7 @@ it('keeps an unsupported manifest unavailable for activation and config repair',
   const wrapper = mount(PluginsEditor, { props: { boardId: 'board', schema: schema(), draft: { plugins: [] }, options: [unsupported], configs: {} } })
   try {
         expect(wrapper.get('input[role="switch"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.findComponent(InputNumber).exists()).toBe(false)
+    expect(wrapper.find('wc-schema-form').exists()).toBe(false)
   } finally { wrapper.unmount() }
 })
 
@@ -196,7 +196,8 @@ it('identifies an uninstalled plugin and stages removal for the ordinary schema 
 it('keeps installed plugin settings editable when a worker needs attention', async () => {
   const wrapper = renderPlugin(states[1].plugin)
   try {
-        await wrapper.getComponent(InputNumber).setValue(6)
+    await flushPromises()
+    await schemaForm(wrapper).change({ threshold: 6 })
     await flushPromises()
     expect(wrapper.props('configs')).toEqual({ [id]: { threshold: 6 } })
     expect(settings.configure).not.toHaveBeenCalled()

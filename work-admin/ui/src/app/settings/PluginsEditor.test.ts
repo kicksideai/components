@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { getButton } from '../../test/controls'
+import { getButton, schemaForm } from '../../test/controls'
 import { expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import InputNumber from 'primevue/inputnumber'
 import { reactive } from 'vue'
 import ChipPicker from './ChipPicker.vue'
 import PluginsEditor from './PluginsEditor.vue'
@@ -44,14 +43,19 @@ it('stages active settings and lets Reset restore the saved configuration', asyn
     await w.get('[aria-expanded]').trigger('click'); await flushPromises()
     const actions = w.get('.work-plugin-config > .work-row')
     expect(actions.findAll('button').map(b => b.text())).toEqual(['Restore saved settings'])
-    await w.getComponent(InputNumber).setValue(0)
+    const form = schemaForm(w)
+    expect(form.config()).toEqual({ limit: 2 })
+    await form.change({ limit: 0 })
+    await form.report({ limit: 'Enter at least 1.' })
     expect(w.emitted('validity')?.at(-1)).toEqual(['app:plugin', false])
-    await w.getComponent(InputNumber).setValue(3)
+    expect(w.get('.kx-settings-item-head').text()).toContain('Limit: Enter at least 1.')
+    await form.change({ limit: 3 })
+    await form.report()
     expect(w.props('configs')).toEqual({ 'app:plugin': { limit: 3 } })
     expect(w.emitted('validity')?.at(-1)).toEqual(['app:plugin', true])
     await getButton(w, 'Restore saved settings').trigger('click')
     expect(w.props('configs')).toEqual({})
-    expect(w.getComponent(InputNumber).props('modelValue')).toBe(2)
+    expect(schemaForm(w).config()).toEqual({ limit: 2 })
   } finally { w.unmount() }
 })
 
@@ -68,8 +72,8 @@ it('shows refreshed configuration and stages the edited value', async () => {
   const w = mount(PluginsEditor, { props: { boardId: 'b', schema: view, draft: { plugins: [{ use: plugin.plugin }] }, options: [{ ...plugin, config_schema: { properties: { limit: { type: 'integer' } } } }], configs: reactive({}) } })
   await w.get('[aria-expanded]').trigger('click'); await flushPromises()
   await w.setProps({ schema: { ...view, plugins: [{ ...plugin, config: { limit: 8 } }] } }); await flushPromises()
-  expect(w.getComponent(InputNumber).props('modelValue')).toBe(8)
-  await w.getComponent(InputNumber).setValue(9)
+  expect(schemaForm(w).config()).toEqual({ limit: 8 })
+  await schemaForm(w).change({ limit: 9 })
   expect(w.props('configs')).toEqual({ 'app:plugin': { limit: 9 } })
   w.unmount()
 })
@@ -110,5 +114,26 @@ it('shows uncategorized plugins as one untitled list', () => {
   try {
     expect(w.findAll('.kx-settings-group')).toHaveLength(1)
     expect(w.find('.kx-settings-group h2').exists()).toBe(false)
+  } finally { w.unmount() }
+})
+
+it('passes any plugin its declared schema and the board item types for x-choices fields', async () => {
+  const configSchema = { type: 'object', properties: { issue_types: { type: 'array', title: 'Plan these item types', items: { type: 'string', 'x-choices': 'board_item_types', not: { enum: ['issue'] } } } } }
+  const plugin = { plugin: 'kickside.work.planning:plugin', title: 'Work Planning', installed: true, active: true, requires: [], tools: [],
+    lifecycle: { state: 'ready' as const }, projections: {}, config: { issue_types: ['task'] } }
+  const draft = reactive({ plugins: [{ use: plugin.plugin }], item_types: [{ id: 'task', title: 'Task', process: 'flow', fields: [] }, { id: 'support_request', process: 'flow', fields: [] }] })
+  const configs = reactive<Record<string, Record<string, unknown>>>({})
+  const w = mount(PluginsEditor, { props: { boardId: 'b', schema: { ...schema(), plugins: [plugin] }, draft, options: [{ ...plugin, config_schema: configSchema }], configs } })
+  try {
+    await w.get('.kx-settings-item-expand').trigger('click'); await flushPromises()
+    const form = schemaForm(w)
+    expect(form.schema()).toEqual(configSchema)
+    expect(form.config()).toEqual({ issue_types: ['task'] })
+    expect(form.choices()).toEqual({ board_item_types: [{ value: 'task', label: 'Task' }, { value: 'support_request', label: 'Support request' }] })
+    expect(form.disabled()).toBe(false)
+    await form.change({ issue_types: ['task', 'support_request'] })
+    expect(configs).toEqual({ [plugin.plugin]: { issue_types: ['task', 'support_request'] } })
+    await w.setProps({ disabled: true })
+    expect(schemaForm(w).disabled()).toBe(true)
   } finally { w.unmount() }
 })

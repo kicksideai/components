@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { editNumber, getButton } from '../../test/controls'
+import { editNumber, getButton, schemaForm } from '../../test/controls'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import BoardSettings from './BoardSettings.vue'
@@ -374,7 +374,8 @@ it('keeps a plugin draft and readable error when its configuration fails review'
   const w = await render()
   await section(w, 'Plugins').trigger('click')
   await w.get('[aria-label="Plugins editor"] .kx-settings-item-expand').trigger('click')
-  await w.getComponent(InputNumber).setValue(4)
+  await flushPromises()
+  await schemaForm(w).change({ limit: 4 })
   await getButton(w, 'Review changes').trigger('click')
   await flushPromises()
   const alert = w.get('[role="alert"]').text()
@@ -382,7 +383,7 @@ it('keeps a plugin draft and readable error when its configuration fails review'
   expect(alert).toMatch(/Error code:\s*plugin_config_invalid/)
   expect(alert).not.toContain('app:plugin')
   expect(settings.plan).toHaveBeenCalledWith('b', expect.objectContaining({ plugin_configs: { [plugin.plugin]: { limit: 4 } } }))
-  expect(w.getComponent(InputNumber).props('modelValue')).toBe(4)
+  expect(schemaForm(w).config()).toEqual({ limit: 4 })
   expect(settings.configure).not.toHaveBeenCalled()
 })
 
