@@ -93,6 +93,34 @@ describe('Images', () => {
   })
 })
 
+describe('Images named in templates', () => {
+  afterEach(() => { document.body.innerHTML = '' })
+
+  it('names every template whose source names the image when Mail refuses the delete', async () => {
+    routes([
+      get('/api/v1/mail/library/asset/banner', () => ok({ ...banner, used_by: { messages: [] } })),
+      get('/api/v1/mail/library/asset/banner/history', () => ok({ items: [] })),
+      get('/api/v1/mail/library/part/promo', () => ok(resource('part', 'promo', { title: 'Promo strip' }))),
+    ])
+    vi.mocked(host.confirm).mockResolvedValueOnce(true)
+    const remove = vi.fn(() => refuse(409, { error: 'in use', kind: 'CONFLICT', details: { code: 'mail_resource_in_use', messages: [],
+      resources: [{ kind: 'part', name: 'promo' }, { kind: 'message', name: 'notice' }] } }))
+    serve([get('/api/v1/mail/library/asset/banner', () => ok({ ...banner, used_by: { messages: [] } })), get('/api/v1/mail/library/asset/banner/history', () => ok({ items: [] })),
+      get('/api/v1/mail/library', (_p, o) => ok({ items: (o as { params: Record<string, string> }).params.kind === 'part' ? [row(resource('part', 'promo', { title: 'Promo strip' }))] : [row(notice)] })),
+      { method: 'delete', match: (path: string) => path === '/api/v1/mail/library/asset/banner', reply: remove }])
+    const wrapper = await open('assets/banner')
+    dialogButton('Delete')!.click()
+    await flushPromises()
+    await flushPromises()
+    expect(remove).toHaveBeenCalled()
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('2 templates name Spring banner, in the current version or one kept in History. Remove it from them first.')
+    expect(text).toContain('Promo strip')
+    expect(text).toContain('Notice')
+    wrapper.unmount()
+  })
+})
+
 describe('Used by', () => {
   afterEach(() => { document.body.innerHTML = '' })
 

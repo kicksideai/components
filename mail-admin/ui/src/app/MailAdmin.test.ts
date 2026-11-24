@@ -92,13 +92,13 @@ describe('Mail administration shell', () => {
     serve([
       get('/api/v1/mail/library', (_path, options) => {
         const cursor = (options as { params: Record<string, string> }).params.cursor
-        return ok(cursor ? { items: rows.slice(3) } : { items: rows.slice(0, 3), next_cursor: 'c1' })
+        return ok(cursor ? { items: rows.slice(3), total: 6 } : { items: rows.slice(0, 3), next_cursor: 'c1', total: 6 })
       }),
       get('/api/v1/mail/delivery', () => ok({ configured: true })),
     ])
     const wrapper = await open()
     expect(libraryParams()).toHaveLength(1)
-    expect(wrapper.find('.mail-count').text()).toBe('First 3 resources')
+    expect(wrapper.find('.mail-count').text()).toBe('3 of 6 resources')
     hostVisible.value = false
     await flushPromises()
     hostVisible.value = true

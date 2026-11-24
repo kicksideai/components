@@ -9,6 +9,8 @@ export type Face = 'html' | 'text' | 'subject' | 'variables' | 'samples'
 export interface Problem {
   // Mail's sentence, and the template engine's own message when Mail passes it on.
   message: string
+  // Set when the rendered face is larger than Mail can send, with that limit in bytes.
+  tooLarge?: number
   engine?: string
   face?: Face
   resource?: ResourceKey
@@ -17,6 +19,8 @@ export interface Problem {
   previewOf?: string
   // Each failing message with the engine's message for it.
   reasons?: { name: string; message: string }[]
+  // The templates whose source names a resource that a delete or change would take away.
+  references?: ResourceKey[]
   // The resources the failed render used, one of which holds the problem: its message, base and changed resources.
   candidates?: ResourceKey[]
 }
@@ -37,11 +41,12 @@ export function problemOf(error: unknown): Problem | undefined {
     return {
       message: error.message,
       dependents: messages,
+      references: Array.isArray(details.resources) ? details.resources.filter(isKey) : undefined,
       face: faces.find(face => face === dependent?.face),
       resource: isKey(dependent?.resource) ? dependent.resource : undefined,
     }
   }
-  const face = faces.find(candidate => candidate === details.face)
+  const face = faces.find(candidate => candidate === details.face) ?? (code === 'invalid_template_vars' ? 'samples' : undefined)
   if (!face) return undefined
   // A save checks every message the change reaches; the server names each one that fails.
   const dependents = Array.isArray(details.dependent_messages)
@@ -52,7 +57,8 @@ export function problemOf(error: unknown): Problem | undefined {
   }) : []
   const candidates = Array.isArray(details.candidate_resources) ? details.candidate_resources.filter(isKey) : []
   const engine = typeof details.engine_message === 'string' ? details.engine_message : undefined
-  return { message: error.message, engine, face, resource: isKey(details.resource) ? details.resource : undefined,
+  const tooLarge = (code === 'html_too_large' || code === 'text_too_large') && typeof details.maximum === 'number' ? details.maximum : undefined
+  return { message: error.message, engine, tooLarge, face, resource: isKey(details.resource) ? details.resource : undefined,
     dependents: dependents.length ? dependents : undefined, reasons: reasons.length ? reasons : undefined,
     candidates: candidates.length ? candidates : undefined }
 }

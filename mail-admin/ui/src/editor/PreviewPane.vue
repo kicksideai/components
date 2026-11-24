@@ -7,7 +7,7 @@ import SelectButton from 'primevue/selectbutton'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import { library as libraryApi } from '../api'
 import { useMail } from '../context'
-import { describe } from '../copy'
+import { describe, warningText } from '../copy'
 import type { DraftRender, ResourceContent } from '../types'
 import { problemOf, type Problem } from './problems'
 import { emailDocument } from './render'
@@ -117,6 +117,8 @@ const from = computed(() => {
         <pre v-else class="mail-preview-text">{{ rendered.text }}</pre>
       </template>
     </div>
+    <p v-for="warning in rendered?.warnings ?? []" :key="warning.code" class="mail-preview-foot mail-preview-warning" role="status">
+      <Icon icon="tabler:scissors" aria-hidden="true" /><span>{{ warningText(warning) }}</span></p>
     <p v-if="problem" class="mail-preview-foot mail-preview-problem" role="status"><Icon icon="tabler:alert-triangle" aria-hidden="true" />
       <span>{{ rendered ? 'The preview shows the last version that rendered.' : 'Nothing to show until it renders.' }} The problem is shown beside the source.</span></p>
     <p v-else-if="failure" class="mail-preview-foot mail-preview-problem" role="alert"><Icon icon="tabler:alert-triangle" aria-hidden="true" /><span>{{ failure }}</span></p>

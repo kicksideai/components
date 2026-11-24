@@ -15,7 +15,7 @@ import Skeleton from 'primevue/skeleton'
 import { actionLabels, bytes, describe, fullDate, kindIcons, personLabel, plural } from '../copy'
 import { emailDocument } from '../editor/render'
 import { problemOf } from '../editor/problems'
-import type { DraftRender, Resource, Revision } from '../types'
+import type { DraftRender, Resource, Revision, TemplateKind } from '../types'
 import RefusalDialog, { type Refusal } from './RefusalDialog.vue'
 import AssetTile from './AssetTile.vue'
 import ResourceSource from './ResourceSource.vue'
@@ -113,8 +113,17 @@ async function act(kind: 'reset' | 'delete' | 'restore', revision?: Revision) {
     await load()
   } catch (failure) {
     const found = problemOf(failure)
-    if (found?.dependents?.length) {
-      refusal.value = { header: `${item.title} is in use`, message: found.message, links: found.dependents.map(name => ({ label: library.title('message', name) ?? name, open: () => go({ name: 'resource', kind: 'message', resource: name, section: 'content' }) })) }
+    if (found?.dependents?.length || found?.references?.length) {
+      // Mail names the messages whose samples show the image and every template whose source names it.
+      const keys = [...(found.references ?? []).filter(key => key.kind !== 'asset')]
+      for (const name of found.dependents ?? []) if (!keys.some(key => key.kind === 'message' && key.name === name)) keys.push({ kind: 'message', name })
+      await Promise.all([...new Set(keys.map(key => key.kind))].map(kind => library.ready(kind) ? undefined : library.load(kind)))
+      refusal.value = {
+        header: `${item.title} is in use`,
+        message: `${plural(keys.length, 'template')} ${keys.length === 1 ? 'names' : 'name'} ${item.title}, in the current version or one kept in History. Remove it from ${keys.length === 1 ? 'that template' : 'them'} first.`,
+        links: keys.map(key => ({ label: library.title(key.kind, key.name) ?? key.name, icon: kindIcons[key.kind],
+          open: () => go(key.kind === 'asset' ? { name: 'library', section: 'assets', asset: key.name } : { name: 'resource', kind: key.kind as TemplateKind, resource: key.name, section: 'content' }) })),
+      }
     } else {
       actionError.value = errorCode(failure) === 'mail_revision_conflict'
         ? 'Someone changed this image while you were looking at it. The latest version is shown now; try again.' : describe(failure, 'The image could not be changed.')

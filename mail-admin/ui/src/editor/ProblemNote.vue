@@ -5,7 +5,7 @@ import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 import { useMail } from '../context'
-import { kindLabels } from '../copy'
+import { bytes, kindLabels } from '../copy'
 import type { ResourceContent, ResourceKey, TemplateKind } from '../types'
 import { faceLabels, type Problem } from './problems'
 
@@ -21,6 +21,10 @@ const sentence = computed(() => {
   const part = face ? inSentence[face] : ''
   if (resource && props.draft && props.draft.kind !== 'message' && resource.kind === 'message' && resource.name === previewOf) {
     return `${title(resource) ?? 'The message'} does not render with your changes.`
+  }
+  if (props.problem.tooLarge) {
+    const what = !resource || isDraft(resource) ? (props.draft ? `this ${kindLabels[props.draft.kind].toLowerCase()}` : 'it') : (title(resource) ?? 'a resource it uses')
+    return `The ${part || 'content'} of ${what} is larger than Mail can send. Keep each rendered face under ${bytes(props.problem.tooLarge)}.`
   }
   if (!resource || isDraft(resource)) {
     const what = props.draft ? `this ${kindLabels[props.draft.kind].toLowerCase()}` : 'it'
@@ -39,7 +43,7 @@ function open(key: ResourceKey) {
   <div class="mail-problem" role="alert">
     <p class="mail-problem-lead"><Icon icon="tabler:alert-triangle" aria-hidden="true" />
       <span>{{ sentence }}</span></p>
-    <code class="mail-problem-detail">{{ problem.engine ?? problem.message }}</code>
+    <code v-if="!problem.tooLarge" class="mail-problem-detail">{{ problem.engine ?? problem.message }}</code>
     <p v-if="candidates.length" class="mail-problem-involved">
       <span class="mail-muted">The render used these; one of them holds the problem:</span>
       <template v-for="key in candidates" :key="key.kind + key.name">

@@ -13,7 +13,7 @@ import SettingsGroup from '@kickside/ui-kit/SettingsGroup.vue'
 import SettingsItem from '@kickside/ui-kit/SettingsItem.vue'
 import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import { activity, delivery as deliveryApi, isDenied } from '../api'
-import { describe } from '../copy'
+import { deliveryFailure, describe } from '../copy'
 import { useReturnFocus } from '../focus'
 import { ensureTag } from '../mount'
 import { useMessageChanges } from '../realtime'
@@ -111,7 +111,12 @@ const addressPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const identityErrors = computed(() => ({
   from_address: draft.value.from_address && !addressPattern.test(draft.value.from_address) ? 'Enter an email address such as support@example.com.' : fieldErrors.value.from_address ?? '',
   reply_to: draft.value.reply_to && !addressPattern.test(draft.value.reply_to) ? 'Enter an email address, or leave it empty.' : fieldErrors.value.reply_to ?? '',
+  from_name: fieldErrors.value.from_name ?? '',
 }))
+// A server refusal stays beside its value until the value changes.
+for (const key of identityKeys) watch(() => draft.value[key], () => {
+  if (fieldErrors.value[key]) { const { [key]: _gone, ...rest } = fieldErrors.value; fieldErrors.value = rest }
+})
 const settingLabel = (key: string) => `${active.value?.label}: ${driverSettings.value.find(item => item.key === key)?.title ?? key}`
 const reviewing = ref(false)
 useReturnFocus(() => reviewing.value)
@@ -241,13 +246,11 @@ async function runTest() {
   }
 }
 // A refused credential or configuration is fixed here, so the test result says what to change.
-const settingsCodes = new Set(['invalid_config', 'credentials_invalid', 'provider_endpoint_invalid', 'settings_read_failed'])
 const testFailure = computed(() => {
   const failure = test.value?.last_error
   if (!failure) return undefined
-  if (failure.code === 'credentials_invalid') return { lead: `${status.value?.driver?.label ?? 'The service'} refused the credentials.`, next: 'Check the API key above, save, and send the test again.' }
-  if (settingsCodes.has(failure.code)) return { lead: 'The delivery settings are not complete.', next: 'Check the settings above, save, and send the test again.' }
-  return { lead: 'The service did not accept the test.', next: failure.message }
+  return deliveryFailure(failure.code, status.value?.driver?.label ?? 'The service', 'above')
+    ?? { lead: 'The service did not accept the test.', next: failure.message }
 })
 const testBlocked = computed(() => dirty.value ? 'Save or discard your changes to send a test.'
   : !status.value?.configured ? 'Finish setting up delivery to send a test.' : '')
@@ -324,7 +327,12 @@ const statusNotice = computed(() => {
             </template>
           </SettingsItem>
           <SettingsItem title="From name" description="Shown next to the address, for example your company’s name.">
-            <template #actions><span class="mail-setting-control"><InputText v-model="draft.from_name" fluid aria-label="From name" /></span></template>
+            <template #actions>
+              <span class="mail-setting-control">
+                <InputText v-model="draft.from_name" fluid aria-label="From name" maxlength="255" :invalid="!!identityErrors.from_name" />
+                <small v-if="identityErrors.from_name" class="mail-field-error" role="alert">{{ identityErrors.from_name }}</small>
+              </span>
+            </template>
           </SettingsItem>
           <SettingsItem title="Reply-to" description="Where replies go when it is not the From address. Optional.">
             <template #actions>

@@ -7,7 +7,7 @@ import Dialog from 'primevue/dialog'
 import ProgressBar from 'primevue/progressbar'
 import { library as libraryApi } from '../api'
 import { useMail } from '../context'
-import { describe, plural } from '../copy'
+import { describe, plural, warningText } from '../copy'
 import { emailDocument } from '../editor/render'
 import { useReturnFocus } from '../focus'
 import ProblemNote from '../editor/ProblemNote.vue'
@@ -21,9 +21,10 @@ const { go } = useMail()
 useReturnFocus(() => props.visible)
 
 const CONCURRENCY = 3
-interface Tile { name: string; title: string; state: 'waiting' | 'loading' | 'ready' | 'failed'; subject?: string; document?: string; problem?: Problem; failure?: string }
+interface Tile { name: string; title: string; state: 'waiting' | 'loading' | 'ready' | 'failed'; subject?: string; document?: string; warning?: string; problem?: Problem; failure?: string }
 const tiles = ref<Tile[]>([])
 const cursor = ref<string>()
+const total = ref<number>()
 const listing = ref(false), listError = ref('')
 let generation = 0
 let queue: Tile[] = []
@@ -36,6 +37,7 @@ async function render(tile: Tile, run: number) {
     const result = await libraryApi.preview(tile.name, [])
     if (run !== generation) return
     tile.subject = result.subject
+    tile.warning = result.warnings?.length ? result.warnings.map(warningText).join(' ') : undefined
     tile.document = result.html ? emailDocument(result.html, result.inline_assets) : ''
     tile.state = 'ready'
   } catch (failure) {
@@ -89,6 +91,7 @@ async function loadPage(run: number) {
     if (run !== generation) return
     tiles.value = [...tiles.value, ...page.items.map(item => reactive<Tile>({ name: item.name, title: item.title, state: 'waiting' }))]
     cursor.value = page.next_cursor
+    total.value = page.total
     await nextTick()
     observe()
   } catch (failure) {
@@ -108,13 +111,13 @@ function stop() {
 function start() {
   stop()
   tiles.value = []
-  cursor.value = undefined
+  cursor.value = total.value = undefined
   void loadPage(generation)
 }
 function again() {
   const run = ++generation
   queue = []
-  for (const tile of tiles.value) Object.assign(tile, { state: 'waiting', subject: undefined, document: undefined, problem: undefined, failure: undefined })
+  for (const tile of tiles.value) Object.assign(tile, { state: 'waiting', subject: undefined, document: undefined, warning: undefined, problem: undefined, failure: undefined })
   void nextTick(() => { if (run === generation) observe() })
 }
 watch(() => props.visible, open => { if (open) start(); else stop() })
@@ -124,7 +127,7 @@ const done = computed(() => tiles.value.filter(tile => tile.state === 'ready' ||
 const failed = computed(() => tiles.value.filter(tile => tile.state === 'failed').length)
 const progress = computed(() => {
   if (!tiles.value.length) return ''
-  const count = `${done.value} of ${plural(tiles.value.length, 'message')}${cursor.value ? ' listed so far' : ''} rendered`
+  const count = `${done.value} of ${plural(total.value ?? tiles.value.length, 'message')} rendered`
   return failed.value ? `${count}, ${failed.value} with a problem.` : count + '.'
 })
 
@@ -147,7 +150,7 @@ const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'm
     </template>
     <div v-if="tiles.length" class="mail-gallery-progress" role="status">
       <span>{{ progress }}</span>
-      <ProgressBar :value="Math.round(done / tiles.length * 100)" :show-value="false" aria-hidden="true" />
+      <ProgressBar :value="Math.round(done / (total ?? tiles.length) * 100)" :show-value="false" aria-hidden="true" />
     </div>
     <p v-if="listing && !tiles.length" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Listing messages…</p>
     <p v-else-if="!listing && !listError && !tiles.length" class="mail-muted">There are no messages yet.</p>
@@ -157,6 +160,7 @@ const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'm
           <span class="mail-gallery-title">{{ tile.title }}</span>
           <span class="mail-sub">{{ tile.subject ?? '' }}</span>
         </Button>
+        <p v-if="tile.warning" class="mail-gallery-warning" role="status"><Icon icon="tabler:scissors" aria-hidden="true" />{{ tile.warning }}</p>
         <div class="mail-gallery-frame">
           <p v-if="tile.state === 'waiting'" class="mail-muted mail-gallery-wait">Renders when shown.</p>
           <p v-else-if="tile.state === 'loading'" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Rendering…</p>

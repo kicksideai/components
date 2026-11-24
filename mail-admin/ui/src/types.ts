@@ -79,7 +79,8 @@ export interface LibraryRow {
   used_by?: { messages?: number; recent_sources?: number }
 }
 
-export interface LibraryPage { items: LibraryRow[]; next_cursor?: string }
+// One page of the library in the server's order (kind, then name), with the exact count of every matching resource.
+export interface LibraryPage { items: LibraryRow[]; next_cursor?: string; total: number }
 
 export type RevisionAction = 'created' | 'edited' | 'base_changed' | 'reset' | 'restored' | 'previous_change'
 
@@ -102,7 +103,9 @@ export interface Items<T> { items: T[] }
 
 export interface Capabilities { send: boolean; edit_library: boolean; administer_delivery: boolean }
 
-export interface DraftRender { subject?: string; html?: string; text?: string; inline_assets?: Record<string, string> }
+// A rendered message may carry warnings, such as HTML large enough that Gmail clips it.
+export interface PreviewWarning { code: string; message: string; bytes?: number; threshold_bytes?: number }
+export interface DraftRender { subject?: string; html?: string; text?: string; inline_assets?: Record<string, string>; warnings?: PreviewWarning[] }
 
 export type MessageStatus = 'queued' | 'sent' | 'failed'
 
@@ -134,7 +137,9 @@ export interface LogMessage {
   can_resend?: boolean
 }
 
-export interface MessagePage { items: LogMessage[]; next_cursor?: string; has_more: boolean; total?: number; failed_today?: number }
+// Without a search, `total` stops at 10,000 and the flag says the count is at least that. A search covers the newest
+// 10,000 messages that match the other filters, and the flag says when that window is full.
+export interface MessagePage { items: LogMessage[]; next_cursor?: string; has_more: boolean; total?: number; total_is_lower_bound?: boolean; failed_today?: number }
 export interface SendReceipt { message_id: string; status: MessageStatus }
 
 export interface DeliveryStatus {

@@ -12,21 +12,26 @@ import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { activity, isDenied, isMissing } from '../api'
 import { useMail } from '../context'
 import { useReturnFocus } from '../focus'
-import { describe, fullDate, originText, personLabel, statusLabels, statusSeverity } from '../copy'
+import { deliveryFailure, describe, fixedOutsideMail, fullDate, originText, personLabel, statusLabels, statusSeverity } from '../copy'
 import { useMessageChanges } from '../realtime'
 import type { LogMessage, SendReceipt } from '../types'
 
 const props = defineProps<{ messageId?: string }>()
 const emit = defineEmits<{ close: [] }>()
-const { library, go, capabilities } = useMail()
+const { library, go, capabilities, delivery } = useMail()
 useReturnFocus(() => !!props.messageId)
 const drawer = ref<HTMLElement>()
 watch(() => !!props.messageId, open => { if (open) void nextTick(() => drawer.value?.focus()) }, { immediate: true })
 
-// Failures that come from the delivery settings; sending again fails the same way until the settings change.
-const settingsCodes = new Set(['invalid_config', 'settings_read_failed', 'invalid_driver_descriptor', 'duplicate_driver_id',
-  'driver_availability_invalid', 'provider_endpoint_invalid', 'credentials_invalid'])
-const settingsFailure = computed(() => !!message.value?.last_error && settingsCodes.has(message.value.last_error.code))
+const settingsFailure = computed(() => !!message.value?.last_error && fixedOutsideMail.has(message.value.last_error.code))
+// A delivery administrator reads what the service said and what to change; everyone else reads Mail's neutral text.
+const failureText = computed(() => {
+  const failure = message.value?.last_error
+  if (!failure) return undefined
+  const service = delivery.value?.driver && delivery.value.driver.id === message.value?.driver_id ? delivery.value.driver.label : 'The delivery service'
+  const admin = capabilities.value?.administer_delivery ? deliveryFailure(failure.code, service) : undefined
+  return admin ?? { lead: '', next: failure.message }
+})
 
 const message = shallowRef<LogMessage>()
 const loading = ref(false), missing = ref(false), denied = ref(false)
@@ -150,12 +155,13 @@ const technical = computed(() => {
           <Icon icon="tabler:alert-triangle" aria-hidden="true" />
           <div class="mail-failure-body">
             <strong>This message was not delivered.</strong>
-            <span v-if="message.last_error">{{ message.last_error.message }}</span>
+            <span v-if="failureText?.lead">{{ failureText.lead }}</span>
+            <span v-if="failureText">{{ failureText.next }}</span>
             <p v-if="receipt" class="mail-failure-done" role="status">
               Sent again as a new message.
               <Button link size="small" class="mail-inline-link" label="Open the new message" @click="go({ name: 'activity', message: receipt.message_id })" />
             </p>
-            <p v-else-if="settingsFailure" class="mail-sub">Sending it again fails the same way until the delivery settings are corrected.
+            <p v-else-if="settingsFailure" class="mail-sub">Sending it again fails the same way until the delivery settings or the account with the service change.
               <Button v-if="capabilities?.administer_delivery" link size="small" class="mail-inline-link" label="Open delivery settings" @click="host.navigate('/system/settings/mail')" /></p>
             <p v-else-if="!message.can_resend" class="mail-sub">It cannot be sent again because its content was not kept.</p>
             <p v-if="sendError" class="mail-field-error" role="alert">{{ sendError }}</p>

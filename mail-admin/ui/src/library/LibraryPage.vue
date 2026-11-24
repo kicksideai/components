@@ -40,6 +40,7 @@ watch(() => props.section, () => { query.value = search.value = ''; state.value 
 
 const rows = shallowRef<LibraryRow[]>([])
 const cursor = ref<string>()
+const total = ref<number>()
 const loading = ref(true), loaded = ref(false), more = ref(false), denied = ref(false)
 const error = ref(''), moreError = ref(''), refreshError = ref('')
 const begin = latestRequest()
@@ -54,6 +55,7 @@ async function load(refresh = false) {
     if (!current()) return
     rows.value = page.items
     cursor.value = page.next_cursor
+    total.value = page.total
     error.value = moreError.value = refreshError.value = ''
     denied.value = false
     loaded.value = true
@@ -77,6 +79,7 @@ async function loadMore() {
     if (!current()) return
     rows.value = [...rows.value, ...page.items]
     cursor.value = page.next_cursor
+    total.value = page.total
   } catch (failure) {
     if (current()) moreError.value = describe(failure, 'More resources could not be loaded.')
   } finally {
@@ -89,19 +92,24 @@ useHostVisibilityRefresh(() => load(loaded.value))
 
 // Rows come in the server's order, by reference. A change updates its row in place, or adds a new resource where
 // that order puts it among the rows already shown; the search and state filters are the server's, so a row the
-// filters may no longer match is kept until the next read.
+// filters may no longer match is kept until the next read. The total follows creations and deletions the
+// unfiltered list covers.
 const keyOf = (row: { kind: string; name: string }) => row.kind + '/' + row.name
 library.onRow((change, row) => {
   const key = keyOf(change)
   const index = rows.value.findIndex(item => keyOf(item) === key)
+  const covered = (!kind.value || change.kind === kind.value) && state.value === 'all' && !search.value
   if (index >= 0) {
     const next = [...rows.value]
     if (row) next[index] = row
     else next.splice(index, 1)
     rows.value = next
+    if (!row && total.value !== undefined) total.value--
     return
   }
-  if (!row || (kind.value && row.kind !== kind.value) || state.value !== 'all' || search.value) return
+  if (!covered) return
+  if (!row) { if (total.value !== undefined) total.value--; return }
+  if (row.revision === 1 && row.state === 'created' && total.value !== undefined) total.value++
   const last = rows.value[rows.value.length - 1]
   if (cursor.value && last && key > keyOf(last)) return
   const at = rows.value.findIndex(item => keyOf(item) > key)
@@ -124,7 +132,8 @@ const states: { label: string; value: StateFilter }[] = [
 ]
 const countLabel = computed(() => {
   const noun = kind.value ? kindLabels[kind.value].toLowerCase() : 'resource'
-  return cursor.value ? `First ${plural(rows.value.length, noun)}` : plural(rows.value.length, noun)
+  const count = total.value ?? rows.value.length
+  return rows.value.length < count ? `${rows.value.length} of ${plural(count, noun)}` : plural(count, noun)
 })
 
 function usedBy(item: LibraryRow): string {
@@ -178,7 +187,7 @@ const gallery = ref(false)
       <SelectButton v-model="state" :options="states" option-label="label" option-value="value" :allow-empty="false" aria-label="Show resources" />
       <IconField class="mail-search">
         <InputIcon><Icon :icon="loading ? 'tabler:loader-2' : 'tabler:search'" :class="{ spin: loading }" aria-hidden="true" /></InputIcon>
-        <InputText v-model="query" type="search" :aria-label="'Search ' + head.title.toLowerCase()" placeholder="Search names and content…" />
+        <InputText v-model="query" type="search" maxlength="1024" :aria-label="'Search ' + head.title.toLowerCase()" placeholder="Search names and content…" />
       </IconField>
       <span class="mail-count" role="status">{{ countLabel }}</span>
     </div>

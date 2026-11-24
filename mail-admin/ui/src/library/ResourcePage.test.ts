@@ -95,6 +95,34 @@ describe('Library resource editor', () => {
     wrapper.unmount()
   })
 
+  it('warns when Gmail may clip the email, beside a preview that still shows', async () => {
+    routes(notice, [post('/api/v1/mail/library/preview', () => ok({ subject: 'Hi', html: '<p>long</p>', text: 'x',
+      warnings: [{ code: 'gmail_html_clipping', message: 'Gmail may clip this email.', bytes: 130_000, threshold_bytes: 104_448 }] }))])
+    const wrapper = await open('messages/notice/content')
+    expect(wrapper.find('.mail-preview-warning').text()).toBe('Gmail may clip this email: its HTML is 127 KB, above Gmail’s 102 KB. Readers then see only the start until they open the rest.')
+    expect(wrapper.find('iframe.mail-preview-frame').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('blocks saving an email larger than Mail can send, saying the limit', async () => {
+    routes(welcome)
+    const wrapper = await open('messages/welcome/content')
+    await body(wrapper)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    vi.mocked(api.post).mockImplementation(((path: string) => path === '/api/v1/mail/library/preview'
+      ? refuse(400, { error: 'HTML body exceeds the byte limit', kind: 'INVALID', details: { code: 'html_too_large', face: 'html', resource: { kind: 'message', name: 'welcome' }, limit: 'max_html_bytes', maximum: 262144 } })
+      : refuse(404, {})) as never)
+    await (await body(wrapper)).setValue('{{ block body() }}' + 'x'.repeat(10) + '{{ end }}')
+    vi.advanceTimersByTime(500)
+    await flushPromises()
+    const note = wrapper.find('.mail-source-column .mail-problem')
+    expect(note.find('.mail-problem-lead').text()).toBe('The HTML of this message is larger than Mail can send. Keep each rendered face under 256 KB.')
+    expect(note.find('.mail-problem-detail').exists()).toBe(false)
+    expect(control(wrapper, 'Review changes')!.attributes('disabled')).toBeDefined()
+    vi.useRealTimers()
+    wrapper.unmount()
+  })
+
   it('refuses a subject with a line break in place and blocks the review', async () => {
     routes(welcome)
     const wrapper = await open('messages/welcome/content')

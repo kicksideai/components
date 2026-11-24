@@ -80,13 +80,21 @@ async function submit() {
   try {
     phase.value = 'upload'
     const upload = await uploads.add(file.value)
-    phase.value = 'process'
-    await whenCompleted(upload, run)
-    phase.value = 'save'
     const body = { name: name.value, upload_id: upload, title: title.value.trim(), ...dimensions.value }
-    const saved = props.replace
-      ? await libraryApi.replaceAsset(body, props.replace.revision)
-      : await libraryApi.addAsset(body)
+    const adopt = () => props.replace ? libraryApi.replaceAsset(body, props.replace.revision) : libraryApi.addAsset(body)
+    // Mail adopts the upload at once when the platform has finished it. While it is still processing, Mail says
+    // so, and the page waits for the platform's completion signal before asking once more.
+    phase.value = 'save'
+    let saved: Resource
+    try {
+      saved = await adopt()
+    } catch (failure) {
+      if (errorCode(failure) !== 'upload_still_processing') throw failure
+      phase.value = 'process'
+      await whenCompleted(upload, run)
+      phase.value = 'save'
+      saved = await adopt()
+    }
     library.patch('asset', saved.name, rowOf(saved))
     emit('done', saved)
     emit('close')

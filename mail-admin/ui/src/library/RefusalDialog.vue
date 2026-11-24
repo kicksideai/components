@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import { useReturnFocus } from '../focus'
 
-export interface Refusal { header: string; message: string; links: { label: string; open: () => void }[] }
+export interface Refusal { header: string; message: string; links: { label: string; icon?: string; open: () => void }[] }
 
 const props = defineProps<{ refusal?: Refusal }>()
 useReturnFocus(() => !!props.refusal)
@@ -27,7 +27,7 @@ function follow(open: () => void) {
     <p class="mail-dialog-text">{{ refusal?.message }}</p>
     <ul v-if="refusal?.links.length" class="mail-list">
       <li v-for="link in refusal.links" :key="link.label">
-        <Button text severity="secondary" class="mail-row-link" @click="follow(link.open)"><Icon icon="tabler:mail" aria-hidden="true" /><span>{{ link.label }}</span></Button>
+        <Button text severity="secondary" class="mail-row-link" @click="follow(link.open)"><Icon :icon="link.icon ?? 'tabler:mail'" aria-hidden="true" /><span>{{ link.label }}</span></Button>
       </li>
     </ul>
     <template #footer>

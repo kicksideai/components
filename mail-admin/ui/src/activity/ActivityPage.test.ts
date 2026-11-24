@@ -80,7 +80,8 @@ describe('Mail activity', () => {
     const wrapper = await open(`activity/${failedId}`)
     const drawer = wrapper.find('.mail-drawer-body')
     expect(drawer.find('h2').text()).toBe('Invoice reminder')
-    expect(drawer.find('.mail-failure').text()).toContain('The service does not accept mail from this sender yet.')
+    expect(drawer.find('.mail-failure').text()).toContain('The delivery service rejected the message itself.')
+    expect(drawer.find('.mail-failure').text()).toContain('Check the recipients, the subject and the attachments.')
     expect(drawer.text()).toContain('Failed after 3 attempts')
     await drawer.findAll('button').find(node => node.text() === 'Send again')!.trigger('click')
     await flushPromises()
@@ -88,6 +89,41 @@ describe('Mail activity', () => {
     expect(wrapper.find('.mail-failure').text()).toContain('Sent again as a new message.')
     await wrapper.findAll('button').find(node => node.text() === 'Open the new message')!.trigger('click')
     expect(wrapper.emitted('navigate')?.at(-1)).toEqual(['activity/2b9f1c2e-1111-4222-8333-444455556666'])
+    wrapper.unmount()
+  })
+
+  it('offers delivery settings instead of Send again when the service refused the account', async () => {
+    const refused = { ...failed, last_error: { kind: 'INVALID', code: 'authorization_refused', message: 'Ask a mail administrator to check why the message was refused.' } }
+    serve([
+      get('/api/v1/mail/library', () => ok({ items: [] })),
+      get('/api/v1/mail/delivery', () => ok({ configured: true, driver: { id: 'fixture', label: 'Acme Mail' } })),
+      get('/api/v1/mail/activity', () => ok({ items: [refused], has_more: false, total: 1, failed_today: 1 })),
+      get(`/api/v1/mail/activity/${failedId}`, () => ok(refused)),
+    ])
+    const wrapper = await open(`activity/${failedId}`)
+    const text = wrapper.find('.mail-failure').text()
+    expect(text).toContain('Acme Mail refused to send for this account.')
+    expect(wrapper.findAll('button').some(node => node.text() === 'Send again')).toBe(false)
+    expect(wrapper.findAll('button').some(node => node.text() === 'Open delivery settings')).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('says when the count is a minimum, and what a search covers', async () => {
+    serve([
+      get('/api/v1/mail/library', () => ok({ items: [] })),
+      get('/api/v1/mail/delivery', () => ok({ configured: true })),
+      get('/api/v1/mail/activity', (_path, options) => ok({ items: [sent], has_more: true, next_cursor: 'x', total: 10000, total_is_lower_bound: true, failed_today: 0,
+        ...((options as { params: Record<string, string> }).params.q ? {} : {}) })),
+    ])
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const wrapper = await open('activity')
+    expect(wrapper.find('.mail-count').text()).toBe(`${(10000).toLocaleString()}+ messages`)
+    expect(wrapper.text()).not.toContain('Search looks through the newest 10,000 messages')
+    await wrapper.find('input[type="search"]').setValue('weekly')
+    vi.advanceTimersByTime(300)
+    await flushPromises()
+    expect(wrapper.text()).toContain('Search looks through the newest 10,000 messages that match the other filters.')
+    vi.useRealTimers()
     wrapper.unmount()
   })
 

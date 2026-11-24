@@ -67,6 +67,7 @@ async function load(refresh = false) {
     items.value = page.items
     cursor.value = page.next_cursor
     total.value = page.total
+    lowerBound.value = !!page.total_is_lower_bound
     failedToday.value = page.failed_today ?? 0
     error.value = moreError.value = refreshError.value = ''
     denied.value = false
@@ -101,6 +102,7 @@ async function loadMore() {
 }
 
 const total = ref<number>()
+const lowerBound = ref(false)
 const failedToday = ref(0)
 watch([status, template, period, search], () => { void load() })
 useHostVisibilityRefresh(() => load(loaded.value))
@@ -129,7 +131,12 @@ useMessageChanges(async change => {
   }
 })
 
-const countLabel = computed(() => plural(total.value ?? items.value.length, 'message'))
+// Mail counts up to 10,000 messages; beyond that, and for a search over the newest 10,000, the count is a minimum.
+const countLabel = computed(() => {
+  const count = total.value ?? items.value.length
+  return lowerBound.value ? `${count.toLocaleString()}+ messages` : plural(count, 'message')
+})
+const searchWindow = computed(() => lowerBound.value && !!search.value)
 const health = computed(() => failedToday.value ? `${plural(failedToday.value, 'message')} failed today.` : '')
 const admin = computed(() => !!capabilities.value?.administer_delivery)
 const description = computed(() => admin.value ? 'Every email sent from this workspace in the last 30 days.' : 'Email you sent in the last 30 days.')
@@ -166,10 +173,13 @@ function closeMessage() {
       <Select v-model="period" :options="periods" option-label="label" option-value="value" append-to="self" aria-label="Period" class="mail-filter" />
       <IconField class="mail-search">
         <InputIcon><Icon icon="tabler:search" aria-hidden="true" /></InputIcon>
-        <InputText v-model="query" type="search" aria-label="Search subject or recipient" placeholder="Search subject or recipient…" />
+        <InputText v-model="query" type="search" maxlength="256" aria-label="Search subject or recipient" placeholder="Search subject or recipient…" />
       </IconField>
       <span v-if="loaded" class="mail-count" role="status">{{ countLabel }}</span>
     </div>
+    <p v-if="searchWindow" class="mail-muted mail-search-window" role="status">
+      Search looks through the newest 10,000 messages that match the other filters. Narrow the period or the message to search further back.
+    </p>
 
     <div v-if="error" class="kx-err mail-error" role="alert">
       <span>{{ error }}</span>

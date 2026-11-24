@@ -157,6 +157,22 @@ describe('Mail delivery settings block', () => {
     wrapper.unmount()
   })
 
+  it('shows the server refusal of a sender name beside the field and keeps it in the draft', async () => {
+    const server = settingsServer(savedMailgun, { namespace: 'kickside.mail', key: 'from_name', message: 'Use at most 255 characters without control characters or line breaks.' })
+    serve(server.routes)
+    const wrapper = await open()
+    await wrapper.find('input[aria-label="From name"]').setValue('Acme\u0007')
+    await flushPromises()
+    await reviewAndSave(wrapper)
+    const fieldError = () => wrapper.findAll('.mail-field-error').map(node => node.text()).join(' ')
+    expect(fieldError()).toContain('Use at most 255 characters without control characters or line breaks.')
+    expect((wrapper.find('input[aria-label="From name"]').element as HTMLInputElement).value).toBe('Acme\u0007')
+    await wrapper.find('input[aria-label="From name"]').setValue('Acme')
+    await flushPromises()
+    expect(fieldError()).not.toContain('Use at most 255 characters')
+    wrapper.unmount()
+  })
+
   it('asks before leaving through its own links while there are unsaved changes', async () => {
     serve([
       post('/api/v1/mail/delivery/send-test', () => ok({ message_id: 'm-test', status: 'queued' })),
@@ -215,7 +231,7 @@ describe('Mail delivery settings block', () => {
     notify('mail.message.changed', { message_id: 'm-test', status: 'failed' })
     await flushPromises()
     expect(wrapper.text()).toContain('refused the credentials.')
-    expect(wrapper.text()).toContain('Check the API key above, save, and send the test again.')
+    expect(wrapper.text()).toContain('Check the API key above, save, and send again.')
     wrapper.unmount()
   })
 })

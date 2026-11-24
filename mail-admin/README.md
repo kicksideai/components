@@ -7,7 +7,8 @@
 The tab holds the mail template library and delivery Activity:
 
 - **All resources** lists every message, base template, part and image with its
-  kind, source, usage and last change, a page at a time in Mail's order.
+  kind, source, usage and last change, a page at a time in Mail's order, with
+  Mail's count of every matching resource.
   Filters show customized, created and original resources; search covers names
   and template content. **Preview all messages** lists messages a page at a
   time and renders each one with its sample values when its tile scrolls into
@@ -27,21 +28,31 @@ The tab holds the mail template library and delivery Activity:
   effect through the same review and save. Resources start from blank or from an
   existing one, and a customized shipped resource resets to the original.
 - **Images** lists the images templates show inline, with the messages that
-  show them. An image is uploaded through the platform upload flow; the page
-  waits for the platform to finish processing it before Mail adopts it. Images
+  show them. An image is uploaded through the platform upload flow and Mail
+  adopts it; while Mail answers that the upload is still processing, the page
+  waits for the platform's completion signal and asks once more. Deleting an
+  image that any template names is refused with those templates listed. Images
   are replaced, reset, restored from History and deleted when no message shows
   them.
 - **Activity** lists recent email with its status, template, sender and origin,
   searchable by subject and recipient. Delivery administrators see every
   message; a sender sees their own, with the neutral failure text. Opening a
   message shows its reason, history and technical details, and a failed message
-  can be sent again.
+  can be sent again. A delivery administrator reads what the service refused and
+  what to change; other senders read Mail's neutral text. Failures that only the
+  delivery settings or the service account can fix offer the delivery settings
+  instead of Send again; Mail does not yet report which failures a resend can
+  fix, so the page keeps that list of codes. Beyond 10,000 messages the count
+  reads as a minimum, and a search covers the newest 10,000.
 
 Each screen reads what it shows. When Mail announces `mail.library.changed`
 or `mail.message.changed`, the page reads the one resource or message named and
 updates its row in place; when the host tab becomes visible again, the screen
 shown reads its first page again. Leaving an unsaved draft through the page or
 the browser asks first, and the host receives `dirty-change`.
+
+A preview shows Mail's warning when Gmail may clip the email, and an email
+larger than Mail can send is a problem that blocks saving.
 
 Previews render in a sandboxed frame under a Content-Security-Policy that
 allows inline styles and inline images only, so template HTML makes no outside
