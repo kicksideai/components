@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.19](https://github.com/kicksideai/components/compare/docscout-v0.1.18...docscout-v0.1.19) (2026-11-24)
+
+
+### Bug Fixes
+
+* **docscout:** compact dense extractor builders ([#452](https://github.com/kicksideai/components/issues/452)) ([d78db30](https://github.com/kicksideai/components/commit/d78db306fae54a8f8c3b30fb10f112d007b1c84f))
+* **docscout:** list extractors through their catalog ([#454](https://github.com/kicksideai/components/issues/454)) ([7e25d9f](https://github.com/kicksideai/components/commit/7e25d9f10a2fa9fe52c3f70d1a4e76a096c07d2d))
+
 ## [0.1.18](https://github.com/kicksideai/components/compare/docscout-v0.1.17...docscout-v0.1.18) (2026-11-19)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/kicksideai/components/compare/work-planning-v0.1.9...work-planning-v0.1.10) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-planning:** read Time estimates through the canonical contract client ([#450](https://github.com/kicksideai/components/issues/450)) ([82ed5a2](https://github.com/kicksideai/components/commit/82ed5a2b7cdf5e19e3e25c1d5f00ffb748ada059))
+
 ## [0.1.9](https://github.com/kicksideai/components/compare/work-planning-v0.1.8...work-planning-v0.1.9) (2026-11-24)
 
 
