@@ -21,6 +21,9 @@ const chips=computed(()=>{
   default:return []
  }
 })
+const visibleChips=computed(()=>chips.value.slice(0,3))
+const hiddenChips=computed(()=>chips.value.slice(3))
+const hiddenChipsLabel=computed(()=>hiddenChips.value.map(chip=>chip.text).join(', '))
 const traceLine=(t:TraceStep)=>[`${(t.duration_ms/1000).toFixed(1)}s`,`${(t.input_tokens+t.output_tokens).toLocaleString()} tokens`,t.queries?.length?`${t.queries.length} queries`:'',t.message??''].filter(Boolean).join(' · ')
 </script>
 <template>
@@ -29,7 +32,7 @@ const traceLine=(t:TraceStep)=>[`${(t.duration_ms/1000).toFixed(1)}s`,`${(t.inpu
   <span class="node-main">
    <span class="node-title">{{stageLabels[stage]}}</span>
    <span class="node-summary">{{on?stageSummary(stage,config):'Off'}}</span>
-   <span v-if="on&&chips.length" class="chips"><span v-for="c in chips" :key="c.text" class="chip" :class="{primary:c.tone==='primary','muted-chip':c.tone==='hint'}">{{c.text}}</span></span>
+   <span v-if="on&&chips.length" class="chips"><span v-for="c in visibleChips" :key="c.text" class="chip" :class="{primary:c.tone==='primary','muted-chip':c.tone==='hint'}">{{c.text}}</span><span v-if="hiddenChips.length" class="chip chip-overflow" :aria-label="`${hiddenChips.length} more: ${hiddenChipsLabel}`" :title="hiddenChipsLabel">+{{hiddenChips.length}} more</span></span>
    <span v-if="trace" class="trace-line"><Icon :icon="trace.status==='failed'?'tabler:alert-circle':'tabler:circle-check'"/>{{traceLine(trace)}}</span>
   </span>
   <span class="node-side">

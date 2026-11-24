@@ -47,12 +47,12 @@ describe('Group and field presentation',()=>{
   expect(w.find('.field-group .group-content .field-group').exists()).toBe(true)
   w.unmount()
  })
- it('keeps badges separate from the text block, omits group chips, and names the evidence icon',()=>{
+ it('keeps the scanning row compact, omits group chips, and names the evidence icon',()=>{
   const {c,w}=build();const row=w.get('button[aria-label="Edit parties.borrower.legal_name"]')
-  expect(row.get('.row-desc').attributes('title')).toBe(c.fields[0].description)
   expect(row.get('.row-copy .row-label').text()).toBe('legal_name')
   expect(row.get('.field-badges [aria-label="Evidence required"]').attributes('role')).toBe('img')
-  expect(row.attributes('aria-describedby')).toBe(row.get('.row-desc').attributes('id'))
+  expect(row.find('.row-desc').exists()).toBe(false)
+  expect(row.attributes('aria-describedby')).toBeUndefined()
   expect(row.findAll('.field-badges .chip').some(chip=>chip.text().includes('parties'))).toBe(false)
   expect(row.findAll('.row-name .chip')).toHaveLength(0)
   w.unmount()

@@ -29,37 +29,44 @@ describe('Nested field editor and results',()=>{
   expect(w.find('[aria-label="Maximum characters"]').exists()).toBe(false)
   w.unmount()
  })
- it('renders omitted nullable members as missing in objects and list rows',()=>{
+ it('renders omitted nullable members as missing in objects and list rows',async()=>{
   const row={type:'object',properties:{book:{type:['string','null'],maxLength:24},page:{type:'string'}}}
   const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:row,confidence:1,verified:true,evidence:[]},
    {name:'rows',path:'rows',value:[{page:'8'}],value_schema:{type:'array',items:row},confidence:1,verified:true,evidence:[]}]
   const w=mount(ResultFields,{props:{fields}})
-  expect(w.findAll('dt').map(e=>e.text())).toEqual(['book','page','book','page'])
-  expect(w.findAll('dd').filter(e=>e.text()==='Missing')).toHaveLength(2)
-  expect(w.text()).toContain('7');expect(w.text()).toContain('8')
+  const rows=w.findAll('.value-main')
+  expect(w.find('dl').exists()).toBe(false)
+  for (const [index,page] of ['7','8'].entries()) {
+   await rows[index].trigger('click')
+   expect(w.findAll('dt').map(e=>e.text())).toEqual(['book','page'])
+   expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing',page])
+  }
   expect(fields[0].value).toEqual({page:'7'})
   w.unmount()
  })
- it('renders absent compounds with recursively nullable descendants as missing',()=>{
+ it('renders absent compounds with recursively nullable descendants as missing',async()=>{
   const child={type:'object',required:['book'],properties:{book:{type:['string','null']}}}
   const branch={type:'object',required:['child'],properties:{child}}
   const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',properties:{child,branch,rows:{type:'array',items:branch},legacy:{type:'object',required:['book'],properties:{book:{type:'string'}}},page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
   const w=mount(ResultFields,{props:{fields}})
+  await w.get('.value-main').trigger('click')
   expect(w.findAll('dt').map(e=>e.text())).toEqual(['child','branch','rows','legacy','page'])
   expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','Missing','Missing','—','7'])
   w.unmount()
  })
- it('treats omitted declared members as missing even when names occur on the object prototype',()=>{
+ it('treats omitted declared members as missing even when names occur on the object prototype',async()=>{
   const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',properties:{constructor:{type:['string','null']},toString:{type:['string','null']},page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
   const w=mount(ResultFields,{props:{fields}})
+  await w.get('.value-main').trigger('click')
   expect(w.findAll('dt').map(e=>e.text())).toEqual(['constructor','toString','page'])
   expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','Missing','7'])
   w.unmount()
  })
- it('renders a required compound with nullable and optional members as missing',()=>{
+ it('renders a required compound with nullable and optional members as missing',async()=>{
   const child={type:'object',required:['book'],properties:{book:{type:['string','null']},note:{type:'string'}}}
   const fields=[{name:'reference',path:'reference',value:{page:'7'},value_schema:{type:'object',required:['child','page'],properties:{child,page:{type:'string'}}},confidence:1,verified:true,evidence:[]}]
   const w=mount(ResultFields,{props:{fields}})
+  await w.get('.value-main').trigger('click')
   expect(w.findAll('dt').map(e=>e.text())).toEqual(['child','page'])
   expect(w.findAll('dd').map(e=>e.text())).toEqual(['Missing','7'])
   w.unmount()
@@ -108,9 +115,11 @@ describe('Nested field editor and results',()=>{
   const fields=[{name:'terms',path:'parties.borrower.terms',value:{payments:[{amount:12,paid:false}]},confidence:1,verified:true,evidence:[]},{name:'terms',path:'parties.agent.terms',value:'Agency',confidence:.8,verified:false,evidence:[]}]
   const w=mount(TestPanel,{props:{retention:'2h',result:{run_id:'r',upload_id:'u',config_revision:1,values:{parties:{borrower:{terms:{payments:[{amount:12,paid:false}]}},agent:{terms:'Agency'}}},fields,trace:[],duration_ms:1,tokens:1}}})
   expect(w.findAll('section.field-group')).toHaveLength(3)
+  expect(w.find('.structured-value').exists()).toBe(false)
+  await w.findAll('.value-main')[0].trigger('click')
   expect(w.findAll('.nested-value dl').length).toBeGreaterThan(0)
   expect(w.text()).toContain('amount');expect(w.text()).toContain('12');expect(w.text()).toContain('false')
-  await w.findAll('.value-main')[0].trigger('click');expect(w.findAll('.value-main')[0].attributes('aria-expanded')).toBe('true')
+  expect(w.findAll('.value-main')[0].attributes('aria-expanded')).toBe('true')
   expect(w.findAll('.value-main')[1].attributes('aria-expanded')).toBe('false')
  })
  it('renders grouped evaluation comparisons with object properties and list rows',async()=>{
@@ -137,7 +146,11 @@ describe('Saved nested runs',()=>{
   const {default:RunsPanel}=await import('./RunsPanel.vue')
   const w=mount(RunsPanel,{props:{retention:'2h',runs:[{id:'r',caller:'agent',status:'completed',upload_id:'u',config_revision:1,duration_ms:10,tokens:12,created_at:'2026-01-01T00:00:00Z',expires_at:'2026-01-02T00:00:00Z',result:{fields:[{name:'terms',path:'parties.borrower.terms',value:{amount:12},confidence:1,verified:true,evidence:[]}],values:{parties:{borrower:{terms:{amount:12}}}}}}]}})
   await w.get('button[aria-label="Show values for run r"]').trigger('click')
-  expect(w.text()).toContain('borrower');expect(w.text()).toContain('amount');expect(w.text()).toContain('12')
+  expect(w.text()).toContain('borrower')
+  expect(w.find('.structured-value').exists()).toBe(false)
+  await w.get('.value-main').trigger('click')
+  expect(w.get('.structured-value').text()).toContain('amount')
+  expect(w.get('.structured-value').text()).toContain('12')
  })
 })
 

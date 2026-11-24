@@ -24,18 +24,19 @@ describe('Surface style contract',()=>{
   expect(declarations('.docscout')['font-family']).toBe('var(--kx-font-body)')
   expect(declarations('h1,h2,h3,h4')['font-family']).toBe('var(--kx-font-heading)')
  })
- it('uses one shared geometry scale for card inset, hierarchy and row rhythm',()=>{
+ it('uses one shared geometry scale for card inset, hierarchy and compact row rhythm',()=>{
   expect(css).toContain('--docscout-space:calc(var(--kx-row-height)/8)')
   expect(declarations('#fields-body')['padding']).toBe('calc(var(--docscout-space)*4)')
   expect(declarations('.group-content')['padding-inline-start']).toBe('calc(var(--docscout-space)*4 - 1px)')
-  expect(declarations('.shape-tree-node .row-main')['min-height']).toBe('calc(var(--kx-row-height)*2)')
-  expect(declarations('.shape-tree-node .row-main','fields (max-width:400px)')['min-height']).toBe('calc(var(--kx-row-height)*2 + var(--docscout-space)*4)')
+  expect(declarations('.shape-tree-node .row-main')['min-height']).toBe('var(--kx-row-height)')
+  expect(declarations('.shape-tree-node .row-main','fields (max-width:400px)')['min-height']).toBe('var(--kx-row-height)')
   expect(declarations('.shape-tree-node .row-name')['font-family']).toBe('var(--kx-font-body)')
  })
  it('uses overflow reorder only at narrow field-container widths',()=>{
   expect(declarations('.row-actions')).toMatchObject({display:'flex',opacity:'0'})
   expect(declarations('.row-item:hover .row-actions,.row-item:focus-within .row-actions')['opacity']).toBe('1')
   expect(declarations('.row-overflow')['display']).toBe('none')
+  expect(declarations('.row-overflow>.kx-iconbtn')).toMatchObject({'min-width':'32px','min-height':'32px'})
   expect(declarations('.row-actions','fields (max-width:400px)')['display']).toBe('none')
   expect(declarations('.row-overflow','fields (max-width:400px)')['display']).toBe('flex')
  })
