@@ -34,6 +34,7 @@ entries:
     title: Work Time
     description: Log time and track original and remaining estimates on Work items.
     icon: tabler:clock
+    category: Time tracking
     attachment: kickside.work.time:attachment
     schema:
       provider: kickside.work.time:schema_provider
