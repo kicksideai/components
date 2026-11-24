@@ -2,6 +2,7 @@
 @import "@kickside/ui-kit/kx-settings-rail.css";
 @import "@kickside/ui-kit/kx-settings-head.css";
 @import "@kickside/ui-kit/kx-disclosure.css";
+@import "@kickside/ui-kit/kx-settings-group.css";
 @import "@wippy-fe/theme/theme-config.css";
 @import "@kickside/ui-kit/kx-tokens.css";
 @import "@kickside/ui-kit/kx-head.css";
@@ -472,3 +473,10 @@ button.work-content-action { padding: 0; border: 0; background: transparent; }
     animation-duration: 0s !important; transition-duration: 0s !important;
   }
 }
+
+/* Plugins: grouped settings rows with configuration in the expanded body. */
+.work-plugins { gap: 26px; }
+.work-plugins > .work-muted { margin-bottom: -14px; }
+.work-plugin-config { gap: 12px; max-width: 560px; }
+.work-plugin-issue p { margin: 0; }
+

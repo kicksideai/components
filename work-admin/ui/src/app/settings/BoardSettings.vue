@@ -199,6 +199,12 @@ const pack = reactive(usePackReview({
   clearSaved: () => { saved.value = '' },
   applied: reloadApplied,
 }))
+const installedPack = computed(() => {
+  const current = schema.value?.pack
+  if (!current) return undefined
+  return { id: current.id, version: current.version, title: pack.title, description: pack.installed?.description,
+    requires: pack.installed?.requires ?? [], outdated: schema.value?.outdated, canUpgrade: pack.upgradeAvailable && pack.canManage, upgradeReason: pack.upgradeReason }
+})
 const plan = computed(() => pack.request ? pack.plan : schemaPlan.value)
 const reviewError = computed(() => pack.request ? pack.reviewError : schemaReviewError.value)
 const issues = computed(() => [...serverIssues.value, ...(plan.value?.refused ?? [])])
@@ -466,7 +472,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
 
                 <section v-if="visited.has('Plugins')" v-show="tab === 'Plugins'" class="work-ia-section">
                   <PluginsEditor ref="pluginEditor" :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"
-                    :filters="options?.filters" :configs="configs" :disabled="busy" @configured="invalidate(); load()" @refresh="load()" @review="openReview"
+                    :filters="options?.filters" :configs="configs" :disabled="busy" :pack="installedPack" @configured="invalidate(); load()" @refresh="load()" @review="openReview" @upgrade="pack.upgrade"
                     @validity="(key, valid) => validity('plugin:' + key, valid)" @widget-validity="widgetValidity" />
                 </section>
               </fieldset>
