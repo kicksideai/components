@@ -309,16 +309,18 @@ return {run = test.run_cases(function()
         test.it("reports bounded Activity totals and preserves tied message cursors", function()
             local sender = session("sender")
             activity_sender = sender.id
-            local older = failed(sender.id, "Window boundary", "reader@example.org", 1)
-            local first = failed(sender.id, "Window boundary", "reader@example.org", 10002)
-            local second = failed(sender.id, "Window boundary", "reader@example.org", 10002)
+            local start = time.now():unix_nano() // 1000000 - 10002
+            local older = failed(sender.id, "Window boundary", "reader@example.org", start + 1)
+            local first = failed(sender.id, "Window boundary", "reader@example.org", start + 10002)
+            local second = failed(sender.id, "Window boundary", "reader@example.org", start + 10002)
             local db = assert(sql.get("app:db"))
             assert(db:execute([[WITH RECURSIVE sequence(n) AS (
                 SELECT 2 UNION ALL SELECT n+1 FROM sequence WHERE n<10001
             )
             INSERT INTO mail_message (id,created_at,finished_at,sender,recipients,subject,from_address,attachments,driver_id,status)
-            SELECT 'window-' || n,n,n,$1,'{"to":["reader@example.org"]}','Digest','mail@example.org','[]','fixture','failed'
-            FROM sequence]], {sender.id}))
+            SELECT 'window-' || n,CAST($1 AS BIGINT)+n,CAST($1 AS BIGINT)+n,$2,
+                '{"to":["reader@example.org"]}','Digest','mail@example.org','[]','fixture','failed'
+            FROM sequence]], {start, sender.id}))
             assert(db:release())
             local list = data(sender, "GET", "/activity?limit=1")
             test.eq(10000, list.total)
