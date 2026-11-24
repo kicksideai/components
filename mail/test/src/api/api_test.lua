@@ -65,18 +65,18 @@ return {run = test.run_cases(function()
             configured = true
             settings("capture", "mail@example.org")
         end
-        local function failed(sender, subject, recipient, at)
+        local function failed(sender, subject, recipient, at, template)
             local id = uuid.v4()
             activity_rows[#activity_rows + 1] = id
             local now = at or time.now():unix_nano() // 1000000
             local db = assert(sql.get("app:db"))
             assert(db:execute([[INSERT INTO mail_message
-                (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments,driver_id,
-                error_kind,error_code,error_message,provider_detail,failed_html,failed_text)
-                VALUES ($1,$2,$2,'failed',$3,$4,$5,'mail@example.org','[]','fixture',
+                (id,created_at,finished_at,sender,recipients,subject,from_address,attachments,driver_id,
+                error_kind,error_code,error_message,provider_detail,failed_html,failed_text,template,status,sent_at)
+                VALUES ($1,$2,$2,$3,$4,$5,'mail@example.org','[]','fixture',
                 'PERMISSION_DENIED','credentials_invalid','Provider authorization refused','Provider response',
-                '<p>Saved content</p>','Saved content')]],
-                {id, now, sender, assert(json.encode({to = {recipient}})), subject}))
+                '<p>Saved content</p>','Saved content',$6,$7,$8)]],
+                {id, now, sender, assert(json.encode({to = {recipient}})), subject, template or sql.NULL, template and "sent" or "failed", template and now or sql.NULL}))
             assert(db:release())
             return id
         end
@@ -356,6 +356,25 @@ return {run = test.run_cases(function()
             local page = data(admin, "GET", "/activity?q=Directory%20person")
             test.eq(3, #page.items)
             for _, entry in ipairs(page.items) do test.not_nil(entry.sender_label) end
+        end)
+
+        test.it("labels the recent senders alongside the editor of a message", function()
+            local editor = session("editor")
+            local sender = session("sender")
+            local item = own(fixture("message", "recent-sender-labels", "{{ block body() }}Content{{ end }}"))
+            item.base, item.subject = "plain", "Sender labels"
+            data(editor, "POST", "/library", item, 201)
+            failed(sender.id, "Recent", "reader@example.org", nil, item.name)
+            failed(ZERO, "Recent unknown", "unknown@example.org", nil, item.name)
+            local resource = data(editor, "GET", "/library/message/" .. item.name)
+            test.eq(editor.id, resource.author_label.id)
+            local senders = {}
+            for _, row in ipairs(resource.used_by.recent_senders) do senders[row.sender] = row end
+            test.eq("Mail fixture", senders[sender.id].sender_label.label)
+            test.eq(sender.id, senders[sender.id].sender_label.id)
+            test.eq("user", senders[sender.id].sender_label.kind)
+            test.eq(1, senders[sender.id].count)
+            test.eq("Unknown account", senders[ZERO].sender_label.label)
         end)
 
         test.it("lists the packaged asset and previews its CID under the editor capability", function()

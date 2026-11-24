@@ -18,17 +18,19 @@ local function resolve(refs: {types.PrincipalRef}): ({types.DirectoryPrincipal}?
     return result.principals, nil
 end
 
-local function label_rows(rows: {types.Record}, field: string): error?
+local function label_rows(fields: {[string]: {types.Record}}): error?
     local labels: {[string]: types.PrincipalLabel} = {}
     local refs: {types.PrincipalRef} = {}
-    for _, row in ipairs(rows) do
-        local key = row[field]
-        if type(key) == "string" and not labels[key] then
-            local principal = identity.principal_of_key(key)
-            local kind = principal and principal.kind or "unknown"
-            local id = principal and principal.id or key
-            labels[key] = {kind = kind, id = id, label = "Unknown account"}
-            if kind == "user" then refs[#refs + 1] = {type = kind, id = id} end
+    for field, rows in pairs(fields) do
+        for _, row in ipairs(rows) do
+            local key = row[field]
+            if type(key) == "string" and not labels[key] then
+                local principal = identity.principal_of_key(key)
+                local kind = principal and principal.kind or "unknown"
+                local id = principal and principal.id or key
+                labels[key] = {kind = kind, id = id, label = "Unknown account"}
+                if kind == "user" then refs[#refs + 1] = {type = kind, id = id} end
+            end
         end
     end
     if #refs > 0 then
@@ -43,17 +45,29 @@ local function label_rows(rows: {types.Record}, field: string): error?
             end
         end
     end
-    for _, row in ipairs(rows) do
-        local key = row[field]
-        if type(key) == "string" then row[field .. "_label"] = labels[key] end
+    for field, rows in pairs(fields) do
+        for _, row in ipairs(rows) do
+            local key = row[field]
+            if type(key) == "string" then row[field .. "_label"] = labels[key] end
+        end
     end
     return nil
+end
+
+function M.resource(value: unknown, err: error?): (types.Record?, error?)
+    if err then return nil, err end
+    local row = value :: types.Record
+    local usage = row.used_by :: types.UsedBy?
+    local recent = usage and usage.recent_senders or {}
+    local label_err = label_rows({author = {row}, sender = recent :: {types.Record}})
+    if label_err then return nil, label_err end
+    return row, nil
 end
 
 function M.item(field: string, value: unknown, err: error?): (types.Record?, error?)
     if err then return nil, err end
     local row = value :: types.Record
-    local label_err = label_rows({row}, field)
+    local label_err = label_rows({[field] = {row}})
     if label_err then return nil, label_err end
     return row, nil
 end
@@ -61,7 +75,7 @@ end
 function M.page(field: string, value: unknown, err: error?): (types.Record?, error?)
     if err then return nil, err end
     local page = value :: types.Record
-    local label_err = label_rows(page.items :: {types.Record}, field)
+    local label_err = label_rows({[field] = page.items :: {types.Record}})
     if label_err then return nil, label_err end
     return page, nil
 end

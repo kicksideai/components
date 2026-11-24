@@ -6,7 +6,7 @@ local principals = require("principals")
 
 local function handler()
     return request.handle(client.require_library, function(req)
-        return principals.item("author", funcs.call("kickside.mail.library:get", request.key(req)))
+        return principals.resource(funcs.call("kickside.mail.library:get", request.key(req)))
     end)
 end
 
