@@ -370,6 +370,27 @@ entries:
       resources: ["kickside.mail.draft:*"]
       actions: [registry.overlay.create.template.jet, registry.overlay.delete.template.jet, registry.overlay.create.template.set, registry.overlay.delete.template.set, template.get]
       effect: allow
+  - name: principal_directory_get
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [kickside.contract:directory]
+      actions: [contract.get]
+      effect: allow
+  - name: principal_directory_open
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [kickside.users.directory:directory_binding]
+      actions: [contract.open]
+      effect: allow
+  - name: principal_directory_resolve
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [resolve]
+      actions: [contract.call]
+      effect: allow
   - name: capabilities_endpoint
     kind: security.policy
     meta: { private: true }

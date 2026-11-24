@@ -9,6 +9,13 @@ entries:
     imports:
       types: kickside.mail:types
       http_errors: kickside.contract:http_errors
+  - name: principals
+    kind: library.lua
+    source: file://principals.lua
+    modules: [contract]
+    imports:
+      identity: kickside.execution:execution_identity
+      types: kickside.mail:types
   - name: capabilities
     kind: function.lua
     source: file://capabilities.lua
@@ -27,8 +34,14 @@ entries:
     method: handler
     modules: [funcs]
     imports:
+      principals: kickside.mail.api:principals
       request: kickside.mail.api:request
       client: kickside.mail:client
+    security: &principal_labels
+      policies:
+        - kickside.mail.security:principal_directory_get
+        - kickside.mail.security:principal_directory_open
+        - kickside.mail.security:principal_directory_resolve
   - name: library_list.endpoint
     kind: http.endpoint
     method: GET
@@ -40,8 +53,10 @@ entries:
     method: handler
     modules: [funcs]
     imports:
+      principals: kickside.mail.api:principals
       request: kickside.mail.api:request
       client: kickside.mail:client
+    security: *principal_labels
   - name: library_get.endpoint
     kind: http.endpoint
     method: GET
@@ -131,8 +146,10 @@ entries:
     method: handler
     modules: [funcs]
     imports:
+      principals: kickside.mail.api:principals
       request: kickside.mail.api:request
       client: kickside.mail:client
+    security: *principal_labels
   - name: library_history.endpoint
     kind: http.endpoint
     method: GET
@@ -183,8 +200,10 @@ entries:
     method: handler
     modules: [funcs]
     imports:
+      principals: kickside.mail.api:principals
       request: kickside.mail.api:request
       client: kickside.mail:client
+    security: *principal_labels
   - name: activity_list.endpoint
     kind: http.endpoint
     method: GET
@@ -196,8 +215,10 @@ entries:
     method: handler
     modules: [funcs]
     imports:
+      principals: kickside.mail.api:principals
       request: kickside.mail.api:request
       client: kickside.mail:client
+    security: *principal_labels
   - name: activity_get.endpoint
     kind: http.endpoint
     method: GET
