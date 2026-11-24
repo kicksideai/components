@@ -21,7 +21,7 @@ entries:
     meta: { type: test, suite: mail_library }
     source: file://library_test.lua
     method: run
-    modules: [funcs, registry, templates, security]
+    modules: [funcs, registry, templates, security, sql]
     imports:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
@@ -62,3 +62,10 @@ entries:
     method: expiry
     modules: *assets_modules
     imports: *assets_imports
+  - name: projection_fault
+    kind: library.lua
+    source: file://projection_fault.lua
+    modules: [ctx, templates]
+    imports:
+      projection: kickside.mail.library:projection
+      types: kickside.mail:types

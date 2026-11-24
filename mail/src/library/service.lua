@@ -25,6 +25,7 @@ local notifier = require("notifier")
 local funcs = require("funcs")
 local uuid = require("uuid")
 local logger = require("logger")
+local error_envelope = require("error_envelope")
 
 local M = {}
 
@@ -182,7 +183,7 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
     local values, globals_err = globals.library_samples()
     if globals_err then return nil, globals_err end
 
-    local saved, error_before_commit = database.transaction(function(tx: sql.Transaction, dialect: string): ({types.Resource}?, error?)
+    local function write(tx: sql.Transaction, dialect: string): ({types.Resource}?, error?)
         local lock_err = store.lock(tx, dialect)
         if lock_err then return nil, lock_err end
         local items, load_err, originals = resources.load(tx)
@@ -293,23 +294,31 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
             results[1].used_by = {messages = visible_messages(names, items :: types.ResourceMap)}
         end
         return results, nil
+    end
+
+    local published = false
+    local saved, err = database.transaction(function(tx: sql.Transaction, dialect: string): ({types.Resource}?, error?)
+        local result, write_err = write(tx, dialect)
+        if write_err then return nil, write_err end
+        if keys[1].kind ~= "asset" then
+            local _, projection_err = projection.publish(tx)
+            if projection_err then
+                return nil, error_envelope.wrap(projection_err, projection_err:message(),
+                    {code = "mail_projection_failed", resource = keys[1]})
+            end
+            published = true
+        end
+        return result, nil
     end)
-    if error_before_commit then return nil, error_before_commit end
-    local projection_err: error?
+    if err then
+        if published then
+            return nil, error_envelope.cleanup(projection.reconcile, err, "Mail live source reconciliation failed")
+        end
+        return nil, err
+    end
     if keys[1].kind == "asset" then
         local _, notify_err = notifier.notify({kind = "owner_eligibility_changed"})
         if notify_err then logger:error("Mail retention notification failed", {error = tostring(notify_err)}) end
-    else
-        local _
-        _, projection_err = projection.reconcile()
-    end
-    if projection_err then
-        local revisions = {}
-        for i, item in ipairs(saved) do
-            revisions[i] = {kind = item.kind, name = item.name, revision = item.revision}
-        end
-        return nil, errors.new({kind = projection_err:kind(), retryable = false, message = projection_err:message(),
-            details = {code = "mail_projection_failed", resource = keys[1], revision = saved[1].revision, resources = revisions}})
     end
     for _, item in ipairs(saved) do realtime.library(item) end
     return saved, nil

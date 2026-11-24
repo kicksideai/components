@@ -139,6 +139,7 @@ entries:
       asset_refs: kickside.mail.library:asset_refs
       asset_store: kickside.mail.library:asset_store
       notifier: kickside.core.retention:notifier
+      error_envelope: kickside.contract:error_envelope
     security: &read_security
       policies:
         - kickside.mail.security:outbox_db

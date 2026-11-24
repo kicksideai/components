@@ -40,11 +40,7 @@ local function desired(tx: sql.Transaction): ({[string]: types.JetEntry}?, error
     return entries, nil
 end
 
-local function reconcile(tx: sql.Transaction, dialect: string): (boolean?, error?)
-    local lock_err = store.lock(tx, dialect)
-    if lock_err then return nil, lock_err end
-    local _, clear_err = draft.clear_workspace()
-    if clear_err then return nil, clear_err end
+function M.publish(tx: sql.Transaction): (boolean?, error?)
     local entries, err = desired(tx)
     if err then return nil, err end
 
@@ -82,6 +78,14 @@ local function reconcile(tx: sql.Transaction, dialect: string): (boolean?, error
         if apply_err then return nil, apply_err end
     end
     return true, nil
+end
+
+local function reconcile(tx: sql.Transaction, dialect: string): (boolean?, error?)
+    local lock_err = store.lock(tx, dialect)
+    if lock_err then return nil, lock_err end
+    local _, clear_err = draft.clear_workspace()
+    if clear_err then return nil, clear_err end
+    return M.publish(tx)
 end
 
 function M.reconcile(): (boolean?, error?)
