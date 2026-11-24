@@ -55,6 +55,7 @@ entries:
     work: kickside.work:types
     document: kickside.work.domain:document
     rules: kickside.work.domain:access_rules
+    values: kickside.work.domain:values
 - name: reports
   kind: library.lua
   source: file://reports.lua

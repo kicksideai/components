@@ -88,5 +88,29 @@ return { run = test.run_cases(function()
             test.not_nil(rendered:find('"' .. "'" .. ' =HYPERLINK(""link"")"', 1, true))
             test.not_nil(rendered:find('"1","25"', 1, true))
         end)
+
+        test.it("preserves the signed estimate values Work admits in the read schemas", function()
+            local admin = scoped.admin()
+            local board = scoped.board(admin)
+            local route = "/" .. board.id
+            local active = admin.http("POST", route .. "/apply_schema", {
+                declaration = { plugins = { { use = PLUGIN } } },
+                plugin_configs = { [PLUGIN] = { item_types = { "task" } } },
+            })
+            test.eq(active.status, 200, active.raw)
+            steps.wait_for("Time attachment ready", function()
+                return steps.call(board, "plugin_context", { plugin = PLUGIN }).lifecycle.state == "ready"
+            end)
+            local item = steps.create(board, "task", { time_original_minutes = -1, time_remaining_minutes = -2 })
+            local summary = admin.http("POST", route .. "/time/summary", { items = { item } })
+            test.eq(summary.status, 200, summary.raw)
+            test.is_true(json.validate(schemas.summary.output, summary.body.data) == true)
+            test.eq(summary.body.data.items[1].original_minutes, -1)
+            test.eq(summary.body.data.items[1].remaining_minutes, -2)
+            test.is_false(summary.body.data.items[1].over_estimate)
+            local totals = admin.http("POST", route .. "/time/totals", { item = item })
+            test.eq(totals.status, 200, totals.raw)
+            test.is_true(json.validate(schemas.totals.output, totals.body.data) == true)
+        end)
     end)
 end) }

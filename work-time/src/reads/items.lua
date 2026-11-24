@@ -5,6 +5,7 @@ local snapshot = require("snapshot")
 local store = require("store")
 local document = require("document")
 local rules = require("rules")
+local values = require("values")
 local work = require("work")
 local types = require("types")
 local M = {}
@@ -17,7 +18,11 @@ function M.estimate(board: work.Board, item: work.Item, code: string): number?
     local field = board.model.fields[code]
     if not field or not rules.field(board, field, "read", item.document) then return nil end
     local value = document.value(item.document, field.id)
-    return type(value) == "number" and value or nil
+    if type(value) == "number" then return value end
+    if field.form == "dec" and field.cardinality == "one" and type(value) == "table" then
+        return tonumber(values.dec_string(value :: work.Dec))
+    end
+    return nil
 end
 
 local function marks(ids: { string }): { string }
@@ -53,7 +58,7 @@ function M.visible(tx: sql.Transaction, ctx: types.Context, ids: { string }): ({
         summaries[item.item_id] = {
             item = item.item_id, minutes = minutes, entry_count = tonumber(totals.entry_count) or 0,
             original_minutes = original, remaining_minutes = M.estimate(ctx.board, item, M.REMAINING),
-            over_estimate = original ~= nil and minutes > original,
+            over_estimate = minutes > 0 and original ~= nil and minutes > original,
         }
     end
     local ordered: { types.Summary } = {}
@@ -78,7 +83,9 @@ function M.summary(board_id: string, ids: { string }): ({ items: { types.Summary
 end
 
 function M.add(a: integer, b: integer): (integer?, error?)
-    if b > math.maxinteger - a then return nil, snapshot.limit("Time total exceeds the supported integer range") end
+    if (b > 0 and a > math.maxinteger - b) or (b < 0 and a < math.mininteger - b) then
+        return nil, snapshot.limit("Time total exceeds the supported integer range")
+    end
     return a + b, nil
 end
 

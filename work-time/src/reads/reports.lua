@@ -258,7 +258,7 @@ local function compare(tx: sql.Transaction, ctx: types.Context, sprint: Sprint, 
         if visible_err or not visible then return visible_err end
         local point_ids: { string } = {}
         for _, item in ipairs(visible) do
-            if item.original_minutes then
+            if sprint.unit ~= "points" and item.original_minutes then
                 local total, sum_err = items.add(original, item.original_minutes)
                 if sum_err or not total then return sum_err end
                 original, has_original = total, true

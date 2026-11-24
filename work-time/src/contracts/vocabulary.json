@@ -347,12 +347,10 @@
           "minimum": 0
         },
         "original_minutes": {
-          "type": "integer",
-          "minimum": 0
+          "type": "integer"
         },
         "remaining_minutes": {
-          "type": "integer",
-          "minimum": 0
+          "type": "integer"
         },
         "over_estimate": {
           "type": "boolean"
@@ -408,8 +406,7 @@
           "minimum": 0
         },
         "original_minutes": {
-          "type": "integer",
-          "minimum": 0
+          "type": "integer"
         },
         "points": {
           "type": "number"
@@ -454,12 +451,10 @@
           "minimum": 0
         },
         "original_minutes": {
-          "type": "integer",
-          "minimum": 0
+          "type": "integer"
         },
         "remaining_minutes": {
-          "type": "integer",
-          "minimum": 0
+          "type": "integer"
         },
         "over_estimate": {
           "type": "boolean"
