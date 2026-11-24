@@ -27,7 +27,7 @@ Supply a nonempty `to` list and either a `template` with its `vars`, or a `subje
 
 Send validates and renders the message, commits it with a delivery job, and returns `{message_id, status = "queued"}`. An optional `idempotency_key` of up to 2048 bytes names the write for that sender while its log row exists. Repeating the key and message content returns the original ID and current status. Different content with the same key returns `idempotency_conflict`.
 
-Read the log entry with `get_message(message_id)`. It becomes `sent` when the provider accepts the message, or `failed` with a structured `last_error`. Only callers with **Read all mail delivery logs** see `driver_id`, `provider_message_id`, and a sanitized provider excerpt in `last_error.provider_detail` when present. `list_messages({limit, status?, since?, cursor?})` gives most recent entries first. Dates and `since` use Unix milliseconds. Use the returned `next_cursor` for the next page. The log exposes metadata and attachment references. Terminal rows discard the rendered bodies.
+Read the log entry with `get_message(message_id)`. It becomes `sent` when the provider accepts the message, or `failed` with a structured `last_error`. If a job ends without recording an outcome, `delivery_interrupted` indicates that the provider may have accepted the email. Only callers with **Read all mail delivery logs** see `driver_id`, `provider_message_id`, and a sanitized provider excerpt in `last_error.provider_detail` when present. `list_messages({limit, status?, since?, cursor?})` gives most recent entries first. Dates and `since` use Unix milliseconds. Use the returned `next_cursor` for the next page. The log exposes metadata and attachment references. Terminal rows discard the rendered bodies.
 
 On each attempt the worker selects the active driver and checks the sender’s current **Send mail** capability before delivery. It passes the message ID to providers with idempotency support. For retryable rate limits, timeouts, provider unavailability, or sends already in progress, Mail allows up to 32 attempts with exponential delays from one second to five minutes. A provider retry hint can extend an interval up to 15 minutes.
 
@@ -46,6 +46,7 @@ Code                           Kind               Retryable
 attachment_unavailable         Internal           No
 attachments_too_large          Invalid            No
 body_required                  Invalid            No
+delivery_interrupted           Unavailable        No
 duplicate_content_id           Invalid            No
 duplicate_driver_id            Invalid            No
 duplicate_template_name        Invalid            No

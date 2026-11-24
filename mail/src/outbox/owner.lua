@@ -7,12 +7,7 @@ local sql = require("sql")
 local store = require("store")
 local types = require("types")
 
-local FAILED_JOB = {
-    dead = "The delivery job ended before recording an outcome",
-    cancelled = "The delivery job was cancelled",
-    missing = "The delivery job is no longer available",
-    done = "The delivery job completed without recording an outcome",
-}
+local INTERRUPTED = {dead = true, cancelled = true, missing = true, done = true}
 
 local function due(now: integer, input: types.OwnerInput): ({types.MessageRow}?, error?)
     local change = input.change
@@ -42,11 +37,12 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
     local _, write_err = database.transaction(function(tx: sql.Transaction, _dialect: string): (boolean?, error?)
         for _, row in ipairs(pending) do
             local status = states[row.job_id] or "missing"
-            local reason = FAILED_JOB[status]
             local _, update_err
-            if reason then
-                _, update_err = store.finish(tx, row.id, row.job_id, now, nil,
-                    {kind = errors.UNAVAILABLE, code = "delivery_job_" .. status, message = reason})
+            if INTERRUPTED[status] then
+                _, update_err = store.finish(tx, row.id, row.job_id, now, nil, {
+                    kind = errors.UNAVAILABLE, code = "delivery_interrupted",
+                    message = "Delivery was interrupted; the email may have been sent",
+                })
             elseif row.next_check_at <= now then
                 _, update_err = tx:execute([[UPDATE mail_message SET next_check_at=$1
                     WHERE id=$2 AND status='queued' AND next_check_at=$3]],

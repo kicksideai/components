@@ -488,7 +488,8 @@ return {
 
                 local cancelled = terminal(sender, queued)
                 test.eq("failed", cancelled.status)
-                test.eq("delivery_job_cancelled", cancelled.last_error.code)
+                test.eq("delivery_interrupted", cancelled.last_error.code)
+                test.eq("Delivery was interrupted; the email may have been sent", cancelled.last_error.message)
                 no_body(queued.message_id)
 
                 local missing_id = uuid.v7()
@@ -504,8 +505,8 @@ return {
                 assert(notifier.notify({kind = "owner_eligibility_changed"}))
 
                 local missing = await_message(sender, missing_id, function(message) return message.status == "failed" end)
-                test.eq("delivery_job_missing", missing.last_error.code)
-                test.eq("The delivery job is no longer available", missing.last_error.message)
+                test.eq("delivery_interrupted", missing.last_error.code)
+                test.eq("Delivery was interrupted; the email may have been sent", missing.last_error.message)
                 no_body(missing_id)
             end)
 
@@ -590,8 +591,8 @@ return {
                         test.not_nil(before.html)
                     end
                     local failed = await_message(sender, queued.message_id, function(row) return row.status == "failed" end, 35)
-                    test.eq("delivery_job_dead", failed.last_error.code)
-                    test.eq("The delivery job ended before recording an outcome", failed.last_error.message)
+                    test.eq("delivery_interrupted", failed.last_error.code)
+                    test.eq("Delivery was interrupted; the email may have been sent", failed.last_error.message)
                     test.eq(5, failed.attempts)
                     if lost then
                         test.is_true(failed.finished_at >= pending.next_check_at)
