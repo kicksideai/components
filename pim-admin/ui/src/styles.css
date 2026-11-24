@@ -2,6 +2,7 @@
 @import "@kickside/ui-kit/kx-settings-rail.css";
 @import "@kickside/ui-kit/kx-settings-head.css";
 @import "@kickside/ui-kit/kx-disclosure.css";
+@import "@kickside/ui-kit/kx-settings-group.css";
 @import '@kickside/ui-kit/kx-tokens.css';
 @import '@kickside/ui-kit/kx-head.css';
 @import '@kickside/ui-kit/kx-shell.css';
@@ -142,3 +143,11 @@ kickside-pim-catalog-settings { display: block; height: 100%; min-height: 0; }
 @media (max-width: 600px) {
   .pim-layout .pim-lcard { grid-column: 1 / -1 !important; }
 }
+
+/* Plugins: grouped settings rows with configuration in the expanded body. */
+.pim-plugins { gap: 26px; }
+.pim-plugins > .muted { margin-bottom: -14px; }
+.pim-plugin-recovery .p-message p { margin: 0; }
+.pim-plugin-action { margin-top: 8px; }
+.pim-plugin-recovery wc-schema-form { max-width: 560px; }
+

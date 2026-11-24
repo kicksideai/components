@@ -75,8 +75,9 @@ entries:
     type: kickside.work.plugin
     interface_version: 1
     title: Work Planning
-    description: Sprint and milestone planning.
+    description: Adds sprints and milestones so people can plan items into time-boxed cycles.
     icon: tabler:calendar
+    category: Planning and tracking
     attachment: kickside.work.planning:attachment
     seams: ['kickside.work.planning:date_order']
     tools: ['kickside.work.planning:plan_close', 'kickside.work.planning:close']
@@ -87,7 +88,8 @@ entries:
       properties:
         issue_types:
           type: array
-          description: Existing custom issue type IDs to extend with the planning reference fields.
+          title: Plan these item types
+          description: Selected item types get Current sprint and Milestone fields.
           maxItems: 49
           uniqueItems: true
           items: {type: string, pattern: '^[a-z][a-z0-9_]{0,39}$'}

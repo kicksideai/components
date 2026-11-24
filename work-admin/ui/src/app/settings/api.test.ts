@@ -33,3 +33,11 @@ it('retries a named plugin without posting replacement configuration', async () 
   await settings.configure('b', 'app:plugin')
   expect(api.post).toHaveBeenCalledExactlyOnceWith('/api/v1/work/boards/b/configure_plugin', { plugin: 'app:plugin' })
 })
+it('sends Archive and Drop field removal choices with the reviewed generation and omits Keep', async () => {
+  const review = reviewSnapshot({ item_types: [] }, 5, {}, { 'fields/estimate/task': 'archive', 'fields/notes/task': 'keep', 'fields/size': 'drop' })
+  await settings.plan('b', review)
+  await settings.apply('b', review, 'removal-key')
+  const body = { declaration: review.declaration, expected_generation: 5, plugin_configs: {}, resolutions: { 'fields/estimate/task': 'archive', 'fields/size': 'drop' } }
+  expect(api.post).toHaveBeenNthCalledWith(1, '/api/v1/work/boards/b/plan_schema', body)
+  expect(api.post).toHaveBeenNthCalledWith(2, '/api/v1/work/boards/b/apply_schema', { ...body, key: 'removal-key' })
+})

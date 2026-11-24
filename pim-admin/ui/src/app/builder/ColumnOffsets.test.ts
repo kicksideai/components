@@ -9,7 +9,6 @@ import BuilderDimensions from './BuilderDimensions.vue'
 import BuilderFamilies from './BuilderFamilies.vue'
 import BuilderVocabularies from './BuilderVocabularies.vue'
 import BuilderChannels from './BuilderChannels.vue'
-import BuilderPlugins from './BuilderPlugins.vue'
 import { pim } from '../../api'
 import { createSchema, definitionFixtures } from '../../test/fixtures'
 
@@ -21,7 +20,7 @@ afterAll(async () => { await browser?.close() })
 const { options } = definitionFixtures()
 const css = ['base.css', 'settings.css'].map(file => readFileSync(resolve('src/shared', file), 'utf8')).join('\n')
   + '\n' + readFileSync(resolve('src/styles.css'), 'utf8').replace(/^@import .*;$/gm, '')
-const builders = [BuilderFields, BuilderDimensions, BuilderFamilies, BuilderVocabularies, BuilderChannels, BuilderPlugins]
+const builders = [BuilderFields, BuilderDimensions, BuilderFamilies, BuilderVocabularies, BuilderChannels]
 for (const width of [1500, 1100]) for (const component of builders) for (const rail of [0, 232]) {
   it(`aligns ${component.__name} columns at ${width}px with a ${rail}px settings rail`, async () => {
     const page = await browser.newPage({ viewport: { width, height: 1000 } })

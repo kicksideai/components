@@ -181,7 +181,7 @@ it('uses registry titles and readable field and filter labels in summaries', asy
     expect(wrapper.get('.pim-lcard.fixed').text()).toContain('Warehouse bin label')
     expect(wrapper.get('.pim-lcard.fixed').text()).not.toContain('app:')
     await settingsTab(wrapper, 'Plugins')
-    for (const toggle of wrapper.findAll('.pim-definition-toggle[aria-expanded="false"]')) await toggle.trigger('click')
+    for (const toggle of wrapper.findAll('.kx-settings-item-expand[aria-expanded="false"]')) await toggle.trigger('click')
     expect(wrapper.text()).toContain('Adds fields for Bin label.')
     expect(wrapper.text()).toContain('Background update: Paused')
     expect(wrapper.text()).toContain('Available units · Greater than, At least, Less than, At most, Equals')

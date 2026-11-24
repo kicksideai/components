@@ -39,8 +39,9 @@ entries:
     type: kickside.work.plugin
     interface_version: 1
     title: Work Search
-    description: Lexical search for Work issue keys, titles and descriptions.
-    icon: search
+    description: Lets people find items by key, title or description.
+    icon: tabler:search
+    category: Search
     attachment: kickside.work_search:attachment
     seams: [kickside.work_search:text, kickside.work_search:key]
     projections:

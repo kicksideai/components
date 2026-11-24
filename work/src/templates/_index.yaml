@@ -19,7 +19,9 @@ entries:
     type: kickside.work.plugin
     interface_version: 1
     title: Work Templates
-    description: Versioned create presets owned by a Work board.
+    description: Saves reusable item presets so people can create common items in one step.
+    icon: tabler:template
+    category: Templates
     attachment: kickside.work.templates:attachment
     tools:
     - kickside.work.templates:tool_list

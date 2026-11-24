@@ -16,7 +16,8 @@ import type { BoardRow, Declaration, AdminOptions, ItemType, Process, Schema, St
 import { useNavigate } from '../route'
 import { humanize } from '../../forms'
 import { settings } from './api'
-import { validationIssues, removalReason, clone, normalizeSchema, processMigration, requestDeclaration, reviewSnapshot, type PluginConfigs, type SchemaPlan, type RemovalKind, removeEntry } from './model'
+import { validationIssues, removalReason, clone, normalizeSchema, processMigration, requestDeclaration, reviewSnapshot, fieldRemovals, type FieldResolution, type PluginConfigs, type SchemaPlan, type RemovalKind, removeEntry } from './model'
+import FieldRemovals from './FieldRemovals.vue'
 import FieldsEditor from './FieldsEditor.vue'
 import TypesEditor from './TypesEditor.vue'
 import ProcessEditor from './ProcessEditor.vue'
@@ -137,6 +138,7 @@ function closeReview() {
   schemaReviewError.value = ''
   pack.clearReviewError()
   confirmedRenames.value = false
+  dropConfirmed.value = false
 }
 async function openReview(opener?: HTMLElement) {
   if (!showDraftActions.value) return
@@ -174,6 +176,10 @@ watch(tab, section => {
   if (authorized.value && section === 'Workflow') void loadCounts(props.boardId)
 })
 const schemaPlan = ref<SchemaPlan>(), reviewed = ref<ReturnType<typeof reviewSnapshot>>(), applyKey = ref('')
+const fieldChoices = ref<Record<string, FieldResolution>>({}), dropConfirmed = ref(false)
+const removals = computed(() => pack.request ? [] : fieldRemovals(schemaPlan.value))
+const removalsResolved = computed(() => removals.value.every(change => change.resolution !== 'keep')
+  && (!removals.value.some(change => change.resolution === 'drop') || dropConfirmed.value))
 const serverIssues = ref<import('./model').SchemaChange[]>([])
 const checkingRemoval = ref(false), editorVersion = ref(0)
 const invalid = ref(new Set<string>()), editor = ref<HTMLFormElement>()
@@ -199,6 +205,12 @@ const pack = reactive(usePackReview({
   clearSaved: () => { saved.value = '' },
   applied: reloadApplied,
 }))
+const installedPack = computed(() => {
+  const current = schema.value?.pack
+  if (!current) return undefined
+  return { id: current.id, version: current.version, title: pack.title, description: pack.installed?.description,
+    requires: pack.installed?.requires ?? [], outdated: schema.value?.outdated, canUpgrade: pack.upgradeAvailable && pack.canManage, upgradeReason: pack.upgradeReason }
+})
 const plan = computed(() => pack.request ? pack.plan : schemaPlan.value)
 const reviewError = computed(() => pack.request ? pack.reviewError : schemaReviewError.value)
 const issues = computed(() => [...serverIssues.value, ...(plan.value?.refused ?? [])])
@@ -207,7 +219,7 @@ const showDraftActions = computed(() => dirty.value && !(pack.inProgress && pack
 const metadataDirty = ref(false)
 const unsaved = computed(() => dirty.value || metadataDirty.value)
 watch(unsaved, value => emit('dirty-change', value), { immediate: true, flush: 'sync' })
-const canSchemaApply = computed(() => (!occupiedChanges.value.renamed.length || confirmedRenames.value) && canReview() && !busy.value && !checkingRemoval.value && !migrationPending.value && schemaPlan.value && (schemaPlan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && schemaPlan.value.class !== 'refused' && !schemaPlan.value.refused.length && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value))
+const canSchemaApply = computed(() => (!occupiedChanges.value.renamed.length || confirmedRenames.value) && canReview() && !busy.value && !checkingRemoval.value && !migrationPending.value && schemaPlan.value && (schemaPlan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && schemaPlan.value.class !== 'refused' && !schemaPlan.value.refused.length && removalsResolved.value && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value, fieldChoices.value))
 const canApply = computed(() => pack.request ? pack.canApply : canSchemaApply.value)
 const isReviewed = computed(() => pack.request ? pack.isReviewed : !!schemaPlan.value)
 const confirmedRenames = ref(false)
@@ -249,7 +261,13 @@ function invalidate() {
   applyKey.value = ''
   pack.invalidate()
 }
-watch([request, configs], invalidate, { deep: true, flush: 'sync' })
+watch([request, configs], () => { fieldChoices.value = {}; dropConfirmed.value = false; invalidate() }, { deep: true, flush: 'sync' })
+function chooseRemoval(path: string, choice: FieldResolution) {
+  fieldChoices.value = { ...fieldChoices.value, [path]: choice }
+  dropConfirmed.value = false
+  invalidate()
+  void review()
+}
 watch(dirty, value => { if (value) saved.value = '' })
 function validity(key: string, valid: boolean) { if (valid) invalid.value.delete(key); else invalid.value.add(key); invalidate() }
 function reset(view: Schema) { pack.clear(); creation.value = undefined; editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); widgetInvalid.value.clear(); invalidate() }
@@ -300,7 +318,7 @@ function validForm() {
 async function review() {
   if (pack.request) return pack.review()
   if (!schema.value || busy.value || !canReview()) return
-  const current = beginReview(), snapshot = reviewSnapshot(request.value, schema.value.generation, configs.value)
+  const current = beginReview(), snapshot = reviewSnapshot(request.value, schema.value.generation, configs.value, fieldChoices.value)
   busy.value = true; schemaReviewError.value = ''; saved.value = ''
   try {
     const changedName = (snapshot.declaration.processes ?? []).some(process =>
@@ -315,7 +333,7 @@ async function review() {
       schemaReviewError.value = 'Could not check which items use the renamed states. Check the impact again.'
       return
     }
-    if (!current() || invalid.value.size || !snapshot.matches(request.value, schema.value.generation, configs.value)) return
+    if (!current() || invalid.value.size || !snapshot.matches(request.value, schema.value.generation, configs.value, fieldChoices.value)) return
     schemaPlan.value = response; reviewed.value = snapshot; applyKey.value = crypto.randomUUID(); reviewOpen.value = true
   } catch (e) { if (current()) { invalidate(); schemaReviewError.value = formatApiError(e, 'Could not review changes.'); serverIssues.value = validationIssues(e, request.value) } }
   finally { busy.value = false }
@@ -364,7 +382,7 @@ async function guardRemoval(kind: RemovalKind, id: string): Promise<string | und
     if (!authorized.value || stale.value || schema.value.generation !== generation || JSON.stringify(request.value) !== before) return 'The draft changes during the check. Try the removal again.'
     const refusal = removalReason(response, kind, id)
     if (refusal) return refusal
-    if (response.class === 'refused') return 'Resolve the blocked changes in your draft before removing this definition.'
+    if (response.refused.some(change => change.what !== 'field.remove')) return 'Resolve the blocked changes in your draft before removing this definition.'
   } catch (e) { return formatApiError(e, 'Could not check this removal.') }
   finally { checkingRemoval.value = false }
 }
@@ -466,7 +484,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
 
                 <section v-if="visited.has('Plugins')" v-show="tab === 'Plugins'" class="work-ia-section">
                   <PluginsEditor ref="pluginEditor" :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"
-                    :filters="options?.filters" :configs="configs" :disabled="busy" @configured="invalidate(); load()" @refresh="load()" @review="openReview"
+                    :filters="options?.filters" :configs="configs" :disabled="busy" :pack="installedPack" @configured="invalidate(); load()" @refresh="load()" @review="openReview" @upgrade="pack.upgrade"
                     @validity="(key, valid) => validity('plugin:' + key, valid)" @widget-validity="widgetValidity" />
                 </section>
               </fieldset>
@@ -482,6 +500,8 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
                   <ProcessMigration v-if="reviewOpen && !pack.request && (occupiedChanges.removed.length || occupiedChanges.renamed.length)"
                     :removed="occupiedChanges.removed" :renamed="occupiedChanges.renamed" :disabled="busy || checkingRemoval"
                     v-model:confirmed="confirmedRenames" @destination="setDestination" />
+                  <FieldRemovals v-if="reviewOpen && removals.length" :removals="removals" :original="schema.declaration" :draft="request"
+                    :choices="fieldChoices" :disabled="busy" v-model:drop-confirmed="dropConfirmed" @choose="chooseRemoval" />
                   <PluginsEditor v-if="reviewOpen && pack.request && pack.plugins.length" :board-id="boardId" :draft="{ plugins: pack.plugins }" :schema="latest ?? schema"
                     :options="options?.schema_options.plugins.filter(plugin => pack.plugins.some(selected => selected.use === plugin.plugin)) ?? []"
                     :configs="configs" :disabled="busy" activation-locked @validity="(key, valid) => validity('pack-plugin:' + key, valid)" />

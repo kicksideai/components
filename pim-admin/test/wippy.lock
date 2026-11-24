@@ -49,8 +49,8 @@ modules:
       version: 0.2.22
       hash: b2885b57e85abe950053fda9226c977a3edd7348d51c0c02d7f519aac141ecb6
     - name: kickside/widgets
-      version: 0.1.72
-      hash: b894619468cbf64f8db8ef6997f50e40d4df94ba8818e96a68aaf4adb3815648
+      version: 0.1.74
+      hash: 68d12873003fd8a1a911d832960682c7492e490d7f4f6900849d54e2a0124c3b
     - name: wippy/agent
       version: 0.5.13
       hash: 857b603fc6f036b053380bf6c8f00f42f6eb2720fe3df5f8fcb436a35dfdddf1

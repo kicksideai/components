@@ -43,11 +43,15 @@ local function cases()
             local field = owner.post(path(id, "plan_schema"), { expected_generation = schema.generation, declaration = {
                 remove = { fields = { "title" } }, item_types = { { id = "task", process = "delivery", fields = {} } } } })
             test.eq(field.status, 200, json.encode(field.body))
-            local held = false
-            for _, change in ipairs(field.body.data.changes) do
-                if change.code == "title" and change.what == "removed" and change.class == "semantic" then held = true end
+            test.eq(field.body.data.class, "refused")
+            local held: Map? = nil
+            for _, change in ipairs(field.body.data.refused) do
+                if change.code == "title" and change.what == "field.remove" then held = change :: Map end
             end
-            test.is_true(held, "the editor keeps fields whose removal changes stored values")
+            test.not_nil(held, "removing a field with saved values asks for a resolution")
+            test.eq(held.resolution, "keep")
+            test.eq(held.count, 1)
+            test.not_nil(held.path)
             test.eq(owner.post(path(id, "get_schema"), {}).body.data.generation, schema.generation)
         end)
         test.it("persists board metadata through update and list with independent ADMIN access", function()

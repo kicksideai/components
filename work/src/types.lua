@@ -123,11 +123,11 @@ type PluginError = { kind: string, code: string?, message: string, floor: intege
 type PluginProblem = { code: string, message: string, field: string? }
 type PluginLifecycle = { state: string, error: PluginError? }
 type PluginProjectionState = { last_seq: integer, start_seq: integer?, parked: boolean, bootstrapping: boolean, error: unknown? }
-type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
+type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, category: string?, installed: boolean, active: boolean,
     attachment_id: string?, config: JsonObject?, config_schema: JsonObject?, requires: { string }, tools: { string },
     lifecycle: PluginLifecycle, projections: { [string]: PluginProjectionState }, problem: PluginProblem?,
     version: string?, digest: string?, outdated: boolean? }
-type Plugin = { interface_version: integer, tools: { string }, projections: { PluginProjection }, id: string, title: string?, description: string?, icon: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?, requires: { string }, seams: { string } }
+type Plugin = { interface_version: integer, tools: { string }, projections: { PluginProjection }, id: string, title: string?, description: string?, icon: string?, category: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?, requires: { string }, seams: { string } }
 -- ProviderResult is what a schema_provider binding answers.
 type ProviderResult = { fragment: JsonObject, version: string? }
 type Provider = { resolve: (self: Provider, request: JsonObject) -> (unknown, error?) }

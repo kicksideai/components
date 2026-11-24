@@ -2,6 +2,7 @@
 @import "@kickside/ui-kit/kx-settings-rail.css";
 @import "@kickside/ui-kit/kx-settings-head.css";
 @import "@kickside/ui-kit/kx-disclosure.css";
+@import "@kickside/ui-kit/kx-settings-group.css";
 @import "@wippy-fe/theme/theme-config.css";
 @import "@kickside/ui-kit/kx-tokens.css";
 @import "@kickside/ui-kit/kx-head.css";
@@ -472,3 +473,17 @@ button.work-content-action { padding: 0; border: 0; background: transparent; }
     animation-duration: 0s !important; transition-duration: 0s !important;
   }
 }
+
+/* Plugins: grouped settings rows with configuration in the expanded body. */
+.work-plugins { gap: 26px; }
+.work-plugins > .work-muted { margin-bottom: -14px; }
+.work-plugin-config { gap: 12px; max-width: 560px; }
+.work-plugin-issue p { margin: 0; }
+
+
+/* Review choices for fields that still hold values. */
+.work-field-removal { min-width: 0; margin: 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--p-content-border-color); }
+.work-field-removal > legend { float: left; width: 100%; padding: 0; margin-bottom: 4px; }
+.work-field-removal > legend + * { clear: both; }
+.work-field-removal-choice { gap: 6px; margin-inline-end: 12px; }
+.work-field-removal-confirm { align-items: flex-start; }

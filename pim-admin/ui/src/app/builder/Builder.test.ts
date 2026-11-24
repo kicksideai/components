@@ -101,8 +101,8 @@ function activePlugins(...ids: string[]) {
 const button = (w: VueWrapper, label: string) => w.findAll('button').find(el => el.text() === label)!
 
 async function editPlugin(w: VueWrapper, title: string, config: Record<string, unknown>) {
-  const row = w.findAll('.pim-definition').find(el => el.get('.pim-definition-toggle').text().startsWith(title))!
-  const toggle = row.get('.pim-definition-toggle')
+  const row = w.findAll('.kx-settings-item').find(el => el.get('.kx-settings-item-title').text() === title)!
+  const toggle = row.get('.kx-settings-item-expand')
   if (toggle.attributes('aria-expanded') === 'false') await toggle.trigger('click')
   await flushPromises()
   await row.get('wc-schema-form').trigger('config-changed', { detail: config })
@@ -114,8 +114,8 @@ it('reveals and reports a hidden invalid plugin draft before reviewing', async (
   const w = mount(SchemaBuilder, { props: { catalogId: 'cat' } })
   await flushPromises()
   await settingsTab(w, 'Plugins')
-  const row = w.findAll('.pim-definition').find(el => el.get('.pim-definition-toggle').text().startsWith('Inventory'))!
-  const toggle = row.get('.pim-definition-toggle')
+  const row = w.findAll('.kx-settings-item').find(el => el.get('.kx-settings-item-title').text() === 'Inventory')!
+  const toggle = row.get('.kx-settings-item-expand')
   if (toggle.attributes('aria-expanded') === 'false') await toggle.trigger('click')
   await flushPromises()
   const widget = row.get('wc-schema-form')

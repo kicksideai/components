@@ -185,7 +185,7 @@ function M.load(id: string): (types.Plugin?, error?)
         if inspection_err then return nil, inspection_err end
         if leak then return nil, invalid(id .. " declares secret " .. leak .. "; secrets belong in its attachment or a connection") end
     end
-    for _, field in ipairs({ "title", "description", "icon", "settings", "attachment" }) do
+    for _, field in ipairs({ "title", "description", "icon", "category", "settings", "attachment" }) do
         if m[field] ~= nil and type(m[field]) ~= "string" then return nil, invalid(id .. " " .. field .. " must be a string") end
     end
     if type(m.attachment) ~= "string" or m.attachment == "" then return nil, invalid(id .. " attachment is required") end
@@ -211,7 +211,7 @@ function M.load(id: string): (types.Plugin?, error?)
     if serr then return nil, serr end
     local declared, perr = projections(id, m.projections)
     if perr then return nil, perr end
-    return { interface_version = M.INTERFACE_VERSION, tools = declared_tools :: { string }, projections = declared :: { types.PluginProjection }, id = id, title = m.title :: string?, description = m.description :: string?, icon = m.icon :: string?, settings = m.settings :: string?,
+    return { interface_version = M.INTERFACE_VERSION, tools = declared_tools :: { string }, projections = declared :: { types.PluginProjection }, id = id, title = m.title :: string?, description = m.description :: string?, icon = m.icon :: string?, category = m.category :: string?, settings = m.settings :: string?,
         attachment = m.attachment :: string?, config_schema = schema, schema = source, requires = lists.requires :: { string }, seams = lists.seams :: { string } }, nil
 end
 
