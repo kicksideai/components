@@ -220,6 +220,7 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
             stored.created_at = current and current.created_at or timestamp
             stored.state = original and "customized" or "created"
             stored.origin = original and original.resource.origin or nil
+            stored.origin_label = original and original.resource.origin_label or nil
             if stored.asset and edits[i].content then
                 local activate_err = asset_store.activate(tx, (stored.asset :: types.Asset).upload_id :: string)
                 if activate_err then return nil, activate_err end

@@ -27,6 +27,12 @@ entries:
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints
       - kickside.mail.security:send_endpoints
+  - name: bundled_template_catalog
+    kind: security.policy
+    policy:
+      resources: [app.templates:reminder_template]
+      actions: [registry.get, registry.find]
+      effect: allow
   - name: editor
     kind: security.scope
   - name: editor_composition
@@ -34,6 +40,7 @@ entries:
     meta: { type: kickside.security.group_composition }
     group_id: app.mail_api:editor
     policies:
+      - app.mail_api:bundled_template_catalog
       - kickside.mail.security:library_access
       - kickside.mail.security:library_calls
       - kickside.mail.security:library_endpoints

@@ -170,6 +170,7 @@ entries:
         - kickside.mail.views:layout
         - kickside.mail.views:text_templates
         - app:definition
+        - kickside.mail:definition
         - kickside.mail.views:notice_template
         - kickside.mail.views:standard_template
         - kickside.mail.views:plain_template

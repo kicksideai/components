@@ -114,6 +114,20 @@ return {run = test.run_cases(function()
             test.is_true(faces > 0)
         end)
 
+        test.it("labels shipped resources with their owning module title", function()
+            local editor = session("editor")
+            local list = data(editor, "GET", "/library?kind=message&state=original")
+            local notice, reminder
+            for _, item in ipairs(list.items) do
+                if item.name == "notice" then notice = item end
+                if item.name == "reminder" then reminder = item end
+            end
+            test.eq("kickside.mail.views:notice_template", notice.origin)
+            test.eq("Mail", notice.origin_label)
+            test.eq("KickSide", reminder.origin_label)
+            test.eq(notice.origin_label, data(editor, "GET", "/library/message/notice").origin_label)
+        end)
+
         test.it("lists the packaged asset and previews its CID under the editor capability", function()
             local editor = session("editor")
             local sender = session("sender")
