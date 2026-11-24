@@ -145,6 +145,7 @@ function M.add_attachment_size(total: number, size: unknown): (number?, error?)
         return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = "Content provider returned an invalid size",
             details = {code = "invalid_attachment_size"}})
     end
+    if size == 0 then return nil, invalid("attachment_empty", "Attachments must contain at least one byte") end
     if total + size > M.MAX_ATTACHMENT_BYTES then
         return nil, invalid("attachments_too_large", "Attachments exceed the total byte limit")
     end
@@ -184,8 +185,10 @@ function M.attachments_error(attachments: unknown): error?
                 return invalid("invalid_attachment", "Attachments must contain only an upload ID and delivery options")
             end
         end
-        if (ref.disposition == "inline" or ref.content_id ~= nil)
-            and (type(ref.content_id) ~= "string" or not ref.content_id:match("^[%w._@+%-]+$")) then
+        if ref.disposition ~= "inline" and ref.content_id ~= nil then
+            return invalid("invalid_content_id", "A content ID requires inline disposition")
+        end
+        if ref.disposition == "inline" and (type(ref.content_id) ~= "string" or not ref.content_id:match("^[%w._@+%-]+$")) then
             return invalid("invalid_content_id", "Inline attachments require a valid content ID")
         end
         if ref.content_id then

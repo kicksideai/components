@@ -44,6 +44,7 @@ local function resolve(input: types.AttachmentInput, read_bytes: boolean, previe
     local bytes = input.message_bytes
     local total = 0
     local files: {types.Attachment} = carried or {}
+    local readers: {() -> (types.Attachment?, error?)} = {}
     local ids: {[string]: boolean} = {}
 
     local function account(filename: string, content_type: string, size: number, id: string?): error?
@@ -81,25 +82,28 @@ local function resolve(input: types.AttachmentInput, read_bytes: boolean, previe
             local limit_err = account(filename, info.content_type, info.size, ref.content_id)
             if limit_err then return nil, limit_err end
             if read_bytes then
-                local content, content_err = M.upload_bytes(provider :: types.ContentProvider, info.size, preview_html and asset_refs.MAX_BYTES or remaining)
-                if content_err then return nil, content_err end
-                if content.content_type ~= info.content_type then
-                    if preview_html then
-                        local bad_image = asset_refs.image_error(content.content_type, info.size)
-                        if bad_image then return nil, bad_image end
+                readers[#readers + 1] = function(): (types.Attachment?, error?)
+                    local content, content_err = M.upload_bytes(provider :: types.ContentProvider, info.size,
+                        preview_html and asset_refs.MAX_BYTES or remaining)
+                    if content_err then return nil, content_err end
+                    if content.content_type ~= info.content_type then
+                        if preview_html then
+                            local bad_image = asset_refs.image_error(content.content_type, info.size)
+                            if bad_image then return nil, bad_image end
+                        end
+                        bytes = bytes - message.attachment_size(info.size, filename, info.content_type, ref.content_id)
+                            + message.attachment_size(info.size, filename, content.content_type, ref.content_id)
+                        local size_err = message.message_size_error(bytes, input.max_message_bytes)
+                        if size_err then return nil, size_err end
                     end
-                    bytes = bytes - message.attachment_size(info.size, filename, info.content_type, ref.content_id)
-                        + message.attachment_size(info.size, filename, content.content_type, ref.content_id)
-                    oversized = message.message_size_error(bytes, input.max_message_bytes)
-                    if oversized then return nil, oversized end
+                    return {filename = filename, content_type = content.content_type, content = content.content,
+                        disposition = ref.disposition or "attachment", content_id = ref.content_id}, nil
                 end
-                files[#files + 1] = {filename = filename, content_type = content.content_type, content = content.content,
-                    disposition = ref.disposition or "attachment", content_id = ref.content_id}
             end
         end
     end
     for _, ref in ipairs(input.library_assets or {}) do
-        local resolved, err = funcs.call("kickside.mail.library:read_asset_file", {ref = ref, bytes = read_bytes})
+        local resolved, err = funcs.call("kickside.mail.library:read_asset_file", {ref = ref, bytes = false})
         if err then return nil, err end
         local part = resolved :: types.AssetPart
         local id = ref.content_id
@@ -108,9 +112,23 @@ local function resolve(input: types.AttachmentInput, read_bytes: boolean, previe
         local limit_err = account(filename, part.content_type, part.size, id)
         if limit_err then return nil, limit_err end
         if read_bytes then
-            files[#files + 1] = {filename = filename, content_type = part.content_type, content = part.content :: string,
-                disposition = "inline", content_id = id}
+            readers[#readers + 1] = function(): (types.Attachment?, error?)
+                local result, read_err = funcs.call("kickside.mail.library:read_asset_file", {ref = ref, bytes = true})
+                if read_err then return nil, read_err end
+                local current = result :: types.AssetPart
+                if current.size ~= part.size or current.content_type ~= part.content_type then
+                    return nil, errors.new({kind = errors.CONFLICT, message = "Attachment metadata changed during delivery",
+                        retryable = false, details = {code = "incomplete_attachment"}})
+                end
+                return {filename = filename, content_type = current.content_type, content = current.content :: string,
+                    disposition = "inline", content_id = id}, nil
+            end
         end
+    end
+    for _, read in ipairs(readers) do
+        local file, err = read()
+        if err then return nil, err end
+        files[#files + 1] = file :: types.Attachment
     end
     return files, nil
 end

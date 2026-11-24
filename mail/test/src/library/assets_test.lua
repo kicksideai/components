@@ -14,6 +14,7 @@ local records = require("records")
 local upload_types = require("upload_types")
 local fixtures = require("fixtures")
 local asset_store = require("asset_store")
+local attachments = require("attachments")
 
 local LIBRARY = "kickside.mail.library:"
 local function setup_actor(groups)
@@ -235,6 +236,44 @@ local run = test.run_cases(function()
             local rejected, size_err = editor:call("kickside.mail.service:send", request)
             test.is_nil(rejected)
             test.eq("message_too_large", assert(size_err):details().code)
+        end)
+
+        test.it("rejects an empty completed upload at send admission", function()
+            configured = true
+            settings.settings("capture", "mail@example.org")
+            local empty = upload("text/plain", "x")
+            local db = assert(sql.get("app:db"))
+            assert(db:execute("UPDATE kickside_uploads SET size=0 WHERE uuid=$1", {empty}))
+            assert(db:release())
+            assert(storage:writefile(empty, ""))
+            local result, failure = editor:call("kickside.mail.service:send", {
+                to = {"reader@example.org"}, subject = "An attachment", text = "Please read",
+                attachments = {{upload_id = empty}},
+            })
+            test.is_nil(result)
+            test.eq(errors.INVALID, assert(failure):kind())
+            test.eq("attachment_empty", failure:details().code)
+        end)
+
+        test.it("checks all adopted metadata before reading any adopted attachment bytes", function()
+            local original = call("get", {kind = "asset", name = "logo"})
+            owned[1] = original
+            local small = call("update", {kind = "asset", name = "logo", upload_id = upload("image/gif", gif()),
+                expected_revision = original.revision})
+            local large = call("create", {kind = "asset", name = "large", upload_id = upload("image/gif", gif() .. string.rep("\0", 80000))})
+            owned[2] = large
+            local adopted = assert(lookup.get(small.asset.upload_id))
+            assert(storage:remove(adopted.storage_path))
+            local files, failure = attachments.complete({
+                library_assets = {
+                    {name = "logo", content_id = "logo", upload_id = small.asset.upload_id},
+                    {name = "large", content_id = "large", upload_id = large.asset.upload_id},
+                },
+                message_bytes = 4000, max_message_bytes = 100000,
+            }, {})
+            assert(storage:writefile(adopted.storage_path, gif()))
+            test.is_nil(files)
+            test.eq("message_too_large", assert(failure):details().code)
         end)
 
         test.it("reaps an adopted file after its last retained reference is removed", function()

@@ -94,6 +94,7 @@ The native error kind and retry flag come from the operation. The `details.code`
 
 ```text
 Code                           Kind               Retryable
+attachment_empty               Invalid            No
 attachment_unavailable         Internal           No
 attachments_too_large          Invalid            No
 body_required                  Invalid            No
