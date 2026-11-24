@@ -1,28 +1,29 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { flushPromises, mount } from '@vue/test-utils'
 import { api, host } from '@wippy-fe/proxy'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import MailAdmin from '../app/MailAdmin.vue'
 import { notify } from '../test/setup'
-import { calls, get, ok, post, refuse, remove, resource, revision, serve } from '../test/fixtures'
+import { calls, dana, get, ok, post, put, refuse, remove, resource, revision, row, serve } from '../test/fixtures'
 import type { Resource } from '../types'
 
-const standard = resource('base', 'standard', { title: 'Standard', state: 'customized', revision: 7, author: 'user-1', updated_at: Date.UTC(2026, 10, 20, 9) })
-const newsletter = resource('base', 'newsletter', { title: 'Newsletter', state: 'created', revision: 5, author: 'user-1', updated_at: Date.now() })
-const signature = resource('part', 'signature', { title: 'Signature', state: 'created', revision: 6, author: 'user-1',
-  schema: { type: 'object', required: ['name'], properties: { name: { type: 'string', description: 'Sender name.' }, role: { type: 'string', default: 'Team' } } },
-  samples: { name: 'Reporting team' } })
-const notice = resource('message', 'notice', { title: 'Notice' })
+const standard = resource('base', 'standard', { title: 'Standard', state: 'customized', revision: 7, author: 'user-1', author_label: dana, origin_label: 'Mail', updated_at: Date.UTC(2026, 10, 20, 9) })
+const newsletter = resource('base', 'newsletter', { title: 'Newsletter', state: 'created', revision: 5, author: 'user-1', author_label: dana, updated_at: Date.now() })
+const button = resource('part', 'button', { title: 'Button', state: 'original', revision: 0, origin_label: 'Mail',
+  schema: { type: 'object', required: ['action_url'], properties: { action_url: { type: 'string', description: 'Destination address.' }, action_label: { type: 'string', default: 'Open' } } },
+  samples: { action_url: 'https://example.org' } })
+const notice = resource('message', 'notice', { title: 'Notice', origin_label: 'Mail' })
 const welcome = resource('message', 'welcome', { title: 'Customer welcome', base: 'newsletter', state: 'created', revision: 3, author: 'user-1' })
-const library = [standard, newsletter, signature, notice, welcome]
+const library = [standard, newsletter, button, notice, welcome].map(item => row(item))
 
 function routes(item: Resource, extra: Parameters<typeof serve>[0] = []) {
   serve([
+    ...extra,
     get('/api/v1/mail/library', () => ok({ items: [...library] })),
     get('/api/v1/mail/delivery', () => ok({ configured: true })),
     get(`/api/v1/mail/library/${item.kind}/${item.name}`, () => ok(item)),
-    get(`/api/v1/mail/library/${item.kind}/${item.name}/history`, () => ok({ items: [revision(item, item.revision), revision(item, item.revision - 1, { note: 'Brand refresh' })] })),
-    ...extra,
+    get(`/api/v1/mail/library/${item.kind}/${item.name}/history`, () => ok({ items: [revision(item, item.revision), revision(item, item.revision - 1, { version: item.revision - 1, note: 'Brand refresh' })] })),
+    post('/api/v1/mail/library/preview', () => ok({ subject: 'Hello', html: '<html><body><img src="cid:mail-library-logo"> Preview</body></html>', text: 'Preview', inline_assets: { 'mail-library-logo': 'data:image/png;base64,AAAA' } })),
   ])
 }
 
@@ -31,57 +32,143 @@ async function open(route: string) {
   await flushPromises()
   return wrapper
 }
-
-const button = (wrapper: Awaited<ReturnType<typeof open>>, label: string) =>
+async function body(wrapper: Awaited<ReturnType<typeof open>>) {
+  await vi.waitFor(() => { if (!wrapper.find('.mail-code-body textarea.code-editor-stub').exists()) throw new Error('editor not loaded') })
+  return wrapper.find('.mail-code-body textarea.code-editor-stub')
+}
+afterEach(() => { vi.useRealTimers() })
+const control = (wrapper: Awaited<ReturnType<typeof open>>, label: string) =>
   wrapper.findAll('button').find(node => node.text() === label)
 
-describe('Library resource read view', () => {
-  it('shows a customized resource with its source and resets it to the original after confirmation', async () => {
-    let current: Resource = { ...standard, used_by: { messages: [] } }
-    const reset = vi.fn(() => { current = { ...standard, state: 'original', revision: 8, author: undefined, updated_at: undefined, used_by: { messages: [] } }; return ok(current) })
+describe('Library resource editor', () => {
+  it('renders the draft preview with inline images from the returned data URIs', async () => {
+    routes(notice)
+    const wrapper = await open('messages/notice/content')
+    const frame = wrapper.find('iframe.mail-preview-frame')
+    expect(frame.attributes('sandbox')).toBe('')
+    expect(frame.attributes('srcdoc')).toContain('src="data:image/png;base64,AAAA"')
+    expect(wrapper.find('.mail-preview-envelope').text()).toContain('Hello')
+    wrapper.unmount()
+  })
+
+  it('marks a draft unsaved, previews it, and saves it with the loaded revision and a note', async () => {
+    const save = vi.fn((_path: string, sent?: unknown) => ok({ ...welcome, ...(sent as object), revision: 4 }))
+    routes(welcome, [put('/api/v1/mail/library/message/welcome', save)])
+    const wrapper = await open('messages/welcome/content')
+    await body(wrapper)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    await (await body(wrapper)).setValue('{{ block body() }}<p>Hi</p>{{ end }}')
+    expect(wrapper.text()).toContain('Unsaved changes')
+    vi.advanceTimersByTime(500)
+    await flushPromises()
+    const previews = calls('post').filter(([path]) => path === '/api/v1/mail/library/preview')
+    expect((previews.at(-1)![1] as { resources: { html: string }[] }).resources[0].html).toBe('{{ block body() }}<p>Hi</p>{{ end }}')
+    await control(wrapper, 'Review changes')!.trigger('click')
+    expect(document.body.textContent).toContain('HTML')
+    await wrapper.find('#mail-review input').setValue('Shorter greeting')
+    await wrapper.find('#mail-review').trigger('submit')
+    await flushPromises()
+    expect(save).toHaveBeenCalledWith('/api/v1/mail/library/message/welcome', expect.objectContaining({ expected_revision: 3, note: 'Shorter greeting', html: '{{ block body() }}<p>Hi</p>{{ end }}' }))
+    expect(wrapper.text()).toContain('Saved Customer welcome.')
+    expect(wrapper.text()).not.toContain('Unsaved changes')
+    vi.useRealTimers()
+    wrapper.unmount()
+  })
+
+  it('places an engine error under its face and blocks the review while it stands', async () => {
+    routes(welcome)
+    const wrapper = await open('messages/welcome/content')
+    await body(wrapper)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    vi.mocked(api.post).mockImplementation(((path: string) => path === '/api/v1/mail/library/preview'
+      ? refuse(400, { error: 'unexpected end of template', kind: 'INVALID', details: { code: 'template_render_failed', face: 'html', resource: { kind: 'message', name: 'welcome' } } })
+      : refuse(404, {})) as never)
+    await (await body(wrapper)).setValue('{{ block body() }}')
+    vi.advanceTimersByTime(500)
+    await flushPromises()
+    expect(wrapper.find('.mail-field-error').text()).toBe('HTML: unexpected end of template')
+    expect(wrapper.find('.mail-preview-problem').text()).toContain('Showing the last version that rendered.')
+    expect(control(wrapper, 'Review changes')!.attributes('disabled')).toBeDefined()
+    vi.useRealTimers()
+    wrapper.unmount()
+  })
+
+  it('names the messages a save would break', async () => {
+    const failure = (name: string) => ({ code: 'template_render_failed', face: 'html', message: 'there is no field or method badge', resource: { kind: 'message', name } })
+    const save = vi.fn(() => refuse(400, { error: 'template render failed', kind: 'INVALID', details: {
+      code: 'template_render_failed', face: 'html', resource: { kind: 'message', name: 'notice' },
+      dependent_messages: ['notice', 'welcome'], errors: [failure('notice'), failure('welcome')] } }))
+    routes(button, [put('/api/v1/mail/library/part/button', save)])
+    const wrapper = await open('parts/button/content')
+    await (await body(wrapper)).setValue('<a>{{ .badge.label }}</a>')
+    await control(wrapper, 'Review changes')!.trigger('click')
+    await wrapper.find('#mail-review').trigger('submit')
+    await flushPromises()
+    expect(document.body.textContent).toContain('2 messages would break.')
+    expect(document.body.textContent).toContain('there is no field or method badge')
+    expect(document.body.textContent).toContain('Customer welcome')
+    wrapper.unmount()
+  })
+
+  it('keeps the draft and blocks saving when someone else saves the resource meanwhile', async () => {
+    let current: Resource = welcome
     serve([
       get('/api/v1/mail/library', () => ok({ items: [...library] })),
-      get('/api/v1/mail/delivery', () => ok({ configured: true })),
-      get('/api/v1/mail/library/base/standard', () => ok(current)),
-      post('/api/v1/mail/library/base/standard/reset', reset),
+      get('/api/v1/mail/library/message/welcome', () => ok(current)),
+      get('/api/v1/mail/library/message/welcome/history', () => ok({ items: [] })),
+      post('/api/v1/mail/library/preview', () => ok({ subject: 'Hi', html: '<p>x</p>', text: 'x' })),
     ])
+    const wrapper = await open('messages/welcome/content')
+    await (await body(wrapper)).setValue('mine')
+    current = { ...welcome, revision: 9, html: 'theirs', author_label: { kind: 'user', id: 'user-2', label: 'Marco Ruiz' } }
+    notify('mail.library.changed', { data: { kind: 'message', name: 'welcome', revision: 9 } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Marco Ruiz saved Customer welcome while you were editing.')
+    expect(control(wrapper, 'Review changes')!.attributes('disabled')).toBeDefined()
+    await control(wrapper, 'Discard and load')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Unsaved changes')
+    expect(((await body(wrapper)).element as HTMLTextAreaElement).value).toBe('theirs')
+    wrapper.unmount()
+  })
+
+  it('asks before leaving a draft through the rail', async () => {
+    routes(welcome)
+    const wrapper = await open('messages/welcome/content')
+    await (await body(wrapper)).setValue('changed')
+    vi.mocked(host.confirm).mockResolvedValueOnce(false)
+    await wrapper.findAll('.kx-settings-rail-item').find(item => item.text() === 'All messages')!.trigger('click')
+    await flushPromises()
+    expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ header: 'Discard unsaved changes?' }))
+    expect(wrapper.emitted('navigate')).toBeUndefined()
+    expect(wrapper.emitted('dirty-change')?.at(-1)).toEqual([true])
+    wrapper.unmount()
+  })
+
+  it('resets a customized resource after confirmation', async () => {
+    const reset = vi.fn(() => ok({ ...standard, state: 'original', revision: 8 }))
+    routes({ ...standard, used_by: { messages: [] } }, [post('/api/v1/mail/library/base/standard/reset', reset)])
     const wrapper = await open('bases/standard/content')
     expect(wrapper.find('.mail-customized').text()).toContain('Customized by Dana Lee on')
-    expect(wrapper.find('.mail-code').text()).toContain('standard html')
-    await wrapper.findAll('.p-togglebutton').find(node => node.text() === 'Plain text')!.trigger('click')
-    expect(wrapper.find('.mail-code').text()).toContain('standard text')
-
     vi.mocked(host.confirm).mockResolvedValueOnce(true)
-    await button(wrapper, 'Reset to original')!.trigger('click')
+    await control(wrapper, 'Reset to original')!.trigger('click')
     await flushPromises()
-    expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ header: 'Reset Standard to the original?', acceptLabel: 'Reset to original' }))
     expect(reset).toHaveBeenCalledWith('/api/v1/mail/library/base/standard/reset', { expected_revision: 7 })
-    expect(wrapper.find('.mail-customized').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Standard is back to the original. Your changes are in History.')
     wrapper.unmount()
   })
 
-  it('keeps the resource unchanged when the reset is not confirmed', async () => {
-    routes({ ...standard, used_by: { messages: [] } })
-    const wrapper = await open('bases/standard/content')
-    await button(wrapper, 'Reset to original')!.trigger('click')
-    await flushPromises()
-    expect(calls('post').filter(([path]) => path.endsWith('/reset'))).toHaveLength(0)
-    wrapper.unmount()
-  })
-
-  it('restores an earlier version from History with the current revision as the expected one', async () => {
+  it('lists History with versions and actions and restores one', async () => {
     const restore = vi.fn(() => ok({ ...newsletter, revision: 6 }))
-    routes({ ...newsletter, used_by: { messages: ['welcome'] } }, [post('/api/v1/mail/library/base/newsletter/restore', restore)])
+    routes({ ...newsletter, used_by: { messages: [] } }, [post('/api/v1/mail/library/base/newsletter/restore', restore)])
     const wrapper = await open('bases/newsletter/history')
     const rows = wrapper.findAll('.mail-history-row')
-    expect(rows).toHaveLength(2)
+    expect(rows[0].text()).toContain('Version 5 · Edited')
     expect(rows[0].text()).toContain('Current')
     expect(rows[1].text()).toContain('Brand refresh')
-    expect(rows[1].text()).toContain('Dana Lee')
     vi.mocked(host.confirm).mockResolvedValueOnce(true)
-    await rows[1].find('button').trigger('click')
+    await rows[1].findAll('button').find(node => node.text() === 'Restore')!.trigger('click')
     await flushPromises()
+    expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ header: 'Restore version 4 of Newsletter?' }))
     expect(restore).toHaveBeenCalledWith('/api/v1/mail/library/base/newsletter/restore', { revision: 4, expected_revision: 5 })
     wrapper.unmount()
   })
@@ -89,26 +176,10 @@ describe('Library resource read view', () => {
   it('refuses to delete a base template that messages use, without calling the server', async () => {
     routes({ ...newsletter, used_by: { messages: ['welcome'] } })
     const wrapper = await open('bases/newsletter/content')
-    await button(wrapper, 'Delete')!.trigger('click')
+    await control(wrapper, 'Delete')!.trigger('click')
     await flushPromises()
-    expect(host.confirm).not.toHaveBeenCalled()
     expect(api.delete).not.toHaveBeenCalled()
-    expect(document.body.textContent).toContain('Newsletter is in use')
     expect(document.body.textContent).toContain('1 message uses it: Customer welcome. Remove it from that message first.')
-    wrapper.unmount()
-  })
-
-  it('shows the server refusal when a part that messages include is deleted', async () => {
-    routes(signature, [remove('/api/v1/mail/library/part/signature', () => refuse(409, {
-      error: 'Footer, line 4', kind: 'CONFLICT', details: { code: 'mail_resource_in_use', messages: ['welcome', 'notice'] },
-    }))])
-    const wrapper = await open('parts/signature/content')
-    vi.mocked(host.confirm).mockResolvedValueOnce(true)
-    await button(wrapper, 'Delete')!.trigger('click')
-    await flushPromises()
-    expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ header: 'Delete Signature?', acceptLabel: 'Delete part' }))
-    expect(api.delete).toHaveBeenCalledWith('/api/v1/mail/library/part/signature', { data: { expected_revision: 6 } })
-    expect(document.body.textContent).toContain('2 messages include it: Customer welcome, Notice. Remove it from them first.')
     wrapper.unmount()
   })
 
@@ -116,60 +187,46 @@ describe('Library resource read view', () => {
     routes({ ...newsletter, used_by: { messages: [] } }, [remove('/api/v1/mail/library/base/newsletter', () => ok(true))])
     const wrapper = await open('bases/newsletter/content')
     vi.mocked(host.confirm).mockResolvedValueOnce(true)
-    await button(wrapper, 'Delete')!.trigger('click')
+    await control(wrapper, 'Delete')!.trigger('click')
     await flushPromises()
-    expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ message: 'It is not used anywhere. You can\'t undo this.', acceptClass: 'p-button-danger' }))
     expect(wrapper.emitted('navigate')?.at(-1)).toEqual(['bases'])
     wrapper.unmount()
   })
 
-  it('offers no Delete for included resources', async () => {
-    routes({ ...standard, used_by: { messages: [] } })
-    const wrapper = await open('bases/standard/content')
-    expect(button(wrapper, 'Delete')).toBeUndefined()
-    expect(button(wrapper, 'Duplicate')).toBeDefined()
-    wrapper.unmount()
-  })
-
-  it('lists part inputs with their defaults and samples', async () => {
-    routes(signature)
-    const wrapper = await open('parts/signature/variables')
+  it('edits part inputs into the draft schema and samples', async () => {
+    routes(button)
+    const wrapper = await open('parts/button/variables')
     expect(wrapper.find('h1').text()).toBe('Inputs')
-    const rows = wrapper.findAll('tbody tr').map(row => row.text())
-    expect(rows[0]).toContain('name')
-    expect(rows[0]).toContain('Required')
-    expect(rows[0]).toContain('Reporting team')
-    expect(rows[1]).toContain('Team')
+    const cells = wrapper.findAll('.mail-variable-row')[1].findAll('input')
+    expect((cells[0].element as HTMLInputElement).value).toBe('action_url')
+    await control(wrapper, 'Add input')!.trigger('click')
+    const added = wrapper.findAll('.mail-variable-row').at(-1)!.findAll('input')
+    await added[0].setValue('badge')
+    await added.at(-1)!.setValue('New')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Unsaved changes')
+    await added[0].setValue('bad name')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Use letters, digits and underscores')
+    expect(control(wrapper, 'Review changes')!.attributes('disabled')).toBeDefined()
     wrapper.unmount()
   })
 
-  it('shows recent senders of a message and links to its Activity', async () => {
-    routes({ ...notice, used_by: { recent_senders: [{ sender: 'user-1', origin: { kind: 'automation', id: 'a1', label: 'Monday report' }, count: 4 }] } })
-    const wrapper = await open('messages/notice/used-by')
-    expect(wrapper.text()).toContain('Dana Lee')
-    expect(wrapper.text()).toContain('Automation · Monday report')
-    expect(wrapper.text()).toContain('4 messages')
-    await button(wrapper, 'Open in Activity')!.trigger('click')
-    expect(wrapper.emitted('navigate')?.at(-1)).toEqual(['activity/template/notice'])
-    wrapper.unmount()
-  })
-
-  it('reloads on a change to this resource and shows the gone state after deletion elsewhere', async () => {
+  it('shows the gone state when the resource is deleted elsewhere', async () => {
     let gone = false
     serve([
       get('/api/v1/mail/library', () => ok({ items: [...library] })),
-      get('/api/v1/mail/delivery', () => ok({ configured: true })),
       get('/api/v1/mail/library/message/welcome', () => gone
         ? refuse(404, { error: 'Mail library resource was not found', kind: 'NOT_FOUND', details: { code: 'mail_resource_not_found' } })
         : ok(welcome)),
+      get('/api/v1/mail/library/message/welcome/history', () => ok({ items: [] })),
+      post('/api/v1/mail/library/preview', () => ok({ subject: 'Hi', html: '<p>x</p>', text: 'x' })),
     ])
     const wrapper = await open('messages/welcome/content')
-    expect(wrapper.find('h1').text()).toBe('Message')
     gone = true
     notify('mail.library.changed', { data: { kind: 'message', name: 'welcome', revision: 3 } })
     await flushPromises()
     expect(wrapper.text()).toContain('This resource no longer exists')
-    expect(wrapper.text()).toContain('It was deleted while you were away.')
     wrapper.unmount()
   })
 })

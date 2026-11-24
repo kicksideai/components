@@ -1,10 +1,25 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { ApiError, errorCode } from './api'
-import type { MessageStatus, Origin, Resource, ResourceKind } from './types'
+import type { MessageStatus, Origin, PrincipalLabel, ResourceKind, RevisionAction } from './types'
 
-export const kindLabels: Record<ResourceKind, string> = { message: 'Message', base: 'Base template', part: 'Part' }
-export const kindPlurals: Record<ResourceKind, string> = { message: 'Messages', base: 'Base templates', part: 'Parts' }
-export const kindIcons: Record<ResourceKind, string> = { message: 'tabler:mail', base: 'tabler:layout', part: 'tabler:puzzle' }
+export const kindLabels: Record<ResourceKind, string> = { message: 'Message', base: 'Base template', part: 'Part', asset: 'Image' }
+export const kindPlurals: Record<ResourceKind, string> = { message: 'Messages', base: 'Base templates', part: 'Parts', asset: 'Assets' }
+export const kindIcons: Record<ResourceKind, string> = { message: 'tabler:mail', base: 'tabler:layout', part: 'tabler:puzzle', asset: 'tabler:photo' }
+
+export const actionLabels: Record<RevisionAction, string> = {
+  created: 'Created', edited: 'Edited', base_changed: 'Base template changed', reset: 'Reset to the original',
+  restored: 'Restored', previous_change: 'Changed',
+}
+
+export function personLabel(label: PrincipalLabel | undefined, id?: string): string {
+  return label?.label ?? id ?? ''
+}
+
+export function bytes(size: number | undefined): string {
+  if (size === undefined) return ''
+  if (size < 1024) return `${size} B`
+  return size < 1024 * 1024 ? `${Math.round(size / 1024)} KB` : `${(size / 1024 / 1024).toFixed(1)} MB`
+}
 
 export const statusLabels: Record<MessageStatus, string> = { queued: 'Pending', sent: 'Sent', failed: 'Failed' }
 export const statusSeverity: Record<MessageStatus, 'secondary' | 'success' | 'danger'> = { queued: 'secondary', sent: 'success', failed: 'danger' }
@@ -16,6 +31,7 @@ const originKinds: Record<string, string> = {
 export function originText(origin: Origin | undefined): string {
   if (!origin) return ''
   const kind = originKinds[origin.kind] ?? origin.kind
+  if (origin.kind === 'test' || origin.kind === 'resend') return kind
   return origin.label ? `${kind} · ${origin.label}` : kind
 }
 
@@ -66,10 +82,6 @@ export function plural(count: number, one: string, many = one + 's'): string {
   return `${count} ${count === 1 ? one : many}`
 }
 
-export function isCustomizable(resource: Pick<Resource, 'state'>): boolean {
-  return resource.state !== 'created'
-}
-
 const errorCopy: Record<string, string> = {
   mail_revision_conflict: 'Someone saved this resource while you were looking at it. The latest version is shown now; review it and try again.',
   mail_resource_not_found: 'This resource no longer exists.',
@@ -83,6 +95,8 @@ const errorCopy: Record<string, string> = {
   mail_projection_failed: 'The change was saved, but email is still using the previous version. Try again in a moment.',
   duplicate_template_name: 'Two installed modules include a resource with this name. Ask an administrator to remove one of them.',
   mail_resource_collision: 'An installed module now includes a resource with this name. Rename yours to keep both.',
+  invalid_mail_asset: 'Use a PNG, JPEG or GIF image of 1 MB or less.',
+  mail_resource_in_use: 'Messages still use this resource. Remove it from them first.',
 }
 
 export function describe(error: unknown, fallback: string): string {

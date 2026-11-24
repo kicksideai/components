@@ -10,6 +10,7 @@ describe('Mail routes', () => {
       { name: 'library', section: 'bases' },
       { name: 'library', section: 'parts' },
       { name: 'library', section: 'assets' },
+      { name: 'library', section: 'assets', asset: 'event-banner' },
       { name: 'resource', kind: 'message', resource: 'weekly-report', section: 'variables' },
       { name: 'resource', kind: 'base', resource: 'standard', section: 'history' },
       { name: 'resource', kind: 'part', resource: 'footer', section: 'used-by' },

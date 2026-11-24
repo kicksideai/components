@@ -20,8 +20,8 @@ function routes(extra: Parameters<typeof serve>[0] = []) {
     get('/api/v1/mail/delivery', () => ok({ configured: true })),
     get('/api/v1/mail/activity', (_path, options) => {
       const params = (options as { params: Record<string, string> }).params
-      if (params.status === 'failed') return ok({ items: [failed], has_more: false })
-      return ok({ items: [failed, sent], has_more: false })
+      const items = params.q ? [sent].filter(item => item.subject.toLowerCase().includes(params.q)) : params.status === 'failed' ? [failed] : [failed, sent]
+      return ok({ items, has_more: false, total: items.length, failed_today: 1 })
     }),
     get(`/api/v1/mail/activity/${failedId}`, () => ok(failed)),
     ...extra,
@@ -47,11 +47,13 @@ describe('Mail activity', () => {
     expect(rows[0]).toContain('Dana Lee')
     expect(rows[0]).toContain('Workflow · Overdue invoices')
     expect(rows[1]).toContain('To team@example.org +1')
-    expect(wrapper.find('.kx-notice.error').text()).toBe('1 message failed today. The service does not accept mail from this sender yet.')
+    expect(wrapper.find('.kx-notice.error').text()).toContain('1 message failed today.')
+    expect(wrapper.find('.mail-count').text()).toBe('2 messages')
     wrapper.unmount()
   })
 
-  it('passes status, message and period filters to the server and searches the loaded page', async () => {
+  it('passes status, message, period and search to the server', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     routes()
     const wrapper = await open('activity/template/notice')
     const pages = () => calls('get').filter(([path]) => path === '/api/v1/mail/activity')
@@ -63,7 +65,11 @@ describe('Mail activity', () => {
     expect(last().status).toBe('sent')
     expect(Number(last().since)).toBeGreaterThan(Date.now() - 31 * 24 * 60 * 60 * 1000)
     await wrapper.find('input[type="search"]').setValue('weekly')
+    vi.advanceTimersByTime(300)
+    await flushPromises()
+    expect(last().q).toBe('weekly')
     expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    vi.useRealTimers()
     wrapper.unmount()
   })
 
@@ -84,17 +90,17 @@ describe('Mail activity', () => {
     wrapper.unmount()
   })
 
-  it('shows the neutral reason and no service details to a sender without delivery administration', async () => {
+  it('shows a sender their own email with the neutral reason and no service details', async () => {
     const neutral = { ...failed, driver_id: undefined, provider_message_id: undefined,
       last_error: { kind: 'INVALID', code: 'message_rejected', message: 'Ask a mail administrator to check why the message was refused.' } }
     serve([
       get('/api/v1/mail/library', () => ok({ items: [] })),
-      get('/api/v1/mail/delivery', () => refuse(403, { kind: 'PERMISSION_DENIED', error: 'forbidden' })),
-      get('/api/v1/mail/activity', () => refuse(403, { kind: 'PERMISSION_DENIED', error: 'forbidden', details: { code: 'mail_delivery_denied' } })),
+      get('/api/v1/mail/capabilities', () => ok({ send: true, edit_library: true, administer_delivery: false })),
+      get('/api/v1/mail/activity', () => ok({ items: [neutral], has_more: false, total: 1, failed_today: 1 })),
       get(`/api/v1/mail/activity/${failedId}`, () => ok(neutral)),
     ])
     const wrapper = await open(`activity/${failedId}`)
-    expect(wrapper.text()).toContain('Ask an administrator to grant you access to mail delivery.')
+    expect(wrapper.find('.system-section-head p').text()).toBe('Email you sent in the last 30 days.')
     const drawer = wrapper.find('.mail-drawer-body')
     expect(drawer.find('.mail-failure').text()).toContain('Ask a mail administrator to check why the message was refused.')
     expect(drawer.text()).not.toContain('Delivery service')

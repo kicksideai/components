@@ -4,29 +4,30 @@ import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { computed, ref, shallowRef } from 'vue'
 import { isDenied, library } from '../api'
 import { describe } from '../copy'
-import { resolvePrincipals } from '../principals'
 import { useLibraryChanges } from '../realtime'
-import type { Resource, ResourceKind, ResourceState } from '../types'
+import type { LibraryRow, ResourceKind } from '../types'
 
-export type StateFilter = 'all' | ResourceState
+export type StateFilter = 'all' | 'original' | 'customized' | 'created'
 
+// Every resource's summary row, for titles, pickers and the Insert dialog.
 export function useLibrary() {
-  const resources = shallowRef<Resource[]>([])
+  const resources = shallowRef<LibraryRow[]>([])
   const loading = ref(true), loaded = ref(false), denied = ref(false)
   const error = ref('')
+  const version = ref(0)
   const begin = latestRequest()
 
   async function load() {
     const current = begin()
     if (!loaded.value) loading.value = true
     try {
-      const items = await library.list()
+      const items = await library.all()
       if (!current()) return
       resources.value = items
       error.value = ''
       denied.value = false
       loaded.value = true
-      void resolvePrincipals(items.map(item => item.author))
+      version.value++
     } catch (failure) {
       if (!current()) return
       denied.value = isDenied(failure)
@@ -40,24 +41,9 @@ export function useLibrary() {
   useHostVisibilityRefresh(load)
 
   const byKey = computed(() => new Map(resources.value.map(item => [item.kind + '/' + item.name, item])))
-  const usage = computed(() => {
-    const counts = new Map<string, string[]>()
-    for (const item of resources.value) {
-      if (item.kind !== 'message' || !item.base) continue
-      const users = counts.get(item.base) ?? []
-      users.push(item.name)
-      counts.set(item.base, users)
-    }
-    return counts
-  })
   const find = (kind: ResourceKind, name: string) => byKey.value.get(kind + '/' + name)
+  const ofKind = (kind: ResourceKind) => resources.value.filter(item => item.kind === kind)
+    .sort((a, b) => a.title.localeCompare(b.title))
 
-  return { resources, loading, loaded, denied, error, load, find, usage }
-}
-
-export function matches(resource: Resource, query: string): boolean {
-  const q = query.trim().toLowerCase()
-  if (!q) return true
-  return [resource.title, resource.name, resource.description, resource.subject ?? '', resource.html, resource.text]
-    .some(value => value.toLowerCase().includes(q))
+  return { resources, loading, loaded, denied, error, version, load, find, ofKind }
 }

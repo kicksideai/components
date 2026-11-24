@@ -2,16 +2,18 @@
 import { inject, type InjectionKey, type Ref } from 'vue'
 import type { useLibrary } from './library/useLibrary'
 import type { Route } from './route'
-import type { DeliveryStatus, ResourceKey, ResourceKind } from './types'
+import type { Capabilities, DeliveryStatus, ResourceKey, TemplateKind } from './types'
 
-export interface CreateIntent { kind?: ResourceKind; from?: ResourceKey }
+export interface CreateIntent { kind?: TemplateKind; from?: ResourceKey }
 
 export interface MailContext {
   library: ReturnType<typeof useLibrary>
+  capabilities: Ref<Capabilities | undefined>
   delivery: Ref<DeliveryStatus | undefined>
-  deliveryAdmin: Ref<boolean>
   go: (route: Route) => void
   create: (intent: CreateIntent) => void
+  upload: () => void
+  setDirty: (dirty: boolean) => void
 }
 
 export const mailContextKey: InjectionKey<MailContext> = Symbol('mail-admin')

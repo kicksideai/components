@@ -2,8 +2,8 @@
 import { api } from '@wippy-fe/proxy'
 import { ApiError, request } from '../../../admin-http'
 import type {
-  DeliveryStatus, Items, LogMessage, MessagePage, MessageStatus, Resource, ResourceKey, ResourceKind,
-  ResourceState, Revision, SendReceipt,
+  Capabilities, DeliveryStatus, DraftRender, Items, LibraryPage, LibraryRow, LogMessage, MessagePage, MessageStatus,
+  Resource, ResourceContent, ResourceKey, ResourceKind, ResourceState, Revision, SendReceipt,
 } from './types'
 
 export { ApiError }
@@ -11,9 +11,10 @@ export { ApiError }
 const BASE = '/api/v1/mail'
 const resourcePath = (key: ResourceKey) => `${BASE}/library/${key.kind}/${encodeURIComponent(key.name)}`
 
-export interface LibraryFilter { kind?: ResourceKind; state?: ResourceState; q?: string }
-export interface ActivityFilter { status?: MessageStatus; message?: string; since?: number; cursor?: string; limit?: number }
-export interface CreateRequest { kind: ResourceKind; name: string; title: string; description: string; from: ResourceKey; note?: string }
+export interface LibraryFilter { kind?: ResourceKind; state?: ResourceState; q?: string; cursor?: string; limit?: number }
+export interface ActivityFilter { status?: MessageStatus; message?: string; since?: number; q?: string; cursor?: string; limit?: number }
+export interface CopyRequest { kind: ResourceKind; name: string; title: string; description: string; from: ResourceKey; note?: string }
+export interface AssetRequest { name: string; upload_id: string; title?: string; description?: string; width?: number; height?: number; note?: string }
 
 function params(values: Record<string, string | number | undefined>): Record<string, string> {
   const out: Record<string, string> = {}
@@ -21,19 +22,68 @@ function params(values: Record<string, string | number | undefined>): Record<str
   return out
 }
 
+// The editable fields a save or preview sends; server-owned fields stay out.
+export function editable(content: ResourceContent): ResourceContent {
+  const { kind, name, title, description, html, text, base, subject, schema, samples } = content
+  return kind === 'message'
+    ? { kind, name, title, description, html, text, base, subject, schema, samples }
+    : { kind, name, title, description, html, text, schema, samples }
+}
+
 export const library = {
-  list: (filter: LibraryFilter = {}) =>
-    request<Items<Resource>>(() => api.get(`${BASE}/library`, { params: params({ ...filter }) }), 'Mail library').then(r => r.items),
+  page: (filter: LibraryFilter = {}) =>
+    request<LibraryPage>(() => api.get(`${BASE}/library`, { params: params({ view: 'summary', limit: 100, ...filter }) }), 'Mail library'),
+  async all(filter: Omit<LibraryFilter, 'cursor'> = {}): Promise<LibraryRow[]> {
+    const rows: LibraryRow[] = []
+    let cursor: string | undefined
+    do {
+      const page = await library.page({ ...filter, cursor })
+      rows.push(...page.items)
+      cursor = page.next_cursor
+    } while (cursor)
+    return rows
+  },
+  // Images carry no template source, so their full rows are small enough to list whole.
+  assets: (q?: string) =>
+    request<Items<Resource>>(() => api.get(`${BASE}/library`, { params: params({ kind: 'asset', q }) }), 'Assets').then(r => r.items),
   get: (key: ResourceKey) => request<Resource>(() => api.get(resourcePath(key)), 'Mail resource'),
   history: (key: ResourceKey) =>
     request<Items<Revision>>(() => api.get(`${resourcePath(key)}/history`), 'Resource history').then(r => r.items),
-  create: (body: CreateRequest) => request<Resource>(() => api.post(`${BASE}/library`, body), 'Create resource'),
+  copy: (body: CopyRequest) => request<Resource>(() => api.post(`${BASE}/library`, body), 'Create resource'),
+  create: (content: ResourceContent, note?: string) =>
+    request<Resource>(() => api.post(`${BASE}/library`, { ...editable(content), note }), 'Create resource'),
+  update: (content: ResourceContent, expected: number, note?: string) =>
+    request<Resource>(() => api.put(resourcePath(content), { ...editable(content), expected_revision: expected, note }), 'Save resource'),
   reset: (key: ResourceKey, expected: number) =>
     request<Resource>(() => api.post(`${resourcePath(key)}/reset`, { expected_revision: expected }), 'Reset resource'),
   restore: (key: ResourceKey, revision: number, expected: number) =>
     request<Resource>(() => api.post(`${resourcePath(key)}/restore`, { revision, expected_revision: expected }), 'Restore revision'),
   remove: (key: ResourceKey, expected: number) =>
     request<boolean>(() => api.delete(resourcePath(key), { data: { expected_revision: expected } }), 'Delete resource'),
+  preview: (message: string, resources: ResourceContent[]) =>
+    request<DraftRender>(() => api.post(`${BASE}/library/preview`, resources.length ? { message, resources: resources.map(editable) } : { message }), 'Preview'),
+  sendTest: (message: string) => request<SendReceipt>(() => api.post(`${BASE}/library/send-test`, { message }), 'Send test'),
+  addAsset: (body: AssetRequest) => request<Resource>(() => api.post(`${BASE}/library`, { kind: 'asset', ...body }), 'Add image'),
+  replaceAsset: (body: AssetRequest, expected: number) =>
+    request<Resource>(() => api.put(`${BASE}/library/asset/${encodeURIComponent(body.name)}`, { ...body, expected_revision: expected }), 'Replace image'),
+}
+
+export const uploads = {
+  // The platform upload flow: the file becomes the caller's upload, which Mail adopts as an asset.
+  async add(file: File): Promise<string> {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('metadata', JSON.stringify({ filename: file.name }))
+    return request<{ uuid: string }>(async () => {
+      const response = await api.post('/api/v1/uploads', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const body = response.data as { success?: boolean; uuid?: string; error?: string }
+      return { data: body?.success && body.uuid ? { success: true as const, data: { uuid: body.uuid } } : { success: false as const, error: body?.error } }
+    }, 'Upload').then(result => result.uuid)
+  },
+}
+
+export const access = {
+  capabilities: () => request<Capabilities>(() => api.get(`${BASE}/capabilities`), 'Mail access'),
 }
 
 export const activity = {

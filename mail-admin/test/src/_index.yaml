@@ -159,6 +159,7 @@ entries:
       - { name: "kickside.mail.security:user_security_scope", value: "app:user" }
       - { name: "kickside.mail:target_db", value: "app:db" }
       - { name: "kickside.mail:api_router", value: "app:api" }
+      - { name: "kickside.mail:library_editor_grant", value: { subject_id: "app:editor", subject_type: group, access_mask: 2 } }
   - name: dep.mail_admin
     kind: ns.dependency
     component: kickside/mail-admin

@@ -9,15 +9,17 @@ import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import Textarea from 'primevue/textarea'
 import { errorCode, library as libraryApi } from '../api'
+import { blank } from '../content'
 import { useMail, type CreateIntent } from '../context'
 import { describe, kindIcons, kindLabels, namePattern, slug } from '../copy'
-import type { ResourceKind } from '../types'
+import type { TemplateKind } from '../types'
 
 const props = defineProps<{ visible: boolean; intent: CreateIntent }>()
 const emit = defineEmits<{ close: [] }>()
 const { library, go } = useMail()
 
-const kind = ref<ResourceKind>('message')
+const kind = ref<TemplateKind>('message')
+const BLANK = '\u0000blank'
 const source = ref('')
 const title = ref(''), reference = ref(''), description = ref('')
 const referenceEdited = ref(false)
@@ -27,14 +29,15 @@ const ids = { title: useId(), reference: useId(), description: useId(), source: 
 const kinds = (['message', 'base', 'part'] as const).map(value => ({ value, label: kindLabels[value] }))
 const fixedKind = computed(() => !!props.intent.from)
 
-const sources = computed(() => library.resources.value
-  .filter(item => item.kind === kind.value)
-  .sort((a, b) => a.title.localeCompare(b.title))
-  .map(item => ({ value: item.name, label: item.title })))
-const chosen = computed(() => library.find(kind.value, source.value))
+const sources = computed(() => [
+  { value: BLANK, label: 'Blank' },
+  ...library.ofKind(kind.value).map(item => ({ value: item.name, label: item.title })),
+])
+const chosen = computed(() => source.value === BLANK || !!library.find(kind.value, source.value))
 
 function startFrom(name: string) {
   source.value = name
+  if (name === BLANK) return
   const item = library.find(kind.value, name)
   if (!item) return
   description.value = item.description
@@ -46,15 +49,17 @@ function startFrom(name: string) {
 
 watch(() => props.visible, open => {
   if (!open) return
-  kind.value = props.intent.from?.kind ?? props.intent.kind ?? 'message'
+  kind.value = (props.intent.from?.kind as TemplateKind | undefined) ?? props.intent.kind ?? 'message'
   title.value = reference.value = description.value = source.value = ''
   error.value = referenceError.value = ''
   referenceEdited.value = false
   if (props.intent.from) startFrom(props.intent.from.name)
+  else source.value = BLANK
 }, { immediate: true })
 watch(kind, () => {
   if (props.intent.from) return
-  source.value = description.value = ''
+  source.value = BLANK
+  description.value = ''
 })
 watch(title, value => { if (!referenceEdited.value) reference.value = slug(value) })
 
@@ -75,13 +80,15 @@ async function submit() {
   busy.value = true
   error.value = ''
   try {
-    const created = await libraryApi.create({
-      kind: kind.value, name: reference.value, title: title.value.trim(), description: description.value.trim(),
-      from: { kind: kind.value, name: source.value },
-    })
+    const created = source.value === BLANK
+      ? await libraryApi.create(blank(kind.value, reference.value, title.value.trim(), description.value.trim()))
+      : await libraryApi.copy({
+        kind: kind.value, name: reference.value, title: title.value.trim(), description: description.value.trim(),
+        from: { kind: kind.value, name: source.value },
+      })
     await library.load()
     emit('close')
-    go({ name: 'resource', kind: created.kind, resource: created.name, section: 'content' })
+    go({ name: 'resource', kind: created.kind as TemplateKind, resource: created.name, section: 'content' })
   } catch (failure) {
     if (errorCode(failure) === 'mail_revision_conflict') referenceError.value = `A ${kindLabels[kind.value].toLowerCase()} with this reference already exists. Choose another.`
     else error.value = describe(failure, 'The resource could not be created.')
@@ -101,7 +108,7 @@ const heading = computed(() => props.intent.from ? `Duplicate ${library.find(pro
       <span class="kx-modal-head-icon"><Icon :icon="kindIcons[kind]" aria-hidden="true" /></span>
       <span class="kx-modal-head-text">
         <span class="kx-modal-head-title">{{ heading }}</span>
-        <span class="kx-modal-head-sub">It starts as a copy and is yours to change.</span>
+        <span class="kx-modal-head-sub">{{ source === BLANK ? 'It starts empty and opens in the editor.' : 'It starts as a copy and is yours to change.' }}</span>
       </span>
     </template>
     <form :id="ids.hint" class="mail-form" @submit.prevent="submit">

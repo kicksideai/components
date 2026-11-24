@@ -9,8 +9,7 @@ import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { activity, isDenied, isMissing } from '../api'
 import { useMail } from '../context'
-import { describe, fullDate, originText, statusLabels, statusSeverity } from '../copy'
-import { principalLabel, resolvePrincipals } from '../principals'
+import { describe, fullDate, originText, personLabel, statusLabels, statusSeverity } from '../copy'
 import { useMessageChanges } from '../realtime'
 import type { LogMessage, SendReceipt } from '../types'
 
@@ -37,7 +36,6 @@ async function load() {
     message.value = item
     error.value = ''
     missing.value = denied.value = false
-    void resolvePrincipals([item.sender])
   } catch (failure) {
     if (!current()) return
     message.value = undefined
@@ -171,7 +169,7 @@ const technical = computed(() => {
             <span v-else>{{ templateTitle || 'Written directly' }}</span>
           </dd>
           <dt>Sent by</dt>
-          <dd>{{ principalLabel(message.sender) }}<span v-if="message.origin" class="mail-sub">{{ originText(message.origin) }}</span></dd>
+          <dd>{{ personLabel(message.sender_label, message.sender) }}<span v-if="message.origin" class="mail-sub">{{ originText(message.origin) }}</span></dd>
           <template v-if="attachments.length"><dt>Attachments</dt><dd>{{ attachments.join(', ') }}</dd></template>
           <template v-if="message.resend_of"><dt>Sent again from</dt><dd><button type="button" class="mail-text-link" @click="go({ name: 'activity', message: message.resend_of })">The original message</button></dd></template>
         </dl>

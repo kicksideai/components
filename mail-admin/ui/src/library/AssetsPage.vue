@@ -1,11 +1,125 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import { computed, ref, shallowRef, watch } from 'vue'
+import { Icon } from '@iconify/vue'
+import Button from 'primevue/button'
+import Column from 'primevue/column'
+import DataTable from 'primevue/datatable'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import InputText from 'primevue/inputtext'
+import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import EmptyState from '@kickside/ui-kit/EmptyState.vue'
 import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
+import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
+import { isDenied, library as libraryApi } from '../api'
+import { useMail } from '../context'
+import { bytes, describe, plural, shortDate } from '../copy'
+import { useLibraryChanges } from '../realtime'
+import type { Resource } from '../types'
+import AssetDrawer from './AssetDrawer.vue'
+import AssetTile from './AssetTile.vue'
+import ResourceSource from './ResourceSource.vue'
+
+const props = defineProps<{ asset?: string }>()
+const { library, go, upload } = useMail()
+
+const query = ref(''), search = ref('')
+let timer: ReturnType<typeof setTimeout> | undefined
+watch(query, value => { clearTimeout(timer); timer = setTimeout(() => { search.value = value.trim() }, 250) })
+
+const rows = shallowRef<Resource[]>([])
+const loading = ref(true), loaded = ref(false), denied = ref(false)
+const error = ref('')
+const begin = latestRequest()
+async function load() {
+  const current = begin()
+  loading.value = true
+  try {
+    const items = await libraryApi.assets(search.value || undefined)
+    if (!current()) return
+    rows.value = items.sort((a, b) => a.title.localeCompare(b.title))
+    error.value = ''
+    denied.value = false
+    loaded.value = true
+  } catch (failure) {
+    if (!current()) return
+    denied.value = isDenied(failure)
+    error.value = denied.value ? '' : describe(failure, 'Assets could not be loaded.')
+  } finally {
+    if (current()) loading.value = false
+  }
+}
+watch(search, () => { void load() })
+useHostVisibilityRefresh(load)
+useLibraryChanges(change => { if (change.kind === 'asset') void load() })
+
+const total = computed(() => rows.value.reduce((sum, row) => sum + (row.asset?.size ?? 0), 0))
+const countLabel = computed(() => `${plural(rows.value.length, 'image')} · ${bytes(total.value)}`)
+function size(row: Resource): string {
+  const asset = row.asset
+  if (!asset) return ''
+  const box = asset.width && asset.height ? `${asset.width} × ${asset.height} · ` : ''
+  return box + bytes(asset.size)
+}
+function usedBy(row: Resource): string {
+  const count = library.find('asset', row.name)?.used_by?.messages ?? 0
+  return count ? plural(count, 'message') : '—'
+}
+function open(row: Resource) { go({ name: 'library', section: 'assets', asset: row.name }) }
 </script>
 
 <template>
-  <SettingsSectionHead title="Assets" description="Images that templates show inline. Replace one and every template that uses it changes." />
-  <EmptyState icon="tabler:photo" title="Assets are not available yet"
-    hint="This workspace cannot keep email images yet. Templates can show images hosted at a web address in the meantime." />
+  <SettingsSectionHead title="Assets" description="Images that templates show inline. Replace one and every template that uses it changes.">
+    <template #actions>
+      <Button label="Upload image" @click="upload()">
+        <template #icon><Icon icon="tabler:upload" aria-hidden="true" /></template>
+      </Button>
+    </template>
+  </SettingsSectionHead>
+
+  <p v-if="denied" class="kx-notice warn mail-block" role="alert">
+    <Icon icon="tabler:lock" aria-hidden="true" />Ask an administrator to grant you access to the mail library.
+  </p>
+  <div v-else-if="error" class="kx-err mail-error" role="alert">
+    <span>{{ error }}</span>
+    <Button label="Retry" severity="secondary" outlined size="small" @click="load()" />
+  </div>
+  <p v-else-if="loading && !loaded" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading assets…</p>
+  <EmptyState v-else-if="loaded && !rows.length && !search" icon="tabler:photo" title="No images yet"
+    hint="Upload a logo or picture to show it in email. Replace it later and every template changes." cta="Upload image" cta-icon="tabler:upload" @cta="upload()" />
+  <template v-else-if="loaded">
+    <div class="mail-toolbar">
+      <IconField class="mail-search">
+        <InputIcon><Icon icon="tabler:search" aria-hidden="true" /></InputIcon>
+        <InputText v-model="query" type="search" aria-label="Search assets" placeholder="Search assets…" />
+      </IconField>
+      <span class="mail-count" role="status">{{ countLabel }}</span>
+    </div>
+    <p v-if="!rows.length" class="mail-muted mail-nomatch" role="status">Nothing matches. Try another name.</p>
+    <DataTable v-else :value="rows" data-key="name" class="mail-table" row-hover :pt="{ table: { 'aria-label': 'Assets' } }" @row-click="event => open(event.data)">
+      <Column header="Image" header-class="mail-col-thumb" body-class="mail-col-thumb">
+        <template #body="{ data }"><AssetTile :asset="data.asset" /></template>
+      </Column>
+      <Column header="Name" header-class="mail-col-name" body-class="mail-col-name">
+        <template #body="{ data }">
+          <button type="button" class="mail-name" @click.stop="open(data)">{{ data.title }}</button>
+          <span class="mail-sub"><span class="mail-mono-block">{{ data.name }}</span><template v-if="data.asset?.filename"> · {{ data.asset.filename }}</template></span>
+        </template>
+      </Column>
+      <Column header="Size" header-class="mail-col-updated" body-class="mail-col-updated">
+        <template #body="{ data }"><span class="mail-muted">{{ size(data) }}</span></template>
+      </Column>
+      <Column header="Source" header-class="mail-col-source" body-class="mail-col-source">
+        <template #body="{ data }"><ResourceSource :resource="data" /></template>
+      </Column>
+      <Column header="Used by" header-class="mail-col-used" body-class="mail-col-used">
+        <template #body="{ data }">{{ usedBy(data) }}</template>
+      </Column>
+      <Column header="Updated" header-class="mail-col-updated" body-class="mail-col-updated">
+        <template #body="{ data }"><span class="mail-muted">{{ data.state === 'original' ? '—' : shortDate(data.updated_at) }}</span></template>
+      </Column>
+    </DataTable>
+  </template>
+  <AssetDrawer :name="props.asset" @close="go({ name: 'library', section: 'assets' })" />
 </template>

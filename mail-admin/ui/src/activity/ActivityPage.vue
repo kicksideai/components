@@ -16,20 +16,21 @@ import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { activity, isDenied } from '../api'
 import { useMail } from '../context'
-import { describe, originText, plural, recipients, statusLabels, statusSeverity, todayStart, when } from '../copy'
-import { principalLabel, resolvePrincipals } from '../principals'
+import { describe, originText, personLabel, plural, recipients, statusLabels, statusSeverity, when } from '../copy'
 import { useMessageChanges } from '../realtime'
 import type { LogMessage, MessageStatus } from '../types'
 import MessageDrawer from './MessageDrawer.vue'
 
 const props = defineProps<{ message?: string; template?: string }>()
-const { library, go } = useMail()
+const { library, go, capabilities } = useMail()
 
 type StatusFilter = 'all' | MessageStatus
 const status = ref<StatusFilter>('all')
 const template = ref<string | null>(props.template ?? null)
 const period = ref(30)
-const query = ref('')
+const query = ref(''), search = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+watch(query, value => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { search.value = value.trim() }, 250) })
 watch(() => props.template, value => { if (value !== undefined) template.value = value })
 
 const statuses: { label: string; value: StatusFilter }[] = [
@@ -50,6 +51,7 @@ function filter(next?: string) {
     status: status.value === 'all' ? undefined : status.value,
     message: template.value || undefined,
     since: Date.now() - period.value * 24 * 60 * 60 * 1000,
+    q: search.value || undefined,
     cursor: next,
   }
 }
@@ -62,10 +64,11 @@ async function load() {
     if (!current()) return
     items.value = page.items
     cursor.value = page.next_cursor
+    total.value = page.total
+    failedToday.value = page.failed_today ?? 0
     error.value = ''
     denied.value = false
     loaded.value = true
-    void resolvePrincipals(page.items.map(item => item.sender))
   } catch (failure) {
     if (!current()) return
     denied.value = isDenied(failure)
@@ -84,7 +87,6 @@ async function loadMore() {
     if (!current()) return
     items.value = [...items.value, ...page.items]
     cursor.value = page.next_cursor
-    void resolvePrincipals(page.items.map(item => item.sender))
   } catch (failure) {
     if (current()) error.value = describe(failure, 'More activity could not be loaded.')
   } finally {
@@ -92,37 +94,16 @@ async function loadMore() {
   }
 }
 
-const failedToday = shallowRef<{ count: number; capped: boolean; latest?: LogMessage }>({ count: 0, capped: false })
-const beginHealth = latestRequest()
-async function loadHealth() {
-  const current = beginHealth()
-  try {
-    const page = await activity.list({ status: 'failed', since: todayStart(), limit: 200 })
-    if (current()) failedToday.value = { count: page.items.length, capped: page.has_more, latest: page.items[0] }
-  } catch {
-    if (current()) failedToday.value = { count: 0, capped: false }
-  }
-}
+const total = ref<number>()
+const failedToday = ref(0)
+watch([status, template, period, search], () => { void load() })
+useHostVisibilityRefresh(load)
+useMessageChanges(() => { void load() })
 
-async function refresh() {
-  await Promise.all([load(), loadHealth()])
-}
-watch([status, template, period], () => { void load() })
-useHostVisibilityRefresh(refresh)
-useMessageChanges(() => { void refresh() })
-
-const rows = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return items.value
-  return items.value.filter(item => [item.subject, ...item.to, ...(item.cc ?? []), ...(item.bcc ?? [])].some(value => value.toLowerCase().includes(q)))
-})
-const countLabel = computed(() => plural(rows.value.length, 'message') + (cursor.value && !query.value ? ' so far' : ''))
-const health = computed(() => {
-  const failed = failedToday.value
-  if (!failed.count) return undefined
-  const count = failed.capped ? `${failed.count}+ messages` : plural(failed.count, 'message')
-  return { title: `${count} failed today.`, reason: failed.latest?.last_error?.message ?? '' }
-})
+const countLabel = computed(() => plural(total.value ?? items.value.length, 'message'))
+const health = computed(() => failedToday.value ? `${plural(failedToday.value, 'message')} failed today.` : '')
+const admin = computed(() => !!capabilities.value?.administer_delivery)
+const description = computed(() => admin.value ? 'Every email sent from this workspace in the last 30 days.' : 'Email you sent in the last 30 days.')
 
 function templateTitle(name: string | undefined): string {
   if (!name) return '—'
@@ -137,7 +118,7 @@ function closeMessage() {
 </script>
 
 <template>
-  <SettingsSectionHead title="Activity" description="Every email sent from this workspace in the last 30 days." />
+  <SettingsSectionHead title="Activity" :description="description" />
 
   <p v-if="denied" class="kx-notice warn mail-block" role="alert">
     <Icon icon="tabler:lock" aria-hidden="true" />Ask an administrator to grant you access to mail delivery.
@@ -145,7 +126,8 @@ function closeMessage() {
   <template v-else>
     <p v-if="health" class="kx-notice error mail-block" role="status">
       <Icon icon="tabler:alert-triangle" aria-hidden="true" />
-      <span><strong>{{ health.title }}</strong> {{ health.reason }}</span>
+      <span class="mail-health-text"><strong>{{ health }}</strong> {{ status === 'failed' ? '' : 'Open one to see why, then send it again.' }}</span>
+      <Button v-if="status !== 'failed'" label="Show failed" severity="secondary" outlined size="small" @click="status = 'failed'" />
     </p>
 
     <div class="mail-toolbar">
@@ -162,14 +144,14 @@ function closeMessage() {
 
     <div v-if="error" class="kx-err mail-error" role="alert">
       <span>{{ error }}</span>
-      <Button label="Retry" severity="secondary" outlined size="small" @click="refresh()" />
+      <Button label="Retry" severity="secondary" outlined size="small" @click="load()" />
     </div>
     <p v-else-if="loading && !loaded" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading activity…</p>
     <template v-else-if="loaded">
-      <p v-if="!rows.length" class="mail-muted mail-nomatch" role="status">
-        {{ items.length || query ? 'Nothing matches. Try another subject or recipient.' : 'No email was sent in this period.' }}
+      <p v-if="!items.length" class="mail-muted mail-nomatch" role="status">
+        {{ search ? 'Nothing matches. Try another subject or recipient.' : 'No email was sent in this period.' }}
       </p>
-      <DataTable v-else :value="rows" data-key="message_id" class="mail-table" row-hover :pt="{ table: { 'aria-label': 'Sent messages' } }"
+      <DataTable v-else :value="items" data-key="message_id" class="mail-table" row-hover :pt="{ table: { 'aria-label': 'Sent messages' } }"
         @row-click="event => openMessage(event.data)">
         <Column header="Status" header-class="mail-col-status" body-class="mail-col-status">
           <template #body="{ data }"><Tag :severity="statusSeverity[data.status as MessageStatus]" :value="statusLabels[data.status as MessageStatus]" class="kx-tag-sm" /></template>
@@ -185,7 +167,7 @@ function closeMessage() {
         </Column>
         <Column header="Sent by">
           <template #body="{ data }">
-            <span>{{ principalLabel(data.sender) }}</span>
+            <span>{{ personLabel(data.sender_label, data.sender) }}</span>
             <span v-if="data.origin" class="mail-sub">{{ originText(data.origin) }}</span>
           </template>
         </Column>
@@ -198,5 +180,5 @@ function closeMessage() {
       </div>
     </template>
   </template>
-  <MessageDrawer :message-id="message" @close="closeMessage" @changed="refresh" />
+  <MessageDrawer :message-id="message" @close="closeMessage" @changed="load" />
 </template>
