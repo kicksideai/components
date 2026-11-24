@@ -8,7 +8,7 @@ entries:
 - name: dep.work
   kind: ns.dependency
   component: kickside/work
-  version: '>=0.1.47'
+  version: '>=0.1.49'
 - name: target_db
   kind: ns.requirement
   meta:
@@ -26,6 +26,7 @@ entries:
   - {entry: 'kickside.work.time:module_access', path: '.groups +='}
   - {entry: 'kickside.work.time:provider_access', path: '.groups +='}
   - {entry: 'kickside.work.time.worklogs:mutation_access', path: '.groups +='}
+  - {entry: 'kickside.work.time.projection:worker_discovery', path: '.groups +='}
 - name: plugin
   kind: registry.entry
   meta:
@@ -36,6 +37,10 @@ entries:
     icon: tabler:clock
     category: Time tracking
     attachment: kickside.work.time:attachment
+    projections:
+    - kind: kickside.work.time:items
+      input: state
+      worker_ref: func://kickside.work.time.projection:worker
     schema:
       provider: kickside.work.time:schema_provider
     config_schema:
@@ -79,6 +84,9 @@ entries:
   contracts:
   - contract: kickside.contract:component
     methods: {get_status: 'kickside.core.threads:thread_status'}
+  - contract: kickside.contract:deletable
+    context_required: [component_id]
+    methods: {delete: 'kickside.work.time.retention:delete_attachment'}
 - name: schema_provider
   kind: contract.binding
   contracts:
@@ -105,6 +113,7 @@ entries:
     - kickside.work.time:plugin
     - kickside.work.time:attachment
     - kickside.work.time:schema_provider
+    - kickside.work.time.projection:worker
     - kickside.work.time.events:worklog.changed
     - kickside.work.time.events:time.over_estimate
     - kickside.work.time.events:worklog_changed_port
