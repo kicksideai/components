@@ -79,36 +79,49 @@ print(json.dumps([row, indexes]))
   ])
 })
 
-test('Work initializes the active plugin attachment index in the base migration', async () => {
+test('Work adds the active plugin attachment index through its published migration', async () => {
   const index = 'CREATE INDEX kickside_work_plugin_active ON kickside_work_plugin (plugin, board_id) WHERE active = 1'
   for (const engine of ['sqlite', 'postgres']) {
-    const up = await statements('01_work', 'up', engine)
-    assert.ok(up.includes(index), `Base Work migration must create the active plugin attachment index on ${engine}`)
+    const up = await statements('04_plugin_attachments', 'up', engine)
+    assert.ok(up.includes(index), `Work migration 04 must create the active plugin attachment index on ${engine}`)
   }
 })
 
-test('Work adds a Planning snapshot checkpoint to an already-migrated board', async () => {
+test('Work upgrades pre-04 boards through the published plugin index and snapshot migrations', async () => {
   const initial = await statements('01_work', 'up')
+  const plugin = await statements('04_plugin_attachments', 'up')
   const migration = await statements('05_snapshot_seq', 'up')
   const result = await run('python3', ['-c', `
 import json,sqlite3,sys
-initial,migration=json.load(sys.stdin)
+initial,plugin,migration=json.load(sys.stdin)
 db=sqlite3.connect(':memory:')
 for sql in initial:
   db.execute(sql)
-# Emulate the exact old table shape. Existing 01_work never had snapshot_seq.
-db.execute('ALTER TABLE kickside_work_board DROP COLUMN snapshot_seq')
 db.execute("INSERT INTO kickside_work_board (board_id,key_prefix,generation,schema_version,compiled,digest,applied_seq,counter,tombstone_floor_seq,created_at,updated_at) VALUES ('old','W',1,1,'{}','digest',73,0,0,'','')")
-for sql in migration:
+for sql in plugin + migration:
   db.execute(sql)
-print(json.dumps(db.execute("SELECT snapshot_seq FROM kickside_work_board WHERE board_id='old'").fetchone()))
-`], {}, JSON.stringify([initial, migration]))
-  assert.deepEqual(JSON.parse(result), [73])
+print(json.dumps([db.execute("SELECT snapshot_seq FROM kickside_work_board WHERE board_id='old'").fetchone(), db.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='kickside_work_plugin_active'").fetchone()]))
+`], {}, JSON.stringify([initial, plugin, migration]))
+  assert.deepEqual(JSON.parse(result), [[73], ['kickside_work_plugin_active']])
 })
 
-test('Work snapshot checkpoint migration is safe after a fresh base migration', async () => {
-  const replay = await statements('05_snapshot_seq', 'up', 'sqlite', 'snapshot')
-  assert.deepEqual(replay, [])
+test('Work upgrades boards already on migration 04 and creates both structures on a fresh install', async () => {
+  const initial = await statements('01_work', 'up')
+  const plugin = await statements('04_plugin_attachments', 'up')
+  const migration = await statements('05_snapshot_seq', 'up')
+  const result = await run('python3', ['-c', `
+import json,sqlite3,sys
+initial,plugin,migration=json.load(sys.stdin)
+def indexes(db): return [row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='kickside_work_plugin_active'")]
+old=sqlite3.connect(':memory:')
+for sql in initial + plugin: old.execute(sql)
+old.execute("INSERT INTO kickside_work_board (board_id,key_prefix,generation,schema_version,compiled,digest,applied_seq,counter,tombstone_floor_seq,created_at,updated_at) VALUES ('old','W',1,1,'{}','digest',11,0,0,'','')")
+for sql in migration: old.execute(sql)
+fresh=sqlite3.connect(':memory:')
+for sql in initial + plugin + migration: fresh.execute(sql)
+print(json.dumps([[old.execute("SELECT snapshot_seq FROM kickside_work_board WHERE board_id='old'").fetchone(), indexes(old)], [bool(fresh.execute("PRAGMA table_info(kickside_work_board)").fetchall()), indexes(fresh)]]))
+`], {}, JSON.stringify([initial, plugin, migration]))
+  assert.deepEqual(JSON.parse(result), [[[11], ['kickside_work_plugin_active']], [true, ['kickside_work_plugin_active']]])
 })
 
 test('Work rollback removes every fixed table including board metadata', async () => {

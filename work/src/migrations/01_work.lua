@@ -27,7 +27,6 @@ local POSTGRES = {
     [[CREATE TABLE kickside_work_plugin (
         board_id text NOT NULL, plugin text NOT NULL, attachment_id text NOT NULL, impl_id text NOT NULL,
         config text NOT NULL, lifecycle text NOT NULL DEFAULT '{"state":"pending"}', progress text NOT NULL DEFAULT '{}', active integer NOT NULL, revision bigint NOT NULL, applied_revision bigint NOT NULL DEFAULT 0, PRIMARY KEY (board_id, plugin))]],
-    [[CREATE INDEX kickside_work_plugin_active ON kickside_work_plugin (plugin, board_id) WHERE active = 1]],
     [[CREATE TABLE kickside_work_board (
         board_id text NOT NULL PRIMARY KEY,
         key_prefix text NOT NULL,
@@ -37,7 +36,6 @@ local POSTGRES = {
         digest text NOT NULL,
         layout text,
         applied_seq bigint NOT NULL,
-        snapshot_seq bigint NOT NULL,
         counter bigint NOT NULL,
         tombstone_floor_seq bigint NOT NULL,
         retention_after text,
