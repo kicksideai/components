@@ -80,9 +80,11 @@ local function define()
                 local out = assert(steps.apply(h, ops))
                 test.is_true(out.applied)
             end
+            local epic = fixture.declaration(h.prefix).item_types[1]
+            table.insert(epic.fields, "count")
             assert(h.call("apply_schema", { declaration = {
                 fields = { { code = "count", type = "rollup", form = "int", of = "children", fn = "count" } },
-                item_types = { { id = "epic", process = "delivery", fields = { "count" } } },
+                item_types = { epic },
             } }))
             steps.wait_for("600 rollup values", function()
                 local db = assert(store.open())
@@ -118,8 +120,10 @@ local function define()
             steps.create(h, "story", { estimate = 3, priority = "p0" }, p)
             steps.create(h, "story", { estimate = 8, priority = "p4" }, p)
             local version = steps.version(h, p)
+            local epic = fixture.declaration(h.prefix).item_types[1]
+            table.insert(epic.fields, "total")
             local patch: Map = { fields = { { code = "total", type = "rollup", form = "int", of = "children", fn = "sum", field = "estimate" } },
-                item_types = { { id = "epic", process = "delivery", fields = { "title", "total" } } } }
+                item_types = { epic } }
             local plan = assert(h.call("plan_schema", { declaration = patch }))
             test.eq(plan.class, "semantic")
             assert(h.call("apply_schema", { declaration = patch, expected_generation = 1 }))

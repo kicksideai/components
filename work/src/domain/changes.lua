@@ -77,6 +77,31 @@ local function diff_item_types(out: { types.SchemaChange }, prev: types.Compiled
     end
 end
 
+-- Compare stable IDs so renaming a field preserves its values. A removed
+-- definition covers every item, including values left by an earlier archive.
+function M.field_removals(prev: types.Model, next: types.Model): { types.FieldRemoval }
+    local out: { types.FieldRemoval } = {}
+    for _, field in ipairs(prev.compiled.fields) do
+        if not next.by_id[field.id] then
+            out[#out + 1] = { path = "fields." .. field.id, field = field }
+        end
+    end
+    for _, old in ipairs(prev.compiled.item_types) do
+        local current = next.item_types[old.id]
+        if current then
+            local carried: { [integer]: boolean } = {}
+            for _, code in ipairs(current.fields) do carried[next.fields[code].id] = true end
+            for _, code in ipairs(old.fields) do
+                local field = prev.fields[code]
+                if next.by_id[field.id] and not carried[field.id] then
+                    out[#out + 1] = { path = "item_types." .. old.id .. ".fields." .. field.id, field = field, item_type = old.id }
+                end
+            end
+        end
+    end
+    return out
+end
+
 local function relation_shape_changed(old: types.Relation, new: types.Relation): boolean
     return old.symmetric ~= new.symmetric or old.cardinality ~= new.cardinality
         or not same(old.from_types, new.from_types) or not same(old.to_types, new.to_types)

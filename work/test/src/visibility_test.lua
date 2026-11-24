@@ -623,9 +623,9 @@ local function define()
             local held = false
             for _, entry in ipairs(prior.entries) do if entry.field == "secret" then held = true end end
             test.is_true(held)
-            assert(h.call("apply_schema", { declaration = { remove = { fields = { "secret" } }, item_types = {
+            steps.archive_fields(h, { remove = { fields = { "secret" } }, item_types = {
                 { id = "task", process = "flow", fields = { "title", "level", "owner" }, parent_types = { false, "task" } },
-            } } }))
+            } })
             local history = assert(member.call("list_history", { item = { id = id } }, h.id))
             for _, entry in ipairs(history.entries) do test.is_true(entry.before ~= 77); test.is_true(entry.after ~= 77) end
         end)

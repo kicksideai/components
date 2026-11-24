@@ -206,8 +206,7 @@ local function define()
                 for i = #t.fields, 1, -1 do if t.fields[i] == "estimate" then table.remove(t.fields, i) end end
             end
             local request = { item_types = d.item_types, remove = { fields = { "estimate" } } }
-            test.eq(assert(h.call("plan_schema", { declaration = request })).class, "semantic")
-            assert(h.call("apply_schema", { declaration = request }))
+            test.eq(steps.archive_fields(h, request).class, "semantic")
             test.is_nil(steps.get(h, id).item.values.estimate)
             local feed = assert(h.call("list_changes", {}))
             test.is_nil(feed.items[1].values.estimate)

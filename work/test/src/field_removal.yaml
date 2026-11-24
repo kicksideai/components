@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: field_removal_test
+  kind: function.lua
+  meta:
+    type: test
+    suite: field_removal
+    timeout: 600s
+  source: file://field_removal_test.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps
+    provider: app:plugin_provider

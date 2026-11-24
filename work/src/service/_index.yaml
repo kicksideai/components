@@ -76,6 +76,7 @@ entries:
     policies:
     - kickside.work.security:sync_call
     - kickside.work.security:schema_output_publish
+    - kickside.work.security:schema_drop_output_publish
 - name: resume_migration
   kind: function.lua
   meta:

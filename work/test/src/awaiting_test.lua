@@ -158,7 +158,7 @@ local function define()
             d.remove = { fields = { "designer" } }
             table.remove(d.fields :: { Map }, 1)
             table.remove(d.item_types[1].fields :: { string }, 1)
-            assert(h.call("apply_schema", { declaration = d }))
+            steps.archive_fields(h, d)
             test.is_true(assert(steps.get(h, id)).item.awaiting.can_act)
             test.eq(#assert(h.call("query", { where = { awaiting = true } })).items, 1)
         end)
