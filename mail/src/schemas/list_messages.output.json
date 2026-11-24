@@ -8,6 +8,8 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "resend_of": {"type": "string", "format": "uuid"},
+          "can_resend": {"type": "boolean"},
           "message_id": {
             "type": "string",
             "format": "uuid"

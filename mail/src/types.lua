@@ -31,7 +31,7 @@ type LogMessage = Addresses & {
     message_id: string, status: string, created_at: integer, attempts: integer,
     next_attempt_at: integer?, sent_at: integer?, finished_at: integer?, sender: string, template: string?,
     subject: string, reply_to: string?, attachments: {AttachmentRef}, driver_id: string?, origin: Origin?,
-    provider_message_id: string?, last_error: MessageError?,
+    provider_message_id: string?, last_error: MessageError?, resend_of: string?, can_resend: boolean?,
 }
 type MessageRow = {
     id: string, created_at: integer, status: string, attempts: integer,
@@ -41,11 +41,12 @@ type MessageRow = {
     job_id: string, driver_id: string?, provider_message_id: string?, content_hash: string?,
     error_kind: string?, error_code: string?, error_message: string?, provider_detail: string?,
     origin_kind: string?, origin_id: string?, origin_label: string?,
+    failed_html: string?, failed_text: string?, resend_of: string?, has_failed_content: integer?,
 }
 type Admission = Addresses & {
     sender: string, actor_context: string, template: string?, subject: string,
     html: string?, text: string?, from: Mailbox, reply_to: string?, attachments: {AttachmentRef}?,
-    idempotency_key: string?, content_hash: string?, origin: Origin?,
+    idempotency_key: string?, content_hash: string?, origin: Origin?, resend_of: string?,
 }
 type AdmissionResult = {message: SendResult, inserted: boolean}
 type Job = {id: string, lease_token: string, execution_seq: integer}
@@ -90,7 +91,7 @@ type JetEntry = {id: string, kind: string, meta: Record, data: Record}
 type TemplateRequest = {template: string}
 type PreviewRequest = {template: string, vars: JsonObject}
 type PreviewResult = {subject: string, html: string, text: string}
-type Rendered = {subject: string, html: string, text: string?}
+type Rendered = {subject: string, html: string?, text: string?}
 type RenderGlobals = {site: {title: string, url: string}, sender: {name: string}}
 type TemplateParts = {subject: string, html: string, text: string}
 type VariableSchema = {type: string, properties: JsonObject, additionalProperties: boolean?}
@@ -115,6 +116,7 @@ type SettingInput = {value: unknown}
 type SettingValidation = {valid: boolean, error: string?}
 type Mailer = {
     send: (self: Mailer, input: SendRequest) -> (SendResult?, error?),
+    resend: (self: Mailer, message_id: string) -> (SendResult?, error?),
     get_message: (self: Mailer, message_id: string) -> (LogMessage?, error?),
     list_messages: (self: Mailer, input: ListRequest) -> (ListResult?, error?),
     list_templates: (self: Mailer) -> (TemplateList?, error?),

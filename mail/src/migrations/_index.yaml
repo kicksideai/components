@@ -42,3 +42,11 @@ entries:
     imports:
       migration: wippy.migration:migration
       types: kickside.mail:types
+  - name: 06_failed_content
+    kind: function.lua
+    meta: { type: migration, timestamp: '2026-11-23T00:05:00Z' }
+    source: file://06_failed_content.lua
+    method: migrate
+    imports:
+      migration: wippy.migration:migration
+      types: kickside.mail:types

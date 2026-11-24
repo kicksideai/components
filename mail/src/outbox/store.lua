@@ -39,8 +39,8 @@ function M.insert(input: types.Admission): (types.AdmissionResult?, error?)
         local rows, err = tx:query([[INSERT INTO mail_message (
             id, created_at, status, next_attempt_at, next_check_at, sender, actor_context, template,
             recipients, subject, html, text, from_address, from_name, reply_to, attachments, idempotency_key, content_hash,
-            origin_kind, origin_id, origin_label
-        ) VALUES ($1,$2,'queued',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+            origin_kind, origin_id, origin_label, resend_of
+        ) VALUES ($1,$2,'queued',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
         ON CONFLICT (sender, idempotency_key) WHERE idempotency_key IS NOT NULL
         DO UPDATE SET id=mail_message.id RETURNING id,status,content_hash]], {
             id, now, now + policy.RECHECK_MS, input.sender, input.actor_context, input.template or sql.NULL,
@@ -48,6 +48,7 @@ function M.insert(input: types.Admission): (types.AdmissionResult?, error?)
             input.from.name or sql.NULL, input.reply_to or sql.NULL, refs, input.idempotency_key or sql.NULL,
             input.content_hash or sql.NULL, input.origin and input.origin.kind or sql.NULL,
             input.origin and input.origin.id or sql.NULL, input.origin and input.origin.label or sql.NULL,
+            input.resend_of or sql.NULL,
         })
         if err then return nil, err end
         local stored = rows[1] :: types.MessageRow
@@ -83,6 +84,7 @@ function M.finish(tx: sql.Transaction, id: string, job_id: string, now: integer,
     local sent_at = delivered and now or sql.NULL
     local result, err = tx:execute([[UPDATE mail_message SET status=$1, finished_at=$2, sent_at=$3,
         provider_message_id=$4, error_kind=$5, error_code=$6, error_message=$7, provider_detail=$8,
+        failed_html=CASE WHEN $1='failed' THEN html END, failed_text=CASE WHEN $1='failed' THEN text END,
         next_attempt_at=NULL, next_check_at=NULL, html=NULL, text=NULL, actor_context=NULL
         WHERE id=$9 AND job_id=$10 AND status='queued']], {
         delivered and "sent" or "failed", now, sent_at,

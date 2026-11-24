@@ -9,6 +9,7 @@ local logger = require("logger")
 local jobs = require("jobs")
 local notifier = require("notifier")
 local store = require("store")
+local log = require("log")
 local message = require("message")
 local render = require("render")
 local attachments = require("attachments")
@@ -22,15 +23,10 @@ local function preview(request: types.PreviewRequest): (types.PreviewResult?, er
     local rendered, render_err = render.render(request.template, request.vars)
     if render_err then return nil, render_err end
     local result = rendered :: types.Rendered
-    return {subject = result.subject, html = result.html, text = result.text :: string}, nil
+    return {subject = result.subject, html = result.html :: string, text = result.text :: string}, nil
 end
 
-local function send(request: unknown): (types.SendResult?, error?)
-    local denied = client.require_send()
-    if denied then return nil, denied end
-    local input, validation_err = message.validate(request)
-    if validation_err then return nil, validation_err end
-
+local function admit(input: types.SendRequest, rendered: types.Rendered?, resend_of: string?): (types.SendResult?, error?)
     local execution, capture_err = identity.capture()
     if capture_err then return nil, capture_err :: error end
     local actor_row, actor_err = identity.to_row(execution)
@@ -49,8 +45,8 @@ local function send(request: unknown): (types.SendResult?, error?)
         if existing or replay_err then return existing, replay_err end
     end
 
-    local rendered, render_err
-    if input.template then
+    local render_err
+    if not rendered and input.template then
         rendered, render_err = render.render(input.template, input.vars)
         if render_err then return nil, render_err end
     end
@@ -80,7 +76,7 @@ local function send(request: unknown): (types.SendResult?, error?)
     if name and not name:find("%S") then name = nil end
 
     local reply_to = input.reply_to
-    if not reply_to and config.reply_to and config.reply_to ~= "" then
+    if not reply_to and not resend_of and config.reply_to and config.reply_to ~= "" then
         reply_to = config.reply_to
         if not message.address(reply_to) then
             return nil, settings.missing("The mail Reply-To address is invalid")
@@ -110,7 +106,7 @@ local function send(request: unknown): (types.SendResult?, error?)
         from = from,
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = reply_to,
         subject = parts.subject, html = parts.html, text = parts.text, attachments = input.attachments,
-        idempotency_key = input.idempotency_key, content_hash = hash, origin = input.origin,
+        idempotency_key = input.idempotency_key, content_hash = hash, origin = input.origin, resend_of = resend_of,
     })
     if save_err then return nil, save_err end
     if saved.inserted then
@@ -122,4 +118,24 @@ local function send(request: unknown): (types.SendResult?, error?)
     return saved.message, nil
 end
 
-return {send = send, preview = preview}
+local function send(request: unknown): (types.SendResult?, error?)
+    local denied = client.require_send()
+    if denied then return nil, denied end
+    local input, err = message.validate(request)
+    if err then return nil, err end
+    return admit(input :: types.SendRequest)
+end
+
+local function resend(message_id: string): (types.SendResult?, error?)
+    local denied = client.require_send()
+    if denied then return nil, denied end
+    local row, read_err = log.for_resend(message_id)
+    if read_err then return nil, read_err end
+    local addresses, refs, decode_err = store.content(row)
+    if decode_err then return nil, decode_err end
+    return admit({to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = row.reply_to,
+        template = row.template, attachments = refs},
+        {subject = row.subject, html = row.failed_html, text = row.failed_text}, row.id)
+end
+
+return {send = send, preview = preview, resend = resend}

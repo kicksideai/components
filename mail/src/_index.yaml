@@ -44,6 +44,7 @@ entries:
       - { entry: kickside.mail.migrations:03_library_revisions, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:04_message_origin, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:05_message_template_index, path: ".meta.target_db" }
+      - { entry: kickside.mail.migrations:06_failed_content, path: ".meta.target_db" }
       - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
   - name: db_config
     kind: registry.entry
@@ -80,6 +81,14 @@ entries:
         input_schemas:
           - format: application/schema+json
             definition: file://schemas/send.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.output.json
+      - name: resend
+        description: Queue a new delivery from the retained content of a visible failed message.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_message.input.json
         output_schemas:
           - format: application/schema+json
             definition: file://schemas/send.output.json
@@ -127,6 +136,7 @@ entries:
         default: true
         methods:
           send: kickside.mail.service:send
+          resend: kickside.mail.service:resend
           get_message: kickside.mail.outbox:get_message
           list_messages: kickside.mail.outbox:list_messages
           list_templates: kickside.mail.service:list_templates

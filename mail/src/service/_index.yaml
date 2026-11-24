@@ -21,7 +21,8 @@ entries:
       jobs: kickside.core.jobs:jobs
       notifier: kickside.core.retention:notifier
       store: kickside.mail.outbox:store
-    security:
+      log: kickside.mail.outbox:log
+    security: &send_security
       policies:
         - kickside.mail.security:site_url
         - kickside.mail.security:template_access
@@ -32,6 +33,13 @@ entries:
         - kickside.mail.security:outbox_config
         - kickside.mail.security:job_notify
         - kickside.core.retention:notify_access
+  - name: resend
+    kind: function.lua
+    source: file://send.lua
+    method: resend
+    modules: *mailer_modules
+    imports: *mailer_imports
+    security: *send_security
   - name: list_templates
     kind: function.lua
     source: file://../views/catalog.lua

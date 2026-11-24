@@ -22,16 +22,21 @@ entries:
       jobs: kickside.core.jobs:jobs
       policy: kickside.mail.outbox:policy
       types: kickside.mail:types
-  - name: get_message
-    kind: function.lua
+  - name: log
+    kind: library.lua
     source: &log_source file://log.lua
-    method: get_message
     modules: &log_modules [security, sql, uuid]
     imports: &log_imports
       database: kickside.mail.outbox:database
       identity: kickside.execution:execution_identity
       store: kickside.mail.outbox:store
       types: kickside.mail:types
+  - name: get_message
+    kind: function.lua
+    source: *log_source
+    method: get_message
+    modules: *log_modules
+    imports: *log_imports
     security: &log_security
       policies: [kickside.mail.security:outbox_db, kickside.mail.security:outbox_config]
   - name: list_messages

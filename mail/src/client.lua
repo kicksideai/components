@@ -34,6 +34,12 @@ function M.send(request: types.SendRequest): (types.SendResult?, error?)
     return (mailer :: types.Mailer):send(request)
 end
 
+function M.resend(message_id: string): (types.SendResult?, error?)
+    local mailer, err = M.open()
+    if err then return nil, err end
+    return (mailer :: types.Mailer):resend(message_id)
+end
+
 function M.get_message(message_id: string): (types.LogMessage?, error?)
     local mailer, err = M.open()
     if err then return nil, err end

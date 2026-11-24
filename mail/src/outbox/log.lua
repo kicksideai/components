@@ -9,7 +9,8 @@ local uuid = require("uuid")
 
 local COLUMNS = [[id, status, created_at, attempts, next_attempt_at, sent_at, finished_at, sender,
     template, recipients, subject, reply_to, attachments, driver_id, provider_message_id,
-    error_kind, error_code, error_message, provider_detail, origin_kind, origin_id, origin_label]]
+    error_kind, error_code, error_message, provider_detail, origin_kind, origin_id, origin_label, resend_of,
+    CASE WHEN failed_html IS NOT NULL OR failed_text IS NOT NULL THEN 1 ELSE 0 END AS has_failed_content]]
 local ADMIN = "kickside.mail:mailer"
 
 local function invalid(message: string): error
@@ -40,28 +41,50 @@ local function message(row: types.MessageRow, admin: boolean): (types.LogMessage
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, attachments = refs,
         driver_id = admin and row.driver_id or nil, provider_message_id = admin and row.provider_message_id or nil,
         last_error = last_error,
-        origin = store.origin(row),
+        origin = store.origin(row), resend_of = row.resend_of,
+        can_resend = row.status == "failed" and row.has_failed_content == 1,
     }, nil
 end
 
-local function get_message(message_id: string): (types.LogMessage?, error?)
+local function read_message(message_id: string, columns: string, sender: string?): (types.MessageRow?, error?)
     if type(message_id) ~= "string" or not uuid.validate(message_id) then
         return nil, invalid("A message ID is required")
     end
-    local sender, err = viewer()
-    if err then return nil, err end
-    return database.read(function(db: sql.DB): (types.LogMessage?, error?)
-        local query = "SELECT " .. COLUMNS .. " FROM mail_message WHERE id=$1"
+    return database.read(function(db: sql.DB): (types.MessageRow?, error?)
+        local query = "SELECT " .. columns .. " FROM mail_message WHERE id=$1"
         local params = {message_id}
-        if sender then query = query .. " AND sender=$2"; params[2] = sender end
+        if sender then
+            query = query .. " AND sender=$2"
+            params[2] = sender
+        end
         local rows, read_err = db:query(query, params)
         if read_err then return nil, read_err end
         if not rows[1] then
             return nil, errors.new({kind = errors.NOT_FOUND, message = "Mail message not found",
                 retryable = false, details = {code = "message_not_found"}})
         end
-        return message(rows[1] :: types.MessageRow, sender == nil)
+        return rows[1] :: types.MessageRow, nil
     end)
+end
+
+local function get_message(message_id: string): (types.LogMessage?, error?)
+    local sender, err = viewer()
+    if err then return nil, err end
+    local row, read_err = read_message(message_id, COLUMNS, sender)
+    if read_err then return nil, read_err end
+    return message(row :: types.MessageRow, sender == nil)
+end
+
+local function for_resend(message_id: string): (types.MessageRow?, error?)
+    local sender, err = viewer()
+    if err then return nil, err end
+    local row, read_err = read_message(message_id, "id,status,template,subject,recipients,reply_to,attachments,failed_html,failed_text", sender)
+    if read_err then return nil, read_err end
+    if row.status ~= "failed" or (not row.failed_html and not row.failed_text) then
+        return nil, errors.new({kind = errors.CONFLICT, message = "The message has no failed content to resend",
+            retryable = false, details = {code = "mail_content_unavailable"}})
+    end
+    return row, nil
 end
 
 local function list_messages(input: types.ListRequest): (types.ListResult?, error?)
@@ -122,4 +145,4 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
     end)
 end
 
-return {get_message = get_message, list_messages = list_messages}
+return {get_message = get_message, list_messages = list_messages, for_resend = for_resend}

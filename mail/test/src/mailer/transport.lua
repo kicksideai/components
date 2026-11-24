@@ -45,6 +45,10 @@ end
 return {
     capture = capture,
     first = function(message)
+        if message.subject == "Fixture resend" then
+            return nil, errors.new({kind = errors.INVALID, retryable = false, message = "Fixture transport refused delivery",
+                details = {code = "message_rejected"}})
+        end
         local response = result("first", message)
         response.transport_metadata = "fixture detail"
         return response

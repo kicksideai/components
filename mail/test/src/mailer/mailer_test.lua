@@ -62,6 +62,9 @@ local function probe(input)
         }, {blocks = catalog}))
         return {descriptor = descriptor, plan = plan, upstream_plan = upstream_plan, compiled = compiled}
     end
+    if input.operation == "resend" then
+        return funcs.call("kickside.mail.service:resend", input.message)
+    end
     if input.operation == "raw" then
         return open("kickside.mail:transport", "kickside.mail.harness:first")
     end
@@ -377,6 +380,53 @@ return {
                 test.eq("credentials_invalid", failed.last_error.code)
                 test.eq("Test authorization refused", failed.last_error.message)
                 no_body(queued.message_id)
+            end)
+
+            test.it("resends only visible failed mail without rendering the stored bodies again", function()
+                capture_with(admin)
+                local input = {to = {"reader@example.org"}, cc = {"copy@example.org"}, subject = "Stored subject",
+                    text = "Stored text", html = "<p>Stored HTML</p>"}
+                local queued = assert(invoke(sender, "send", input))
+                local captured = terminal(log_admin, queued)
+                test.eq("sent", captured.status)
+                local request = assert(json.decode(captured.provider_message_id))
+                assert(change(admin, "driver", "first").success)
+                input.subject = "Fixture resend"
+                local failed = terminal(sender, assert(invoke(sender, "send", input)))
+                test.eq("failed", failed.status)
+                local stored = persisted(failed.message_id)
+                test.not_nil(stored.failed_html)
+                test.is_true(stored.failed_html:find("Stored HTML", 1, true) ~= nil)
+                test.eq(request.text, stored.failed_text)
+                local another = caller({"kickside.mail.security:send_access", "kickside.mail.security:module_runtime"})
+                local unread, hidden = invoke(another, "resend", failed.message_id)
+                refusal(unread, hidden, errors.NOT_FOUND, "message_not_found")
+                local unauthorized, denial = invoke(log_admin, "resend", failed.message_id)
+                refusal(unauthorized, denial, errors.PERMISSION_DENIED, "mail_send_denied")
+                local already_sent, unavailable = invoke(sender, "resend", queued.message_id)
+                refusal(already_sent, unavailable, errors.CONFLICT, "mail_content_unavailable")
+
+                capture_with(admin)
+                local resent = assert(invoke(sender, "resend", failed.message_id))
+                local row = terminal(log_admin, resent)
+                test.eq("sent", row.status)
+                test.eq(failed.message_id, row.resend_of)
+                test.eq(failed.sender, row.sender)
+                local result = assert(json.decode(row.provider_message_id))
+                test.eq(stored.failed_html, result.html)
+                test.eq(stored.failed_text, result.text)
+                test.eq(stored.subject, result.subject)
+                test.eq(request.to, result.to)
+                test.eq(request.cc, result.cc)
+                test.is_nil(persisted(row.message_id).failed_html)
+                test.is_nil(persisted(row.message_id).failed_text)
+
+                local admin_sender = caller({"kickside.mail.security:log_admin", "kickside.mail.security:send_access",
+                    "kickside.mail.security:module_runtime"})
+                local another_send = assert(invoke(admin_sender, "resend", failed.message_id))
+                local admin_row = terminal(admin_sender, another_send)
+                test.eq(failed.message_id, admin_row.resend_of)
+                test.is_true(failed.sender ~= admin_row.sender)
             end)
 
             test.it("uses the active driver at delivery even after a different driver rearmed the job", function()

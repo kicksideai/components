@@ -24,6 +24,7 @@ entries:
         - kickside.mail:mailer_binding
         - kickside.data:writable
         - send
+        - resend
         - get_message
         - list_messages
         - list_templates
@@ -31,6 +32,7 @@ entries:
         - preview
         - write
         - kickside.mail.service:send
+        - kickside.mail.service:resend
         - kickside.mail.outbox:get_message
         - kickside.mail.outbox:list_messages
         - kickside.mail.service:list_templates
