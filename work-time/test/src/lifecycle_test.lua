@@ -106,7 +106,7 @@ local function count(kind: string, attachment: string, item: string?): integer
     local args = { attachment }
     if item then args[2] = item end
     local statement = "SELECT COUNT(*) AS n FROM kickside_work_time_" .. kind .. " WHERE attachment_id = $1"
-    return assert(tonumber(query(statement .. (item and " AND item_id = $2" or ""), args)[1].n))
+    return assert(tonumber(query(statement .. (item and " AND item_id = $2" or ""), args)[1].n)) :: integer
 end
 
 local function assert_empty(attachment: string, item: string?)
@@ -126,7 +126,7 @@ end
 local function estimate(board: fixture.Handle, item: string, minutes: integer): integer
     local change = steps.one(board, { op = "set", item = item, values = { [ORIGINAL] = minutes } })
     test.eq(change.status, "applied")
-    return (assert(steps.get(board, item))).as_of
+    return (assert(steps.get(board, item))).as_of :: integer
 end
 
 local function define()
@@ -206,7 +206,7 @@ local function define()
                 assert(status.status ~= "failed", json.encode(status))
                 return status.status == "done"
             end)
-            caught_up(board, steps.call(board, "query", {}).as_of)
+            caught_up(board, steps.call(board, "query", {}).as_of :: integer)
             test.eq(count("worklog", attachment, item), 1)
             sweep()
             assert_empty(attachment, item)
@@ -225,7 +225,7 @@ local function define()
                     { attachment, "!retired-" .. i })
             end
             test.eq(activate(board, 5), attachment)
-            caught_up(board, steps.call(board, "query", {}).as_of)
+            caught_up(board, steps.call(board, "query", {}).as_of :: integer)
             local report = sweep()
             for _ = 1, 50 do
                 if not report.needs_continue then break end
@@ -251,7 +251,7 @@ local function define()
                     { board.id, purged })[1]
                 return not life or life.life == "purged"
             end)
-            caught_up(board, steps.call(board, "query", {}).as_of)
+            caught_up(board, steps.call(board, "query", {}).as_of :: integer)
             sweep()
             assert_empty(attachment, purged)
             test.eq(count("worklog", attachment, live), 1)

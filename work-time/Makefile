@@ -13,9 +13,7 @@ lint:
 	cd "$(TEST_DIR)" && "$(WIPPY)" lint --ns kickside.work.time --ns 'kickside.work.time.*' --level warning
 
 test:
-	cd "$(TEST_DIR)" && mkdir -p .wippy && \
-		WIPPY_TEST_REQUIRE_CASES=1 "$(WIPPY)" test $(TEST_ARGS) 2>&1 | tee .wippy/last-test-run.log && \
-		grep -q PASSED .wippy/last-test-run.log && ! grep -Eq 'FAILED|No tests found|No tests match' .wippy/last-test-run.log
+	cd "$(TEST_DIR)" && WIPPY="$(WIPPY)" ./run.sh $(TEST_ARGS)
 
 test-pg:
 	bash ../test-support/postgres.sh "$(WORK_TIME_PG_DATABASE)" bash -ec \
