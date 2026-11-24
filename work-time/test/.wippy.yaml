@@ -10,13 +10,13 @@ registry:
   enable_history: true
   history_type: memory
 override:
+  kickside.work.time.api:http_export:imports.handlers: app:work_time_export_fixture
   kickside.work.settings:read_deadline_ms:default: 10000
   kickside.work.settings:command_deadline_ms:default: 10000
   kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false
 workspace:
   replacements:
     kickside/work-time: ..
-    kickside/work: ../../work
     kickside/agent-onboarding: ../../agent-onboarding
     kickside/sso: ../../sso
     kickside/dashboard: ../../dashboard

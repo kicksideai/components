@@ -277,6 +277,8 @@ entries:
   parameters:
   - name: kickside.work.time:target_db
     value: app:db
+  - name: kickside.work.time.api:api_router
+    value: app:api
 - name: dep.views
   kind: ns.dependency
   version: '*'
