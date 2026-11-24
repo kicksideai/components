@@ -2,6 +2,10 @@
 version: '1.0'
 namespace: app
 entries:
+- name: dep.planning
+  kind: ns.dependency
+  component: kickside/work-planning
+  version: '0.1.7'
 - name: work_time_sprint_reference_test
   kind: function.lua
   meta: {type: test, suite: work_time_sprint_reference, timeout: 90s}
@@ -9,7 +13,8 @@ entries:
   method: run
   imports:
     board_client: kickside.work:client
+    fixture: app:fixture
     scoped: app:scoped
     steps: app:steps
     test: wippy.test:test
-  modules: [channel, funcs, sql, time, uuid]
+  modules: [channel, funcs, sql, time]

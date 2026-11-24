@@ -81,6 +81,7 @@ function M.matches(context: types.Context, query: types.Request, mode: string): 
         access = context.admission.grants, visibility = context.settings.entry_visibility,
         item = query.item, from = query.from, to = query.to, person = query.person,
         sprint = query.sprint, group_by = query.group_by,
+        sort = mode == "list" and query.sort == "newest" and query.sort or nil,
         hierarchy_seq = mode == "subtree" and context.board.applied_seq or nil,
     })
 end

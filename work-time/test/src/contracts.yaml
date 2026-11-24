@@ -20,3 +20,18 @@ entries:
   kind: library.lua
   source: file://contracts_fixtures.lua
   modules: [json]
+- name: work_time_export_fixture
+  kind: library.lua
+  imports:
+    handlers: kickside.work.time.api:handlers
+    types: kickside.work.time.reads:types
+  source: |
+    local handlers = require("handlers")
+    local types = require("types")
+
+    local function totals(input: unknown): (types.Report?, error?)
+        if type(input) == "table" and input.item == "missing-report" then return nil, nil end
+        return handlers.totals(input)
+    end
+
+    return { totals = totals }

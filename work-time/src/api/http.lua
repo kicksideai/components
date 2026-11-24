@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local http = require("http")
 local json = require("json")
+local errors = require("errors")
 local access = require("access")
 local handlers = require("handlers")
 local schemas = require("schemas")
@@ -50,7 +51,8 @@ function M.export()
     local input = request(req, "export", true)
     local report, err = handlers.totals(input)
     if err or not report then
-        return access.reject(res, err or errors.new({ kind = errors.INTERNAL, message = "Time export returned no report" }))
+        return access.reject(res, err or errors.new({ kind = errors.INTERNAL, message = "Time export returned no report",
+            details = { code = "time_export_missing_report" } }))
     end
     if report.cursor then res:set_header("X-Work-Time-Cursor", report.cursor) end
     res:set_header("Content-Disposition", 'attachment; filename="timesheet.csv"')

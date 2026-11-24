@@ -8,7 +8,7 @@ entries:
 - name: dep.work
   kind: ns.dependency
   component: kickside/work
-  version: '>=0.1.49'
+  version: '>=0.1.50'
 - name: target_db
   kind: ns.requirement
   meta:

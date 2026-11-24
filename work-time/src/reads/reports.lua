@@ -79,14 +79,16 @@ function M.list(request: types.Request): (types.Listing?, error?)
         local selection = select_rows(ctx, range, {
             { column = "item_id", value = request.item }, { column = "person_id", value = person },
         })
+        local newest = request.sort == "newest"
         if request.cursor then
-            selection.parts[#selection.parts + 1] = "(work_date, entry_id) > (?, ?)"
+            selection.parts[#selection.parts + 1] = newest and "(work_date, entry_id) < (?, ?)" or "(work_date, entry_id) > (?, ?)"
             selection.args[#selection.args + 1], selection.args[#selection.args + 2] = after.work_date, after.id
         end
         local limit = request.limit or PAGE
+        local order = newest and "work_date DESC, entry_id DESC" or "work_date, entry_id"
         local rows, err = joined(tx, ctx, "kickside_work_time_worklog",
             "work_date, entry_id, item_id, person_id, sprint_id, minutes, version, note",
-            selection, "work_date, entry_id", limit + 1)
+            selection, order, limit + 1)
         if err or not rows then return nil, err end
 
         local entries: { types.Worklog } = {}

@@ -1,7 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local sql = require("sql")
 local time = require("time")
-local registry = require("registry")
 local scoped = require("scoped")
 local steps = require("steps")
 local test = require("test")
@@ -77,36 +76,34 @@ return { run = test.run_cases(function()
             end
         end)
 
-        if assert(registry.get("app:work_time_scope_plan_gate")).meta.enabled then
-            test.it("uses an indexed Time membership probe for a one-item Work page", function()
-                local _, board, attachment = setup()
-                local item = steps.create(board, "task")
-                local db = assert(sql.get("app:db"))
-                assert(db:execute([[WITH RECURSIVE numbers(n) AS (VALUES (1) UNION ALL SELECT n+1 FROM numbers WHERE n < 10000),
-                    seed(attachment, board, live_item) AS (VALUES ($1, $2, $3))
-                    INSERT INTO kickside_work_time_total (attachment_id, board_id, item_id, minutes, entry_count, over_estimate)
-                    SELECT attachment, board, 'scope-plan-' || n, 10, 1, 1 FROM numbers CROSS JOIN seed
-                    UNION ALL SELECT attachment, board, live_item, 10, 1, 1 FROM seed]], { attachment, board.id, item }))
-                assert(db:execute("ANALYZE kickside_work_time_total", {}))
-                local postgres = db:type() == sql.type.POSTGRES
-                local explain = postgres and "EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF) " or "EXPLAIN QUERY PLAN "
-                for _, predicate in ipairs({ { minutes = { gt = 0 } }, { over_estimate = { eq = 1 } } }) do
-                    local plan = steps.call(board, "explain", { limit = 1, scopes = { { id = SCOPE, where = predicate } } }).plan
-                    local rows = assert(db:query(explain .. plan.statement, plan.args))
-                    local details = {}
-                    for _, row in ipairs(rows) do details[#details + 1] = postgres and row["QUERY PLAN"] or row.detail end
-                    local output = table.concat(details, "\n")
-                    if postgres then
-                        test.not_nil(output:find("kickside_work_time_total_pkey", 1, true), output)
-                        test.not_nil(output:match("Index Cond: [^\n]+attachment_id = [^\n]+item_id = "), output)
-                    else
-                        test.is_nil(output:find("LIST SUBQUERY", 1, true), output)
-                        test.not_nil(output:match("SEARCH t .-attachment_id=%? AND item_id=%?"), output)
-                    end
+        test.it("uses an indexed Time membership probe for a one-item Work page", function()
+            local _, board, attachment = setup()
+            local item = steps.create(board, "task")
+            local db = assert(sql.get("app:db"))
+            assert(db:execute([[WITH RECURSIVE numbers(n) AS (VALUES (1) UNION ALL SELECT n+1 FROM numbers WHERE n < 10000),
+                seed(attachment, board, live_item) AS (VALUES ($1, $2, $3))
+                INSERT INTO kickside_work_time_total (attachment_id, board_id, item_id, minutes, entry_count, over_estimate)
+                SELECT attachment, board, 'scope-plan-' || n, 10, 1, 1 FROM numbers CROSS JOIN seed
+                UNION ALL SELECT attachment, board, live_item, 10, 1, 1 FROM seed]], { attachment, board.id, item }))
+            assert(db:execute("ANALYZE kickside_work_time_total", {}))
+            local postgres = db:type() == sql.type.POSTGRES
+            local explain = postgres and "EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF) " or "EXPLAIN QUERY PLAN "
+            for _, predicate in ipairs({ { minutes = { gt = 0 } }, { over_estimate = { eq = 1 } } }) do
+                local plan = steps.call(board, "explain", { limit = 1, scopes = { { id = SCOPE, where = predicate } } }).plan
+                local rows = assert(db:query(explain .. plan.statement, plan.args))
+                local details = {}
+                for _, row in ipairs(rows) do details[#details + 1] = postgres and row["QUERY PLAN"] or row.detail end
+                local output = table.concat(details, "\n")
+                if postgres then
+                    test.not_nil(output:find("kickside_work_time_total_pkey", 1, true), output)
+                    test.not_nil(output:match("Index Cond: [^\n]+attachment_id = [^\n]+item_id = "), output)
+                else
+                    test.is_nil(output:find("LIST SUBQUERY", 1, true), output)
+                    test.not_nil(output:match("SEARCH t .-attachment_id=%? AND item_id=%?"), output)
                 end
-                db:release()
-            end)
-        end
+            end
+            db:release()
+        end)
 
         test.it("returns direct and subtree minutes and current estimate fields through the router", function()
             local admin, board = setup()
@@ -178,7 +175,7 @@ return { run = test.run_cases(function()
             test.eq(reports.groups[1].minutes, 15)
             local csv = admin.http("GET", path(board, "export.csv?group_by=board&from=" .. date() .. "&to=" .. date()))
             test.eq(csv.status, 200, csv.raw)
-            test.not_nil(csv.raw:find('"2","15"', 1, true))
+            test.is_true(csv.raw:find('"2","15"', 1, true) ~= nil)
 
             local prefix = path(board, "worklogs?item=" .. item .. "&limit=1")
             local list = ok(admin.http("GET", prefix))
@@ -189,6 +186,37 @@ return { run = test.run_cases(function()
             test.eq(page.entries[1].id, second.id)
             local refused = admin.http("GET", prefix .. "&person=unknown&cursor=" .. after)
             test.eq(refused.status, 400, refused.raw)
+        end)
+        test.it("pages worklogs newest first by date and entry ID and binds the cursor to that order", function()
+            local admin, board = setup()
+            local item = steps.create(board, "task")
+            local older = ok(admin.http("POST", path(board, "worklogs"), {
+                item = item, key = "older", minutes = 10, work_date = date(-1),
+            }))
+            local first = create(admin, board, item, "first", 10)
+            local second = create(admin, board, item, "second", 10)
+            local lower, higher = first.id, second.id
+            if lower > higher then lower, higher = higher, lower end
+            local prefix = path(board, "worklogs?item=" .. item)
+            local function after(cursor)
+                return "&cursor=" .. cursor:gsub("([^%w])", function(ch)
+                    return string.format("%%%02X", string.byte(ch))
+                end)
+            end
+            local oldest = ok(admin.http("GET", prefix .. "&limit=1"))
+            test.eq(oldest.entries[1].id, older.id)
+            local next_oldest = ok(admin.http("GET", prefix .. "&sort=oldest&limit=1" .. after(oldest.cursor)))
+            test.eq(next_oldest.entries[1].id, lower)
+            local newest = prefix .. "&sort=newest&limit=1"
+            local page = ok(admin.http("GET", newest))
+            test.eq(page.entries[1].id, higher)
+            local refused = admin.http("GET", prefix .. "&sort=oldest" .. after(page.cursor))
+            test.eq(refused.status, 400, refused.raw)
+            page = ok(admin.http("GET", newest .. after(page.cursor)))
+            test.eq(page.entries[1].id, lower)
+            page = ok(admin.http("GET", newest .. after(page.cursor)))
+            test.eq(page.entries[1].id, older.id)
+            test.is_nil(page.cursor)
         end)
         test.it("keeps item totals shared and enforces item and person access across lists, groups, CSV and scopes", function()
             local admin, board = setup(true, "self")
@@ -224,8 +252,8 @@ return { run = test.run_cases(function()
             test.eq(assert(time.parse("2006-01-02", report.groups[1].week)):format("Mon"), "Mon")
             local csv = member.http("GET", path(board, "export.csv?group_by=person_week&from=" .. date(-7) .. "&to=" .. date()))
             test.eq(csv.status, 200, csv.raw)
-            test.not_nil(csv.raw:find('"1","12"', 1, true))
-            test.is_nil(csv.raw:find(admin.id, 1, true))
+            test.is_true(csv.raw:find('"1","12"', 1, true) ~= nil)
+            test.is_true(csv.raw:find(admin.id, 1, true) == nil)
 
             local scoped_rows = assert(member.call("query", {
                 scopes = { { id = SCOPE, where = { minutes = { gt = 0 } } } },

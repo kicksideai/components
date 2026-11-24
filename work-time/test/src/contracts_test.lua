@@ -77,7 +77,7 @@ return { run = test.run_cases(function()
             input.person = owner.id
             local spoofed = caller.http("POST", path, input)
             test.eq(spoofed.status, 400, spoofed.raw)
-            local outsider = scoped.outsider().http("GET", path .. "?item=" .. item)
+            local outsider = scoped.member().http("GET", path .. "?item=" .. item)
             test.eq(outsider.status, 403, outsider.raw)
         end)
 
@@ -85,8 +85,26 @@ return { run = test.run_cases(function()
             local rendered = csv.render({ coverage = "complete", groups = { {
                 board_id = "board", person = "id", person_name = ' =HYPERLINK("link")', entry_count = 1, minutes = 25,
             } } })
-            test.not_nil(rendered:find('"' .. "'" .. ' =HYPERLINK(""link"")"', 1, true))
-            test.not_nil(rendered:find('"1","25"', 1, true))
+            test.is_true(rendered:find('"' .. "'" .. ' =HYPERLINK(""link"")"', 1, true) ~= nil)
+            test.is_true(rendered:find('"1","25"', 1, true) ~= nil)
+        end)
+
+        test.it("returns a structured HTTP error when a CSV report request is invalid", function()
+            local admin = scoped.admin()
+            local board = scoped.board(admin)
+            local reply = admin.http("GET", "/" .. board.id .. "/time/export.csv?group_by=sprint")
+            test.eq(reply.status, 400, reply.raw)
+            test.is_false(reply.body.success)
+            test.eq(reply.body.details.code, "invalid_time_query")
+        end)
+
+        test.it("returns a classified HTTP error when the CSV handler returns no report", function()
+            local admin = scoped.admin()
+            local board = scoped.board(admin)
+            local reply = admin.http("GET", "/" .. board.id .. "/time/export.csv?item=missing-report")
+            test.eq(reply.status, 500, reply.raw)
+            test.is_false(reply.body.success)
+            test.eq((reply.body.details or {}).code, "time_export_missing_report", reply.raw)
         end)
 
         test.it("preserves the signed estimate values Work admits in the read schemas", function()

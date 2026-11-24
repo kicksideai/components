@@ -7,12 +7,8 @@ entries:
   meta: {type: test, suite: work_time_reports, timeout: 180s}
   source: file://reports_test.lua
   method: run
-  modules: [sql, time, registry]
+  modules: [sql, time]
   imports:
     test: wippy.test:test
     scoped: app:scoped
     steps: app:steps
-# Enable with the published Work release that bounds plugin scope membership.
-- name: work_time_scope_plan_gate
-  kind: registry.entry
-  meta: {enabled: false}

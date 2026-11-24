@@ -4,8 +4,8 @@ local funcs = require("funcs")
 local sql = require("sql")
 local time = require("time")
 local board_client = require("board_client")
+local fixture = require("fixture")
 local scoped = require("scoped")
-local uuid = require("uuid")
 local steps = require("steps")
 local test = require("test")
 
@@ -30,7 +30,11 @@ function M.report(request)
     if err then return nil, err end
     local items = {}
     for _, item in ipairs(result.items) do items[#items + 1] = item.id end
-    return { items = items, as_of = result.as_of, coverage = result.after and "limited" or "complete" }
+    local sprint, sprint_err = board_client.call("get", { board_id = request.board_id, item = { id = request.sprint_id } })
+    if sprint_err then return nil, sprint_err end
+    local points = sprint.item.values.name == "Points"
+    return { items = items, as_of = result.as_of, coverage = result.after and "limited" or "complete",
+        unit = points and "points" or "minutes", points_field = points and "story_points" or nil }
 end
 
 local function invoke(session, action, request)
@@ -46,18 +50,17 @@ local function invoke(session, action, request)
     return assert(result:data())
 end
 
-local function setup(entry_visibility)
+local function setup(entry_visibility, points)
     local admin = scoped.admin()
-    local result, create_err = admin.call("create", {
-        idempotency_key = uuid.v4(), pack = "kickside.work.planning:pack",
-    })
-    assert(result and not create_err, steps.detail(create_err))
-    local board = {
-        id = result.board_id,
-        call = function(method, request) return admin.call(method, request, result.board_id) end,
-    }
+    local board = scoped.board(admin, { key_prefix = fixture.fresh_prefix() }, "kickside.work.planning:pack")
+    local declaration = { plugins = { { use = TIME }, { use = PLANNING } } }
+    if points then
+        declaration.fields = { { code = "story_points", form = "dec", index = "number", config = { scale = 1 } } }
+        declaration.item_types = { { id = "issue", process = "planning_issue",
+            fields = { "title", "current_sprint", "milestone", "story_points" } } }
+    end
     local reply = admin.http("POST", "/" .. board.id .. "/apply_schema", {
-        declaration = { plugins = { { use = TIME }, { use = PLANNING } } },
+        declaration = declaration,
         plugin_configs = { [TIME] = { item_types = { "issue" }, entry_visibility = entry_visibility } },
     })
     test.eq(reply.status, 200, reply.raw)
@@ -66,7 +69,7 @@ local function setup(entry_visibility)
         return plugin.lifecycle.state == "ready"
     end)
     local now = time.now():utc()
-    local sprint = steps.create(board, "sprint", { name = "Current",
+    local sprint = steps.create(board, "sprint", { name = points and "Points" or "Current",
         planning_start = now:add(-48 * time.HOUR):format("2006-01-02"),
         planning_end = now:add(48 * time.HOUR):format("2006-01-02"),
     })
@@ -112,7 +115,7 @@ M.run = test.run_cases(function()
             test.is_nil(group.points)
             local csv = member.http("GET", route .. "export.csv?group_by=sprint&sprint=" .. sprint .. "&from=" .. day .. "&to=" .. day)
             test.eq(csv.status, 200, csv.raw)
-            test.not_nil(csv.raw:find('"1","15"', 1, true))
+            test.is_true(csv.raw:find('"1","15"', 1, true) ~= nil)
         end)
 
         test.it("compares sprint actuals with current estimates after rollover", function()
@@ -146,6 +149,26 @@ M.run = test.run_cases(function()
             test.eq(group.original_minutes, 45)
             test.eq(group.minutes, 30)
             test.eq(group.entry_count, 1)
+        end)
+
+        test.it("keeps decimal story points and actual minutes in separate columns", function()
+            local admin, board, sprint, now = setup("all", true)
+            local day = now:format("2006-01-02")
+            local assigned = { board = board.id, item = sprint }
+            local item = steps.create(board, "issue", { current_sprint = assigned,
+                time_original_minutes = 100, story_points = "5.5" })
+            steps.create(board, "issue", { current_sprint = assigned, story_points = "2" })
+            invoke(admin, "create", { board_id = board.id, item = item, key = "points", minutes = 30, work_date = day })
+            local route = "/" .. board.id .. "/time/"
+            local response = admin.http("POST", route .. "totals", { group_by = "sprint", sprint = sprint, from = day, to = day })
+            test.eq(response.status, 200, response.raw)
+            local group = response.body.data.groups[1]
+            test.eq(group.points, 7.5)
+            test.eq(group.minutes, 30)
+            test.is_nil(group.original_minutes)
+            local csv = admin.http("GET", route .. "export.csv?group_by=sprint&sprint=" .. sprint .. "&from=" .. day .. "&to=" .. day)
+            test.eq(csv.status, 200, csv.raw)
+            test.is_true(csv.raw:find('"1","30","","7.5"', 1, true) ~= nil)
         end)
     end)
 end)

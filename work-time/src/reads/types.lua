@@ -9,7 +9,7 @@ type Context = {
 }
 type Request = {
     board_id: string, item: string?, from: string?, to: string?, person: string?, sprint: string?,
-    group_by: string?, cursor: string?, limit: integer?,
+    group_by: string?, cursor: string?, limit: integer?, sort: string?,
 }
 type Window = { from: string, to: string }
 type Row = { [string]: unknown }
