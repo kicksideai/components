@@ -42,8 +42,7 @@ entries:
   source: file://lifecycle.lua
   method: run
   imports:
-    board_client: kickside.work:client
-    work_reads: kickside.work.read:types
+    projection_feed: kickside.work.extensions:plugin_feed
     storage: kickside.work.planning.capacity:storage
 - name: worker_access
   kind: security.policy
