@@ -287,6 +287,19 @@ jobs:
             createdb "$database"
             trap 'dropdb "$database"' EXIT
             make -C work-kanban test WIPPY_ARGS="--profile postgres --set vars.pg_database=$database --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
+        - module: work-time
+          engine: sqlite
+          commands: |
+            make -C work-time setup lint test
+        - module: work-time
+          engine: postgres
+          commands: |
+            set -euo pipefail
+            make -C work-time setup
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_work_time"
+            createdb "$database"
+            trap 'dropdb "$database"' EXIT
+            make -C work-time test TEST_ARGS="--profile postgres --set vars.pg_database=$database --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
         - module: work-search
           engine: sqlite
           commands: |
