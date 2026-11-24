@@ -2,6 +2,26 @@
 version: "1.0"
 namespace: kickside.mail.views
 entries:
+  - name: asset_files
+    kind: fs.directory
+    directory: ./assets
+  - name: logo_asset
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: asset
+      name: logo
+      title: Logo
+      description: The image beside the installation title in Header.
+      asset:
+        source: original
+        filesystem: kickside.mail.views:asset_files
+        path: logo.png
+        filename: logo.png
+        content_type: image/png
+        width: 32
+        height: 32
+        size: 435
   - name: templates
     kind: template.set
     engine: { escape: html }
@@ -332,6 +352,8 @@ entries:
       message: kickside.mail:message
       globals: kickside.mail.views:globals
       jet: kickside.mail.library:jet
+      resources: kickside.mail.library:resources
+      asset_refs: kickside.mail.library:asset_refs
   - name: globals
     kind: library.lua
     source: file://globals.lua

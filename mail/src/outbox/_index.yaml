@@ -20,6 +20,7 @@ entries:
     imports:
       database: kickside.mail.outbox:database
       jobs: kickside.core.jobs:jobs
+      asset_store: kickside.mail.library:asset_store
       policy: kickside.mail.outbox:policy
       types: kickside.mail:types
   - name: failure
@@ -64,6 +65,7 @@ entries:
       jobs: kickside.core.jobs:jobs
       lease_release: kickside.core.jobs:lease_release
       message: kickside.mail:message
+      attachments: kickside.mail.service:attachments
       policy: kickside.mail.outbox:policy
       realtime: kickside.mail:realtime
       settings: kickside.mail:settings
@@ -74,6 +76,7 @@ entries:
         - kickside.mail.security:realtime_calls
         - kickside.mail.security:realtime_topics
         - kickside.mail.security:deferred_delivery
+        - kickside.mail.security:asset_bytes
         - kickside.mail.security:driver_dispatch
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
@@ -85,11 +88,12 @@ entries:
     meta: { private: true }
     source: file://../service/attachments.lua
     method: read
-    modules: [contract]
+    modules: [contract, funcs, base64]
     imports:
       client: kickside.mail:client
       types: kickside.mail:types
       message: kickside.mail:message
+      asset_refs: kickside.mail.library:asset_refs
   - name: owner
     kind: function.lua
     meta: { private: true, type: kickside.retention.owner }
@@ -97,6 +101,7 @@ entries:
     method: run
     modules: [sql]
     imports:
+      asset_store: kickside.mail.library:asset_store
       database: kickside.mail.outbox:database
       jobs: kickside.core.jobs:jobs
       policy: kickside.mail.outbox:policy
@@ -112,3 +117,6 @@ entries:
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:settings_read
+        - kickside.mail.security:asset_reap_call
+        - kickside.mail.security:asset_reap_action
+        - kickside.uploads.security:uploads_resource_access

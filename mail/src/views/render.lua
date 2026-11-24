@@ -6,6 +6,8 @@ local globals = require("globals")
 local message = require("message")
 local catalog = require("catalog")
 local jet = require("jet")
+local resources = require("resources")
+local asset_refs = require("asset_refs")
 
 local M = {}
 local TEXT_WIDTH = 72
@@ -73,12 +75,13 @@ function M.with_sets<T>(html_id: string, text_id: string,
 end
 
 function M.faces(item: types.ResourceContent, vars: unknown, values: types.RenderGlobals, html_set: types.TemplateSet,
-    text_set: types.TemplateSet): (types.Rendered?, error?)
+    text_set: types.TemplateSet, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     local validation_err = catalog.validate_vars(item.schema, vars)
     if validation_err then return nil, validation_err end
     local variables = vars :: types.JsonObject
     local context = globals.data(values, variables, type(variables.subject) == "string" and variables.subject or "")
     context._mail_html, context._mail_text = nil, nil
+    context.assets = nil
     local name = jet.name(item)
     local subject, subject_err = text_set:render(jet.name(item, "subject"), context)
     if subject_err then return nil, M.face_error(item, "subject", subject_err) end
@@ -96,23 +99,30 @@ function M.faces(item: types.ResourceContent, vars: unknown, values: types.Rende
         return nil, M.face_error(item, "text", errors.new({kind = errors.INVALID, message = "Mail template text must be UTF-8",
             retryable = false, details = {code = "invalid_body"}}))
     end
+    local assets = values.assets or {}
+    local asset_context = asset_refs.context(assets, attachments)
+    context.assets = asset_context
     local body, body_err = html_set:render(name, context)
     if body_err then return nil, M.face_error(item, "html", body_err) end
     if not body:find("%S") then return nil, M.face_error(item, "html", empty_body("html")) end
-    return {subject = subject :: string, html = body, text = (text:gsub("[^\r\n]+", wrap_line))}, nil
+    return {subject = subject :: string, html = body, text = (text:gsub("[^\r\n]+", wrap_line)),
+        library_assets = asset_refs.select(body, assets, asset_context)}, nil
 end
 
-function M.render(template_name: unknown, data: unknown): (types.Rendered?, error?)
+function M.render(template_name: unknown, data: unknown, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     local item, declaration_err = catalog.resolve(template_name)
     if declaration_err then return nil, declaration_err end
     local values, err = globals.read()
     if err then return nil, err end
+    local assets, asset_err = resources.list({kind = "asset"})
+    if asset_err then return nil, asset_err end
+    values.assets = assets
     return M.with_sets(jet.html, jet.text, function(html_set: types.TemplateSet, text_set: types.TemplateSet): (types.Rendered?, error?)
-        return M.faces(item :: types.Resource, data, values :: types.RenderGlobals, html_set, text_set)
+        return M.faces(item :: types.Resource, data, values :: types.RenderGlobals, html_set, text_set, attachments)
     end)
 end
 
-function M.body(subject: string, text: string?, markup: string?): (types.Rendered?, error?)
+function M.body(subject: string, text: string?, markup: string?, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     if text and not text:find("%S") then text = nil end
     local data = {_mail_text = text}
     if markup and markup:find("%S") then
@@ -130,13 +140,17 @@ function M.body(subject: string, text: string?, markup: string?): (types.Rendere
     local values, globals_err = globals.read()
     if globals_err then return nil, globals_err end
     local context = globals.data(values :: types.RenderGlobals, data, subject)
+    local assets, asset_err = resources.list({kind = "asset"})
+    if asset_err then return nil, asset_err end
+    local asset_context = asset_refs.context(assets :: {types.Resource}, attachments)
+    context.assets = asset_context
     local set, err = open_set(jet.html, "html")
     if err then return nil, err end
     local body, render_err = set:render("base/standard", context)
     set:release()
     if render_err then return nil, render_err end
     if not body:find("%S") then return nil, empty_body("html") end
-    return {subject = subject, html = body, text = text}, nil
+    return {subject = subject, html = body, text = text, library_assets = asset_refs.select(body, assets :: {types.Resource}, asset_context)}, nil
 end
 
 return M

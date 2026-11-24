@@ -885,6 +885,24 @@ return {
                 end
             end)
 
+            test.it("delivers the packaged Header image to a sender without library access", function()
+                capture_with(admin)
+                local input = template_request()
+                local preview = assert(invoke(editor, "preview", {template = input.template, vars = input.vars}))
+                test.not_nil(preview.html:find('src="cid:mail-library-logo"', 1, true))
+                test.is_nil(preview.text:find("cid:", 1, true))
+                local uri = assert(preview.inline_assets["mail-library-logo"])
+                test.eq("data:image/png;base64,", uri:sub(1, 22))
+                local completed = terminal(log_admin, assert(invoke(sender, "send", input)))
+                test.eq("sent", completed.status, tostring(completed.last_error and completed.last_error.message))
+                local captured = assert(json.decode(completed.provider_message_id))
+                test.eq(1, #captured.attachments)
+                local logo = captured.attachments[1]
+                test.eq("mail-library-logo", logo.content_id)
+                test.eq("inline", logo.disposition)
+                test.eq(uri, "data:" .. logo.content_type .. ";base64," .. logo.base64)
+            end)
+
             test.it("previews without delivery settings and matches what send renders", function()
                 local input = template_request()
                 local preview = assert(invoke(editor, "preview", {template = input.template, vars = input.vars}))

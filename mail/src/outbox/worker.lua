@@ -14,6 +14,7 @@ local store = require("store")
 local time = require("time")
 local types = require("types")
 local realtime = require("realtime")
+local attachments = require("attachments")
 
 local function active_driver(): (types.Driver?, error?)
     local config, err = settings.read("kickside.mail")
@@ -35,6 +36,8 @@ end
 local function send(row: types.MessageRow, driver: types.Driver, lease: types.Lease): (types.TransportResult?, error?)
     local addresses, refs, decode_err = store.content(row)
     if decode_err then return nil, decode_err end
+    local assets, asset_err = store.asset_refs(row.id)
+    if asset_err then return nil, asset_err end
     local limit_err = message.recipients_error(addresses, driver.max_recipients)
     if limit_err then return nil, limit_err end
     local execution, identity_err = identity.from_row(row.sender, row.actor_context)
@@ -44,15 +47,19 @@ local function send(row: types.MessageRow, driver: types.Driver, lease: types.Le
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = row.reply_to,
         subject = row.subject, html = row.html, text = row.text, idempotency_key = row.id,
     }
+    local size = message.delivery_size(request)
     local files, read_err = identity.run_as(execution, "kickside.mail.outbox:read_attachments", {
-        refs = refs, message_bytes = message.delivery_size(request), max_message_bytes = driver.max_message_bytes,
+        refs = refs, message_bytes = size, max_message_bytes = driver.max_message_bytes,
     }, {deferred_owner = store.WORKER})
     if read_err then return nil, read_err :: error end
+    local completed, assets_err = attachments.complete({library_assets = assets, message_bytes = size,
+        max_message_bytes = driver.max_message_bytes}, files :: {types.Attachment})
+    if assets_err then return nil, assets_err end
     local transport, open_err = drivers.transport(driver)
     if open_err then return nil, open_err end
     local inactive = check_lease(row.job_id, lease)
     if inactive then return nil, inactive end
-    request.attachments = files :: {types.Attachment}
+    request.attachments = completed :: {types.Attachment}
     return (transport :: types.Transport):send(request)
 end
 

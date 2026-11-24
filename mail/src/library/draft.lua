@@ -7,6 +7,7 @@ local catalog = require("catalog")
 local globals = require("globals")
 local resources = require("resources")
 local jet = require("jet")
+local asset_refs = require("asset_refs")
 
 local M = {}
 local HTML = jet.draft_namespace .. "html"
@@ -78,14 +79,15 @@ local function invalid(err: error): error
 end
 
 local function render_message(item: types.ResourceContent, vars: types.JsonObject, values: types.RenderGlobals,
-    html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
-    local result, err = render.faces(item, vars, values, html, text)
+    html: types.TemplateSet, text: types.TemplateSet, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
+    local result, err = render.faces(item, vars, values, html, text, attachments)
     if not err then return result, nil end
     if not (err:details() or {}).face then err = render.face_error(item, "variables", err) end
     return nil, invalid(err)
 end
 
 local function validate_faces(item: types.ResourceContent, values: types.RenderGlobals, html: types.TemplateSet, text: types.TemplateSet): error?
+    if item.kind == "asset" then return nil end
     if item.kind == "message" then
         local _, err = render_message(item, item.samples, values, html, text)
         return err
@@ -94,8 +96,10 @@ local function validate_faces(item: types.ResourceContent, values: types.RenderG
     if schema_err then return invalid(render.face_error(item, "samples", schema_err)) end
     local context = globals.data(values, item.samples, "")
     local name = item.kind == "part" and ("check/" .. item.name) or jet.name(item)
+    context.assets = asset_refs.context(values.assets or {})
     local _, html_err = html:render(name, context)
     if html_err then return invalid(render.face_error(item, "html", html_err)) end
+    context.assets = nil
     local _, text_err = text:render(name, context)
     if text_err then return invalid(render.face_error(item, "text", text_err)) end
     return nil
@@ -132,6 +136,7 @@ end
 
 function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidates: {types.ResourceContent},
     dependants: {types.Resource}, values: types.RenderGlobals): error?
+    values.assets = asset_refs.from_items(items)
     local _, err = with_draft(items, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (boolean?, error?)
         local result, candidate_error, dependent_error = check(candidates, dependants, values, html, text)
         if candidate_error then return nil, candidate_error end
@@ -151,10 +156,11 @@ function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidates
 end
 
 function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, candidates: {types.ResourceContent},
-    dependants: {types.Resource}, values: types.RenderGlobals): (types.DraftPreview?, error?)
+    dependants: {types.Resource}, values: types.RenderGlobals, attachments: {types.AttachmentRef}?): (types.DraftPreview?, error?)
+    values.assets = asset_refs.from_items(items)
     return with_draft(items, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview?, error?)
         local result = check(candidates, dependants, values, html, text)
-        local rendered, err = render_message(item, vars, values, html, text)
+        local rendered, err = render_message(item, vars, values, html, text, attachments)
         if err then
             local problem = issue(err)
             for _, existing in ipairs(result.errors) do
@@ -166,14 +172,36 @@ function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.J
             result.errors[#result.errors + 1] = problem
         else
             result.subject, result.html, result.text = rendered.subject, rendered.html, rendered.text
+            result.library_assets = rendered.library_assets
         end
         return result, nil
     end)
 end
 
-function M.render(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, values: types.RenderGlobals): (types.Rendered?, error?)
+function M.asset_usage(items: types.ResourceMap, values: types.RenderGlobals): ({[string]: {string}}?, error?)
+    values.assets = asset_refs.from_items(items)
+    return with_draft(items, {}, function(html: types.TemplateSet, text: types.TemplateSet): ({[string]: {string}}?, error?)
+        local usage: {[string]: {string}} = {}
+        for _, item in pairs(items) do
+            if item.kind == "message" then
+                local rendered, err = render_message(item, item.samples, values, html, text)
+                if err then return nil, err end
+                for _, ref in ipairs(rendered.library_assets or {}) do
+                    usage[ref.name] = usage[ref.name] or {}
+                    usage[ref.name][#usage[ref.name] + 1] = item.name
+                end
+            end
+        end
+        for _, names in pairs(usage) do table.sort(names) end
+        return usage, nil
+    end)
+end
+
+function M.render(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, values: types.RenderGlobals,
+    attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
+    values.assets = asset_refs.from_items(items)
     return with_draft(items, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
-        return render_message(item, vars, values, html, text)
+        return render_message(item, vars, values, html, text, attachments)
     end)
 end
 

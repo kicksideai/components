@@ -101,7 +101,7 @@ entries:
     kind: function.lua
     source: file://transport.lua
     method: capture
-    modules: [json, sql, channel]
+    modules: [json, sql, channel, base64]
     security:
       policies: [kickside.mail.harness:fixture_db]
   - name: first
@@ -118,12 +118,12 @@ entries:
     kind: function.lua
     source: file://transport.lua
     method: first
-    modules: [json, sql, channel]
+    modules: [json, sql, channel, base64]
   - name: send_second
     kind: function.lua
     source: file://transport.lua
     method: second
-    modules: [json, sql, channel]
+    modules: [json, sql, channel, base64]
   - name: available_grant
     kind: ns.requirement
     default: kickside.mail.harness:available
@@ -133,7 +133,7 @@ entries:
     kind: function.lua
     source: file://transport.lua
     method: available
-    modules: [json, sql, channel]
+    modules: [json, sql, channel, base64]
   - name: probe
     kind: function.lua
     source: file://mailer_test.lua

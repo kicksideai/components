@@ -18,7 +18,7 @@ local ADDRESS = "editor@example.org"
 local ALIASES = {
     library_list = "MailLibraryList", library_read = "MailLibraryRead", library_preview = "MailLibraryPreview",
     library_save = "MailLibrarySave", library_create = "MailLibraryCreate", library_reset = "MailLibraryReset",
-    library_history = "MailLibraryHistory", library_restore = "MailLibraryRestore", send_test = "MailSendTest",
+    asset_add = "MailAssetAdd", library_history = "MailLibraryHistory", library_restore = "MailLibraryRestore", send_test = "MailSendTest",
 }
 
 local function caller(id, can_edit, can_send)

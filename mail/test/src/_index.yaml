@@ -41,6 +41,8 @@ entries:
     kind: security.scope
   - name: mail_senders
     kind: security.scope
+  - name: mail_editors
+    kind: security.scope
   - name: dep.test
     kind: ns.dependency
     component: wippy/test
@@ -150,6 +152,7 @@ entries:
       - { name: "kickside.mail.security:user_security_scope", value: "app:user" }
       - { name: "kickside.mail:target_db", value: "app:db" }
       - { name: "kickside.mail:api_router", value: "app:api" }
+      - { name: "kickside.mail:library_editor_grant", value: {subject_id: "app:mail_editors", subject_type: group, access_mask: 2} }
   - name: dep.workflows
     kind: ns.dependency
     component: kickside/workflows

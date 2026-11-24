@@ -23,10 +23,16 @@ local function preview(request: types.PreviewRequest): (types.PreviewResult?, er
     if denied then return nil, denied end
     if type(request) ~= "table" then return nil, errors.new({kind = errors.INVALID, retryable = false,
         message = "A template and variables are required", details = {code = "invalid_template"}}) end
-    local rendered, render_err = render.render(request.template, request.vars)
+    if request.attachments ~= nil then
+        local invalid = message.attachments_error(request.attachments)
+        if invalid then return nil, invalid end
+    end
+    local rendered, render_err = render.render(request.template, request.vars, request.attachments)
     if render_err then return nil, render_err end
     local result = rendered :: types.Rendered
-    return {subject = result.subject, html = result.html :: string, text = result.text :: string}, nil
+    local inline, inline_err = attachments.preview(result, request.attachments)
+    if inline_err then return nil, inline_err end
+    return {subject = result.subject, html = result.html :: string, text = result.text :: string, inline_assets = inline}, nil
 end
 
 local function admit(input: types.SendRequest, rendered: types.Rendered?, resend_of: string?): (types.SendResult?, error?)
@@ -50,7 +56,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
 
     local render_err
     if not rendered and input.template then
-        rendered, render_err = render.render(input.template, input.vars)
+        rendered, render_err = render.render(input.template, input.vars, input.attachments)
         if render_err then return nil, render_err end
     end
     local addresses, recipient_err = recipients.resolve(input)
@@ -76,7 +82,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     end
 
     if not rendered then
-        rendered, render_err = render.body(input.subject :: string, input.text, input.html)
+        rendered, render_err = render.body(input.subject :: string, input.text, input.html, input.attachments)
         if render_err then return nil, render_err end
     end
 
@@ -88,7 +94,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
         subject = parts.subject, html = parts.html, text = parts.text,
     })
     local attachment_err = attachments.validate({
-        refs = input.attachments, message_bytes = bytes, max_message_bytes = driver.max_message_bytes,
+        refs = input.attachments, library_assets = parts.library_assets, message_bytes = bytes, max_message_bytes = driver.max_message_bytes,
     })
     if attachment_err then return nil, attachment_err end
 
@@ -97,7 +103,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
         from = from,
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = reply_to,
         subject = parts.subject, html = parts.html, text = parts.text, attachments = input.attachments,
-        idempotency_key = input.idempotency_key, content_hash = hash, origin = input.origin, resend_of = resend_of,
+        library_assets = parts.library_assets, idempotency_key = input.idempotency_key, content_hash = hash, origin = input.origin, resend_of = resend_of,
     })
     if save_err then return nil, save_err end
     if saved.inserted then
@@ -125,9 +131,11 @@ local function resend(message_id: string): (types.SendResult?, error?)
     if read_err then return nil, read_err end
     local addresses, refs, decode_err = store.content(row)
     if decode_err then return nil, decode_err end
+    local assets, asset_err = store.asset_refs(row.id)
+    if asset_err then return nil, asset_err end
     return admit({to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = row.reply_to,
         template = row.template, attachments = refs},
-        {subject = row.subject, html = row.failed_html, text = row.failed_text}, row.id)
+        {subject = row.subject, html = row.failed_html, text = row.failed_text, library_assets = assets}, row.id)
 end
 
 local function test_input(): (types.SendRequest?, error?)

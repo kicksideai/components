@@ -47,6 +47,7 @@ entries:
         - kickside.mail.traits:library_preview
         - kickside.mail.traits:library_save
         - kickside.mail.traits:library_create
+        - kickside.mail.traits:asset_add
         - kickside.mail.traits:library_reset
         - kickside.mail.traits:library_history
         - kickside.mail.traits:library_restore
@@ -179,6 +180,7 @@ entries:
         - kickside.mail.views:details_template
         - kickside.mail.views:image_template
         - kickside.mail.views:signature_template
+        - kickside.mail.views:logo_asset
       actions: [template.get, registry.get, registry.find]
       effect: allow
   - name: user_security_scope
@@ -189,6 +191,77 @@ entries:
       - { entry: "kickside.mail.security:module_access", path: ".groups +=" }
       - { entry: "kickside.mail.security:module_runtime", path: ".groups +=" }
       - { entry: "kickside.mail.security:member_endpoints", path: ".groups +=" }
+  - name: asset_adoption
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.uploads:adopt_component_upload]
+      actions: [funcs.call]
+      effect: allow
+  - name: asset_adoption_action
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.uploads]
+      actions: [uploads.asset.adopt]
+      effect: allow
+  - name: asset_reap_call
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.uploads:reap_component_upload]
+      actions: [funcs.call]
+      effect: allow
+  - name: asset_reap_action
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: '*'
+      actions: [uploads.asset.reap]
+      effect: allow
+      conditions:
+        - {field: meta.impl_id, operator: eq, value: "kickside.mail.binding:library"}
+  - name: adopted_asset_content
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources:
+        - kickside.contract:content_provider
+        - kickside.uploads:content_provider
+        - kickside.mail.binding:library
+        - kickside.uploads:uploads_component
+        - kickside.uploads.binding:get_info_func
+        - kickside.uploads.binding:get_content_func
+        - get_info
+        - get_content
+        - kickside.component:component_service
+        - kickside.component.binding:component_service_impl
+        - kickside.component.binding:get_access_context_func
+        - kickside.component:db_config
+        - get_access_context
+        - kickside.execution:maintenance_actor
+        - security
+      actions: [registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+      effect: allow
+  - name: mail_retention_actor
+    kind: registry.entry
+    meta:
+      type: kickside.execution.maintenance_actor
+      actor_id: system:kickside.mail.retention
+  - name: packaged_assets
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail.views:logo_asset, kickside.mail.views:asset_files]
+      actions: [registry.get, fs.get, fs.read, fs.stat]
+      effect: allow
+  - name: asset_bytes
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail.library:read_asset_file]
+      actions: [funcs.call]
+      effect: allow
   - name: site_url
     kind: security.policy
     meta: { private: true }
@@ -238,6 +311,7 @@ entries:
         - kickside.mail.library:preview_edits
         - kickside.mail.library:save
         - kickside.mail.library:create
+        - kickside.mail.library:asset_add
         - kickside.mail.library:reset
         - kickside.mail.library:history
         - kickside.mail.library:restore

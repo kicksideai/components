@@ -89,6 +89,14 @@ function M.create(input: types.ResourceCreate): (unknown, error?)
     return write_one("create", input)
 end
 
+function M.asset_add(input: types.AssetWrite): (unknown, error?)
+    local item, err = call(LIBRARY .. "asset_add", input)
+    if err then return refusal(err) end
+    local saved = item :: types.Resource
+    return {kind = saved.kind, name = saved.name, state = saved.state, revision = saved.revision,
+        messages = saved.used_by and saved.used_by.messages or {}}, nil
+end
+
 function M.reset(input: types.ResourceRevision): (unknown, error?)
     return write_one("reset", input)
 end

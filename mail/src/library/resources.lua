@@ -22,7 +22,7 @@ local function valid_name(name: unknown): boolean
 end
 
 function M.check_key(key: types.ResourceKey): error?
-    if type(key) ~= "table" or (key.kind ~= "base" and key.kind ~= "message" and key.kind ~= "part") or not valid_name(key.name) then
+    if type(key) ~= "table" or (key.kind ~= "base" and key.kind ~= "message" and key.kind ~= "part" and key.kind ~= "asset") or not valid_name(key.name) then
         return M.error(errors.INVALID, "invalid_mail_resource", "A library resource requires a kind and a stable name")
     end
     return nil
@@ -31,6 +31,13 @@ end
 function M.normalize(key: types.ResourceContent): (types.ResourceContent?, error?)
     local invalid = M.check_key(key)
     if invalid then return nil, invalid end
+    if key.kind == "asset" then
+        if type(key.title) ~= "string" or not key.title:find("%S") or type(key.description) ~= "string" or not key.asset then
+            return nil, M.error(errors.INVALID, "invalid_mail_asset", "A library asset needs an image source", key)
+        end
+        return {kind = key.kind, name = key.name, title = key.title, description = key.description,
+            html = "", text = "", schema = {type = "object", properties = {}}, samples = {}, asset = key.asset}, nil
+    end
     if type(key.title) ~= "string" or not key.title:find("%S") or type(key.description) ~= "string"
         or type(key.html) ~= "string" or key.html == "" or type(key.text) ~= "string" or key.text == "" then
         return nil, M.error(errors.INVALID, "invalid_mail_resource", "A library resource requires its title, description, and both faces", key)
@@ -64,7 +71,10 @@ local function original(id: string, data: types.Record): (types.Original?, error
     end
     local fields = data.template :: types.Record
     local entry_ids = fields.entries :: {[string]: string}
-    if type(entry_ids) ~= "table" or type(entry_ids.html) ~= "string" or type(entry_ids.text) ~= "string"
+    if declaration.kind == "asset" then
+        entry_ids = {}
+        declaration.html, declaration.text = "", ""
+    elseif type(entry_ids) ~= "table" or type(entry_ids.html) ~= "string" or type(entry_ids.text) ~= "string"
         or (declaration.kind == "message" and type(entry_ids.subject) ~= "string") then
         return nil, M.error(errors.INVALID, "invalid_template_declaration", "Missing Jet registry IDs for " .. id)
     end

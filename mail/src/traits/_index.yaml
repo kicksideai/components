@@ -94,14 +94,16 @@ entries:
       type: agent.trait
       public: true
       title: Email design
-      comment: Design and test messages, base templates and reusable parts.
+      comment: Design and test messages, base templates, reusable parts and images.
     prompt: >-
       A message is a subject and two Jet bodies, with variables and samples. A base template provides the shared
       frame around a message's body block. A part is a reusable snippet with named inputs. Use MailLibraryList
       and MailLibraryRead to learn the library. Preview every proposed edit or new resource with MailLibraryPreview.
       Fix the returned face errors and broken dependent messages, then pass the clean preview_id with the same
       content to MailLibrarySave or MailLibraryCreate. Saves apply directly and record a revision. Use History,
-      Reset or Restore to revisit earlier versions. MailSendTest sends sample content to the acting person.
+      Reset or Restore to revisit earlier versions. Use MailAssetAdd with an upload from the acting person to
+      add or replace an image. In an HTML face, <img src="{{ assets.logo }}" alt=""> places the logo.
+      MailSendTest sends sample content to the acting person.
       These tools require Edit mail library. Test delivery also requires Send mail.
     tools:
       - kickside.mail.traits:library_list
@@ -109,6 +111,7 @@ entries:
       - kickside.mail.traits:library_preview
       - kickside.mail.traits:library_save
       - kickside.mail.traits:library_create
+      - kickside.mail.traits:asset_add
       - kickside.mail.traits:library_reset
       - kickside.mail.traits:library_history
       - kickside.mail.traits:library_restore
@@ -121,14 +124,14 @@ entries:
       title: List Mail Library
       llm_alias: MailLibraryList
       llm_description: >-
-        Find messages, shared base frames and reusable parts by kind, name or title, and state. Returns compact
+        Find messages, shared base frames, reusable parts and images by kind, name or title, and state. Returns compact
         rows with the stable name, revision and known usage counts. Pass next_cursor as cursor with the same
         filters for the next page. Read a row with MailLibraryRead. Invalid filters and denied access are tool errors.
       input_schema:
         type: object
         additionalProperties: false
         properties:
-          kind: &resource_kind {type: string, enum: [message, base, part]}
+          kind: &resource_kind {type: string, enum: [message, base, part, asset]}
           q: {type: string, description: Case-insensitive substring of the stable name or display title.}
           state: &resource_state {type: string, enum: [original, customized, created]}
           limit: {type: integer, minimum: 1, maximum: 100, default: 25}
@@ -189,9 +192,20 @@ entries:
           name: *resource_name
           title: &title {type: string, minLength: 1}
           description: &text {type: string}
-          html: &face {type: string, minLength: 1}
-          text: *face
-          subject: *face
+          html: *text
+          text: *text
+          subject: &face {type: string, minLength: 1}
+          asset: &asset_content
+            type: object
+            required: [source]
+            properties:
+              source: {type: string, enum: [original, upload]}
+              upload_id: {type: string}
+              filename: *text
+              content_type: *text
+              size: {type: integer, minimum: 1}
+              width: &dimension {type: integer, minimum: 1}
+              height: *dimension
           base: *resource_name
           schema: &variable_schema
             type: object
@@ -260,7 +274,7 @@ entries:
               additionalProperties: false
               required: &content_required [kind, name, title, description, html, text, schema, samples]
               properties: &edit_fields
-                kind: *resource_kind
+                kind: &template_kind {type: string, enum: [message, base, part]}
                 name: *resource_name
                 title: *title
                 description: *text
@@ -277,7 +291,7 @@ entries:
             additionalProperties: false
             required: [kind, name]
             properties: &create_fields
-              kind: *resource_kind
+              kind: *template_kind
               name: *resource_name
               from: *resource_key
               title: *title
@@ -290,6 +304,16 @@ entries:
               base: *resource_name
               note: *text
           vars: *samples
+          attachments:
+            type: array
+            items:
+              type: object
+              required: [upload_id, disposition, content_id]
+              properties:
+                upload_id: {type: string}
+                filename: *text
+                disposition: {type: string, const: inline}
+                content_id: *text
       output_schema:
         type: object
         anyOf:
@@ -299,6 +323,7 @@ entries:
           subject: *text
           html: *text
           text: *text
+          inline_assets: {type: object, additionalProperties: *text}
           preview_id: &preview_id {type: string, description: Short-lived proof of a clean preview of these exact changes.}
           errors: &draft_errors
             type: array
@@ -406,6 +431,47 @@ entries:
     modules: *design_modules
     imports: *design_imports
     security: *design_security
+  - name: asset_add
+    kind: function.lua
+    meta:
+      type: tool
+      public: true
+      title: Add Mail Library Image
+      llm_alias: MailAssetAdd
+      llm_description: >-
+        Adopt a PNG, JPEG or GIF upload of up to 1 MiB from the acting person. Use a new name to add
+        an image or an existing name to replace it. To require a specific current revision, pass
+        expected_revision. Returns the resource revision and the sampled messages that use the image.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [name, upload_id]
+        properties:
+          name: *resource_name
+          upload_id: {type: string, format: uuid}
+          expected_revision: *resource_revision
+          width: *dimension
+          height: *dimension
+          title: *title
+          description: *text
+          note: *text
+      output_schema:
+        type: object
+        anyOf:
+          - {required: [kind, name, state, revision, messages]}
+          - *refusal_required
+        properties:
+          <<: *summary_fields
+          messages: *message_names
+          success: *refused
+          code: *text
+          error: *text
+          resource: *resource_key
+    source: *design_source
+    method: asset_add
+    modules: *design_modules
+    imports: *design_imports
+    security: *design_security
   - name: library_reset
     kind: function.lua
     meta:
@@ -464,7 +530,12 @@ entries:
                 content:
                   type: object
                   required: *content_required
-                  properties: *edit_fields
+                  properties:
+                    <<: *edit_fields
+                    kind: *resource_kind
+                    html: *text
+                    text: *text
+                    asset: *asset_content
     source: *design_source
     method: history
     modules: *design_modules

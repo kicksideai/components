@@ -39,7 +39,7 @@ Drivers declare `registry.entry` with `meta.type: kickside.mail:driver` and impl
 
 ## Template library
 
-The library stores messages, base templates, and parts. Every resource has HTML and text faces. A message also has a subject, a variable schema with samples, and the name of its base. A part declares its inputs. The starter library ships Standard and Plain bases and composes Notice from editable parts.
+The library stores messages, base templates, parts, and image assets. Messages, bases, and parts have HTML and text faces. A message also has a subject, a variable schema with samples, and the name of its base. A part declares its inputs. The starter library ships Standard and Plain bases and composes Notice from editable parts.
 
 A message selects its base as data. The base provides a `body()` block and the message supplies that block's content. Include a part by its absolute Jet name and pass its inputs as the context.
 
@@ -53,6 +53,21 @@ A message selects its base as data. The base provides a `body()` block and the m
 Parts read passed inputs through the dot context. Templates can also read `site.title`, `site.url`, `sender.name`, `message.subject`, and `message.preheader` in both faces. Use `vars` for declared message variables.
 
 Lua callers with **Edit mail library** call functions in `kickside.mail.library`. Use `list` and `get` to read resources, `render` to render a message, and `render_draft` to preview a candidate against a selected message. Call `create`, `update`, `set_base`, `reset`, or `delete` to edit the library. Edits to an existing resource require its current `expected_revision`. Reset restores the current shipped original.
+
+## Library images
+
+Add a named image from your completed Uploads file with **Edit mail library** or the `MailAssetAdd` tool. Mail supports PNG, JPEG, and GIF images up to 1 MiB. Supply pixel width and height when known. Mail gets the media type and byte size from Uploads. Only the person who uploaded the source can adopt it into the library. Bind `kickside.mail:library_editor_grant` to the host editor group with `subject_type: group` and `access_mask: 2`.
+
+Use the `assets` map in any HTML message, base, or part. Use brackets for names containing a hyphen.
+
+```html
+<img src="{{ assets.logo }}" alt="Team mark">
+<img src='{{ assets["event-banner"] }}' alt="Event banner">
+```
+
+The shipped Header uses `logo`. Replace the image to change every email that uses Header. Reset restores the logo in the currently installed package. An original revision and a queued reference to an original resolve the package's current file. Adopted versions remain available for retained revisions, queued delivery and the existing failed-message resend window.
+
+Mail attaches each library image referenced in rendered HTML once. It counts the image and transfer encoding toward the driver’s size limit. Message and draft previews expose a content-ID-to-data-URI map in `inline_assets`. Pass optional inline `attachments` to also preview caller-owned uploads referenced by the HTML. The plain-text face has no library image map.
 
 ## Error codes
 

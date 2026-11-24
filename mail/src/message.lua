@@ -146,7 +146,7 @@ end
 
 local ATTACHMENT_FIELDS = {upload_id = true, filename = true, disposition = true, content_id = true}
 
-local function attachments_error(attachments: unknown): error?
+function M.attachments_error(attachments: unknown): error?
     if not array(attachments) then return invalid("invalid_attachment", "Attachments must be an array") end
     if #attachments > M.MAX_ATTACHMENTS then
         return invalid("too_many_attachments", "Attachments exceed the count limit")
@@ -263,7 +263,7 @@ function M.validate(raw: unknown): (types.SendRequest?, error?)
         return nil, invalid("invalid_idempotency_key", "Idempotency key must be non-empty, contain no control characters, and be at most 2048 bytes")
     end
     if input.attachments ~= nil then
-        local err = attachments_error(input.attachments)
+        local err = M.attachments_error(input.attachments)
         if err then return nil, err end
     end
     return input :: types.SendRequest, nil

@@ -2,10 +2,40 @@
 version: "1.0"
 namespace: kickside.mail.library
 entries:
+  - name: asset_refs
+    kind: library.lua
+    source: file://asset_refs.lua
+    imports: { types: kickside.mail:types }
+  - name: read_asset_file
+    kind: function.lua
+    meta: { private: true }
+    source: file://asset_file.lua
+    method: read
+    modules: [registry, fs]
+    imports:
+      types: kickside.mail:types
+      asset_refs: kickside.mail.library:asset_refs
+      asset_store: kickside.mail.library:asset_store
+      attachments: kickside.mail.service:attachments
+    security:
+      actor: { id: system:kickside.mail.retention }
+      policies:
+        - kickside.mail.security:packaged_assets
+        - kickside.mail.security:adopted_asset_content
+        - kickside.uploads.security:uploads_resource_access
+        - kickside.mail.security:outbox_db
   - name: jet
     kind: library.lua
     source: file://jet.lua
     imports: { types: kickside.mail:types }
+  - name: asset_store
+    kind: library.lua
+    source: file://asset_store.lua
+    modules: [sql, time, funcs]
+    imports:
+      types: kickside.mail:types
+      database: kickside.mail.outbox:database
+      autoinit: kickside.component:autoinit
   - name: store
     kind: library.lua
     source: file://store.lua
@@ -14,6 +44,7 @@ entries:
       types: kickside.mail:types
       database: kickside.mail.outbox:database
       canonical_json: kickside.contract:canonical_json
+      asset_store: kickside.mail.library:asset_store
   - name: resources
     kind: library.lua
     source: file://resources.lua
@@ -64,6 +95,7 @@ entries:
       resources: kickside.mail.library:resources
       render: kickside.mail.views:render
       globals: kickside.mail.views:globals
+      asset_refs: kickside.mail.library:asset_refs
       catalog: kickside.mail.views:catalog
       error_envelope: kickside.contract:error_envelope
   - name: preview_id
@@ -79,7 +111,7 @@ entries:
     kind: function.lua
     method: list
     source: &service_source file://service.lua
-    modules: &service_modules [security, sql, time]
+    modules: &service_modules [security, sql, time, uuid, funcs, logger]
     imports: &service_imports
       types: kickside.mail:types
       client: kickside.mail:client
@@ -96,6 +128,11 @@ entries:
       realtime: kickside.mail:realtime
       keyset: kickside.contract:keyset
       preview_id: kickside.mail.library:preview_id
+      attachments: kickside.mail.service:attachments
+      message: kickside.mail:message
+      asset_refs: kickside.mail.library:asset_refs
+      asset_store: kickside.mail.library:asset_store
+      notifier: kickside.core.retention:notifier
     security: &read_security
       policies:
         - kickside.mail.security:outbox_db
@@ -117,6 +154,8 @@ entries:
         - kickside.mail.security:site_url
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
+        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:overlay_drafts
   - name: list_page
     kind: function.lua
     method: list_page
@@ -130,7 +169,14 @@ entries:
     source: *service_source
     modules: *service_modules
     imports: *service_imports
-    security: *read_security
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:asset_bytes
   - name: create
     kind: function.lua
     method: create
@@ -151,6 +197,10 @@ entries:
         - &overlay_originals kickside.mail.security:overlay_originals
         - &overlay_drafts kickside.mail.security:overlay_drafts
         - kickside.settings:reader_secrets
+        - &asset_adopt kickside.mail.security:asset_adoption
+        - &asset_adopt_action kickside.mail.security:asset_adoption_action
+        - &asset_content kickside.mail.security:adopted_asset_content
+        - &asset_notify kickside.core.retention:notify_access
   - name: history
     kind: function.lua
     method: history
@@ -177,6 +227,17 @@ entries:
         - *overlay_projection
         - *overlay_originals
         - *overlay_drafts
+        - *asset_adopt
+        - *asset_adopt_action
+        - *asset_content
+        - *asset_notify
+  - name: asset_add
+    kind: function.lua
+    method: asset_add
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *write_security
   - name: save
     kind: function.lua
     method: save
@@ -227,6 +288,7 @@ entries:
         - kickside.mail.security:settings_read
         - kickside.mail.security:overlay_owner
         - kickside.mail.security:overlay_drafts
+        - kickside.mail.security:asset_bytes
   - name: preview_edits
     kind: function.lua
     method: preview_edits
@@ -243,3 +305,4 @@ entries:
         - kickside.mail.security:overlay_owner
         - kickside.mail.security:overlay_drafts
         - kickside.settings:reader_secrets
+        - kickside.mail.security:asset_bytes

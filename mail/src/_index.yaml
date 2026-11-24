@@ -6,6 +6,10 @@ entries:
     kind: ns.definition
     readme: file://README.md
     meta: { title: Mail }
+  - name: dep.component
+    kind: ns.dependency
+    version: "*"
+    component: kickside/component
   - name: dep.core
     kind: ns.dependency
     version: "*"
@@ -45,7 +49,15 @@ entries:
       - { entry: kickside.mail.migrations:04_message_origin, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:05_message_template_index, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:06_failed_content, path: ".meta.target_db" }
+      - { entry: kickside.mail.migrations:07_library_assets, path: ".meta.target_db" }
       - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
+  - name: library_editor_grant
+    kind: ns.requirement
+    meta:
+      value_type: object
+      comment: Structured component WRITE grant for the host's Mail library editors.
+    targets:
+      - {entry: kickside.mail.binding:library, path: ".meta.provision.grants +="}
   - name: api_router
     kind: ns.requirement
     meta: { value_kind: http.router, comment: Authenticated router for the Mail administration API. }

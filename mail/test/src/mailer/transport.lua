@@ -2,6 +2,7 @@
 local json = require("json")
 local sql = require("sql")
 local channel = require("channel")
+local base64 = require("base64")
 
 local function result(id, message)
     return {provider_message_id = table.concat({
@@ -36,7 +37,13 @@ local function capture(message)
                 details = {code = "rate_limited"}})
         end
     end
+    local attachments = {}
+    for i, file in ipairs(message.attachments or {}) do
+        attachments[i] = {content_id = file.content_id, disposition = file.disposition,
+            content_type = file.content_type, base64 = assert(base64.encode(file.content))}
+    end
     return {provider_message_id = assert(json.encode({
+        attachments = attachments,
         subject = message.subject, html = message.html, text = message.text,
         to = message.to, cc = message.cc, bcc = message.bcc, idempotency_key = message.idempotency_key,
     }))}
