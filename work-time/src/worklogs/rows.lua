@@ -41,7 +41,7 @@ function M.lock_item(tx: sql.Transaction, attachment: string, item: string): err
     return nil
 end
 
-function M.entry(tx: sql.Transaction, position: types.Position, id: string): (types.Entry?, error?)
+function M.entry(tx: sql.DB | sql.Transaction, position: types.Position, id: string): (types.Entry?, error?)
     local rows, err = tx:query([[SELECT entry_id, item_id, person_id, version, minutes, work_date, sprint_id, note
         FROM kickside_work_time_worklog WHERE attachment_id = $1 AND entry_id = $2 AND board_id = $3]],
         { position.attachment_id, id, position.board_id })

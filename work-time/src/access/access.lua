@@ -64,7 +64,7 @@ function M.current(tx: sql.Transaction, admitted: Admission): (work.Board?, conf
     return board, config.effective(active.config), nil
 end
 
-function M.live_item(tx: sql.Transaction, board: work.Board, item_id: string): (work.Item?, error?)
+function M.live_item(tx: sql.DB | sql.Transaction, board: work.Board, item_id: string): (work.Item?, error?)
     local item, err = item_view.find(tx, board, { id = item_id })
     if err or not item or item.life ~= "live" then return nil, err or M.missing() end
     return item, nil

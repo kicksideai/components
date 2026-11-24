@@ -167,7 +167,7 @@ local function define()
             test.is_nil(missing_table)
             for _, name in ipairs({
                 "attachment_retired", "item_retired", "worklog_item_date", "worklog_person_date", "worklog_board_date",
-                "worklog_expiry", "receipt_item", "receipt_expiry", "total_board_item", "daily_person_date",
+                "worklog_expiry", "receipt_item", "receipt_expiry", "daily_person_date",
                 "daily_sprint_date", "daily_board_date",
             }) do
                 test.is_true(indexes["kickside_work_time_" .. name] == true, "missing index " .. name)

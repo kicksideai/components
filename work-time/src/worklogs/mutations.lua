@@ -17,8 +17,10 @@ local M = {}
 
 type Context = {
     admission: access.Admission, position: types.Position, board: work.Board, settings: config.Config, today: string, cutoff: string,
+    sprint: string?, sprint_error: error?,
 }
 type Mutation = (sql.Transaction, Context) -> (types.Result?, error?)
+type Attribution = (sql.DB, access.Admission, types.Position, string, string) -> (string?, error?)
 
 local function enabled(settings: config.Config, item_type: string): boolean
     for _, allowed in ipairs(settings.item_types) do
@@ -27,7 +29,7 @@ local function enabled(settings: config.Config, item_type: string): boolean
     return false
 end
 
-local function transact(request: unknown, operation: string, apply: Mutation): (types.Result?, error?)
+local function transact(request: unknown, operation: string, apply: Mutation, attribute: Attribution?): (types.Result?, error?)
     local today, cutoff = input.dates(time.now())
     local invalid = input.validate(request, operation)
     if invalid then return nil, invalid end
@@ -39,12 +41,16 @@ local function transact(request: unknown, operation: string, apply: Mutation): (
         return nil, aerr or release_err
     end
     local position = { attachment_id = admission.attachment_id, board_id = admission.board.board_id }
+    -- Planning may open its own Work snapshot on the same single-connection SQLite target.
+    local sprint, sprint_error
+    if attribute then sprint, sprint_error = attribute(db, admission, position, today, cutoff) end
     local result, failure = rows.transaction(db, function(tx: sql.Transaction): (types.Result?, error?)
         local ferr = rows.lock_attachment(tx, position)
         if ferr then return nil, ferr end
         local board, settings, cerr = access.current(tx, admission)
         if cerr or not board or not settings then return nil, cerr end
-        return apply(tx, { admission = admission, position = position, board = board, settings = settings, today = today, cutoff = cutoff })
+        return apply(tx, { admission = admission, position = position, board = board, settings = settings, today = today,
+            cutoff = cutoff, sprint = sprint, sprint_error = sprint_error })
     end)
     local _, release_err = db:release()
     if failure or release_err then return nil, failure or release_err end
@@ -112,15 +118,32 @@ function M.create(raw: unknown): (types.Result?, error?)
         if date_err then return nil, date_err end
         local minutes, merr = input.round(request.minutes, context.settings.rounding_minutes)
         if merr or not minutes then return nil, merr end
-        local sprint, serr = sprint_reference.resolve(tx, request.board_id, item.item_id, request.work_date)
-        if serr then return nil, serr end
+        if context.sprint_error then return nil, context.sprint_error end
         local entry: types.Entry = { id = (uuid.v7()), item_id = item.item_id, person_id = person, version = 1,
-            minutes = minutes, work_date = request.work_date, note = request.note, sprint_id = sprint }
+            minutes = minutes, work_date = request.work_date, note = request.note, sprint_id = context.sprint }
         local werr = rows.insert(tx, context.position, entry, request.key, digest, context.today)
             or save_totals(tx, context, item, nil, entry, "create", entry.version)
         if werr then return nil, werr end
         return { id = entry.id, version = entry.version, replayed = false }, nil
+    end, function(db, admission, _, today, cutoff)
+        local request = raw :: types.Create
+        local date_err = input.accept_date(request.work_date, today, cutoff)
+        if date_err then return nil, date_err end
+        local item, err = access.live_item(db, admission.board, request.item)
+        if err or not item then return nil, err end
+        return sprint_reference.resolve(db, request.board_id, item.item_id, request.work_date)
     end)
+end
+
+local function editable(admission: access.Admission, entry: types.Entry, version: integer, cutoff: string): error?
+    if entry.work_date < cutoff then return access.missing() end
+    if not access.can_edit(admission, entry.person_id) then
+        return access.problem(errors.PERMISSION_DENIED, "worklog_author_required", "Only the author or a board ADMIN can change this worklog")
+    end
+    if version ~= entry.version then
+        return access.problem(errors.CONFLICT, "worklog_version_conflict", "Worklog version has changed")
+    end
+    return nil
 end
 
 local function load(tx: sql.Transaction, context: Context, request: types.Delete): (types.Entry?, work.Item?, error?)
@@ -128,13 +151,8 @@ local function load(tx: sql.Transaction, context: Context, request: types.Delete
     if err or not entry then return nil, nil, err end
     local item, ierr = item_for(tx, context, entry.item_id)
     if ierr or not item then return nil, nil, ierr end
-    if entry.work_date < context.cutoff then return nil, nil, access.missing() end
-    if not access.can_edit(context.admission, entry.person_id) then
-        return nil, nil, access.problem(errors.PERMISSION_DENIED, "worklog_author_required", "Only the author or a board ADMIN can change this worklog")
-    end
-    if request.expected_version ~= entry.version then
-        return nil, nil, access.problem(errors.CONFLICT, "worklog_version_conflict", "Worklog version has changed")
-    end
+    local denied = editable(context.admission, entry, request.expected_version, context.cutoff)
+    if denied then return nil, nil, denied end
     return entry, item, nil
 end
 
@@ -150,9 +168,8 @@ function M.edit(raw: unknown): (types.Result?, error?)
         if request.work_date and request.work_date ~= existing.work_date then
             local date_err = input.accept_date(request.work_date, context.today, context.cutoff)
             if date_err then return nil, date_err end
-            local sprint, serr = sprint_reference.resolve(tx, request.board_id, item.item_id, request.work_date, existing.sprint_id)
-            if serr then return nil, serr end
-            edited.work_date, edited.sprint_id = request.work_date, sprint
+            if context.sprint_error then return nil, context.sprint_error end
+            edited.work_date, edited.sprint_id = request.work_date, context.sprint
         end
         if request.minutes ~= nil then
             local minutes, merr = input.round(request.minutes, context.settings.rounding_minutes)
@@ -164,6 +181,18 @@ function M.edit(raw: unknown): (types.Result?, error?)
             or save_totals(tx, context, item, existing, edited, "edit", edited.version)
         if werr then return nil, werr end
         return { id = edited.id, version = edited.version }, nil
+    end, function(db, admission, position, today, cutoff)
+        local request = raw :: types.Edit
+        if not request.work_date then return nil, nil end
+        local entry, err = rows.entry(db, position, request.id)
+        if err or not entry then return nil, err end
+        local item, item_err = access.live_item(db, admission.board, entry.item_id)
+        if item_err or not item then return nil, item_err end
+        local denied = editable(admission, entry, request.expected_version, cutoff)
+            or input.accept_date(request.work_date, today, cutoff)
+        if denied then return nil, denied end
+        if request.work_date == entry.work_date then return nil, nil end
+        return sprint_reference.resolve(db, request.board_id, item.item_id, request.work_date, entry.sprint_id)
     end)
 end
 

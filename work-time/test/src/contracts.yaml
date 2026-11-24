@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: work_time_contracts_test
+  kind: function.lua
+  meta: {type: test, suite: work_time_contracts, timeout: 120s}
+  source: file://contracts_test.lua
+  method: run
+  modules: [json, registry, funcs, time]
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+    schemas: kickside.work.time.contracts:schemas
+    values: kickside.work.domain:values
+    fixtures: app:work_time_contract_cases
+    csv: kickside.work.time.api:csv
+- name: work_time_contract_cases
+  kind: library.lua
+  source: file://contracts_fixtures.lua
+  modules: [json]
+- name: work_time_export_fixture
+  kind: library.lua
+  imports:
+    handlers: kickside.work.time.api:handlers
+    types: kickside.work.time.reads:types
+  source: |
+    local handlers = require("handlers")
+    local types = require("types")
+
+    local function totals(input: unknown): (types.Report?, error?)
+        if type(input) == "table" and input.item == "missing-report" then return nil, nil end
+        return handlers.totals(input)
+    end
+
+    return { totals = totals }
