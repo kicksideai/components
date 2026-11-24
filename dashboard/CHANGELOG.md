@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.25](https://github.com/kicksideai/components/compare/dashboard-v0.1.24...dashboard-v0.1.25) (2026-11-24)
+
+
+### Bug Fixes
+
+* **dashboard:** use effective workspace navigation ([#406](https://github.com/kicksideai/components/issues/406)) ([f6d19eb](https://github.com/kicksideai/components/commit/f6d19eba6da63ea56079f32b38f729462fb4d570))
+
 ## [0.1.24](https://github.com/kicksideai/components/compare/dashboard-v0.1.23...dashboard-v0.1.24) (2026-11-19)
 
 
