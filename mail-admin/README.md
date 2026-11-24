@@ -41,9 +41,47 @@ The source editor is CodeMirror 6 (MIT), bundled into the module and loaded only
 when an editor opens. Jet template tags share Liquid's `{{ … }}` delimiters, so
 the Liquid grammar over HTML highlights template expressions inside markup.
 
+## Delivery settings and driver panels
+
+`kickside.mail.admin:delivery_block` is Mail's block in System → Settings →
+Integrations, rendered by `kickside-mail-delivery`. It holds the active
+delivery service, the sender identity (From address, From name, Reply-to) and
+a test email to the signed-in administrator, with one draft and one Save. The
+installed drivers come from `GET /api/v1/mail-admin/drivers`, which reads the
+`kickside.mail:driver` descriptors under Mail's driver discovery grant and
+answers only callers who can reach Mail's delivery status endpoint.
+
+The active driver's own settings appear inside the block:
+
+- A driver that declares `settings_view: <tag>` in its descriptor ships a web
+  component for its settings. The block loads the tag and mounts it.
+- A driver without one gets rows generated from the setting definitions of its
+  `settings_ns`.
+
+The driver panel contract:
+
+| Direction | Name | Shape |
+| --- | --- | --- |
+| attribute | `values` | JSON object: the saved values of the driver's namespace, without secrets |
+| attribute | `secrets` | JSON object: `{ <key>: true \| false }`, whether each secret is saved. Secret values never reach the panel |
+| attribute | `errors` | JSON object: `{ <key>: <message> }` from the server's validation of the last Save |
+| attribute | `disabled` | `"true"` while the block saves |
+| event | `change` | `detail: { values }`: every key the panel changed from the saved values; a secret appears only when the person enters a new one; `null` clears a value |
+| event | `validity` | `detail: { valid }`: the panel's own check of its current values |
+
+The block owns the draft: it shows the draft bar while the identity or the
+panel's changes differ from the saved values, blocks Save while the panel
+reports `valid: false`, and writes the panel's changes under the driver's
+`settings_ns` before switching the service, so a refused value never leaves
+mail on a half-configured service. The server validates every value again
+through the settings definitions' `validate_func`; a refusal returns to the
+panel in `errors`. After Save or Discard the panel is mounted again from the
+saved values.
+
 ## Installation and access
 
-Bind `kickside.mail.admin:ui_server` to the host HTTP service and install
+Bind `kickside.mail.admin:ui_server` to the host HTTP service and
+`kickside.mail.admin:api_router` to its authenticated router, and install
 `kickside/mail` with its authenticated API router. The
 `ui.settings_tab` entry `kickside.mail.admin:settings_tab` appears only for
 callers who can reach `kickside.mail.api:library_list.endpoint`, which Mail

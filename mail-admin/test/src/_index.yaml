@@ -56,6 +56,37 @@ entries:
       - kickside.mail.security:member_endpoints
       - kickside.mail.admin.security:module_access
       - kickside.mail.admin.security:member_endpoints
+  - name: delivery
+    kind: security.scope
+    meta: { comment: Members granted Administer mail delivery. }
+  - name: delivery_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app:delivery
+    policies:
+      - kickside.mail.security:driver_admin
+      - kickside.mail.security:log_admin
+      - kickside.mail.security:delivery_endpoints
+      - kickside.mail.security:delivery_calls
+      - kickside.mail.security:module_runtime
+      - kickside.mail.admin.security:module_access
+      - kickside.mail.admin.security:member_endpoints
+  - name: fixture_driver
+    kind: registry.entry
+    meta: { type: "kickside.mail:driver" }
+    id: fixture
+    label: Fixture delivery
+    icon: tabler:mail
+    description: Accepts messages for the harness.
+    binding: app:fixture_binding
+    settings_ns: app.fixture
+    settings_view: app-fixture-settings
+    available_func: app:fixture_available
+  - name: fixture_descriptor_grant
+    kind: ns.requirement
+    default: app:fixture_driver
+    targets:
+      - { entry: kickside.mail.security:driver_discovery, path: ".policy.resources +=" }
   - name: dep.test
     kind: ns.dependency
     component: wippy/test
@@ -166,12 +197,13 @@ entries:
     version: "*"
     parameters:
       - { name: "kickside.mail.admin:ui_server", value: "app:gateway" }
+      - { name: "kickside.mail.admin:api_router", value: "app:api" }
       - { name: "kickside.mail.admin.security:user_security_scope", value: "app:user" }
   - name: admin_test
     kind: function.lua
     meta: { type: test, suite: mail_admin }
     source: file://admin_test.lua
     method: run
-    modules: [fs, funcs, http_client, registry, security, system, uuid]
+    modules: [fs, funcs, http_client, json, registry, security, sql, system, uuid]
     imports:
       test: wippy.test:test

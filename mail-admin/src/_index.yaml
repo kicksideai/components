@@ -13,6 +13,21 @@ entries:
   meta:
     description: The mail library, activity and delivery endpoints this administration reads and changes.
   component: kickside/mail
+- name: dep.kickside.contract
+  kind: ns.dependency
+  component: kickside/contract
+  version: '*'
+- name: types
+  kind: library.lua
+  source: file://types.lua
+- name: api_router
+  kind: ns.requirement
+  meta:
+    value_kind: http.router
+    comment: Authenticated router with token_auth and endpoint_firewall for the delivery driver list.
+  targets:
+  - entry: kickside.mail.admin.api:drivers.endpoint
+    path: .meta.router
 - name: ui_server
   kind: ns.requirement
   meta:
@@ -86,3 +101,35 @@ entries:
   render: component
   component_tag: kickside-mail-admin
   access: kickside.mail.api:library_list.endpoint
+- name: delivery
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Mail delivery settings
+    announced: true
+    auto_register: true
+    tag_name: kickside-mail-delivery
+    base_path: kickside-mail-admin
+    entry_point: delivery.js
+    icon: tabler:send
+    description: Delivery settings for Mail in System Settings. Delivery administrators choose the delivery
+      service, enter its settings, set the sender identity and send a test email to themselves. A driver
+      that ships a settings view is shown inside this block and shares its draft and Save.
+  props:
+    type: object
+    properties:
+      config:
+        type: object
+        description: Settings block configuration from the Settings page.
+- name: delivery_block
+  kind: registry.entry
+  meta:
+    type: kickside.settings:block
+    comment: The Mail block in System Settings; it owns the kickside.mail namespace.
+  key: mail
+  title: Mail
+  icon: tabler:mail
+  group: Integrations
+  order: 30
+  namespace: kickside.mail
+  component_tag: kickside-mail-delivery

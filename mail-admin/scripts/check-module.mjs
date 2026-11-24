@@ -26,13 +26,23 @@ for (const pattern of ['test/**', 'test:**', 'wippy.lock', 'build-inputs/**', 'u
 assert.equal(entries.filter(entry => entry.kind === 'ns.definition').length, 1)
 assert(source.every(doc => /^kickside\.mail\.admin(?:\.|$)/.test(doc.namespace)))
 const dependencies = entries.filter(entry => entry.kind === 'ns.dependency')
-assert.deepEqual(dependencies.map(dep => `${dep.component}@${dep.version}`), ['kickside/mail@*'])
+assert.deepEqual(dependencies.map(dep => `${dep.component}@${dep.version}`).sort(), ['kickside/contract@*', 'kickside/mail@*'])
 
-// The bundle is administration only: no own endpoints, no Lua, no navigation item.
-assert.equal(entries.filter(entry => entry.kind === 'http.endpoint').length, 0)
-assert.equal(entries.filter(entry => entry.kind === 'function.lua' || entry.kind === 'library.lua').length, 0)
+// Administration only: one helper endpoint for the delivery driver list, no navigation item.
+const endpoints = entries.filter(entry => entry.kind === 'http.endpoint')
+assert.deepEqual(endpoints.map(entry => `${entry.method} ${entry.path}`), ['GET /mail-admin/drivers'])
+for (const endpoint of endpoints) {
+  const handler = owned.get(`kickside.mail.admin.api:${endpoint.func}`)
+  assert.equal(handler?.kind, 'function.lua', endpoint.id)
+  assert(read('src/api/' + handler.source.replace('file://', '')).includes(`function M.${handler.method}(`))
+  assert(owned.get('kickside.mail.admin:api_router').targets.some(target => target.entry === endpoint.id), 'router target ' + endpoint.id)
+}
 assert.equal(entries.filter(entry => entry.meta?.type === 'ui.nav_item').length, 0)
-assert.deepEqual(entries.filter(entry => entry.meta?.type === 'view.component').map(entry => entry.name), ['admin'])
+assert.deepEqual(entries.filter(entry => entry.meta?.type === 'view.component').map(entry => entry.name).sort(), ['admin', 'delivery'])
+const block = owned.get('kickside.mail.admin:delivery_block')
+assert.equal(block.meta.type, 'kickside.settings:block')
+assert.equal(block.namespace, 'kickside.mail')
+assert.equal(block.component_tag, owned.get('kickside.mail.admin:delivery').meta.tag_name)
 
 const tab = owned.get('kickside.mail.admin:settings_tab')
 assert.equal(tab.meta.type, 'ui.settings_tab')
@@ -42,14 +52,16 @@ assert.equal(tab.access, 'kickside.mail.api:library_list.endpoint')
 
 const view = owned.get('kickside.mail.admin:admin')
 assert.equal(view.meta.tag_name, tab.component_tag)
-assert.equal(view.meta.base_path, 'kickside-mail-admin')
-assert(view.meta.announced && view.meta.auto_register)
-assert(existsSync(resolve(root, 'static', view.meta.entry_point)), 'built bundle')
+for (const component of ['admin', 'delivery'].map(name => owned.get('kickside.mail.admin:' + name))) {
+  assert.equal(component.meta.base_path, 'kickside-mail-admin')
+  assert(component.meta.announced && component.meta.auto_register)
+  assert(existsSync(resolve(root, 'static', component.meta.entry_point)), 'built bundle ' + component.meta.entry_point)
+}
 assert.equal(owned.get('kickside.mail.admin:ui_static').path, '/' + view.meta.base_path)
 
 const access = owned.get('kickside.mail.admin.security:member_endpoints').policy
 assert.equal(access.actions, 'access')
-assert.deepEqual([...access.resources].sort(), ['kickside.mail.admin:admin', 'kickside.mail.admin:ui_static'])
+assert.deepEqual([...access.resources].sort(), ['kickside.mail.admin.api:drivers.endpoint', 'kickside.mail.admin:admin', 'kickside.mail.admin:delivery', 'kickside.mail.admin:ui_static'])
 for (const policy of entries.filter(entry => entry.kind === 'security.policy')) {
   assert(Array.isArray(policy.policy.resources))
   assert(policy.policy.resources.every(id => owned.has(id)), policy.id)
@@ -64,4 +76,5 @@ assert.deepEqual(harness.workspace.replacements, { 'kickside/mail-admin': '..', 
 
 const installed = JSON.parse(execFileSync(process.env.WIPPY || 'wippy', ['registry', 'list', '--ns', 'kickside.mail.admin*', '--json'], { cwd: resolve(root, 'test'), encoding: 'utf8' }))
 assert.deepEqual(installed.map(entry => entry.id).sort(), entries.map(entry => entry.id).sort(), 'installed source is current')
-console.log(`Module checks passed: ${entries.length} entries, Mail tab gated by ${tab.access}, administration-only bundle`)
+assert.deepEqual(owned.get('kickside.mail.admin.api:drivers').security.policies, ['kickside.mail.security:driver_discovery'])
+console.log(`Module checks passed: ${entries.length} entries, Mail tab gated by ${tab.access}, delivery block ${block.component_tag}`)

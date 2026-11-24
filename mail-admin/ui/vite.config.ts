@@ -19,7 +19,7 @@ export default defineConfig({
   build: {
     target: 'esnext',
     lib: {
-      entry: { admin: resolve(moduleRoot, 'src/admin.ts') },
+      entry: { admin: resolve(moduleRoot, 'src/admin.ts'), delivery: resolve(moduleRoot, 'src/delivery.ts') },
       name: 'KicksideMailAdmin',
       formats: ['es'],
     },
