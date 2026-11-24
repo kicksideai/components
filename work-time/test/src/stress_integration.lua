@@ -120,4 +120,22 @@ local run_failure = test.run_cases(function()
     end)
 end)
 
-return { run = run, run_failure = run_failure }
+local run_malformed = test.run_cases(function()
+    test.describe("Planning's Time estimate capability", function()
+        test.it("refuses estimate fields that do not match the declared contract", function()
+            local admin = scoped.admin()
+            local board = setup(admin, true)
+            local sprint = steps.create(board, "sprint", { name = "Minutes" })
+            local request = { board_id = board.id, sprint_id = sprint }
+            ok(planning(admin, "set_capacity", {
+                board_id = board.id, sprint_id = sprint, expected_version = 0, unit = "minutes",
+                rows = { { person = admin.id, amount = 120 } },
+            }))
+            local reply = planning(admin, "workload", request)
+            test.eq(reply.status, 500, reply.raw)
+            test.eq(reply.body.details.code, "time_estimates_invalid", reply.raw)
+        end)
+    end)
+end)
+
+return { run = run, run_failure = run_failure, run_malformed = run_malformed }

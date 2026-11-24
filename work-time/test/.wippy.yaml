@@ -10,7 +10,7 @@ registry:
   enable_history: true
   history_type: memory
 disable:
-  entries: ['app:work_time_combined_integration_test', 'app:work_time_combined_stress_test', 'app:work_time_estimate_failure_test']
+  entries: ['app:work_time_combined_integration_test', 'app:work_time_combined_stress_test', 'app:work_time_estimate_failure_test', 'app:work_time_estimate_malformed_test']
 override:
   kickside.work.time.api:http_export:imports.handlers: app:work_time_export_fixture
   kickside.work.settings:read_deadline_ms:default: 10000
@@ -35,7 +35,7 @@ profiles:
         kickside/work: ../../work
         kickside/work-planning: ../../work-planning
     disable:
-      entries: ['app:work_time_sprint_reference_test', 'app:work_time_estimate_failure_test']
+      entries: ['app:work_time_sprint_reference_test', 'app:work_time_estimate_failure_test', 'app:work_time_estimate_malformed_test']
       meta:
         type: [test_support] # Omit the simulated Planning capability from the dependency harness.
     override:
@@ -44,7 +44,7 @@ profiles:
         value: app:api
   failing-estimates:
     disable:
-      entries: ['app:work_time_sprint_reference_test', 'app:work_time_combined_integration_test', 'app:work_time_combined_stress_test']
+      entries: ['app:work_time_sprint_reference_test', 'app:work_time_combined_integration_test', 'app:work_time_combined_stress_test', 'app:work_time_estimate_malformed_test']
       meta:
         type: [test_support]
     override:
@@ -52,6 +52,16 @@ profiles:
       - contract: kickside.work.time:estimate_fields
         default: true
         methods: {fields: 'app:fail_estimate_fields'}
+  malformed-estimates:
+    disable:
+      entries: ['app:work_time_sprint_reference_test', 'app:work_time_combined_integration_test', 'app:work_time_combined_stress_test', 'app:work_time_estimate_failure_test']
+      meta:
+        type: [test_support]
+    override:
+      kickside.work.time:estimate_fields_binding:contracts:
+      - contract: kickside.work.time:estimate_fields
+        default: true
+        methods: {fields: 'app:malformed_estimate_fields'}
   postgres:
     override:
       app:db:kind: db.sql.postgres
