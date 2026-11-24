@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.28](https://github.com/kicksideai/components/compare/work-admin-v0.1.27...work-admin-v0.1.28) (2026-11-24)
+
+
+### Bug Fixes
+
+* plugin configuration reads only the manifest and the shared schema form ([#434](https://github.com/kicksideai/components/issues/434)) ([f9237a0](https://github.com/kicksideai/components/commit/f9237a03d01ff5640a81945c6ffa84bd3dfd3559))
+
 ## [0.1.27](https://github.com/kicksideai/components/compare/work-admin-v0.1.26...work-admin-v0.1.27) (2026-11-24)
 
 

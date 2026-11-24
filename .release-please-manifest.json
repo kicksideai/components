@@ -7,9 +7,9 @@
   "docscout": "0.1.18",
   "work": "0.1.49",
   "pim": "0.1.24",
-  "pim-admin": "0.1.24",
-  "work-admin": "0.1.27",
+  "pim-admin": "0.1.25",
+  "work-admin": "0.1.28",
   "work-search": "0.1.6",
-  "work-planning": "0.1.6",
+  "work-planning": "0.1.7",
   "work-kanban": "0.1.5"
 }
