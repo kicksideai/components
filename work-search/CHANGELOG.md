@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/kicksideai/components/compare/work-search-v0.1.4...work-search-v0.1.5) (2026-11-24)
+
+
+### Features
+
+* group plugins by purpose in Work and PIM administration ([#415](https://github.com/kicksideai/components/issues/415)) ([cfc263e](https://github.com/kicksideai/components/commit/cfc263ed9c5586c935a9b07be8cc1e94a88360a5))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/work-search-v0.1.3...work-search-v0.1.4) (2026-11-22)
 
 
