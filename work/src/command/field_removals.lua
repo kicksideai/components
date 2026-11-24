@@ -25,10 +25,8 @@ local function page(db: sql.DB, board_id: string, item_type: string?, state: str
         .. " WHERE type = $1 AND (state, item_id) > ($2, $3) ORDER BY state, item_id LIMIT $4", { item_type, state, after, size })
 end
 
-type Scan = { checked: integer, steps: integer, drops: { [string]: types.FieldDrop }, used: { [string]: boolean } }
-
 local function scan(db: sql.DB, board_id: string, targets: { domain.FieldRemoval }, choices: { [string]: string },
-    found: Scan, deadline: domain.Deadline, size: integer): error?
+    found: types.FieldRemovalScan, deadline: domain.Deadline, size: integer): error?
     local state, after = "", ""
     local item_type = targets[1].item_type
     while true do
@@ -107,7 +105,7 @@ function M.review(db: sql.DB, board: domain.Board, proposed: domain.Model, usage
     end
     if keep then return {}, {}, true, nil end
 
-    local found: Scan = { checked = 0, steps = 0, drops = {}, used = {} }
+    local found: types.FieldRemovalScan = { checked = 0, steps = 0, drops = {}, used = {} }
     local groups: { [string]: { domain.FieldRemoval } } = {}
     for _, target in ipairs(targets) do
         if (usage.fields[target.field.id] or 0) > 0 then
