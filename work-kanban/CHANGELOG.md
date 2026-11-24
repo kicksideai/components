@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/kicksideai/components/compare/work-kanban-v0.1.2...work-kanban-v0.1.3) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-kanban:** keep the board steady with an issue open ([#411](https://github.com/kicksideai/components/issues/411)) ([83306ea](https://github.com/kicksideai/components/commit/83306eaf8b376cdfb9f546138d846ce6504c95d0))
+
 ## [0.1.2](https://github.com/kicksideai/components/compare/work-kanban-v0.1.1...work-kanban-v0.1.2) (2026-11-24)
 
 
