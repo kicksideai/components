@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
 local client = require("client")
+local ctx = require("ctx")
 
 local function list_templates(): (types.ToolTemplateList?, error?)
     local mailer, err = client.open()
@@ -26,4 +27,14 @@ local function preview(input: types.PreviewRequest): (types.PreviewResult?, erro
     return (mailer :: types.Mailer):preview(input)
 end
 
-return {send = client.send, list_templates = list_templates, get_template = get_template, preview = preview}
+local function send(input: types.SendRequest): (types.SendResult?, error?)
+    local run = ctx.get("run_context")
+    if type(input) == "table" and type(run) == "table" and type(run.run_id) == "string" and run.run_id ~= "" then
+        local ref = run.flow_ref
+        local label = type(ref) == "table" and type(ref.id) == "string" and ref.id or run.run_id
+        input.origin = {kind = "workflow", id = run.run_id, label = label}
+    end
+    return client.send(input)
+end
+
+return {send = send, list_templates = list_templates, get_template = get_template, preview = preview}

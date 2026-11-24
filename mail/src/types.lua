@@ -10,10 +10,11 @@ type Recipient = string | {user_id: string}
 type Mailbox = {address: string, name: string?}
 type AttachmentRef = {upload_id: string, filename: string?, disposition: string?, content_id: string?}
 type Attachment = {filename: string, content_type: string, content: string, disposition: string, content_id: string?}
+type Origin = {kind: string, id: string, label: string}
 type SendRequest = {
     template: string?, vars: JsonObject?, subject: string?, text: string?, html: string?,
     to: {Recipient}, cc: {Recipient}?, bcc: {Recipient}?, reply_to: string?,
-    attachments: {AttachmentRef}?, idempotency_key: string?,
+    attachments: {AttachmentRef}?, idempotency_key: string?, origin: Origin?,
 }
 type Addresses = {to: {string}, cc: {string}?, bcc: {string}?}
 type TransportRequest = Addresses & {
@@ -29,7 +30,7 @@ type MessageError = {kind: string, code: string, message: string, provider_detai
 type LogMessage = Addresses & {
     message_id: string, status: string, created_at: integer, attempts: integer,
     next_attempt_at: integer?, sent_at: integer?, finished_at: integer?, sender: string, template: string?,
-    subject: string, reply_to: string?, attachments: {AttachmentRef}, driver_id: string?,
+    subject: string, reply_to: string?, attachments: {AttachmentRef}, driver_id: string?, origin: Origin?,
     provider_message_id: string?, last_error: MessageError?,
 }
 type MessageRow = {
@@ -39,11 +40,12 @@ type MessageRow = {
     html: string?, text: string?, from_address: string, from_name: string?, reply_to: string?, attachments: string,
     job_id: string, driver_id: string?, provider_message_id: string?, content_hash: string?,
     error_kind: string?, error_code: string?, error_message: string?, provider_detail: string?,
+    origin_kind: string?, origin_id: string?, origin_label: string?,
 }
 type Admission = Addresses & {
     sender: string, actor_context: string, template: string?, subject: string,
     html: string?, text: string?, from: Mailbox, reply_to: string?, attachments: {AttachmentRef}?,
-    idempotency_key: string?, content_hash: string?,
+    idempotency_key: string?, content_hash: string?, origin: Origin?,
 }
 type AdmissionResult = {message: SendResult, inserted: boolean}
 type Job = {id: string, lease_token: string, execution_seq: integer}
@@ -150,7 +152,7 @@ return {
     ResourceSave = ResourceSave, LibraryEdit = LibraryEdit,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
-    AttachmentRef = AttachmentRef, Attachment = Attachment, SendRequest = SendRequest, Addresses = Addresses,
+    AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
     TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
     PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,

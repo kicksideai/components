@@ -38,14 +38,16 @@ function M.insert(input: types.Admission): (types.AdmissionResult?, error?)
     return database.transaction(function(tx: sql.Transaction, dialect: string): (types.AdmissionResult?, error?)
         local rows, err = tx:query([[INSERT INTO mail_message (
             id, created_at, status, next_attempt_at, next_check_at, sender, actor_context, template,
-            recipients, subject, html, text, from_address, from_name, reply_to, attachments, idempotency_key, content_hash
-        ) VALUES ($1,$2,'queued',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+            recipients, subject, html, text, from_address, from_name, reply_to, attachments, idempotency_key, content_hash,
+            origin_kind, origin_id, origin_label
+        ) VALUES ($1,$2,'queued',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
         ON CONFLICT (sender, idempotency_key) WHERE idempotency_key IS NOT NULL
         DO UPDATE SET id=mail_message.id RETURNING id,status,content_hash]], {
             id, now, now + policy.RECHECK_MS, input.sender, input.actor_context, input.template or sql.NULL,
             recipients, input.subject, input.html or sql.NULL, input.text or sql.NULL, input.from.address,
             input.from.name or sql.NULL, input.reply_to or sql.NULL, refs, input.idempotency_key or sql.NULL,
-            input.content_hash or sql.NULL,
+            input.content_hash or sql.NULL, input.origin and input.origin.kind or sql.NULL,
+            input.origin and input.origin.id or sql.NULL, input.origin and input.origin.label or sql.NULL,
         })
         if err then return nil, err end
         local stored = rows[1] :: types.MessageRow

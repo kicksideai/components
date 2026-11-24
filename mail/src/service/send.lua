@@ -40,7 +40,7 @@ local function send(request: unknown): (types.SendResult?, error?)
     if input.idempotency_key then
         local content: types.Record = {}
         for key, value in pairs(input) do
-            if key ~= "idempotency_key" then content[key] = value end
+            if key ~= "idempotency_key" and key ~= "origin" then content[key] = value end
         end
         local hash_err
         hash, hash_err = canonical_json.hash(content)
@@ -110,7 +110,7 @@ local function send(request: unknown): (types.SendResult?, error?)
         from = from,
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = reply_to,
         subject = parts.subject, html = parts.html, text = parts.text, attachments = input.attachments,
-        idempotency_key = input.idempotency_key, content_hash = hash,
+        idempotency_key = input.idempotency_key, content_hash = hash, origin = input.origin,
     })
     if save_err then return nil, save_err end
     if saved.inserted then

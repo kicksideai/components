@@ -15,7 +15,7 @@ end
 
 local REQUEST_FIELDS = {
     template = true, vars = true, subject = true, text = true, html = true, to = true,
-    cc = true, bcc = true, reply_to = true, attachments = true, idempotency_key = true,
+    cc = true, bcc = true, reply_to = true, attachments = true, idempotency_key = true, origin = true,
 }
 
 local function nonempty(value: unknown): boolean
@@ -184,6 +184,26 @@ local function user_recipient(value: unknown): boolean
     return true
 end
 
+local ORIGIN_KINDS = {workflow = true, automation = true, agent = true, module = true, test = true}
+
+local function origin_text(value: unknown): boolean
+    return type(value) == "string" and #value <= 256 and utf8.len(value) ~= nil
+        and value:find("%S") ~= nil and value:find("%c") == nil
+end
+
+local function origin_error(value: unknown): error?
+    if type(value) ~= "table" or type(value.kind) ~= "string" or not ORIGIN_KINDS[value.kind]
+        or not origin_text(value.id) or not origin_text(value.label) then
+        return invalid("invalid_mail_origin", "Origin requires a supported kind, ID and label")
+    end
+    for key in pairs(value) do
+        if key ~= "kind" and key ~= "id" and key ~= "label" then
+            return invalid("invalid_mail_origin", "Origin contains an unsupported field")
+        end
+    end
+    return nil
+end
+
 function M.validate(raw: unknown): (types.SendRequest?, error?)
     if type(raw) ~= "table" then return nil, invalid("invalid_message", "Message must be a record") end
     local input = raw :: types.Record
@@ -194,6 +214,10 @@ function M.validate(raw: unknown): (types.SendRequest?, error?)
         if not REQUEST_FIELDS[key] then
             return nil, invalid("invalid_message", "Unsupported mail request field: " .. tostring(key))
         end
+    end
+    if input.origin ~= nil then
+        local err = origin_error(input.origin)
+        if err then return nil, err end
     end
     if input.reply_to ~= nil and not M.address(input.reply_to) then
         return nil, invalid("invalid_address", "Reply-to must be a valid email address")

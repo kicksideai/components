@@ -637,8 +637,32 @@ return {
                 test.eq(result.dest_ref.message_id, replay.dest_ref.message_id)
                 local message = await_message(log_admin, result.dest_ref.message_id, function(row) return row.status ~= "queued" end)
                 test.eq("first|mail@example.org||", message.provider_message_id)
+                test.eq("automation", message.origin.kind)
+                test.eq("automation", message.origin.id)
                 test.is_nil(result.dest_ref.provider_message_id)
                 test.is_nil(result.dest_ref.transport_metadata)
+            end)
+
+            test.it("records display origin from module and workflow send surfaces", function()
+                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "from_address", "mail@example.org").success)
+                local input = body()
+                input.origin = {kind = "module", id = "app:mail-example", label = "Example module"}
+                local submitted = assert(invoke(sender, "send", input))
+                local row = terminal(sender, submitted)
+                test.eq("module", row.origin.kind)
+                test.eq("app:mail-example", row.origin.id)
+                test.eq("Example module", row.origin.label)
+                test.is_nil(row.driver_id)
+
+                local executor = assert(sender:with_context({
+                    run_context = {run_id = "example-run", flow_ref = {kind = "flow", id = "example-flow", version = 1}},
+                }))
+                local workflow = assert(executor:call(TOOL_NS .. "mail_send", body()))
+                local entry = terminal(sender, workflow)
+                test.eq("workflow", entry.origin.kind)
+                test.eq("example-run", entry.origin.id)
+                test.eq("example-flow", entry.origin.label)
             end)
 
             test.it("rejects malformed configured addresses before writing settings", function()

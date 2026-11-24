@@ -40,6 +40,7 @@ entries:
         or user IDs you have permission to resolve. Attachments reference uploaded files by upload ID.
       input_schema: file://../schemas/send.input.json
       output_schema: file://../schemas/send.output.json
+    modules: [ctx]
     source: &tool_source file://tools.lua
     method: send
     imports: &tool_imports
@@ -55,6 +56,7 @@ entries:
       llm_description: List names, titles, and descriptions of mail library messages. Edit mail library is required. Call MailGetTemplate with that name for its variables and sample.
       input_schema: file://../schemas/list_templates.tool.input.json
       output_schema: file://../schemas/list_templates.tool.output.json
+    modules: [ctx]
     source: *tool_source
     method: list_templates
     imports: *tool_imports
@@ -68,6 +70,7 @@ entries:
       llm_description: Get a mail library message by its name from MailListTemplates. Edit mail library is required. The variable schema gives the names, types, and required variables for MailSend and MailPreview.
       input_schema: file://../schemas/get_template.input.json
       output_schema: file://../schemas/get_template.output.json
+    modules: [ctx]
     source: *tool_source
     method: get_template
     imports: *tool_imports
@@ -81,6 +84,7 @@ entries:
       llm_description: Render the subject, HTML, and text without delivery. Use a message name from MailListTemplates and variable names from MailGetTemplate. Edit mail library is required.
       input_schema: file://../schemas/preview.input.json
       output_schema: file://../schemas/preview.output.json
+    modules: [ctx]
     source: *tool_source
     method: preview
     imports: *tool_imports

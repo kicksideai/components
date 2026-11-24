@@ -12,6 +12,36 @@
     }
   },
   "properties": {
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "label"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "workflow",
+            "automation",
+            "agent",
+            "module",
+            "test"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
     "template": {"type": "string", "minLength": 1},
     "vars": {"type": "object"},
     "subject": {"type": "string", "minLength": 1, "maxLength": 255},

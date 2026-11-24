@@ -9,7 +9,7 @@ local uuid = require("uuid")
 
 local COLUMNS = [[id, status, created_at, attempts, next_attempt_at, sent_at, finished_at, sender,
     template, recipients, subject, reply_to, attachments, driver_id, provider_message_id,
-    error_kind, error_code, error_message, provider_detail]]
+    error_kind, error_code, error_message, provider_detail, origin_kind, origin_id, origin_label]]
 local ADMIN = "kickside.mail:mailer"
 
 local function invalid(message: string): error
@@ -40,6 +40,7 @@ local function message(row: types.MessageRow, admin: boolean): (types.LogMessage
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, attachments = refs,
         driver_id = admin and row.driver_id or nil, provider_message_id = admin and row.provider_message_id or nil,
         last_error = last_error,
+        origin = row.origin_kind and {kind = row.origin_kind, id = row.origin_id :: string, label = row.origin_label :: string} or nil,
     }, nil
 end
 
