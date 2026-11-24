@@ -19,6 +19,102 @@ Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.j
 
 license: [License text](#license-text-48da2f39e100d4085767e94966b43f4fa95ff6a0698fba57ed460914e35f94a0)
 
+### npm: @codemirror/autocomplete@6.20.4
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
+### npm: @codemirror/commands@6.11.1
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
+### npm: @codemirror/lang-css@6.3.1
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
+### npm: @codemirror/lang-html@6.4.12
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
+### npm: @codemirror/lang-javascript@6.2.5
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
+### npm: @codemirror/lang-liquid@6.3.3
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-eef03b313cffb45dc43cc7f0c99dcb3b3f48dc39b4ea659c4a13fdcefbab7213)
+
+### npm: @codemirror/language@6.13.1
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
+### npm: @codemirror/lint@6.9.8
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
+### npm: @codemirror/merge@6.12.3
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-7c6e3a020c1db4725560be9120b96eb2305ae7d37d155ee20e6023bb27ad144e)
+
+### npm: @codemirror/state@6.7.6
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
+### npm: @codemirror/streamparser@6.0.0
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
+### npm: @codemirror/view@6.43.15
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07)
+
 ### npm: @jridgewell/gen-mapping@0.3.13
 
 License: MIT
@@ -61,7 +157,63 @@ Lockfiles: `docscout/ui/package-lock.json`
 
 License: LicenseRef-KickSide-Community-1.0
 
-Lockfiles: `pim-admin/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+
+### npm: @lezer/common@1.5.6
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-568902fb66eaf1f11750e966b33fd7b5d7c618e65af09f35ef843635bcf5f1ba)
+
+### npm: @lezer/css@1.3.9
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-568902fb66eaf1f11750e966b33fd7b5d7c618e65af09f35ef843635bcf5f1ba)
+
+### npm: @lezer/highlight@1.2.5
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-568902fb66eaf1f11750e966b33fd7b5d7c618e65af09f35ef843635bcf5f1ba)
+
+### npm: @lezer/html@1.3.13
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-568902fb66eaf1f11750e966b33fd7b5d7c618e65af09f35ef843635bcf5f1ba)
+
+### npm: @lezer/javascript@1.5.6
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-568902fb66eaf1f11750e966b33fd7b5d7c618e65af09f35ef843635bcf5f1ba)
+
+### npm: @lezer/lr@1.4.12
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-568902fb66eaf1f11750e966b33fd7b5d7c618e65af09f35ef843635bcf5f1ba)
+
+### npm: @marijn/find-cluster-break@1.0.4
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-9360b00fdd091f05c783b568bdd46c679c41b72415599252de98949462ea1acb)
 
 ### npm: @nodelib/fs.scandir@2.1.5
 
@@ -91,7 +243,7 @@ LICENSE: [License text](#license-text-9363d160bf41d46d83901a5d24fc3fe2094c2afc17
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85829ea6be8b51549195ad31)
 
@@ -99,7 +251,7 @@ LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85829ea6be8b51549195ad31)
 
@@ -107,7 +259,7 @@ LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85829ea6be8b51549195ad31)
 
@@ -115,7 +267,7 @@ LICENSE: [License text](#license-text-c6e70ce414f6d95d44001ecb8b6d5b66bb4990db85
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
 
 LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f960c1bcdfba4720ca7547029af7)
 
@@ -123,7 +275,7 @@ LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f96
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
 
 LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f960c1bcdfba4720ca7547029af7)
 
@@ -131,7 +283,7 @@ LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f96
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c)
 
@@ -139,7 +291,7 @@ LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d2
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c)
 
@@ -147,7 +299,7 @@ LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d2
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c)
 
@@ -155,19 +307,19 @@ LICENSE: [License text](#license-text-d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d2
 
 License: UNLICENSED
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 ### npm: @wippy-fe/webcomponent-core@0.0.70
 
 License: UNLICENSED
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 ### npm: @wippy-fe/webcomponent-vue@0.0.70
 
 License: UNLICENSED
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 ### npm: any-promise@1.3.0
 
@@ -205,7 +357,7 @@ license: [License text](#license-text-96f0820026bd6dadc4af99c6dba7111d2e0190c092
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-67cd5e903c1f908edfa27c25606fa806ce629d9a8ddb7d83019d9fd1f83f7fde)
 
@@ -240,6 +392,14 @@ License: MIT
 Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-04512a63dce4d2d506ad612dc0bd7681ccf6e3655f7b6eaef7dfac8323d1ec0b)
+
+### npm: crelt@1.0.7
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-23852ebf6aef7fadffc92514b3c5df163a8651f2c3ed0dbb494cb49d93bd5de5)
 
 ### npm: cssesc@3.0.0
 
@@ -331,7 +491,7 @@ LICENSE: [License text](#license-text-bf9b0d665be2a689851eea667ca9f42066ea1d903b
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE.md: [License text](#license-text-3555f8c47cbff86d199d5a5033afd5ef9560e0095927296af670a886b8b1988d)
 
@@ -451,7 +611,7 @@ LICENSE: [License text](#license-text-e70ff771504ba41f2be55de812a017ff46433d7a25
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-acf17aff719bfab70f6bec3a93f1ba82ce9fe27ab74f83c0f2e1efb1273fa220)
 
@@ -483,7 +643,7 @@ LICENSE: [License text](#license-text-3f4609137f65070541b9214300ea0d640af8192857
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-46231df5a7733c3f52f11b71f3df61813007745b62b09031acfb45fb42d75082)
 
@@ -507,7 +667,7 @@ LICENSE: [License text](#license-text-91a2845c4db44e7497b514b98634a674c737986ad0
 
 License: MIT
 
-Lockfiles: `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-91a2845c4db44e7497b514b98634a674c737986ad0db81599307cf733bf850b2)
 
@@ -587,7 +747,7 @@ LICENSE: [License text](#license-text-3687447039151857a6ba378db062172c7f33d4aa70
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`
 
 LICENSE.md: [License text](#license-text-39a2ce8d759cfcb59eccc49b0a417ad5c943f960c1bcdfba4720ca7547029af7)
 
@@ -655,6 +815,14 @@ Lockfiles: `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-e94dfc31e800d169257569db270457c9f028440c9ccae41e7eb78b2db18f1298)
 
+### npm: style-mod@4.1.5
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-cb4474e26547397169061d3586c00022cda5330a1b64fa13e872319f3b63aff1)
+
 ### npm: sucrase@3.35.1
 
 License: MIT
@@ -675,7 +843,7 @@ LICENSE: [License text](#license-text-0f0ca96f50793990031ebc488a38f7292ff70bce8a
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-4e9b5aa2cc05bb36c49cde421465d7b73dd66635c69ddbf884b81a51d4929345)
 
@@ -691,7 +859,7 @@ LICENSE: [License text](#license-text-60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df
 
 License: MIT
 
-Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `docscout/ui/package-lock.json`, `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-5caf822f0a7fd3205c99676e06f0077657583230511f4f34640ec1a30c38a046)
 
@@ -734,6 +902,14 @@ License: MIT
 Lockfiles: `agent-onboarding/ui/package-lock.json`, `dashboard/ui/package-lock.json`, `research/ui/package-lock.json`, `sso/ui/package-lock.json`, `storage-s3/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
 
 LICENSE: [License text](#license-text-0154425673db15cdfa80ecba2c9b1f1a867f7197a006764712849bfc3a93cbb7)
+
+### npm: w3c-keyname@2.2.8
+
+License: MIT
+
+Lockfiles: `mail-admin/ui/package-lock.json`
+
+LICENSE: [License text](#license-text-869c30f368eb08735e779027b9f4bc9fea2f39624351856aebe42741f0bc0884)
 
 ## License text 0154425673db15cdfa80ecba2c9b1f1a867f7197a006764712849bfc3a93cbb7
 
@@ -816,6 +992,32 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
+## License text 05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07
+
+```text
+MIT License
+
+Copyright (C) 2018-2021 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
 ## License text 0f0ca96f50793990031ebc488a38f7292ff70bce8ab6a8e5eeda674abc32ccdf
 
 ```text
@@ -865,6 +1067,30 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+## License text 23852ebf6aef7fadffc92514b3c5df163a8651f2c3ed0dbb494cb49d93bd5de5
+
+```text
+Copyright (C) 2020 by Marijn Haverbeke <marijn@haverbeke.berlin>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
 ## License text 2998094b38f7ace25f141fb36f334d8338f65a1812978d618b1161f4d77ae10e
@@ -1214,6 +1440,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## License text 568902fb66eaf1f11750e966b33fd7b5d7c618e65af09f35ef843635bcf5f1ba
+
+```text
+MIT License
+
+Copyright (C) 2018 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
 ## License text 5a3b0007c4203f10fe11b3fe8747253eb994f135e10b73e1f88ada941af09c6e
 
 ```text
@@ -1509,6 +1761,32 @@ THE SOFTWARE.
 
 ```
 
+## License text 7c6e3a020c1db4725560be9120b96eb2305ae7d37d155ee20e6023bb27ad144e
+
+```text
+MIT License
+
+Copyright (C) 2018-2022 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
 ## License text 85fe65eefab89e2a683232b96e6f689279821a0bd3b351e9ab6a6ebd19dea567
 
 ```text
@@ -1521,6 +1799,30 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+## License text 869c30f368eb08735e779027b9f4bc9fea2f39624351856aebe42741f0bc0884
+
+```text
+Copyright (C) 2016 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
 ## License text 8d9b8158455aa7ab4d28d3196ec414812b231f554416f8dd51d45b5024dfde62
@@ -1598,6 +1900,32 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+## License text 9360b00fdd091f05c783b568bdd46c679c41b72415599252de98949462ea1acb
+
+```text
+MIT License
+
+Copyright (C) 2024 by Marijn Haverbeke <marijn@haverbeke.berlin>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
 ## License text 9363d160bf41d46d83901a5d24fc3fe2094c2afc17b4a2378914b273977ee2de
@@ -2177,6 +2505,30 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## License text cb4474e26547397169061d3586c00022cda5330a1b64fa13e872319f3b63aff1
+
+```text
+Copyright (C) 2018 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
 ## License text d0ac09e8df2b54625ea1606dfae75d5b6af1cbc5d28a17eca1350be9c367175c
 
 ```text
@@ -2485,6 +2837,32 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+```
+
+## License text eef03b313cffb45dc43cc7f0c99dcb3b3f48dc39b4ea659c4a13fdcefbab7213
+
+```text
+MIT License
+
+Copyright (C) 2018-2023 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
 
 ## License text fc68eb8f1c8e1d6b8be50f3c177927e24791cae7dc251e6253a012f37926a30c
