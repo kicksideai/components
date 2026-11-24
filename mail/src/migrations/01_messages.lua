@@ -30,6 +30,7 @@ local statements: {string} = {
         error_kind TEXT,
         error_code TEXT,
         error_message TEXT,
+        provider_detail TEXT,
         CHECK ((idempotency_key IS NULL) = (content_hash IS NULL)),
         CHECK ((status = 'queued' AND next_attempt_at IS NOT NULL AND next_check_at IS NOT NULL
             AND actor_context IS NOT NULL AND finished_at IS NULL)

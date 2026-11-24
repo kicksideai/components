@@ -129,6 +129,12 @@
         "message": {
           "type": "string",
           "minLength": 1
+        },
+        "provider_detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "description": "Sanitized provider response text, up to 512 bytes. Available only to delivery log administrators."
         }
       },
       "required": [

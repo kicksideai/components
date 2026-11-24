@@ -25,7 +25,7 @@ type SendResult = {message_id: string, status: string}
 type MessageRef = {message_id: string}
 type ListRequest = {status: string?, since: integer?, limit: integer, cursor: string?}
 type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean}
-type MessageError = {kind: string, code: string, message: string}
+type MessageError = {kind: string, code: string, message: string, provider_detail: string?}
 type LogMessage = Addresses & {
     message_id: string, status: string, created_at: integer, attempts: integer,
     next_attempt_at: integer?, sent_at: integer?, finished_at: integer?, sender: string, template: string?,
@@ -38,7 +38,7 @@ type MessageRow = {
     sender: string, actor_context: string, template: string?, recipients: string, subject: string,
     html: string?, text: string?, from_address: string, from_name: string?, reply_to: string?, attachments: string,
     job_id: string, driver_id: string?, provider_message_id: string?, content_hash: string?,
-    error_kind: string?, error_code: string?, error_message: string?,
+    error_kind: string?, error_code: string?, error_message: string?, provider_detail: string?,
 }
 type Admission = Addresses & {
     sender: string, actor_context: string, template: string?, subject: string,

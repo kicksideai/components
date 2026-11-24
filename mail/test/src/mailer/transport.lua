@@ -19,6 +19,14 @@ local function capture(message)
         if (behavior == "ceiling" or behavior == "ceiling_lost") and attempts == 5 then
             channel.new():receive()
         end
+        if behavior == "detail" then
+            if attempts == 1 then
+                return nil, errors.new({kind = errors.RATE_LIMITED, retryable = true, message = "Test rate limit",
+                    details = {code = "rate_limited", provider_detail = "Fixture retry detail"}})
+            end
+            return nil, errors.new({kind = errors.INVALID, retryable = false, message = "Test refusal",
+                details = {code = "message_rejected", provider_detail = "Fixture refusal detail"}})
+        end
         if behavior == "rejected" then
             return nil, errors.new({kind = errors.PERMISSION_DENIED, retryable = false, message = "Test authorization refused",
                 details = {code = "credentials_invalid"}})

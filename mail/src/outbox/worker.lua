@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local database = require("database")
+local delivery = require("delivery")
 local drivers = require("drivers")
 local identity = require("identity")
 local jobs = require("jobs")
@@ -79,7 +80,7 @@ local function deliver(input: types.JobInput): (types.Record?, error?)
         local details = delivery_err:details()
         local code = details and details.code
         cause = {kind = delivery_err:kind(), code = type(code) == "string" and code or "delivery_failed",
-            message = delivery_err:message()}
+            message = delivery_err:message(), provider_detail = delivery.clean_detail(details and details.provider_detail)}
         next_at = policy.retry_at(delivery_err, row.attempts, now)
         options.record = {status = "failed", error = cause.message}
         if next_at then

@@ -335,6 +335,35 @@ return {
                 no_body(queued.message_id)
             end)
 
+            test.it("stores provider details on retry and failure for log administrators only", function()
+                capture_with(admin)
+                local admin_view = caller({"kickside.mail.security:log_admin", "kickside.mail.security:module_runtime"})
+                local input = body()
+                input.subject = "Fixture detail"
+                local admitted = assert(invoke(sender, "send", input))
+                local retry = await_message(sender, admitted.message_id, function(row) return row.last_error ~= nil end)
+                test.eq("queued", retry.status)
+                test.is_nil(retry.last_error.provider_detail)
+                local pending = assert(invoke(admin_view, "get_message", admitted.message_id))
+                test.eq("Fixture retry detail", pending.last_error.provider_detail)
+                local failed = terminal(sender, admitted)
+                test.eq("failed", failed.status)
+                test.is_nil(failed.last_error.provider_detail)
+                local sender_items = assert(invoke(sender, "list_messages", {limit = 5, status = "failed"})).items
+                test.eq(admitted.message_id, sender_items[1].message_id)
+                test.is_nil(sender_items[1].last_error.provider_detail)
+                local final = assert(invoke(admin_view, "get_message", admitted.message_id))
+                test.eq("Fixture refusal detail", final.last_error.provider_detail)
+                local items = assert(invoke(admin_view, "list_messages", {limit = 200, status = "failed"})).items
+                for _, row in ipairs(items) do
+                    if row.message_id == admitted.message_id then
+                        test.eq("Fixture refusal detail", row.last_error.provider_detail)
+                        return
+                    end
+                end
+                error("Failed message missing from log")
+            end)
+
             test.it("fails a nonretryable provider rejection on the first attempt", function()
                 capture_with(admin)
                 local input = body()

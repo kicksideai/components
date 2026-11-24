@@ -80,12 +80,13 @@ function M.finish(tx: sql.Transaction, id: string, job_id: string, now: integer,
     delivered: types.TransportResult?, cause: types.MessageError?): (boolean?, error?)
     local sent_at = delivered and now or sql.NULL
     local result, err = tx:execute([[UPDATE mail_message SET status=$1, finished_at=$2, sent_at=$3,
-        provider_message_id=$4, error_kind=$5, error_code=$6, error_message=$7,
+        provider_message_id=$4, error_kind=$5, error_code=$6, error_message=$7, provider_detail=$8,
         next_attempt_at=NULL, next_check_at=NULL, html=NULL, text=NULL, actor_context=NULL
-        WHERE id=$8 AND job_id=$9 AND status='queued']], {
+        WHERE id=$9 AND job_id=$10 AND status='queued']], {
         delivered and "sent" or "failed", now, sent_at,
         delivered and delivered.provider_message_id or sql.NULL, cause and cause.kind or sql.NULL,
-        cause and cause.code or sql.NULL, cause and cause.message or sql.NULL, id, job_id,
+        cause and cause.code or sql.NULL, cause and cause.message or sql.NULL,
+        cause and cause.provider_detail or sql.NULL, id, job_id,
     })
     if err then return nil, err end
     return result.rows_affected == 1, nil
@@ -93,8 +94,8 @@ end
 
 function M.rearm(tx: sql.Transaction, row: types.MessageRow, next_at: integer, cause: types.MessageError): (boolean?, error?)
     local result, err = tx:execute([[UPDATE mail_message SET next_attempt_at=$1, next_check_at=$2,
-        error_kind=$3, error_code=$4, error_message=$5 WHERE id=$6 AND job_id=$7 AND status='queued']],
-        {next_at, next_at + policy.RECHECK_MS, cause.kind, cause.code, cause.message, row.id, row.job_id})
+        error_kind=$3, error_code=$4, error_message=$5, provider_detail=$6 WHERE id=$7 AND job_id=$8 AND status='queued']],
+        {next_at, next_at + policy.RECHECK_MS, cause.kind, cause.code, cause.message, cause.provider_detail or sql.NULL, row.id, row.job_id})
     if err then return nil, err end
     return result.rows_affected == 1, nil
 end

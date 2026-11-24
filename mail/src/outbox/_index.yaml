@@ -57,6 +57,7 @@ entries:
     imports:
       database: kickside.mail.outbox:database
       drivers: kickside.mail:drivers_registry
+      delivery: kickside.mail.service:delivery
       identity: kickside.execution:execution_identity
       jobs: kickside.core.jobs:jobs
       lease_release: kickside.core.jobs:lease_release
