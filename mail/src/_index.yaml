@@ -40,6 +40,7 @@ entries:
     targets:
       - { entry: kickside.mail:db_config, path: ".meta.db_id" }
       - { entry: kickside.mail.migrations:01_messages, path: ".meta.target_db" }
+      - { entry: kickside.mail.migrations:02_library, path: ".meta.target_db" }
       - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
   - name: db_config
     kind: registry.entry
@@ -170,12 +171,12 @@ entries:
           - format: application/schema+json
             definition: file://schemas/list_messages.output.json
       - name: list_templates
-        description: List visible shipped mail templates and their variable schemas.
+        description: List mail library messages and their variable schemas.
         output_schemas:
           - format: application/schema+json
             definition: file://schemas/list_templates.output.json
       - name: get_template
-        description: Read a shipped template's description, variable schema, sample, and Jet part names.
+        description: Read a mail library message's description, variable schema, samples, and Jet names.
         input_schemas:
           - format: application/schema+json
             definition: file://schemas/get_template.input.json
@@ -183,7 +184,7 @@ entries:
           - format: application/schema+json
             definition: file://schemas/get_template.output.json
       - name: preview
-        description: Render a shipped template using the send capability without delivering it.
+        description: Render a mail library message without delivering it.
         input_schemas:
           - format: application/schema+json
             definition: file://schemas/preview.input.json

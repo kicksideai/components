@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.mail_library
+entries:
+  - name: library_test
+    kind: function.lua
+    meta: { type: test, suite: mail_library }
+    source: file://library_test.lua
+    method: run
+    modules: [funcs, registry, templates, security, env]
+    imports: { test: wippy.test:test }

@@ -24,6 +24,7 @@ entries:
     security:
       policies:
         - kickside.mail.security:site_url
+        - kickside.mail.security:template_access
         - kickside.mail.security:driver_dispatch
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
@@ -35,17 +36,26 @@ entries:
     kind: function.lua
     source: file://../views/catalog.lua
     method: list_templates
-    modules: &catalog_modules [registry, json]
+    modules: &catalog_modules [json]
     imports: &catalog_imports
       types: kickside.mail:types
       canonical_json: kickside.contract:canonical_json
       error_envelope: kickside.contract:error_envelope
+      client: kickside.mail:client
+      jet: kickside.mail.library:jet
+      resources: kickside.mail.library:resources
+    security: &catalog_security
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
   - name: get_template
     kind: function.lua
     source: file://../views/catalog.lua
     method: get_template
     modules: *catalog_modules
     imports: *catalog_imports
+    security: *catalog_security
   - name: preview
     kind: function.lua
     source: file://send.lua
@@ -53,7 +63,12 @@ entries:
     modules: *mailer_modules
     imports: *mailer_imports
     security:
-      policies: [kickside.mail.security:site_url]
+      policies:
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
   - name: delivery
     kind: library.lua
     source: file://delivery.lua

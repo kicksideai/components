@@ -7,7 +7,7 @@ Mail queues email from an installation-managed address and delivers it through a
 
 Install KickSide Settings, Contract, Jobs, Execution, Uploads, and at least one mail driver. Bind `kickside.mail:target_db` to the SQL resource Jobs uses. User-ID recipients use the Users provisioning contract with the caller’s existing authority. Mail checks upload metadata with the caller’s permissions at admission. The worker reads the upload bytes using the sender’s current authority. Template discovery follows the caller’s registry visibility.
 
-Assign the **Send mail** capability to the groups that may send or preview. Members can list and inspect templates. Assign **Administer mail delivery** to administrators who manage the Mail settings through the platform Settings surface. The installed driver has a separate administration capability. Members can read their own delivery log. Assign **Read all mail delivery logs** to groups that need to read messages from all senders.
+Assign **Send mail** to groups that may send messages. **Edit mail library** grants access to list, inspect, preview, and edit library resources. Assign **Administer mail delivery** to administrators who manage the Mail settings through the platform Settings surface. The installed driver has a separate administration capability. Members can read their own delivery log. Assign **Read all mail delivery logs** to groups that need to read messages from all senders.
 
 ## Settings
 
@@ -37,6 +37,23 @@ The `notice` template supplies plain-text and HTML parts. Set `subject` and any 
 
 Drivers declare `registry.entry` with `meta.type: kickside.mail:driver` and implement `send` on `kickside.mail:transport`. The descriptor supplies `id`, `label`, `icon`, `description`, `binding`, `settings_ns`, and `available_func`. Declare `max_recipients` and `max_message_bytes` as positive integers for the provider. Mail enforces the declared limits on admission and delivery. The driver contributes its exact descriptor, binding, send, and availability function IDs to Mail’s private discovery and dispatch policies. The availability function checks configuration and returns `{available: boolean, reason?: string}`.
 
+## Template library
+
+The library stores messages, base templates, and parts. Every resource has HTML and text faces. A message also has a subject, a variable schema with samples, and the name of its base. A part declares its inputs. The starter library ships Standard and Plain bases and composes Notice from editable parts.
+
+A message selects its base as data. The base provides a `body()` block and the message supplies that block's content. Include a part by its absolute Jet name and pass its inputs as the context.
+
+```jet
+{{ block body() }}
+  <p>{{ vars.greeting }}</p>
+  {{ include "/part/button" map("action_url", vars.url, "action_label", "Open") }}
+{{ end }}
+```
+
+Parts read passed inputs through the dot context. Templates can also read `site.title`, `site.url`, `sender.name`, `message.subject`, and `message.preheader` in both faces. Use `vars` for declared message variables.
+
+Lua callers with **Edit mail library** call functions in `kickside.mail.library`. Use `list` and `get` to read resources, `render` to render a message, and `render_draft` to preview a candidate against a selected message. Call `create`, `update`, `set_base`, `reset`, or `delete` to edit the library. Edits to an existing resource require its current `expected_revision`. Reset restores the current shipped original.
+
 ## Error codes
 
 The native error kind and retry flag come from the operation. The `details.code` values below identify Mail’s errors. Errors from Uploads, Users, Settings, or the driver retain their native classification. The writable destination maps errors into the platform writable failure envelope.
@@ -47,9 +64,8 @@ attachment_unavailable         Internal           No
 attachments_too_large          Invalid            No
 body_required                  Invalid            No
 delivery_interrupted           Unavailable        No
-duplicate_content_id           Invalid            No
 duplicate_driver_id            Invalid            No
-duplicate_template_name        Invalid            No
+duplicate_template_name        Conflict           No
 from_not_allowed               Invalid            No
 html_too_large                 Invalid            No
 incomplete_attachment          Internal           No
@@ -68,6 +84,7 @@ invalid_subject                Invalid            No
 invalid_template               Invalid            No
 invalid_template_declaration   Invalid            No
 invalid_template_vars          Invalid            No
+mail_library_denied            PermissionDenied   No
 mail_send_denied               PermissionDenied   No
 message_not_found              NotFound           No
 message_too_large              Invalid            No
@@ -80,7 +97,6 @@ subject_required               Invalid            No
 subject_too_long               Invalid            No
 template_body_conflict         Invalid            No
 template_not_found             NotFound           No
-template_open_failed           Source error       Source flag
 template_render_failed         Source error       Source flag
 text_too_large                 Invalid            No
 too_many_attachments           Invalid            No
@@ -89,7 +105,7 @@ too_many_recipients            Invalid            No
 
 ## Development
 
-Use Wippy v0.3.66a and Make. The isolated harness resolves the mail modules and uses local source replacements for sibling dependencies.
+Use Make and a Wippy runtime that supports `template.set.engine.escape` and registry overlay shadows. The isolated harness resolves the mail modules and uses local source replacements for sibling dependencies.
 
 ```sh
 make verify

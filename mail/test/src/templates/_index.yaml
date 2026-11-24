@@ -5,28 +5,34 @@ entries:
   - name: reminder
     kind: template.jet
     set: kickside.mail.views:templates
-    source: |
-      {{ extends "/base/standard" }}
-      {{ block body() }}<p>Please finish {{ task }}.</p>{{ end }}
+    meta: { name: message/reminder }
+    source: &reminder_html |
+      {{ extends "/base/standard" }}{{ block body() }}<p>Please finish {{ task }}.</p>{{ end }}
   - name: reminder.title
     kind: template.jet
     set: kickside.mail.views:text_templates
-    source: |-
+    meta: { name: message/reminder.subject }
+    source: &reminder_subject |-
       Reminder: {{ task }}
   - name: reminder.plain
     kind: template.jet
     set: kickside.mail.views:text_templates
-    source: |
-      {{ extends "/base/standard" }}
-      {{ block body() }}Please finish {{ task }}.{{ end }}
+    meta: { name: message/reminder }
+    source: &reminder_text |
+      {{ extends "/base/standard" }}{{ block body() }}Please finish {{ task }}.{{ end }}
   - name: reminder_template
     kind: registry.entry
     meta: { type: "kickside.mail:template" }
     template:
+      kind: message
       name: reminder
       title: Reminder
       description: Remind the recipient about a task.
-      parts: { subject: reminder.title, html: reminder, text: reminder.plain }
+      base: standard
+      html: *reminder_html
+      text: *reminder_text
+      subject: *reminder_subject
+      entries: { html: "app.templates:reminder", text: "app.templates:reminder.plain", subject: "app.templates:reminder.title" }
       variable_schema:
         type: object
         additionalProperties: false

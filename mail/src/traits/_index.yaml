@@ -8,7 +8,7 @@ entries:
       type: agent.trait
       public: true
       title: Mail
-      comment: Send email and discover or preview shipped mail templates.
+      comment: Send email and, with Edit mail library, inspect or preview message templates.
     prompt: Use MailListTemplates to find template names and MailGetTemplate to read the available variable names. MailSend queues delivery.
     tools:
       - kickside.mail.traits:mail_send
@@ -21,8 +21,8 @@ entries:
       type: agent.trait
       public: true
       title: Mail Templates
-      comment: Discover and preview shipped mail templates. Preview requires mail send access.
-    prompt: Use MailListTemplates to find template names and MailGetTemplate to read the available variable names. MailPreview renders the template without delivery and requires mail send access.
+      comment: Inspect and preview message templates with Edit mail library.
+    prompt: Use MailListTemplates to find template names and MailGetTemplate to read the available variable names. MailPreview renders the template without delivery and requires Edit mail library.
     tools:
       - kickside.mail.traits:mail_list_templates
       - kickside.mail.traits:mail_get_template
@@ -52,7 +52,7 @@ entries:
       public: true
       title: List Mail Templates
       llm_alias: MailListTemplates
-      llm_description: List names, titles, and descriptions of shipped mail templates. A template name selects a shipped set of email parts. Call MailGetTemplate with that name for its variables and sample.
+      llm_description: List names, titles, and descriptions of mail library messages. Edit mail library is required. Call MailGetTemplate with that name for its variables and sample.
       input_schema: file://../schemas/list_templates.tool.input.json
       output_schema: file://../schemas/list_templates.tool.output.json
     source: *tool_source
@@ -65,7 +65,7 @@ entries:
       public: true
       title: Get Mail Template
       llm_alias: MailGetTemplate
-      llm_description: Get a shipped email template by its name from MailListTemplates. The variable schema gives the names, types, and required variables for MailSend and MailPreview.
+      llm_description: Get a mail library message by its name from MailListTemplates. Edit mail library is required. The variable schema gives the names, types, and required variables for MailSend and MailPreview.
       input_schema: file://../schemas/get_template.input.json
       output_schema: file://../schemas/get_template.output.json
     source: *tool_source
@@ -78,7 +78,7 @@ entries:
       public: true
       title: Preview Mail Template
       llm_alias: MailPreview
-      llm_description: Render the subject, HTML, and text without delivery. Use a shipped template name from MailListTemplates and variable names from MailGetTemplate. Mail send access is required.
+      llm_description: Render the subject, HTML, and text without delivery. Use a message name from MailListTemplates and variable names from MailGetTemplate. Edit mail library is required.
       input_schema: file://../schemas/preview.input.json
       output_schema: file://../schemas/preview.output.json
     source: *tool_source

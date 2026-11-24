@@ -1,97 +1,46 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
-local registry = require("registry")
 local json = require("json")
 local canonical_json = require("canonical_json")
 local error_envelope = require("error_envelope")
+local resources = require("resources")
+local jet = require("jet")
+local client = require("client")
 
 local M = {}
 
-local function invalid_declaration(id: string, field: string): error
-    return errors.new({kind = errors.INVALID, retryable = false,
-        message = "Mail template " .. id .. " requires " .. field,
-        details = {code = "invalid_template_declaration"}})
-end
-
-local function nonempty(value: unknown): boolean
-    return type(value) == "string" and value:find("%S") ~= nil
-end
-
-local function descriptor(id: string, data: types.Record): (types.Template?, error?)
-    local template = data.template :: types.Template
-    if type(template) ~= "table" then return nil, invalid_declaration(id, "a template object") end
-    for _, field in ipairs({"name", "title", "description"}) do
-        if not nonempty(template[field]) then return nil, invalid_declaration(id, field) end
-    end
-    if type(template.parts) ~= "table" then return nil, invalid_declaration(id, "parts") end
-    for _, part in ipairs({"subject", "html", "text"}) do
-        if not nonempty(template.parts[part]) then return nil, invalid_declaration(id, "parts." .. part) end
-    end
-    local schema = template.variable_schema
-    if type(schema) ~= "table" or schema.type ~= "object" or type(schema.properties) ~= "table" then
-        return nil, invalid_declaration(id, "an object variable_schema with properties")
-    end
-    if type(template.sample) ~= "table" then return nil, invalid_declaration(id, "a sample object") end
-    schema = canonical_json.normalize_schema(schema) :: types.VariableSchema
-    schema.additionalProperties = false
-    return {
-        name = template.name,
-        title = template.title,
-        description = template.description,
-        parts = template.parts,
-        variable_schema = schema,
-        sample = canonical_json.object(template.sample) :: types.JsonObject,
-    }, nil
-end
-
-local function discover(): ({[string]: types.Template}?, error?)
-    local entries, err = registry.find({[".kind"] = "registry.entry", ["meta.type"] = "kickside.mail:template"})
-    if err then return nil, err end
-    local templates: {[string]: types.Template} = {}
-    for _, entry in ipairs(entries) do
-        local template, declaration_err = descriptor(entry.id, entry.data :: types.Record)
-        if declaration_err then return nil, declaration_err end
-        if templates[template.name] then
-            return nil, errors.new({kind = errors.INVALID, retryable = false,
-                message = "Multiple mail declarations use the template name " .. template.name,
-                details = {code = "duplicate_template_name"}})
-        end
-        templates[template.name] = template
-    end
-    return templates, nil
-end
-
 function M.list_templates(): (types.TemplateList?, error?)
-    local templates, err = discover()
+    local denied = client.require_library()
+    if denied then return nil, denied end
+    local messages, err = resources.list({kind = "message"})
     if err then return nil, err end
     local rows = {}
-    for _, template in pairs(templates) do
-        rows[#rows + 1] = {
-            name = template.name, title = template.title, description = template.description,
-            variable_schema = template.variable_schema,
-        }
+    for i, item in ipairs(messages) do
+        rows[i] = {name = item.name, title = item.title, description = item.description, variable_schema = item.schema}
     end
-    table.sort(rows, function(a, b) return a.name < b.name end)
     return {templates = rows}, nil
 end
 
-function M.resolve(name: unknown): (types.Template?, error?)
-    if not nonempty(name) then
-        return nil, errors.new({kind = errors.INVALID, retryable = false,
-            message = "A mail template name is required", details = {code = "invalid_template"}})
+function M.resolve(name: unknown): (types.Resource?, error?)
+    if type(name) ~= "string" or not name:find("%S") then
+        return nil, resources.error(errors.INVALID, "invalid_template", "A mail template name is required")
     end
-    local templates, err = discover()
-    if err then return nil, err end
-    local template = templates[name :: string]
-    if not template then
-        return nil, errors.new({kind = errors.NOT_FOUND, retryable = false,
-            message = "Mail template is not declared: " .. (name :: string), details = {code = "template_not_found"}})
+    local item, err = resources.get({kind = "message", name = name})
+    if err and err:kind() == errors.NOT_FOUND then
+        return nil, resources.error(errors.NOT_FOUND, "template_not_found", "Mail template is not declared: " .. name)
     end
-    return template :: types.Template?, nil
+    return item, err
 end
 
 function M.get_template(input: types.TemplateRequest): (types.Template?, error?)
-    return M.resolve(type(input) == "table" and input.template or nil)
+    local denied = client.require_library()
+    if denied then return nil, denied end
+    local selected, err = M.resolve(type(input) == "table" and input.template or nil)
+    if err then return nil, err end
+    local item = selected :: types.Resource
+    local name = jet.name(item)
+    return {name = item.name, title = item.title, description = item.description, variable_schema = item.schema,
+        parts = {html = name, text = name, subject = jet.name(item, "subject")}, sample = item.samples}, nil
 end
 
 local function variable_name(issue: types.SchemaIssue?, properties: types.JsonObject): string

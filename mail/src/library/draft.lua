@@ -1,0 +1,122 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local types = require("types")
+local registry = require("registry")
+local error_envelope = require("error_envelope")
+local render = require("render")
+local catalog = require("catalog")
+local globals = require("globals")
+local resources = require("resources")
+local jet = require("jet")
+
+local M = {}
+local HTML = jet.draft_namespace .. "html"
+local TEXT = jet.draft_namespace .. "text"
+local CHECK = "check/resource"
+
+local function add_set(changes: registry.Changes, id: string, escape: string): error?
+    local _, err = changes:create({id = id, kind = "template.set", data = {engine = {escape = escape}}})
+    return err
+end
+
+local function cleanup(): (boolean?, error?)
+    local overlay, open_err = registry.overlay(jet.owner)
+    if open_err then return nil, open_err end
+    local entries, err = overlay:entries()
+    if err then return nil, err end
+    local ids = {}
+    for _, entry in ipairs(entries) do
+        if entry.id:sub(1, #jet.draft_namespace) == jet.draft_namespace then ids[#ids + 1] = entry.id end
+    end
+    local changes = overlay:changes()
+    local _, stage_err = changes:delete(ids)
+    if stage_err then return nil, stage_err end
+    local _, apply_err = changes:apply()
+    if apply_err then return nil, apply_err end
+    return true, nil
+end
+
+local function open(items: types.ResourceMap, checked: types.ResourceContent?): error?
+    local overlay, err = registry.overlay(jet.owner)
+    if err then return err end
+    local changes = overlay:changes()
+    local html_err = add_set(changes, HTML, "html")
+    if html_err then return html_err end
+    local text_err = add_set(changes, TEXT, "none")
+    if text_err then return text_err end
+
+    for _, item in pairs(items) do
+        for _, entry in ipairs(jet.entries(item, jet.draft_namespace, HTML, TEXT)) do
+            local _, stage_err = changes:create(entry)
+            if stage_err then return stage_err end
+        end
+    end
+    if checked and checked.kind == "part" then
+        local source = '{{ include "/' .. jet.name(checked) .. '" vars }}'
+        local _, html_check_err = changes:create(jet.entry(jet.draft_namespace .. "check.html", HTML, CHECK, source))
+        if html_check_err then return html_check_err end
+        local _, text_check_err = changes:create(jet.entry(jet.draft_namespace .. "check.text", TEXT, CHECK, source))
+        if text_check_err then return text_check_err end
+    end
+    local _, apply_err = changes:apply()
+    return apply_err
+end
+
+local function with_draft<T>(items: types.ResourceMap, checked: types.ResourceContent?,
+    run: (types.TemplateSet, types.TemplateSet) -> (T?, error?)): (T?, error?)
+    local open_err = open(items, checked)
+    if open_err then return nil, open_err end
+    local value, err = render.with_sets(HTML, TEXT, run)
+    local final_err = error_envelope.cleanup(cleanup, err, "Cannot close the mail draft sets")
+    if final_err then return nil, final_err end
+    return value, nil
+end
+
+local function invalid(err: error): error
+    return errors.new({kind = errors.INVALID, retryable = false, message = err:message(), details = err:details()})
+end
+
+local function validate_faces(item: types.ResourceContent, values: types.RenderGlobals, html: types.TemplateSet, text: types.TemplateSet): error?
+    if item.kind == "message" then
+        local _, err = render.faces(item, item.samples, values, html, text)
+        if not err then return nil end
+        if not (err:details() or {}).face then err = render.face_error(item, "variables", err) end
+        return invalid(err)
+    end
+    local schema_err = catalog.validate_vars(item.schema, item.samples)
+    if schema_err then return invalid(render.face_error(item, "samples", schema_err)) end
+    local context = globals.data(values, item.samples, "")
+    local name = item.kind == "part" and CHECK or jet.name(item)
+    local _, html_err = html:render(name, context)
+    if html_err then return invalid(render.face_error(item, "html", html_err)) end
+    local _, text_err = text:render(name, context)
+    if text_err then return invalid(render.face_error(item, "text", text_err)) end
+    return nil
+end
+
+function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidate: types.ResourceContent?,
+    dependants: {types.Resource}, values: types.RenderGlobals): error?
+    local _, err = with_draft(items, candidate, function(html: types.TemplateSet, text: types.TemplateSet): (boolean?, error?)
+        if candidate then
+            local candidate_err = validate_faces(candidate, values, html, text)
+            if candidate_err then return nil, candidate_err end
+        end
+        for _, item in ipairs(dependants) do
+            local dependent_err = validate_faces(item, values, html, text)
+            if dependent_err then
+                if candidate then return nil, dependent_err end
+                return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = dependent_err:message(),
+                    details = {code = "mail_resource_in_use", resource = key, dependent = dependent_err:details()}})
+            end
+        end
+        return true, nil
+    end)
+    return err
+end
+
+function M.render(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, values: types.RenderGlobals): (types.Rendered?, error?)
+    return with_draft(items, nil, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
+        return render.faces(item, vars, values, html, text)
+    end)
+end
+
+return M

@@ -12,96 +12,101 @@ entries:
     kind: template.jet
     set: kickside.mail.views:templates
     meta: { name: "base/standard" }
-    source: file://layout.jet
+    source: &standard_html file://layout.jet
   - name: layout.text
     kind: template.jet
     set: kickside.mail.views:text_templates
     meta: { name: "base/standard" }
-    source: file://layout.text.jet
+    source: &standard_text file://layout.text.jet
   - name: plain
     kind: template.jet
     set: kickside.mail.views:templates
     meta: { name: "base/plain" }
-    source: file://plain.jet
+    source: &plain_html file://plain.jet
   - name: plain.text
     kind: template.jet
     set: kickside.mail.views:text_templates
     meta: { name: "base/plain" }
-    source: file://plain.text.jet
+    source: &plain_text file://plain.text.jet
   - name: header
     kind: template.jet
     set: kickside.mail.views:templates
     meta: { name: "part/header" }
-    source: file://header.jet
+    source: &header_html file://header.jet
   - name: header.text
     kind: template.jet
     set: kickside.mail.views:text_templates
     meta: { name: "part/header" }
-    source: file://header.text.jet
+    source: &header_text file://header.text.jet
   - name: footer
     kind: template.jet
     set: kickside.mail.views:templates
     meta: { name: "part/footer" }
-    source: file://footer.jet
+    source: &footer_html file://footer.jet
   - name: footer.text
     kind: template.jet
     set: kickside.mail.views:text_templates
     meta: { name: "part/footer" }
-    source: file://footer.text.jet
+    source: &footer_text file://footer.text.jet
   - name: preheader
     kind: template.jet
     set: kickside.mail.views:templates
     meta: { name: "part/preheader" }
-    source: file://preheader.jet
+    source: &preheader_html file://preheader.jet
   - name: preheader.text
     kind: template.jet
     set: kickside.mail.views:text_templates
     meta: { name: "part/preheader" }
-    source: file://preheader.text.jet
+    source: &preheader_text file://preheader.text.jet
   - name: button
     kind: template.jet
     set: kickside.mail.views:templates
     meta: { name: "part/button" }
-    source: file://button.jet
+    source: &button_html file://button.jet
   - name: button.text
     kind: template.jet
     set: kickside.mail.views:text_templates
     meta: { name: "part/button" }
-    source: file://button.text.jet
+    source: &button_text file://button.text.jet
   - name: details
     kind: template.jet
     set: kickside.mail.views:templates
     meta: { name: "part/details" }
-    source: file://details.jet
+    source: &details_html file://details.jet
   - name: details.text
     kind: template.jet
     set: kickside.mail.views:text_templates
     meta: { name: "part/details" }
-    source: file://details.text.jet
+    source: &details_text file://details.text.jet
   - name: notice
     kind: template.jet
     set: kickside.mail.views:templates
     meta: { name: "message/notice" }
-    source: file://notice.jet
+    source: &notice_html file://notice.jet
   - name: notice.subject
     kind: template.jet
     set: kickside.mail.views:text_templates
     meta: { name: "message/notice.subject" }
-    source: |-
+    source: &notice_subject |-
       {{ subject }}
   - name: notice.text
     kind: template.jet
     set: kickside.mail.views:text_templates
     meta: { name: "message/notice" }
-    source: file://notice.text.jet
+    source: &notice_text file://notice.text.jet
   - name: notice_template
     kind: registry.entry
     meta: { type: "kickside.mail:template" }
     template:
+      kind: message
       name: notice
       title: Notice
       description: Send a notice with optional details, a link, and an inline image.
-      parts: { subject: message/notice.subject, html: message/notice, text: message/notice }
+      base: standard
+      html: *notice_html
+      text: *notice_text
+      subject: *notice_subject
+      entries: { html: "kickside.mail.views:notice", text: "kickside.mail.views:notice.text", subject: "kickside.mail.views:notice.subject" }
       variable_schema:
         type: object
         additionalProperties: false
@@ -129,15 +134,124 @@ entries:
               properties:
                 key: { type: string, description: Label. }
                 value: { type: string, description: Detail to display. }
-      sample: { subject: Activity report ready, message: Your activity report is ready to review. }
+      sample:
+        subject: Activity report ready
+        preheader: The report is available.
+        message: Your activity report is ready to review.
+        action_url: https://example.org/report
+        action_label: Read the report
+        details: [{key: Status, value: Ready}]
+  - name: standard_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: base
+      name: standard
+      title: Standard
+      description: A card with a header and footer.
+      html: *standard_html
+      text: *standard_text
+      entries: { html: "kickside.mail.views:layout", text: "kickside.mail.views:layout.text" }
+  - name: plain_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: base
+      name: plain
+      title: Plain
+      description: A text-first layout.
+      html: *plain_html
+      text: *plain_text
+      entries: { html: "kickside.mail.views:plain", text: "kickside.mail.views:plain.text" }
+  - name: header_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: part
+      name: header
+      title: Header
+      description: Shows the installation title.
+      html: *header_html
+      text: *header_text
+      entries: { html: "kickside.mail.views:header", text: "kickside.mail.views:header.text" }
+      input_schema: { type: object, properties: {} }
+  - name: footer_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: part
+      name: footer
+      title: Footer
+      description: Closes the message with the installation title.
+      html: *footer_html
+      text: *footer_text
+      entries: { html: "kickside.mail.views:footer", text: "kickside.mail.views:footer.text" }
+      input_schema: { type: object, properties: {} }
+  - name: preheader_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: part
+      name: preheader
+      title: Preheader
+      description: Shows the inbox preview text.
+      html: *preheader_html
+      text: *preheader_text
+      entries: { html: "kickside.mail.views:preheader", text: "kickside.mail.views:preheader.text" }
+      input_schema: { type: object, properties: {} }
+  - name: button_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: part
+      name: button
+      title: Button
+      description: Links to a web address.
+      html: *button_html
+      text: *button_text
+      entries: { html: "kickside.mail.views:button", text: "kickside.mail.views:button.text" }
+      input_schema:
+        type: object
+        required: [action_url, action_label]
+        properties:
+          action_url: { type: string }
+          action_label: { type: string }
+      sample: { action_url: "https://example.org/report", action_label: Open }
+  - name: details_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: part
+      name: details
+      title: Details
+      description: Shows labeled values.
+      html: *details_html
+      text: *details_text
+      entries: { html: "kickside.mail.views:details", text: "kickside.mail.views:details.text" }
+      input_schema:
+        type: object
+        required: [details]
+        properties:
+          details:
+            type: array
+            items:
+              type: object
+              required: [key, value]
+              properties:
+                key: { type: string }
+                value: { type: string }
+      sample: { details: [{key: State, value: Ready}] }
   - name: catalog
     kind: library.lua
     source: file://catalog.lua
-    modules: [registry, json]
+    modules: [json]
     imports:
       types: kickside.mail:types
       canonical_json: kickside.contract:canonical_json
       error_envelope: kickside.contract:error_envelope
+      client: kickside.mail:client
+      resources: kickside.mail.library:resources
+      jet: kickside.mail.library:jet
   - name: render
     kind: library.lua
     source: file://render.lua
@@ -147,9 +261,9 @@ entries:
       catalog: kickside.mail.views:catalog
       message: kickside.mail:message
       globals: kickside.mail.views:globals
-      error_envelope: kickside.contract:error_envelope
+      jet: kickside.mail.library:jet
   - name: globals
     kind: library.lua
     source: file://globals.lua
     modules: [env, registry, security]
-    imports: { types: kickside.mail:types }
+    imports: { types: kickside.mail:types, settings: kickside.mail:settings }

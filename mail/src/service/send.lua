@@ -15,7 +15,7 @@ local attachments = require("attachments")
 local recipients = require("recipients")
 
 local function preview(request: types.PreviewRequest): (types.PreviewResult?, error?)
-    local denied = client.require_send()
+    local denied = client.require_library()
     if denied then return nil, denied end
     if type(request) ~= "table" then return nil, errors.new({kind = errors.INVALID, retryable = false,
         message = "A template and variables are required", details = {code = "invalid_template"}}) end

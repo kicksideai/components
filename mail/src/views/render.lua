@@ -3,9 +3,9 @@ local types = require("types")
 local templates = require("templates")
 local html = require("html")
 local globals = require("globals")
-local error_envelope = require("error_envelope")
 local message = require("message")
 local catalog = require("catalog")
+local jet = require("jet")
 
 local M = {}
 local TEXT_WIDTH = 72
@@ -30,10 +30,15 @@ local function wrap_line(line: string): string
     return table.concat(lines, "\n")
 end
 
-local function render_part(set: types.TemplateSet, name: string, data: types.JsonObject, part: string): (string?, error?)
-    local output, err = set:render(name, data)
-    if err then return nil, error_envelope.wrap(err, "Cannot render mail " .. part, {code = "template_render_failed"}) end
-    return output, nil
+function M.face_error(item: types.ResourceKey, face: string, err: error): error
+    local engine_details = err:details()
+    local details: types.Record = {}
+    for key, value in pairs(engine_details or {}) do details[key] = value end
+    details.code = details.code or "template_render_failed"
+    details.resource = {kind = item.kind, name = item.name}
+    details.face = face
+    details.engine_kind = err:kind()
+    return errors.new({kind = err:kind(), retryable = err:retryable() == true, message = err:message(), details = details})
 end
 
 local function empty_body(part: string): error
@@ -41,61 +46,59 @@ local function empty_body(part: string): error
         retryable = false, details = {code = "body_required"}})
 end
 
-local function render_html(set: types.TemplateSet, name: string, data: types.JsonObject, subject: string, text: string?): (types.Rendered?, error?)
-    local body, body_err = render_part(set, name, data, "HTML")
-    if body_err then return nil, body_err end
-    if not body:find("%S") then return nil, empty_body("HTML") end
-    return {subject = subject, html = body, text = text}, nil
-end
-
-local function render_template(html_set: types.TemplateSet, text_set: types.TemplateSet, parts: types.TemplateParts, data: types.JsonObject): (types.Rendered?, error?)
-    local subject, subject_err = render_part(text_set, parts.subject, data, "subject")
-    if subject_err then return nil, subject_err end
-    local invalid = message.subject_error(subject)
-    if invalid then return nil, invalid end
-
-    local message_data = data.message :: types.JsonObject
-    if type((data.vars :: types.JsonObject).preheader) ~= "string" then message_data.preheader = subject end
-    message_data.subject = subject
-    local text, text_err = render_part(text_set, parts.text, data, "text")
-    if text_err then return nil, text_err end
-    if not text:find("%S") then return nil, empty_body("text") end
-    if not utf8.len(text) then
-        return nil, errors.new({kind = errors.INVALID, message = "Mail template text must be UTF-8",
-            retryable = false, details = {code = "invalid_body"}})
-    end
-    return render_html(html_set, parts.html, data, subject :: string, (text:gsub("[^\r\n]+", wrap_line)))
-end
-
-local function open_templates(id: string): (types.TemplateSet?, error?)
-    local set, err = templates.get(id)
-    if err then return nil, error_envelope.wrap(err, "Cannot open mail templates", {code = "template_open_failed"}) end
-    return set :: types.TemplateSet, nil
-end
-
-function M.render(template_name: unknown, data: unknown): (types.Rendered?, error?)
-    local declared, declaration_err = catalog.resolve(template_name)
-    if declaration_err then return nil, declaration_err end
-    local template = declared :: types.Template
-    local validation_err = catalog.validate_vars(template.variable_schema, data)
-    if validation_err then return nil, validation_err end
-    local variables = {}
-    for key, value in pairs(data :: types.JsonObject) do
-        if key ~= "_mail_html" and key ~= "_mail_text" then variables[key] = value end
-    end
-    local context, context_err = globals.data(variables, type(variables.subject) == "string" and variables.subject or "")
-    if context_err then return nil, context_err end
-    local html_set, err = open_templates("kickside.mail.views:templates")
-    if err then return nil, err end
-    local text_set, text_err = open_templates("kickside.mail.views:text_templates")
+function M.with_sets<T>(html_id: string, text_id: string,
+    run: (types.TemplateSet, types.TemplateSet) -> (T?, error?)): (T?, error?)
+    local html_set, html_err = templates.get(html_id)
+    if html_err then return nil, html_err end
+    local text_set, text_err = templates.get(text_id)
     if text_err then
         html_set:release()
         return nil, text_err
     end
-    local result, render_err = render_template(html_set, text_set, template.parts, context)
+    local result, err = run(html_set :: types.TemplateSet, text_set :: types.TemplateSet)
     text_set:release()
     html_set:release()
-    return result, render_err
+    return result, err
+end
+
+function M.faces(item: types.ResourceContent, vars: unknown, values: types.RenderGlobals, html_set: types.TemplateSet,
+    text_set: types.TemplateSet): (types.Rendered?, error?)
+    local validation_err = catalog.validate_vars(item.schema, vars)
+    if validation_err then return nil, validation_err end
+    local variables = vars :: types.JsonObject
+    local context = globals.data(values, variables, type(variables.subject) == "string" and variables.subject or "")
+    context._mail_html, context._mail_text = nil, nil
+    local name = jet.name(item)
+    local subject, subject_err = text_set:render(jet.name(item, "subject"), context)
+    if subject_err then return nil, M.face_error(item, "subject", subject_err) end
+    local invalid = message.subject_error(subject)
+    if invalid then return nil, M.face_error(item, "subject", invalid) end
+
+    local message_data = context.message :: types.JsonObject
+    if type(variables.preheader) ~= "string" then message_data.preheader = subject end
+    message_data.subject = subject
+
+    local text, text_err = text_set:render(name, context)
+    if text_err then return nil, M.face_error(item, "text", text_err) end
+    if not text:find("%S") then return nil, M.face_error(item, "text", empty_body("text")) end
+    if not utf8.len(text) then
+        return nil, M.face_error(item, "text", errors.new({kind = errors.INVALID, message = "Mail template text must be UTF-8",
+            retryable = false, details = {code = "invalid_body"}}))
+    end
+    local body, body_err = html_set:render(name, context)
+    if body_err then return nil, M.face_error(item, "html", body_err) end
+    if not body:find("%S") then return nil, M.face_error(item, "html", empty_body("html")) end
+    return {subject = subject :: string, html = body, text = (text:gsub("[^\r\n]+", wrap_line))}, nil
+end
+
+function M.render(template_name: unknown, data: unknown): (types.Rendered?, error?)
+    local item, declaration_err = catalog.resolve(template_name)
+    if declaration_err then return nil, declaration_err end
+    local values, err = globals.read()
+    if err then return nil, err end
+    return M.with_sets(jet.html, jet.text, function(html_set: types.TemplateSet, text_set: types.TemplateSet): (types.Rendered?, error?)
+        return M.faces(item :: types.Resource, data, values :: types.RenderGlobals, html_set, text_set)
+    end)
 end
 
 function M.body(subject: string, text: string?, markup: string?): (types.Rendered?, error?)
@@ -113,13 +116,16 @@ function M.body(subject: string, text: string?, markup: string?): (types.Rendere
                 retryable = false, details = {code = "body_required"}})
         end
     end
-    local context, context_err = globals.data(data, subject)
-    if context_err then return nil, context_err end
-    local set, err = open_templates("kickside.mail.views:templates")
+    local values, globals_err = globals.read()
+    if globals_err then return nil, globals_err end
+    local context = globals.data(values :: types.RenderGlobals, data, subject)
+    local set, err = templates.get(jet.html)
     if err then return nil, err end
-    local result, render_err = render_html(set, "base/standard", context, subject, text)
+    local body, render_err = set:render("base/standard", context)
     set:release()
-    return result, render_err
+    if render_err then return nil, render_err end
+    if not body:find("%S") then return nil, empty_body("html") end
+    return {subject = subject, html = body, text = text}, nil
 end
 
 return M

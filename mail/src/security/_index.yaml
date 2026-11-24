@@ -8,9 +8,7 @@ entries:
       title: Mail
       surface: kickside.mail
       intent: module_access
-      includes:
-        - kickside.mail.security:module_runtime
-        - kickside.mail.security:template_access
+      includes: [kickside.mail.security:module_runtime]
     groups: []
     policy:
       resources: [kickside.mail.sink:send_email, kickside.mail.traits:mail, kickside.mail.traits:mail_readonly]
@@ -52,7 +50,7 @@ entries:
       title: Send mail
       surface: kickside.mail
       intent: tool_access
-      includes: [kickside.mail.security:module_runtime, kickside.mail.security:template_access]
+      includes: [kickside.mail.security:module_runtime]
     groups: []
     policy:
       resources: [kickside.mail:mailer]
@@ -160,6 +158,13 @@ entries:
         - kickside.mail.views:text_templates
         - app:definition
         - kickside.mail.views:notice_template
+        - kickside.mail.views:standard_template
+        - kickside.mail.views:plain_template
+        - kickside.mail.views:header_template
+        - kickside.mail.views:footer_template
+        - kickside.mail.views:preheader_template
+        - kickside.mail.views:button_template
+        - kickside.mail.views:details_template
       actions: [template.get, registry.get, registry.find]
       effect: allow
   - name: user_security_scope
@@ -169,11 +174,83 @@ entries:
     targets:
       - { entry: "kickside.mail.security:module_access", path: ".groups +=" }
       - { entry: "kickside.mail.security:module_runtime", path: ".groups +=" }
-      - { entry: "kickside.mail.security:template_access", path: ".groups +=" }
   - name: site_url
     kind: security.policy
     meta: { private: true }
     policy:
       resources: [PUBLIC_API_URL]
       actions: [env.get]
+      effect: allow
+  - name: library_access
+    kind: security.policy
+    meta:
+      title: Edit mail library
+      surface: kickside.mail
+      intent: module_management
+      includes: [kickside.mail.security:module_runtime, kickside.mail.security:library_calls]
+    groups: []
+    policy:
+      resources: [kickside.mail.library:list]
+      actions: [access]
+      effect: allow
+  - name: library_calls
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources:
+        - kickside.mail.library:list
+        - kickside.mail.library:get
+        - kickside.mail.library:create
+        - kickside.mail.library:update
+        - kickside.mail.library:set_base
+        - kickside.mail.library:reset
+        - kickside.mail.library:delete
+        - kickside.mail.library:render
+        - kickside.mail.library:render_draft
+      actions: [funcs.call, registry.get]
+      effect: allow
+  - name: overlay_owner
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail.library:projection]
+      actions: [registry.overlay.get, registry.overlay.apply]
+      effect: allow
+  - name: overlay_projection
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: ["kickside.mail.projection:*"]
+      actions: [registry.overlay.create.template.jet, registry.overlay.update.template.jet, registry.overlay.delete.template.jet]
+      effect: allow
+  - name: overlay_originals
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources:
+        - kickside.mail.views:layout
+        - kickside.mail.views:layout.text
+        - kickside.mail.views:plain
+        - kickside.mail.views:plain.text
+        - kickside.mail.views:header
+        - kickside.mail.views:header.text
+        - kickside.mail.views:footer
+        - kickside.mail.views:footer.text
+        - kickside.mail.views:preheader
+        - kickside.mail.views:preheader.text
+        - kickside.mail.views:button
+        - kickside.mail.views:button.text
+        - kickside.mail.views:details
+        - kickside.mail.views:details.text
+        - kickside.mail.views:notice
+        - kickside.mail.views:notice.text
+        - kickside.mail.views:notice.subject
+      actions: [registry.overlay.shadow, registry.overlay.update.template.jet, registry.overlay.delete.template.jet]
+      effect: allow
+  - name: overlay_drafts
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: ["kickside.mail.draft:*"]
+      actions: [registry.overlay.create.template.jet, registry.overlay.delete.template.jet, registry.overlay.create.template.set, registry.overlay.delete.template.set, template.get]
       effect: allow

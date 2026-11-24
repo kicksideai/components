@@ -16,6 +16,7 @@ local canonical_json = require("canonical_json")
 
 local TOOL_NS = "kickside.mail.traits:"
 local READER_POLICIES = {
+    "kickside.mail.security:library_access",
     "kickside.mail.security:module_access",
     "kickside.mail.security:module_runtime",
     "kickside.mail.security:template_access",
@@ -193,11 +194,12 @@ return {
     probe = probe,
     run = test.run_cases(function()
         test.describe("System-managed mailer", function()
-            local admin, sender, denied, log_admin
+            local admin, sender, denied, log_admin, editor
             test.before_each(function()
                 admin = caller({"kickside.mail.harness:admin"})
                 log_admin = caller({"kickside.mail.security:log_admin", "kickside.mail.security:module_runtime"})
                 denied = caller({"kickside.mail.security:module_runtime"})
+                editor = caller(READER_POLICIES)
                 sender = caller({
                     "kickside.mail.security:module_runtime",
                     "kickside.mail.security:template_access",
@@ -675,7 +677,7 @@ return {
                 local builtin = assert(invoke(reader, "list_templates"))
                 test.eq(1, #builtin.templates)
                 local external_reader = caller({
-                    "kickside.mail.security:module_runtime", "kickside.mail.security:template_access",
+                    "kickside.mail.security:module_runtime", "kickside.mail.security:library_access",
                     "kickside.mail.harness:external_template",
                 })
                 local found = assert(invoke(external_reader, "list_templates"))
@@ -694,7 +696,7 @@ return {
                 test.eq("Task to complete.", reminder.variable_schema.properties.task.description)
                 local external_sender = caller({
                     "kickside.mail.security:module_runtime", "kickside.mail.security:template_access",
-                    "kickside.mail.security:send_access", "kickside.mail.harness:external_template",
+                    "kickside.mail.security:library_access", "kickside.mail.harness:external_template",
                 })
                 local preview = assert(invoke(external_sender, "preview", {template = "reminder", vars = {task = "A & B"}}))
                 test.eq("Reminder: A & B", preview.subject)
@@ -706,7 +708,7 @@ return {
                 input.template = "undeclared"
                 local sent, send_err = invoke(sender, "send", input)
                 refusal(sent, send_err, errors.NOT_FOUND, "template_not_found")
-                local preview, preview_err = invoke(sender, "preview", {template = input.template, vars = input.vars})
+                local preview, preview_err = invoke(editor, "preview", {template = input.template, vars = input.vars})
                 refusal(preview, preview_err, errors.NOT_FOUND, "template_not_found")
             end)
 
@@ -726,14 +728,14 @@ return {
                     input.vars = case.vars
                     local sent, send_err = invoke(sender, "send", input)
                     refusal(sent, send_err, errors.INVALID, "invalid_template_vars", case.variable)
-                    local preview, preview_err = invoke(sender, "preview", {template = input.template, vars = case.vars})
+                    local preview, preview_err = invoke(editor, "preview", {template = input.template, vars = case.vars})
                     refusal(preview, preview_err, errors.INVALID, "invalid_template_vars", case.variable)
                 end
             end)
 
             test.it("previews without delivery settings and matches what send renders", function()
                 local input = template_request()
-                local preview = assert(invoke(sender, "preview", {template = input.template, vars = input.vars}))
+                local preview = assert(invoke(editor, "preview", {template = input.template, vars = input.vars}))
                 test.eq(input.vars.subject, preview.subject)
                 test.not_nil(preview.html)
                 test.not_nil(preview.text)
@@ -751,7 +753,7 @@ return {
                 local reader = caller(READER_POLICIES)
                 local tool_sender = caller({
                     "kickside.mail.security:module_access", "kickside.mail.security:module_runtime",
-                    "kickside.mail.security:template_access", "kickside.mail.security:send_access",
+                    "kickside.mail.security:library_access", "kickside.mail.security:send_access",
                 })
                 local input = template_request()
                 local preview_input = {template = input.template, vars = input.vars}
@@ -767,8 +769,8 @@ return {
                 end
                 local refused, send_err = reader:call(TOOL_NS .. "mail_send", input)
                 refusal(refused, send_err, errors.PERMISSION_DENIED, "mail_send_denied")
-                local absent, preview_err = reader:call(TOOL_NS .. "mail_preview", preview_input)
-                refusal(absent, preview_err, errors.PERMISSION_DENIED, "mail_send_denied")
+                local absent, preview_err = sender:call(TOOL_NS .. "mail_preview", preview_input)
+                refusal(absent, preview_err, errors.PERMISSION_DENIED, "mail_library_denied")
                 local preview = assert(tool_sender:call(TOOL_NS .. "mail_preview", preview_input))
                 test.eq(input.vars.subject, preview.subject)
                 local invalid, invalid_err = tool_sender:call(TOOL_NS .. "mail_preview", {template = "notice", vars = {}})

@@ -1,0 +1,164 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.library
+entries:
+  - name: jet
+    kind: library.lua
+    source: file://jet.lua
+    imports: { types: kickside.mail:types }
+  - name: store
+    kind: library.lua
+    source: file://store.lua
+    modules: [json, sql]
+    imports:
+      types: kickside.mail:types
+      database: kickside.mail.outbox:database
+      canonical_json: kickside.contract:canonical_json
+  - name: resources
+    kind: library.lua
+    source: file://resources.lua
+    modules: [registry, sql]
+    imports:
+      types: kickside.mail:types
+      database: kickside.mail.outbox:database
+      canonical_json: kickside.contract:canonical_json
+      store: kickside.mail.library:store
+      jet: kickside.mail.library:jet
+  - name: projection
+    kind: library.lua
+    source: &projection_source file://projection.lua
+    modules: &projection_modules [registry, security, sql]
+    imports: &projection_imports
+      types: kickside.mail:types
+      database: kickside.mail.outbox:database
+      store: kickside.mail.library:store
+      resources: kickside.mail.library:resources
+      jet: kickside.mail.library:jet
+  - name: reconcile
+    kind: function.lua
+    meta:
+      private: true
+      type: bootloader
+      requires: [wippy.migration:migration_bootloader]
+      order: 35
+    source: *projection_source
+    method: boot
+    modules: *projection_modules
+    imports: *projection_imports
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:overlay_projection
+        - kickside.mail.security:overlay_originals
+        - kickside.mail.security:overlay_drafts
+  - name: draft
+    kind: library.lua
+    source: file://draft.lua
+    modules: [registry]
+    imports:
+      types: kickside.mail:types
+      jet: kickside.mail.library:jet
+      resources: kickside.mail.library:resources
+      render: kickside.mail.views:render
+      globals: kickside.mail.views:globals
+      catalog: kickside.mail.views:catalog
+      error_envelope: kickside.contract:error_envelope
+  - name: list
+    kind: function.lua
+    method: list
+    source: &service_source file://service.lua
+    modules: &service_modules [security, sql, time]
+    imports: &service_imports
+      types: kickside.mail:types
+      client: kickside.mail:client
+      database: kickside.mail.outbox:database
+      resources: kickside.mail.library:resources
+      store: kickside.mail.library:store
+      projection: kickside.mail.library:projection
+      draft: kickside.mail.library:draft
+      render: kickside.mail.views:render
+      globals: kickside.mail.views:globals
+    security: &read_security
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+  - name: get
+    kind: function.lua
+    method: get
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *read_security
+  - name: render
+    kind: function.lua
+    method: render
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *read_security
+  - name: create
+    kind: function.lua
+    method: create
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: &write_security
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:overlay_projection
+        - kickside.mail.security:overlay_originals
+        - kickside.mail.security:overlay_drafts
+  - name: update
+    kind: function.lua
+    method: update
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *write_security
+  - name: set_base
+    kind: function.lua
+    method: set_base
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *write_security
+  - name: reset
+    kind: function.lua
+    method: reset
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *write_security
+  - name: delete
+    kind: function.lua
+    method: delete
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *write_security
+  - name: render_draft
+    kind: function.lua
+    method: render_draft
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:overlay_drafts

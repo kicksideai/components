@@ -18,7 +18,7 @@
         </tr>
         <tr>
           <td style="padding:28px 24px 32px;color:#202938;font-size:16px;line-height:1.55;overflow-wrap:anywhere;">
-            {{ block body() }}{{ if isset(vars._mail_html) }}{{ raw(vars._mail_html) }}{{ else }}<pre style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;">{{ vars._mail_text }}</pre>{{ end }}{{ end }}
+            {{ block body() }}{{ if isset(_mail_html) }}{{ raw(_mail_html) }}{{ else if isset(_mail_text) }}<pre style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;">{{ _mail_text }}</pre>{{ end }}{{ end }}
           </td>
         </tr>
         <tr>

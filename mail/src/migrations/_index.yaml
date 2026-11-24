@@ -10,3 +10,11 @@ entries:
     imports:
       migration: wippy.migration:migration
       types: kickside.mail:types
+  - name: 02_library
+    kind: function.lua
+    meta: { type: migration, timestamp: '2026-11-23T00:01:00Z' }
+    source: file://02_library.lua
+    method: migrate
+    imports:
+      migration: wippy.migration:migration
+      types: kickside.mail:types

@@ -52,10 +52,36 @@ type Lease = {token: string, execution_seq: integer}
 type ActorRow = {actor_id: string, actor_context: string}
 type OwnerInput = {change: {kind: string?, job_id: string?, owner_locator: {kind: string, id: string}?}?}
 type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, needs_continue: boolean?, error: error?}
+type ResourceKey = {kind: string, name: string}
+type ResourceContent = {
+    kind: string, name: string,
+    title: string, description: string, html: string, text: string, base: string?,
+    subject: string?, schema: VariableSchema, samples: JsonObject,
+}
+type Resource = {
+    kind: string, name: string, title: string, description: string, html: string, text: string,
+    base: string?, subject: string?, schema: VariableSchema, samples: JsonObject,
+    state: string, origin: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?,
+}
+type ResourceFilter = {kind: string?, state: string?, base: string?}
+type Original = {resource: Resource, entries: {[string]: string}}
+type ResourceMap = {[string]: Resource}
+type OriginalMap = {[string]: Original}
+type ResourceRevision = ResourceKey & {expected_revision: integer}
+type ResourceEdit = ResourceContent & {expected_revision: integer}
+type ResourceBaseEdit = {name: string, base: string, expected_revision: integer}
+type DraftRequest = {resource: ResourceContent, message: string, vars: JsonObject?}
+type LibraryRow = {
+    kind: string, name: string, title: string, description: string, html: string, text: string,
+    base: string?, subject: string?, schema_json: string, samples_json: string, state: string,
+    origin: string?, revision: integer, author: string, created_at: integer, updated_at: integer,
+}
+type JetEntry = {id: string, kind: string, meta: Record, data: Record}
 type TemplateRequest = {template: string}
 type PreviewRequest = {template: string, vars: JsonObject}
 type PreviewResult = {subject: string, html: string, text: string}
 type Rendered = {subject: string, html: string, text: string?}
+type RenderGlobals = {site: {title: string, url: string}, sender: {name: string}}
 type TemplateParts = {subject: string, html: string, text: string}
 type VariableSchema = {type: string, properties: JsonObject, additionalProperties: boolean?}
 type TemplateSummary = {name: string, title: string, description: string}
@@ -111,10 +137,14 @@ return {
     MessageRef = MessageRef, ListRequest = ListRequest, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, Admission = Admission, AdmissionResult = AdmissionResult,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, OwnerResult = OwnerResult,
+    ResourceKey = ResourceKey, ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
+    Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
+    ResourceEdit = ResourceEdit, ResourceBaseEdit = ResourceBaseEdit, DraftRequest = DraftRequest,
+    LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     AttachmentRef = AttachmentRef, Attachment = Attachment, SendRequest = SendRequest, Addresses = Addresses,
     TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
-    PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, Rendered = Rendered, TemplateParts = TemplateParts,
+    PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,
     ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, SchemaIssue = SchemaIssue,
     Driver = Driver, Availability = Availability, Settings = Settings, ApiSettings = ApiSettings,
