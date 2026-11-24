@@ -21,7 +21,10 @@ planned or active sprint. Issues can retain an existing reference to a closed
 sprint.
 On a populated board, use the same pack plan with
 `plugin_configs["kickside.work.planning:plugin"].issue_types` set to the IDs
-of any custom issue types that should gain these fields. The plan describes
+of any custom issue types that should gain these fields. The configuration
+schema refuses the pack's own `issue`, `sprint` and `milestone` types and
+declares `x-choices: board_item_types`, so administration offers the board's
+item types as choices. The plan describes
 schema changes and identifies conflicts that require explicit resolutions.
 Pass the same configuration to apply with the planned generation and resolved
 choices. Adopted types keep their existing process and items.

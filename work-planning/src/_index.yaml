@@ -92,7 +92,11 @@ entries:
           description: Selected item types get Current sprint and Milestone fields.
           maxItems: 49
           uniqueItems: true
-          items: {type: string, pattern: '^[a-z][a-z0-9_]{0,39}$'}
+          items:
+            type: string
+            pattern: '^[a-z][a-z0-9_]{0,39}$'
+            not: {enum: [issue, sprint, milestone]}
+            x-choices: board_item_types
       additionalProperties: false
 - name: date_order
   kind: function.lua
