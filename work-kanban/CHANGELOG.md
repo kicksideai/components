@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/kicksideai/components/compare/work-kanban-v0.1.4...work-kanban-v0.1.5) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-kanban:** rich text descriptions, comments and activity ([#420](https://github.com/kicksideai/components/issues/420)) ([b081fd1](https://github.com/kicksideai/components/commit/b081fd1201a01faf25efa29a4c41b1881e56cf68))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/work-kanban-v0.1.3...work-kanban-v0.1.4) (2026-11-24)
 
 
