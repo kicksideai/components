@@ -9,6 +9,7 @@ local resources = require("resources")
 local projection = require("projection")
 local draft = require("draft")
 local renderer = require("render")
+local catalog = require("catalog")
 local globals = require("globals")
 local outbox = require("outbox")
 local settings = require("settings")
@@ -618,7 +619,8 @@ function M.render(input: types.PreviewRequest): (types.Rendered?, error?)
     local rendered = result :: types.Rendered
     local inline, inline_err = attachments.preview(rendered, input.attachments)
     if inline_err then return nil, inline_err end
-    return {subject = rendered.subject, html = rendered.html, text = rendered.text, inline_assets = inline}, nil
+    return {subject = rendered.subject, html = rendered.html, text = rendered.text, inline_assets = inline,
+        warnings = renderer.warnings(rendered.html)}, nil
 end
 
 local function preview(input: types.EditPreview, bind: boolean): (types.Rendered | types.DraftPreview | nil, error?)
@@ -666,6 +668,8 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
             if from_err then return nil, from_err end
         end
     end
+    local vars_err = catalog.check_vars(input.vars)
+    if vars_err then return nil, vars_err end
     local values, globals_err = globals.read()
     if globals_err then return nil, globals_err end
     local rendered, render_err = database.transaction(function(tx: sql.Transaction, dialect: string): (types.Rendered | types.DraftPreview | nil, error?)
@@ -720,6 +724,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         local inline, inline_err = attachments.preview(output :: types.Rendered, input.attachments)
         if inline_err then return nil, inline_err end
         output.inline_assets = inline
+        output.warnings = renderer.warnings(output.html)
     end
     output.library_assets = nil
     return rendered, nil

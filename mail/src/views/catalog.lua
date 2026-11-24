@@ -58,7 +58,15 @@ local function variable_name(issue: types.SchemaIssue?, properties: types.JsonOb
     return variable ~= "" and variable or "vars"
 end
 
+function M.check_vars(vars: unknown): error?
+    if type(vars) ~= "table" then return nil end
+    return resources.check_json(vars, resources.MAX_VARIABLE_BYTES, "invalid_template_vars",
+        "Template variables must be valid JSON of at most 65536 bytes")
+end
+
 function M.validate_vars(schema: types.VariableSchema, vars: unknown): error?
+    local size_err = M.check_vars(vars)
+    if size_err then return size_err end
     if type(vars) == "table" then vars = canonical_json.object(vars) end
     local valid, err = json.validate(schema, vars)
     if valid then return nil end

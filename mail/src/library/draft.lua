@@ -140,11 +140,11 @@ local function validate_faces(item: types.ResourceContent, values: types.RenderG
     local context = globals.data(values, item.samples, "")
     local name = item.kind == "part" and ("check/" .. item.name) or jet.name(item)
     context.assets = asset_refs.context(values.assets or {})
-    local _, html_err = html:render(name, context)
-    if html_err then return invalid(render.face_error(item, "html", html_err, true)) end
+    local _, html_err = render.render_face(item, "html", html, name, context)
+    if html_err then return invalid(html_err) end
     context.assets = nil
-    local _, text_err = text:render(name, context)
-    if text_err then return invalid(render.face_error(item, "text", text_err, true)) end
+    local _, text_err = render.render_face(item, "text", text, name, context)
+    if text_err then return invalid(text_err) end
     return nil
 end
 

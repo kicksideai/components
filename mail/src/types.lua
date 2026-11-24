@@ -102,8 +102,9 @@ type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, 
 type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
 type EditPreview = DraftRequest & {create: ResourceCreate?}
 type DraftIssue = {code: string, engine_message: string?, message: string, resource: ResourceKey, face: string, candidate_resources: {ResourceKey}}
+type PreviewWarning = {code: string, message: string, bytes: integer, threshold_bytes: integer}
 type DraftPreview = {subject: string?, html: string?, text: string?, errors: {DraftIssue},
-    dependent_messages: {string}, preview_id: string?, inline_assets: InlineAssets?, library_assets: {AssetRef}?}
+    dependent_messages: {string}, preview_id: string?, inline_assets: InlineAssets?, warnings: {PreviewWarning}?, library_assets: {AssetRef}?}
 type LibraryPageRequest = ResourceFilter & {limit: integer?, cursor: string?}
 type LibraryRowSummary = ResourceKey & {state: string, revision: integer, used_by: {messages: integer?, recent_sources: integer?}?}
 type LibraryListRow = LibraryRowSummary & {
@@ -122,8 +123,8 @@ type LibraryRow = {
 type JetEntry = {id: string, kind: string, meta: Record, data: Record}
 type TemplateRequest = {template: string}
 type PreviewRequest = {template: string, vars: JsonObject, attachments: {AttachmentRef}?}
-type PreviewResult = {subject: string, html: string, text: string, inline_assets: InlineAssets?}
-type Rendered = {subject: string, html: string?, text: string?, library_assets: {AssetRef}?, inline_assets: InlineAssets?}
+type PreviewResult = {subject: string, html: string, text: string, inline_assets: InlineAssets?, warnings: {PreviewWarning}?}
+type Rendered = {subject: string, html: string?, text: string?, library_assets: {AssetRef}?, inline_assets: InlineAssets?, warnings: {PreviewWarning}?}
 type RenderGlobals = {assets: {Resource}?, site: {title: string, url: string}, sender: {name: string}}
 type TemplateParts = {subject: string, html: string, text: string}
 type VariableSchema = {type: string, properties: JsonObject, additionalProperties: boolean?}
@@ -198,7 +199,7 @@ return {
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
     TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
-    PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
+    PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, PreviewWarning = PreviewWarning, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,
     ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, SchemaIssue = SchemaIssue,
     Driver = Driver, Availability = Availability, DriverSetting = DriverSetting, DriverSummary = DriverSummary,

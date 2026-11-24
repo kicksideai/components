@@ -32,7 +32,8 @@ local function preview(request: types.PreviewRequest): (types.PreviewResult?, er
     local result = rendered :: types.Rendered
     local inline, inline_err = attachments.preview(result, request.attachments)
     if inline_err then return nil, inline_err end
-    return {subject = result.subject, html = result.html :: string, text = result.text :: string, inline_assets = inline}, nil
+    return {subject = result.subject, html = result.html :: string, text = result.text :: string, inline_assets = inline,
+        warnings = render.warnings(result.html)}, nil
 end
 
 local function admit(input: types.SendRequest, rendered: types.Rendered?, resend_of: string?): (types.SendResult?, error?)

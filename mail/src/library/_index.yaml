@@ -126,6 +126,7 @@ entries:
       projection: kickside.mail.library:projection
       draft: kickside.mail.library:draft
       render: kickside.mail.views:render
+      catalog: kickside.mail.views:catalog
       globals: kickside.mail.views:globals
       outbox: kickside.mail.outbox:store
       settings: kickside.mail:settings

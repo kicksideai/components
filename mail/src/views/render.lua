@@ -79,6 +79,23 @@ function M.with_sets<T>(html_id: string, text_id: string,
     return result, err
 end
 
+local CLIPPING_BYTES = 102 * 1024
+
+function M.warnings(body: string?): {types.PreviewWarning}?
+    if not body or #body <= CLIPPING_BYTES then return nil end
+    return {{code = "gmail_html_clipping", message = "Gmail may clip this email.", bytes = #body, threshold_bytes = CLIPPING_BYTES}}
+end
+
+function M.render_face(item: types.ResourceKey, face: string, set: types.TemplateSet, name: string,
+    context: types.JsonObject): (string?, error?)
+    local value, err = set:render(name, context)
+    if err then return nil, M.face_error(item, face, err, true) end
+    local limit = (face == "text" and message.body_error(value, nil))
+        or (face == "html" and message.body_error(nil, value))
+    if limit then return nil, M.face_error(item, face, limit) end
+    return value, nil
+end
+
 function M.faces(item: types.ResourceContent, vars: unknown, values: types.RenderGlobals, html_set: types.TemplateSet,
     text_set: types.TemplateSet, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     local validation_err = catalog.validate_vars(item.schema, vars)
@@ -88,8 +105,8 @@ function M.faces(item: types.ResourceContent, vars: unknown, values: types.Rende
     context._mail_html, context._mail_text = nil, nil
     context.assets = nil
     local name = jet.name(item)
-    local subject, subject_err = text_set:render(jet.name(item, "subject"), context)
-    if subject_err then return nil, M.face_error(item, "subject", subject_err, true) end
+    local subject, subject_err = M.render_face(item, "subject", text_set, jet.name(item, "subject"), context)
+    if subject_err then return nil, subject_err end
     local invalid = message.subject_error(subject)
     if invalid then return nil, M.face_error(item, "subject", invalid) end
 
@@ -97,8 +114,8 @@ function M.faces(item: types.ResourceContent, vars: unknown, values: types.Rende
     if type(variables.preheader) ~= "string" then message_data.preheader = subject end
     message_data.subject = subject
 
-    local text, text_err = text_set:render(name, context)
-    if text_err then return nil, M.face_error(item, "text", text_err, true) end
+    local text, text_err = M.render_face(item, "text", text_set, name, context)
+    if text_err then return nil, text_err end
     if not text:find("%S") then return nil, M.face_error(item, "text", empty_body("text")) end
     if not utf8.len(text) then
         return nil, M.face_error(item, "text", errors.new({kind = errors.INVALID, message = "Mail template text must be UTF-8",
@@ -107,14 +124,19 @@ function M.faces(item: types.ResourceContent, vars: unknown, values: types.Rende
     local assets = values.assets or {}
     local asset_context = asset_refs.context(assets, attachments)
     context.assets = asset_context
-    local body, body_err = html_set:render(name, context)
-    if body_err then return nil, M.face_error(item, "html", body_err, true) end
+    local body, body_err = M.render_face(item, "html", html_set, name, context)
+    if body_err then return nil, body_err end
     if not body:find("%S") then return nil, M.face_error(item, "html", empty_body("html")) end
-    return {subject = subject :: string, html = body, text = (text:gsub("[^\r\n]+", wrap_line)),
+    local wrapped = (text:gsub("[^\r\n]+", wrap_line))
+    local text_limit = message.body_error(wrapped, nil)
+    if text_limit then return nil, M.face_error(item, "text", text_limit) end
+    return {subject = subject :: string, html = body, text = wrapped,
         library_assets = asset_refs.select(body, assets, asset_context)}, nil
 end
 
 function M.render(template_name: unknown, data: unknown, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
+    local size_err = catalog.check_vars(data)
+    if size_err then return nil, size_err end
     local item, declaration_err = catalog.resolve(template_name)
     if declaration_err then return nil, declaration_err end
     local values, err = globals.read()
@@ -151,9 +173,9 @@ function M.body(subject: string, text: string?, markup: string?, attachments: {t
     context.assets = asset_context
     local set, err = open_set(jet.html, "html")
     if err then return nil, err end
-    local body, render_err = set:render("base/standard", context)
+    local body, render_err = M.render_face({kind = "base", name = "standard"}, "html", set, "base/standard", context)
     set:release()
-    if render_err then return nil, M.face_error({kind = "base", name = "standard"}, "html", render_err, true) end
+    if render_err then return nil, render_err end
     if not body:find("%S") then return nil, empty_body("html") end
     return {subject = subject, html = body, text = text, library_assets = asset_refs.select(body, assets :: {types.Resource}, asset_context)}, nil
 end
