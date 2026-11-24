@@ -59,15 +59,6 @@ entries:
     default: 30
     order: 50
     validate_func: kickside.mail.settings:validate_retention
-  - name: settings_block
-    kind: registry.entry
-    meta: { type: "kickside.settings:block" }
-    key: mail
-    title: Mail
-    icon: lucide:mail
-    group: Integrations
-    order: 30
-    namespace: kickside.mail
   - name: validate_address
     kind: function.lua
     source: file://validate.lua
@@ -100,3 +91,32 @@ entries:
       client: kickside.mail:client
     security:
       policies: [kickside.mail.security:settings_read, kickside.mail.security:settings_admin_read, kickside.mail.security:driver_dispatch]
+  - name: delivery_drivers
+    kind: function.lua
+    source: file://drivers.lua
+    method: list
+    modules: [funcs]
+    imports:
+      types: kickside.mail:types
+      drivers: kickside.mail:drivers_registry
+      client: kickside.mail:client
+    security:
+      policies:
+        - kickside.mail.security:driver_discovery
+        - kickside.mail.security:driver_dispatch
+        - kickside.mail.security:driver_settings_call
+  - name: driver_settings
+    kind: function.lua
+    meta: { private: true }
+    source: file://driver_settings.lua
+    method: rows
+    imports:
+      types: kickside.mail:types
+      settings_types: kickside.settings:settings_types
+      settings_defs: kickside.settings:settings_defs
+      settings: kickside.mail:settings
+    security:
+      policies:
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:settings_admin_read
+        - kickside.settings:reader_registry

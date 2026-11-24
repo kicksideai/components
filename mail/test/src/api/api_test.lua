@@ -16,13 +16,13 @@ local settings = fixtures.settings
 local API = "/api/mail"
 local ZERO = "00000000-0000-0000-0000-000000000000"
 
-local function request(who, method, path, payload, headers)
+local function request(who, method, path, payload, headers, prefix)
     local state = assert(system.supervisor.state("app:gateway"))
     local address = assert(state.details:match("^service listening on (127%.0%.0%.1:[1-9]%d*)$"), state.details)
     headers = headers or {}
     headers["Content-Type"] = "application/json"
     if who then headers.Authorization = "Bearer " .. who.token end
-    local res = assert(http.request(method, "http://" .. address .. API .. path, {
+    local res = assert(http.request(method, "http://" .. address .. (prefix or API) .. path, {
         headers = headers, body = payload and assert(json.encode(payload)) or nil,
     }))
     return res.status_code, res.body ~= "" and json.decode(res.body) or nil, res.body, res.headers
@@ -110,11 +110,12 @@ return {run = test.run_cases(function()
                     end
                 end
             end
-            test.eq(19, count)
+            test.eq(20, count)
             local predicate = "kickside.mail.api:library_list.endpoint"
             test.eq("allow", editor.scope:evaluate(editor.actor, "access", predicate))
             test.neq("allow", sender.scope:evaluate(sender.actor, "access", predicate))
             test.eq(403, request(editor, "GET", "/delivery"))
+            test.eq(403, request(editor, "GET", "/delivery/drivers"))
             test.eq(403, request(admin, "GET", "/library"))
             local status, body = request(sender, "POST", "/activity/" .. ZERO .. "/resend")
             test.eq(404, status)
@@ -404,17 +405,50 @@ return {run = test.run_cases(function()
             local changes = overlay:changes()
             assert(changes:create({id = id, kind = "template.set", data = {engine = {escape = "html"}}}))
             assert(changes:apply())
+            local refused, failure = request(editor, "POST", "/library/preview", {message = "notice"})
             local summary, body, raw = request(editor, "GET", "/library?kind=asset&view=summary")
             local boot = assert(funcs.call("kickside.mail.library:reconcile"))
             test.eq("success", boot.status, boot.message)
             local entries = assert(assert(registry.overlay(owner)):entries())
             for _, entry in ipairs(entries) do test.neq(id, entry.id) end
+            test.eq(409, refused)
+            test.eq("mail_draft_workspace_unavailable", failure.code)
+            test.eq(id, failure.details.entry_id)
             test.eq(200, summary, raw)
             test.eq("logo", body.data.items[1].name)
+            test.eq(2, body.data.items[1].used_by.messages)
             local rendered = data(editor, "POST", "/library/preview", {message = "notice"})
             test.not_nil(rendered.html)
             local item = data(editor, "GET", "/library/asset/logo")
             test.eq("notice", item.used_by.messages[1])
+        end)
+
+        test.it("updates asset usage when a message changes base or is deleted", function()
+            local editor = session("editor")
+            local path = "/library/asset/logo"
+            local function summary()
+                return data(editor, "GET", "/library?kind=asset&view=summary").items[1].used_by.messages
+            end
+            local function used_by()
+                return data(editor, "GET", path).used_by.messages
+            end
+            test.eq(2, summary())
+            local item = own(fixture("message", "asset-usage", "{{ block body() }}Usage{{ end }}"))
+            item.base, item.subject = "standard", "Usage"
+            local saved = data(editor, "POST", "/library", item, 201)
+            test.eq(3, summary())
+            test.eq("asset-usage", used_by()[1])
+            test.eq("notice", used_by()[2])
+            item.base, item.expected_revision = "plain", saved.revision
+            saved = data(editor, "PUT", "/library/message/" .. item.name, item)
+            test.eq(2, summary())
+            test.eq("notice", used_by()[1])
+            item.base, item.expected_revision = "standard", saved.revision
+            saved = data(editor, "PUT", "/library/message/" .. item.name, item)
+            test.eq(3, summary())
+            data(editor, "DELETE", "/library/message/" .. item.name, {expected_revision = saved.revision})
+            test.eq(2, summary())
+            test.eq("notice", used_by()[1])
         end)
 
         test.it("lists the packaged asset and previews its CID under the editor capability", function()
@@ -448,6 +482,9 @@ return {run = test.run_cases(function()
             part.html = "{{ missing_value }}"
             local _, body = request(editor, "POST", "/library/preview", {message = message.name, resource = part})
             test.eq(message.name, body.details.resource.name)
+            test.eq("Mail could not render this template.", body.error)
+            test.not_nil(body.details.engine_message:match("^template render failed: template rendering failed: Jet Runtime Error"))
+            test.not_nil(body.details.engine_message:find("missing_value", 1, true))
             local candidates = body.details.candidate_resources
             test.eq(3, #candidates)
             test.eq(message.name, candidates[1].name)
@@ -566,6 +603,54 @@ return {run = test.run_cases(function()
             data(editor, "DELETE", "/library/base/" .. item.name, {expected_revision = saved.revision})
         end)
 
+        test.it("uses a generated Mail settings block when Mail Admin is absent", function()
+            local admin = session("settings_admin")
+            local status, body, raw = request(admin, "GET", "/settings/blocks", nil, nil, "/api")
+            test.eq(200, status, raw)
+            local count = 0
+            for _, block in ipairs(body.blocks) do
+                if block.namespace == "kickside.mail" then
+                    count = count + 1
+                    test.eq("Mail", block.title)
+                    test.eq("kickside.mail", block.key)
+                    test.is_nil(block.component_tag)
+                end
+            end
+            test.eq(1, count)
+        end)
+
+        test.it("refuses a malformed settings view during driver discovery", function()
+            local admin = session("delivery")
+            local id = "kickside.mail.harness:first_driver"
+            local original = assert(registry.get(id))
+            local overlay = assert(registry.overlay("app.mail_api:descriptor"))
+            local changes = overlay:changes()
+            original.data.settings_view = "/not-a-tag"
+            assert(changes:update(original))
+            assert(changes:apply())
+            local status, body = request(admin, "GET", "/delivery/drivers")
+            local cleanup = assert(registry.overlay("app.mail_api:descriptor")):changes()
+            assert(cleanup:delete(id))
+            assert(cleanup:apply())
+            test.eq(400, status)
+            test.eq("invalid_driver_descriptor", body.code)
+            test.eq("settings_view", body.details.field)
+        end)
+
+        test.it("lists registered drivers through Mail with availability metadata", function()
+            local admin = session("delivery")
+            local listed = data(admin, "GET", "/delivery/drivers")
+            test.eq(3, #listed.items)
+            local driver = listed.items[1]
+            test.eq("capture", driver.id)
+            test.eq("Capture", driver.label)
+            test.eq("lucide:mail", driver.icon)
+            test.not_nil(driver.description)
+            test.is_true(driver.availability.available)
+            test.is_nil(driver.settings_view)
+            test.eq(0, #driver.settings)
+        end)
+
         test.it("authorizes delivery administration and sends tests only to the acting address", function()
             local editor = session("editor_sender")
             local admin = session("delivery_sender")
@@ -594,7 +679,10 @@ return {run = test.run_cases(function()
             test.eq("notice", activity.items[1].template)
             settings("", "")
             configured = false
-            test.is_false(data(admin, "GET", "/delivery").configured)
+            local unconfigured = data(admin, "GET", "/delivery")
+            test.is_false(unconfigured.configured)
+            test.eq("driver_required", unconfigured.code)
+            test.eq("Choose a delivery service for Mail.", unconfigured.reason)
         end)
     end)
 end)}

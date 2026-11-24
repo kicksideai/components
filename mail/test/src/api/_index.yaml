@@ -93,3 +93,25 @@ entries:
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints
       - kickside.mail.security:send_access
+  - name: settings_admin
+    kind: security.scope
+  - name: settings_admin_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:settings_admin
+    policies:
+      - app.mail_api:settings_admin_access
+      - app.mail_api:settings_list_call
+      - kickside.settings.security:module_runtime
+  - name: settings_list_call
+    kind: security.policy
+    policy:
+      resources: [list]
+      actions: [contract.call]
+      effect: allow
+  - name: settings_admin_access
+    kind: security.policy
+    policy:
+      resources: [kickside.settings.api:list_blocks.endpoint, kickside.settings.api:list_settings.endpoint]
+      actions: [access]
+      effect: allow

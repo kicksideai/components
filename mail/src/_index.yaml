@@ -52,6 +52,7 @@ entries:
       - { entry: kickside.mail.migrations:07_library_assets, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:08_activity_failed_at, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:09_library_history, path: ".meta.target_db" }
+      - { entry: kickside.mail.migrations:10_asset_usage, path: ".meta.target_db" }
       - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
   - name: library_editor_grant
     kind: ns.requirement
@@ -81,6 +82,7 @@ entries:
       - { entry: kickside.mail.api:activity_list.endpoint, path: ".meta.router" }
       - { entry: kickside.mail.api:activity_get.endpoint, path: ".meta.router" }
       - { entry: kickside.mail.api:activity_resend.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:delivery_drivers.endpoint, path: ".meta.router" }
       - { entry: kickside.mail.api:delivery_status.endpoint, path: ".meta.router" }
       - { entry: kickside.mail.api:delivery_send_test.endpoint, path: ".meta.router" }
   - name: db_config

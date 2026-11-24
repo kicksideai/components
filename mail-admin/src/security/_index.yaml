@@ -9,7 +9,6 @@ entries:
     surface: kickside.mail.admin
     includes:
     - kickside.mail.admin.security:member_endpoints
-    - kickside.mail.admin.security:module_runtime
   groups: []
   policy:
     resources:
@@ -31,21 +30,7 @@ entries:
     - kickside.mail.admin:ui_static
     - kickside.mail.admin:admin
     - kickside.mail.admin:delivery
-    - kickside.mail.admin.api:drivers.endpoint
     actions: access
-    effect: allow
-- name: module_runtime
-  kind: security.policy
-  meta:
-    private: true
-  groups: []
-  policy:
-    resources:
-    - kickside.mail.admin.api:drivers
-    - kickside.mail.admin.api:drivers.endpoint
-    actions:
-    - registry.get
-    - funcs.call
     effect: allow
 - name: user_security_scope
   kind: ns.requirement
@@ -58,6 +43,4 @@ entries:
   - entry: kickside.mail.admin.security:module_access
     path: .groups +=
   - entry: kickside.mail.admin.security:member_endpoints
-    path: .groups +=
-  - entry: kickside.mail.admin.security:module_runtime
     path: .groups +=

@@ -28,6 +28,13 @@ function M.read(): (types.RenderGlobals?, error?)
     }, nil
 end
 
+function M.library_samples(): (types.RenderGlobals?, error?)
+    local values, err = M.read()
+    if not values then return nil, err end
+    values.sender.name = ""
+    return values, nil
+end
+
 function M.data(values: types.RenderGlobals, vars: types.JsonObject, subject: string): types.JsonObject
     local data: types.JsonObject = {}
     for key, value in pairs(vars) do data[key] = value end

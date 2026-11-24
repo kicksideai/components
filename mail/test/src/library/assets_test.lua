@@ -129,7 +129,12 @@ local run = test.run_cases(function()
             local next_bytes = gif() .. "fixture"
             image.upload_id = upload("image/gif", next_bytes)
             image.expected_revision = added.revision
+            local db = assert(sql.get("app:db"))
+            assert(db:execute("UPDATE mail_library_asset SET used_by_json=$1 WHERE name=$2",
+                {'["private-message"]', image.name}))
+            assert(db:release())
             local replaced = call("update", image)
+            test.eq(0, #replaced.used_by.messages)
             local current = call("asset_content", image.name)
             test.eq(replaced.revision, current.revision)
             test.neq(initial.revision, current.revision)

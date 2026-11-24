@@ -2,8 +2,7 @@
 # Mail administration
 
 `kickside/mail-admin` administers the published `kickside/mail` backend from
-**System → Mail**. It publishes one component, `kickside-mail-admin`, and no
-backend of its own: every read and change goes through Mail's HTTP API.
+**System → Mail**. It publishes the `kickside-mail-admin` library and `kickside-mail-delivery` settings components. The components call the Mail and Platform Settings APIs.
 
 The tab holds the mail template library and delivery Activity:
 
@@ -47,9 +46,7 @@ the Liquid grammar over HTML highlights template expressions inside markup.
 Integrations, rendered by `kickside-mail-delivery`. It holds the active
 delivery service, the sender identity (From address, From name, Reply-to) and
 a test email to the signed-in administrator, with one draft and one Save. The
-installed drivers come from `GET /api/v1/mail-admin/drivers`, which reads the
-`kickside.mail:driver` descriptors under Mail's driver discovery grant and
-answers only callers who can reach Mail's delivery status endpoint.
+installed drivers and their settings rows come from `GET /api/v1/mail/delivery/drivers`. The endpoint requires **Administer mail delivery** and returns whether secrets are set.
 
 The active driver's own settings appear inside the block:
 
@@ -80,8 +77,7 @@ saved values.
 
 ## Installation and access
 
-Bind `kickside.mail.admin:ui_server` to the host HTTP service and
-`kickside.mail.admin:api_router` to its authenticated router, and install
+Bind `kickside.mail.admin:ui_server` to the host HTTP service and install
 `kickside/mail` with its authenticated API router. The
 `ui.settings_tab` entry `kickside.mail.admin:settings_tab` appears only for
 callers who can reach `kickside.mail.api:library_list.endpoint`, which Mail

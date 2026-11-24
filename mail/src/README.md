@@ -11,7 +11,7 @@ Assign **Send mail** to groups that may send messages. **Edit mail library** gra
 
 ## Settings
 
-Under **Integrations → Mail**, choose the installed driver ID and set the From address. The display name and default Reply-To address are optional. A message can supply its own Reply-To address. The installation’s configured From applies to every message.
+With Mail Admin installed, open **Settings → Integrations → Mail** to choose an installed delivery service and set the From address. Without Mail Admin, the generated **Mail** section edits Mail’s settings. The display name and default Reply-To address are optional. A message can supply its own Reply-To address. The installation’s configured From applies to every message.
 
 - `driver` selects an installed descriptor by its `id`.
 - `from_address` sets the sender’s email address.
@@ -35,7 +35,24 @@ The `notice` template supplies plain-text and HTML parts. Set `subject` and any 
 
 `MailSend` appears as a virtual Block. A Workflow can pass the message from a preceding step and fix optional fields in Block configuration. The `kickside.mail.ports:send_email` automation destination reports success when the message is committed and returns `dest_ref.message_id`. Its `kickside.data:writable` binding declares at-least-once delivery and reuses the automation’s per-delivery idempotency key within the log retention window.
 
-Drivers declare `registry.entry` with `meta.type: kickside.mail:driver` and implement `send` on `kickside.mail:transport`. The descriptor supplies `id`, `label`, `icon`, `description`, `binding`, `settings_ns`, and `available_func`. Declare `max_recipients` and `max_message_bytes` as positive integers for the provider. Mail enforces the declared limits on admission and delivery. The driver contributes its exact descriptor, binding, send, and availability function IDs to Mail’s private discovery and dispatch policies. The availability function checks configuration and returns `{available: boolean, reason?: string}`.
+Drivers declare `registry.entry` with `meta.type: kickside.mail:driver` and implement `send` on `kickside.mail:transport`. The descriptor supplies `id`, `label`, `icon`, `description`, `binding`, `settings_ns`, and `available_func`. Declare `max_recipients` and `max_message_bytes` as positive integers for the provider. Mail enforces the declared limits on admission and delivery. The driver contributes its exact descriptor, binding, send, and availability function IDs to Mail’s private discovery and dispatch policies. The availability function checks configuration without contacting the provider. Return `{available: true}` when ready. Otherwise return `{available: false, code, reason}` with a stable lower-snake-case code and a sentence that tells the administrator how to configure the service.
+
+A descriptor can also declare `settings_view` as the tag of a custom element. Mail validates the tag’s form during driver discovery. Declare a `view.component` with that `meta.tag_name` and the component’s `meta.base_path` and `meta.entry_point`. The Mail settings block uses the host’s component loader. Grant delivery administrators access to the component and its static bundle. Drivers without a panel use generated rows from their settings definitions.
+
+The settings block passes four attributes to the panel.
+
+- `values` is a JSON object containing effective setting values other than secrets.
+- `secrets` is a JSON object containing a boolean for each secret key indicating whether an override is saved.
+- `errors` is a JSON object mapping setting keys to server validation messages from the last Save.
+- `disabled` is `"true"` while settings are being saved.
+
+The panel emits `change` with `detail: {values}` for every locally changed key. An explicit `null` clears a setting. A secret appears in the event only when a new value is entered. The panel emits `validity` with `detail: {valid}`; a false value disables Save. The block owns the draft, sends changes to Platform Settings, and applies the driver selection after the driver settings pass server validation. Settings definitions and their `validate_func` remain authoritative.
+
+### Delivery administration API
+
+`GET /mail/delivery/drivers` requires **Administer mail delivery**. It returns `{success: true, data: {items: [...]}}` with each installed driver’s `id`, `label`, `icon`, `description`, `settings_ns`, optional `settings_view`, `availability` and `settings`. A setting row identifies its namespace, key, type and form metadata. Non-secret rows include the effective value and declared default. Secret rows contain `is_secret: true` and `has_value`; their values and defaults stay on the server.
+
+`GET /mail/delivery` returns the active driver summary, sender, reply-to address and `configured` flag. If setup is incomplete, `code` identifies the issue and `reason` tells the administrator what to do. Driver configuration codes keep the send contract’s `invalid_config` error code.
 
 ## Template library
 
@@ -69,6 +86,8 @@ The shipped Header uses `logo`. Replace the image to change every email that use
 
 Mail attaches each library image referenced in rendered HTML once. It counts the image and transfer encoding toward the driver’s size limit. Message and draft previews expose a content-ID-to-data-URI map in `inline_assets`. Pass optional inline `attachments` to also preview caller-owned uploads referenced by the HTML. The plain-text face has no library image map.
 
+Asset list summaries include a `used_by.messages` count. Asset details return the sorted message names. Usage reflects rendered library samples under a neutral sender, including assets referenced from a base or part. Mail stores the derived names on the existing asset rows in the same transaction as library edits. The boot reconciler recomputes usage from the effective library, including packaged assets. Usage does not grow with delivery traffic.
+
 ## Error codes
 
 The native error kind and retry flag come from the operation. The `details.code` values below identify Mail’s errors. Errors from Uploads, Users, Settings, or the driver retain their native classification. The writable destination maps errors into the platform writable failure envelope.
@@ -99,6 +118,7 @@ invalid_subject                Invalid            No
 invalid_template               Invalid            No
 invalid_template_declaration   Invalid            No
 invalid_template_vars          Invalid            No
+mail_draft_workspace_unavailable Conflict           Source flag
 mail_library_denied            PermissionDenied   No
 mail_send_denied               PermissionDenied   No
 message_not_found              NotFound           No
@@ -117,6 +137,8 @@ text_too_large                 Invalid            No
 too_many_attachments           Invalid            No
 too_many_recipients            Invalid            No
 ```
+
+A draft workspace conflict retains its registry diagnostics in `details` and returns the stable code `mail_draft_workspace_unavailable`. Template render failures carry a plain Mail message, with the original engine message in `details.engine_message`. Edit-preview issue rows expose that engine message as `engine_message`.
 
 ## Development
 

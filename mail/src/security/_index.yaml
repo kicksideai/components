@@ -121,7 +121,6 @@ entries:
     groups: []
     policy:
       resources:
-        - kickside.mail.settings:settings_block
         - kickside.mail.settings:setting_driver
         - kickside.mail.settings:setting_from_address
         - kickside.mail.settings:setting_from_name
@@ -421,6 +420,7 @@ entries:
         - kickside.mail.api:activity_list.endpoint
         - kickside.mail.api:activity_get.endpoint
         - kickside.mail.api:activity_resend.endpoint
+        - kickside.mail.api:delivery_drivers.endpoint
         - kickside.mail.api:delivery_status.endpoint
         - kickside.mail.api:delivery_send_test.endpoint
       actions: [registry.get]
@@ -454,6 +454,7 @@ entries:
         - kickside.ui.api:list_settings_tabs.endpoint
         - kickside.mail.api:activity_list.endpoint
         - kickside.mail.api:activity_get.endpoint
+        - kickside.mail.api:delivery_drivers.endpoint
         - kickside.mail.api:delivery_status.endpoint
         - kickside.mail.api:delivery_send_test.endpoint
       actions: [access]
@@ -472,8 +473,15 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail.settings:delivery_status, kickside.mail.service:delivery_send_test]
+      resources: [kickside.mail.settings:delivery_drivers, kickside.mail.settings:delivery_status, kickside.mail.service:delivery_send_test]
       actions: [funcs.call, registry.get]
+      effect: allow
+  - name: driver_settings_call
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail.settings:driver_settings]
+      actions: [registry.get, funcs.call, funcs.security]
       effect: allow
   - name: realtime_calls
     kind: security.policy

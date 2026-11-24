@@ -11,6 +11,20 @@ workspace:
   replacements:
     kickside/mail-admin: ..
     kickside/mail: ../../mail
+    kickside/automation: ../../../kickside/platform/automation
+    kickside/workflows: ../../../kickside/platform/workflows
+    kickside/blocks: ../../../kickside/platform/blocks
+    kickside/component: ../../../kickside/core/component
+    kickside/contract: ../../../kickside/core/contract
+    kickside/core: ../../../kickside/core/core
+    kickside/execution: ../../../kickside/core/execution
+    kickside/jobs: ../../../kickside/core/jobs
+    kickside/realtime-dispatch: ../../../kickside/core/realtime-dispatch
+    kickside/security: ../../../kickside/platform/security
+    kickside/settings: ../../../kickside/platform/settings
+    kickside/uploads: ../../../kickside/platform/uploads
+    kickside/users: ../../../kickside/platform/users
+    kickside/doc2md: ../../../converters/doc2md
 vars:
   pg_host: localhost
   pg_port: 5435

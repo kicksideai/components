@@ -5,7 +5,7 @@ local registry = require("registry")
 
 local M = {}
 
-function M.read(namespace: string): (types.Record?, error?)
+function M.namespace(namespace: string): (types.SettingsResult?, error?)
     local definition, definition_err = contract.get("kickside.settings:settings")
     if definition_err then return nil, definition_err end
     local settings, open_err = definition:open()
@@ -16,33 +16,45 @@ function M.read(namespace: string): (types.Record?, error?)
         return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = result.error :: string,
             details = {code = "settings_read_failed", namespace = namespace}})
     end
+    return result, nil
+end
+
+function M.read(namespace: string): (types.Record?, error?)
+    local result, err = M.namespace(namespace)
+    if err then return nil, err end
     return result.values, nil
 end
 
-function M.missing(text: string): error
+function M.missing(text: string, reason_code: string?, reason: string?): error
     return errors.new({kind = errors.INVALID, message = text, retryable = false,
-        details = {code = "invalid_config"}})
+        details = {code = "invalid_config", reason_code = reason_code, reason = reason}})
 end
 
-function M.api_key(values: types.ApiSettings): (string?, error?)
+function M.api_key(values: types.ApiSettings, service: string?): (string?, error?)
     local key = values.api_key
-    if not key or key == "" then return nil, M.missing("The active mail driver requires an API key") end
-    if key:find("[%s%c]") then return nil, M.missing("The active mail driver API key is invalid") end
+    local credential = service and ("a " .. service .. " API key") or "an API key"
+    if not key or key == "" then
+        return nil, M.missing("Add " .. credential .. " to send mail.", "api_key_required")
+    end
+    if key:find("[%s%c]") then
+        return nil, M.missing("Enter " .. credential .. " without spaces or line breaks.", "api_key_invalid")
+    end
     return key, nil
 end
 
-function M.read_api_key(namespace: string): (string?, error?)
+function M.read_api_key(namespace: string, service: string?): (string?, error?)
     local values, err = M.read(namespace)
     if err then return nil, err end
-    return M.api_key(values :: types.ApiSettings)
+    return M.api_key(values :: types.ApiSettings, service)
 end
 
 function M.available(err: error?): (types.Availability?, error?)
     if err then
         local details = err:details()
         if not details or details.code ~= "invalid_config" then return nil, err end
+        return {available = false, code = details.reason_code :: string?, reason = err:message()}, nil
     end
-    return {available = err == nil, reason = err and err:message() or nil}, nil
+    return {available = true}, nil
 end
 
 function M.endpoint(id: string, region: string): (string?, error?)

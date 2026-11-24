@@ -74,3 +74,11 @@ entries:
     imports:
       migration: wippy.migration:migration
       types: kickside.mail:types
+  - name: 10_asset_usage
+    kind: function.lua
+    meta: { type: migration, timestamp: '2026-11-23T00:09:00Z' }
+    source: file://10_asset_usage.lua
+    method: migrate
+    imports:
+      migration: wippy.migration:migration
+      types: kickside.mail:types

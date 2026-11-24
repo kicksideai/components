@@ -73,19 +73,19 @@ watch(active, async driver => {
   fieldErrors.value = {}
   driverSettings.value = []
   viewReady.value = false
-  if (!driver) return
-  driverLoading.value = true
+  driverLoading.value = !!driver
   driverError.value = ''
+  if (!driver) return
   try {
-    const [list, ready] = await Promise.all([readSettings(driver.settings_ns), driver.settings_view ? ensureTag(driver.settings_view) : Promise.resolve(false)])
-    if (active.value?.id !== driver.id) return
-    driverSettings.value = list
+    const ready = driver.settings_view ? await ensureTag(driver.settings_view) : false
+    if (active.value !== driver) return
+    driverSettings.value = driver.settings
     viewReady.value = ready
     if (driver.settings_view && !ready) driverError.value = `The ${driver.label} settings could not be loaded. Reload the page to try again.`
   } catch (failure) {
-    driverError.value = describe(failure, `The ${driver.label} settings could not be loaded.`)
+    if (active.value === driver) driverError.value = describe(failure, `The ${driver.label} settings could not be loaded.`)
   } finally {
-    driverLoading.value = false
+    if (active.value === driver) driverLoading.value = false
   }
 })
 
@@ -152,12 +152,12 @@ async function save() {
       error.value = 'Some changes were not saved. Correct the highlighted value and save again.'
       return
     }
-    const [current, list] = await Promise.all([deliveryApi.status(), readSettings(MAIL)])
+    const [found, current, list] = await Promise.all([listDrivers(), deliveryApi.status(), readSettings(MAIL)])
     status.value = current
     mailSettings.value = list
     saved.value = identityOf(list)
     draft.value = { ...saved.value }
-    if (namespace) driverSettings.value = await readSettings(namespace)
+    drivers.value = found
     driverChanges.value = {}
     panelGeneration.value++
     reviewing.value = false

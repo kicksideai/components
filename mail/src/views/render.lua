@@ -32,7 +32,7 @@ local function wrap_line(line: string): string
     return table.concat(lines, "\n")
 end
 
-function M.face_error(item: types.ResourceKey, face: string, err: error): error
+function M.face_error(item: types.ResourceKey, face: string, err: error, engine: boolean?): error
     local engine_details = err:details()
     local details: types.Record = {}
     for key, value in pairs(engine_details or {}) do details[key] = value end
@@ -40,7 +40,12 @@ function M.face_error(item: types.ResourceKey, face: string, err: error): error
     details.resource = {kind = item.kind, name = item.name}
     details.face = face
     details.engine_kind = err:kind()
-    return errors.new({kind = err:kind(), retryable = err:retryable() == true, message = err:message(), details = details})
+    local text = err:message()
+    if engine then
+        details.engine_message = text
+        text = "Mail could not render this template."
+    end
+    return errors.new({kind = err:kind(), retryable = err:retryable() == true, message = text, details = details})
 end
 
 local function empty_body(part: string): error
@@ -84,7 +89,7 @@ function M.faces(item: types.ResourceContent, vars: unknown, values: types.Rende
     context.assets = nil
     local name = jet.name(item)
     local subject, subject_err = text_set:render(jet.name(item, "subject"), context)
-    if subject_err then return nil, M.face_error(item, "subject", subject_err) end
+    if subject_err then return nil, M.face_error(item, "subject", subject_err, true) end
     local invalid = message.subject_error(subject)
     if invalid then return nil, M.face_error(item, "subject", invalid) end
 
@@ -93,7 +98,7 @@ function M.faces(item: types.ResourceContent, vars: unknown, values: types.Rende
     message_data.subject = subject
 
     local text, text_err = text_set:render(name, context)
-    if text_err then return nil, M.face_error(item, "text", text_err) end
+    if text_err then return nil, M.face_error(item, "text", text_err, true) end
     if not text:find("%S") then return nil, M.face_error(item, "text", empty_body("text")) end
     if not utf8.len(text) then
         return nil, M.face_error(item, "text", errors.new({kind = errors.INVALID, message = "Mail template text must be UTF-8",
@@ -103,7 +108,7 @@ function M.faces(item: types.ResourceContent, vars: unknown, values: types.Rende
     local asset_context = asset_refs.context(assets, attachments)
     context.assets = asset_context
     local body, body_err = html_set:render(name, context)
-    if body_err then return nil, M.face_error(item, "html", body_err) end
+    if body_err then return nil, M.face_error(item, "html", body_err, true) end
     if not body:find("%S") then return nil, M.face_error(item, "html", empty_body("html")) end
     return {subject = subject :: string, html = body, text = (text:gsub("[^\r\n]+", wrap_line)),
         library_assets = asset_refs.select(body, assets, asset_context)}, nil
@@ -148,7 +153,7 @@ function M.body(subject: string, text: string?, markup: string?, attachments: {t
     if err then return nil, err end
     local body, render_err = set:render("base/standard", context)
     set:release()
-    if render_err then return nil, render_err end
+    if render_err then return nil, M.face_error({kind = "base", name = "standard"}, "html", render_err, true) end
     if not body:find("%S") then return nil, empty_body("html") end
     return {subject = subject, html = body, text = text, library_assets = asset_refs.select(body, assets :: {types.Resource}, asset_context)}, nil
 end

@@ -5,14 +5,14 @@ import type { SendReceipt } from '../types'
 
 // A delivery driver as its module declares it. `settings_view` names the web component the driver ships for its
 // own settings; a driver without one gets rows generated from its setting definitions.
-export interface Driver { id: string; label: string; icon: string; description: string; settings_ns: string; settings_view?: string }
+export interface Driver { id: string; label: string; icon: string; description: string; settings_ns: string; settings_view?: string; settings: Setting[] }
 
 export interface Setting {
   namespace: string
   key: string
-  value: unknown
+  value?: unknown
   value_type: 'string' | 'int' | 'bool' | 'duration' | 'json' | 'secret'
-  default: unknown
+  default?: unknown
   is_secret?: boolean
   has_value?: boolean
   title?: string | null
@@ -26,7 +26,7 @@ export interface SettingWrite { namespace: string; key: string; value: unknown }
 export interface SettingFailure { namespace: string; key: string; error: string }
 
 export const drivers = () =>
-  request<{ items: Driver[] }>(() => api.get('/api/v1/mail-admin/drivers'), 'Delivery services').then(r => r.items)
+  request<{ items: Driver[] }>(() => api.get('/api/v1/mail/delivery/drivers'), 'Delivery services').then(r => r.items)
 
 // The Settings API answers without the admin envelope: `{ success, settings }` and `{ success, updated, errors }`.
 export async function settings(namespace: string): Promise<Setting[]> {

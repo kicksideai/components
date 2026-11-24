@@ -71,6 +71,62 @@ entries:
       - kickside.mail.security:module_runtime
       - kickside.mail.admin.security:module_access
       - kickside.mail.admin.security:member_endpoints
+  - name: settings_admin
+    kind: security.scope
+  - name: settings_admin_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app:settings_admin
+    policies:
+      - app:settings_admin_access
+      - app:settings_list_call
+      - kickside.settings.security:module_runtime
+  - name: settings_list_call
+    kind: security.policy
+    policy:
+      resources: [list]
+      actions: [contract.call]
+      effect: allow
+  - name: settings_admin_access
+    kind: security.policy
+    groups: [app:settings_admin]
+    policy:
+      resources: [kickside.settings.api:list_blocks.endpoint, kickside.settings.api:list_settings.endpoint]
+      actions: [access]
+      effect: allow
+  - name: fixture_key
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: app.fixture
+    key: api_key
+    title: Fixture key
+    value_type: secret
+    visible: false
+    read_access: admin
+    default: fixture-key-default
+    order: 10
+  - name: fixture_region
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: app.fixture
+    key: region
+    title: Fixture region
+    value_type: string
+    visible: false
+    default: us
+    order: 20
+  - name: fixture_available
+    kind: function.lua
+    source: |
+      return {check = function()
+        return {available = false, code = "fixture_key_required", reason = "Add a key for the fixture service."}
+      end}
+    method: check
+  - name: fixture_available_grant
+    kind: ns.requirement
+    default: app:fixture_available
+    targets:
+      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
   - name: fixture_driver
     kind: registry.entry
     meta: { type: "kickside.mail:driver" }
@@ -197,13 +253,12 @@ entries:
     version: "*"
     parameters:
       - { name: "kickside.mail.admin:ui_server", value: "app:gateway" }
-      - { name: "kickside.mail.admin:api_router", value: "app:api" }
       - { name: "kickside.mail.admin.security:user_security_scope", value: "app:user" }
   - name: admin_test
     kind: function.lua
     meta: { type: test, suite: mail_admin }
     source: file://admin_test.lua
     method: run
-    modules: [fs, funcs, http_client, json, registry, security, sql, system, uuid]
+    modules: [contract, fs, funcs, http_client, json, registry, security, sql, system, uuid]
     imports:
       test: wippy.test:test

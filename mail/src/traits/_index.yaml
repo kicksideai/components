@@ -262,7 +262,7 @@ entries:
         an existing message. Message bodies define a Jet body block, the base field selects its frame, and parts
         can be included with a map of their inputs. Optional vars replace the chosen message's samples for the
         displayed render. Save validation always checks samples and affected messages. Read errors for the
-        resource, face and engine diagnostic and dependent_messages for affected messages. A clean preview returns
+        resource, face and optional engine_message, and dependent_messages for affected messages. A clean preview returns
         a preview_id to use when saving or creating the exact same content. Preview makes no library changes.
       input_schema:
         type: object
@@ -340,6 +340,7 @@ entries:
               properties:
                 code: *text
                 message: *text
+                engine_message: *text
                 resource: *resource_key
                 face: *text
           dependent_messages: *message_names
@@ -392,6 +393,7 @@ entries:
           resource: *resource_key
           revision: *resource_revision
           face: *text
+          engine_message: *text
           errors: *draft_errors
           dependent_messages: *message_names
     source: *design_source
@@ -431,6 +433,7 @@ entries:
           error: *text
           resource: *resource_key
           face: *text
+          engine_message: *text
           errors: *draft_errors
           dependent_messages: *message_names
     source: *design_source

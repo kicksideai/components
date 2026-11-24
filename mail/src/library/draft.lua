@@ -78,7 +78,13 @@ end
 local function with_draft<T>(items: types.ResourceMap, checked: {types.ResourceContent},
     run: (types.TemplateSet, types.TemplateSet) -> (T?, error?)): (T?, error?)
     local open_err = open(items, checked)
-    if open_err then return nil, open_err end
+    if open_err then
+        if open_err:kind() ~= errors.CONFLICT then return nil, open_err end
+        local details = open_err:details() or {}
+        details.code = "mail_draft_workspace_unavailable"
+        return nil, errors.new({kind = errors.CONFLICT, retryable = open_err:retryable() == true,
+            message = "The draft workspace is unavailable.", details = details})
+    end
     local value, err = render.with_sets(HTML, TEXT, run)
     local final_err = error_envelope.cleanup(M.clear_workspace, err, "Cannot close the mail draft sets")
     if final_err then return nil, final_err end
@@ -114,10 +120,19 @@ local function render_message(item: types.ResourceContent, vars: types.JsonObjec
     return nil, invalid(err)
 end
 
-local function validate_faces(item: types.ResourceContent, values: types.RenderGlobals, html: types.TemplateSet, text: types.TemplateSet): error?
+local function record_usage(usage: types.AssetUsage, name: string, refs: {types.AssetRef}?)
+    for _, ref in ipairs(refs or {}) do
+        usage[ref.name] = usage[ref.name] or {}
+        usage[ref.name][#usage[ref.name] + 1] = name
+    end
+end
+
+local function validate_faces(item: types.ResourceContent, values: types.RenderGlobals, html: types.TemplateSet,
+    text: types.TemplateSet, usage: types.AssetUsage): error?
     if item.kind == "asset" then return nil end
     if item.kind == "message" then
-        local _, err = render_message(item, item.samples, values, html, text)
+        local rendered, err = render_message(item, item.samples, values, html, text)
+        if rendered then record_usage(usage, item.name, rendered.library_assets) end
         return err
     end
     local schema_err = catalog.validate_vars(item.schema, item.samples)
@@ -126,26 +141,27 @@ local function validate_faces(item: types.ResourceContent, values: types.RenderG
     local name = item.kind == "part" and ("check/" .. item.name) or jet.name(item)
     context.assets = asset_refs.context(values.assets or {})
     local _, html_err = html:render(name, context)
-    if html_err then return invalid(render.face_error(item, "html", html_err)) end
+    if html_err then return invalid(render.face_error(item, "html", html_err, true)) end
     context.assets = nil
     local _, text_err = text:render(name, context)
-    if text_err then return invalid(render.face_error(item, "text", text_err)) end
+    if text_err then return invalid(render.face_error(item, "text", text_err, true)) end
     return nil
 end
 
 local function issue(err: error): types.DraftIssue
     local details = err:details()
     return {code = details.code :: string, message = err:message(), resource = details.resource :: types.ResourceKey,
-        face = details.face :: string, candidate_resources = details.candidate_resources :: {types.ResourceKey}}
+        face = details.face :: string, engine_message = details.engine_message :: string?, candidate_resources = details.candidate_resources :: {types.ResourceKey}}
 end
 
 local function check(candidates: {types.ResourceContent}, dependants: {types.Resource}, values: types.RenderGlobals,
-    html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview, error?, error?)
+    html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview, error?, error?, types.AssetUsage)
     local result: types.DraftPreview = {errors = {}, dependent_messages = {}}
+    local usage: types.AssetUsage = {}
     local candidate_error: error?
     local dependent_error: error?
     for _, candidate in ipairs(candidates) do
-        local err = validate_faces(candidate, values, html, text)
+        local err = validate_faces(candidate, values, html, text, usage)
         if err then
             err = diagnostic(err, candidate, candidates)
             result.errors[#result.errors + 1] = issue(err)
@@ -153,7 +169,7 @@ local function check(candidates: {types.ResourceContent}, dependants: {types.Res
         end
     end
     for _, item in ipairs(dependants) do
-        local err = validate_faces(item, values, html, text)
+        local err = validate_faces(item, values, html, text, usage)
         if err then
             err = diagnostic(err, item, candidates)
             result.errors[#result.errors + 1] = issue(err)
@@ -161,16 +177,16 @@ local function check(candidates: {types.ResourceContent}, dependants: {types.Res
             dependent_error = dependent_error or err
         end
     end
-    return result, candidate_error, dependent_error
+    return result, candidate_error, dependent_error, usage
 end
 
 function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidates: {types.ResourceContent},
-    dependants: {types.Resource}, values: types.RenderGlobals): error?
+    dependants: {types.Resource}, values: types.RenderGlobals): (types.AssetUsage?, error?)
     values.assets = asset_refs.from_items(items)
-    local _, err = with_draft(items, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (boolean?, error?)
-        local result, candidate_error, dependent_error = check(candidates, dependants, values, html, text)
+    return with_draft(items, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (types.AssetUsage?, error?)
+        local result, candidate_error, dependent_error, usage = check(candidates, dependants, values, html, text)
         if candidate_error then return nil, candidate_error end
-        if not dependent_error then return true, nil end
+        if not dependent_error then return usage, nil end
         if #candidates == 0 then
             return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = dependent_error:message(),
                 details = {code = "mail_resource_in_use", resource = key, dependent = dependent_error:details(),
@@ -182,7 +198,6 @@ function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidates
         return nil, errors.new({kind = dependent_error:kind(), retryable = false, message = dependent_error:message(),
             details = details})
     end)
-    return err
 end
 
 function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, candidates: {types.ResourceContent},
@@ -195,7 +210,8 @@ function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.J
             local problem = issue(diagnostic(err, item, candidates))
             for _, existing in ipairs(result.errors) do
                 if existing.resource.kind == problem.resource.kind and existing.resource.name == problem.resource.name
-                    and existing.face == problem.face and existing.message == problem.message then
+                    and existing.face == problem.face and existing.message == problem.message
+                    and existing.engine_message == problem.engine_message then
                     return result, nil
                 end
             end
@@ -208,21 +224,17 @@ function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.J
     end)
 end
 
-function M.asset_usage(items: types.ResourceMap, values: types.RenderGlobals): ({[string]: {string}}?, error?)
+function M.asset_usage(items: types.ResourceMap, values: types.RenderGlobals): (types.AssetUsage?, error?)
     values.assets = asset_refs.from_items(items)
-    return with_draft(items, {}, function(html: types.TemplateSet, text: types.TemplateSet): ({[string]: {string}}?, error?)
-        local usage: {[string]: {string}} = {}
+    return with_draft(items, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.AssetUsage?, error?)
+        local usage: types.AssetUsage = {}
         for _, item in pairs(items) do
             if item.kind == "message" then
                 local rendered, err = render_message(item, item.samples, values, html, text)
                 if err then return nil, err end
-                for _, ref in ipairs(rendered.library_assets or {}) do
-                    usage[ref.name] = usage[ref.name] or {}
-                    usage[ref.name][#usage[ref.name] + 1] = item.name
-                end
+                record_usage(usage, item.name, rendered.library_assets)
             end
         end
-        for _, names in pairs(usage) do table.sort(names) end
         return usage, nil
     end)
 end

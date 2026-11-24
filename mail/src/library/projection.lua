@@ -7,6 +7,8 @@ local store = require("store")
 local resources = require("resources")
 local jet = require("jet")
 local draft = require("draft")
+local globals = require("globals")
+local asset_refs = require("asset_refs")
 
 local M = {}
 
@@ -87,7 +89,22 @@ function M.reconcile(): (boolean?, error?)
 end
 
 function M.boot(): {status: string, message: string?}
-    local _, err = M.reconcile()
+    local values, read_err = globals.library_samples()
+    if read_err then return {status = "error", message = read_err:message()} end
+    local _, err = database.transaction(function(tx: sql.Transaction, dialect: string): (boolean?, error?)
+        local _, projection_err = reconcile(tx, dialect)
+        if projection_err then return nil, projection_err end
+        local items, load_err = resources.load(tx)
+        if load_err then return nil, load_err end
+        local assets = asset_refs.from_items(items :: types.ResourceMap)
+        local usage, usage_err = draft.asset_usage(items :: types.ResourceMap, values :: types.RenderGlobals)
+        if usage_err then return nil, usage_err end
+        local save_err = store.save_asset_usage(tx, assets, usage :: types.AssetUsage)
+        if save_err then return nil, save_err end
+        local prune_err = store.prune_packaged_asset_usage(tx, usage :: types.AssetUsage)
+        if prune_err then return nil, prune_err end
+        return true, nil
+    end)
     if err then return {status = "error", message = err:message()} end
     return {status = "success"}
 end

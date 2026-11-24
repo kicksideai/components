@@ -28,16 +28,15 @@ const mailgun = [
   setting('kickside.mail.mailgun', 'domain', { value: 'mg.example.org' }),
   setting('kickside.mail.mailgun', 'region', { value: 'us' }),
 ]
-const byNamespace: Record<string, Setting[]> = { 'kickside.mail.resend': resend, 'kickside.mail.mailgun': mailgun }
 
 function serveDelivery(driver: string, extra: Parameters<typeof serve>[0] = [], status = { configured: true }) {
   serve([
     ...extra,
-    get('/api/v1/mail-admin/drivers', () => ok({ items: drivers })),
+    get('/api/v1/mail/delivery/drivers', () => ok({ items: drivers.map((item, index) => ({ ...item, settings: index === 0 ? mailgun : resend })) })),
     get('/api/v1/mail/delivery', () => ok(status)),
     get('/api/v1/settings', (_path, options) => {
       const namespace = (options as { params: { namespace: string } }).params.namespace
-      return Promise.resolve({ data: { success: true, settings: namespace === 'kickside.mail' ? mail(driver) : byNamespace[namespace] ?? [] } })
+      return Promise.resolve({ data: { success: true, settings: namespace === 'kickside.mail' ? mail(driver) : [] } })
     }),
   ])
 }
@@ -120,7 +119,7 @@ describe('Mail delivery settings block', () => {
 
   it('tells someone without delivery administration to ask for access and names no service', async () => {
     serve([
-      get('/api/v1/mail-admin/drivers', () => refuse(403, { error: 'Forbidden', code: 'mail_delivery_denied', kind: 'PERMISSION_DENIED' })),
+      get('/api/v1/mail/delivery/drivers', () => refuse(403, { error: 'Forbidden', code: 'mail_delivery_denied', kind: 'PERMISSION_DENIED' })),
       get('/api/v1/mail/delivery', () => refuse(403, { error: 'Forbidden', kind: 'PERMISSION_DENIED' })),
       get('/api/v1/settings', () => refuse(403, { error: 'Forbidden', kind: 'PERMISSION_DENIED' })),
     ])

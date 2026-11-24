@@ -26,17 +26,9 @@ for (const pattern of ['test/**', 'test:**', 'wippy.lock', 'build-inputs/**', 'u
 assert.equal(entries.filter(entry => entry.kind === 'ns.definition').length, 1)
 assert(source.every(doc => /^kickside\.mail\.admin(?:\.|$)/.test(doc.namespace)))
 const dependencies = entries.filter(entry => entry.kind === 'ns.dependency')
-assert.deepEqual(dependencies.map(dep => `${dep.component}@${dep.version}`).sort(), ['kickside/contract@*', 'kickside/mail@*'])
+assert.deepEqual(dependencies.map(dep => `${dep.component}@${dep.version}`).sort(), ['kickside/mail@*'])
 
-// Administration only: one helper endpoint for the delivery driver list, no navigation item.
-const endpoints = entries.filter(entry => entry.kind === 'http.endpoint')
-assert.deepEqual(endpoints.map(entry => `${entry.method} ${entry.path}`), ['GET /mail-admin/drivers'])
-for (const endpoint of endpoints) {
-  const handler = owned.get(`kickside.mail.admin.api:${endpoint.func}`)
-  assert.equal(handler?.kind, 'function.lua', endpoint.id)
-  assert(read('src/api/' + handler.source.replace('file://', '')).includes(`function M.${handler.method}(`))
-  assert(owned.get('kickside.mail.admin:api_router').targets.some(target => target.entry === endpoint.id), 'router target ' + endpoint.id)
-}
+assert.equal(entries.filter(entry => entry.kind === 'http.endpoint').length, 0)
 assert.equal(entries.filter(entry => entry.meta?.type === 'ui.nav_item').length, 0)
 assert.deepEqual(entries.filter(entry => entry.meta?.type === 'view.component').map(entry => entry.name).sort(), ['admin', 'delivery'])
 const block = owned.get('kickside.mail.admin:delivery_block')
@@ -61,7 +53,7 @@ assert.equal(owned.get('kickside.mail.admin:ui_static').path, '/' + view.meta.ba
 
 const access = owned.get('kickside.mail.admin.security:member_endpoints').policy
 assert.equal(access.actions, 'access')
-assert.deepEqual([...access.resources].sort(), ['kickside.mail.admin.api:drivers.endpoint', 'kickside.mail.admin:admin', 'kickside.mail.admin:delivery', 'kickside.mail.admin:ui_static'])
+assert.deepEqual([...access.resources].sort(), ['kickside.mail.admin:admin', 'kickside.mail.admin:delivery', 'kickside.mail.admin:ui_static'])
 for (const policy of entries.filter(entry => entry.kind === 'security.policy')) {
   assert(Array.isArray(policy.policy.resources))
   assert(policy.policy.resources.every(id => owned.has(id)), policy.id)
@@ -72,9 +64,9 @@ const ui = JSON.parse(read('ui/package.json'))
 assert.equal(ui.wippy.tagName, tab.component_tag)
 
 const harness = parse(read('test/.wippy.yaml'))
-assert.deepEqual(harness.workspace.replacements, { 'kickside/mail-admin': '..', 'kickside/mail': '../../mail' })
+assert.equal(harness.workspace.replacements['kickside/mail-admin'], '..')
+assert.equal(harness.workspace.replacements['kickside/mail'], '../../mail')
 
 const installed = JSON.parse(execFileSync(process.env.WIPPY || 'wippy', ['registry', 'list', '--ns', 'kickside.mail.admin*', '--json'], { cwd: resolve(root, 'test'), encoding: 'utf8' }))
 assert.deepEqual(installed.map(entry => entry.id).sort(), entries.map(entry => entry.id).sort(), 'installed source is current')
-assert.deepEqual(owned.get('kickside.mail.admin.api:drivers').security.policies, ['kickside.mail.security:driver_discovery'])
 console.log(`Module checks passed: ${entries.length} entries, Mail tab gated by ${tab.access}, delivery block ${block.component_tag}`)

@@ -13,21 +13,6 @@ entries:
   meta:
     description: The mail library, activity and delivery endpoints this administration reads and changes.
   component: kickside/mail
-- name: dep.kickside.contract
-  kind: ns.dependency
-  component: kickside/contract
-  version: '*'
-- name: types
-  kind: library.lua
-  source: file://types.lua
-- name: api_router
-  kind: ns.requirement
-  meta:
-    value_kind: http.router
-    comment: Authenticated router with token_auth and endpoint_firewall for the delivery driver list.
-  targets:
-  - entry: kickside.mail.admin.api:drivers.endpoint
-    path: .meta.router
 - name: ui_server
   kind: ns.requirement
   meta:

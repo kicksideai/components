@@ -43,8 +43,7 @@ local function base_exists(items: types.ResourceMap, resource: types.ResourceCon
     return nil
 end
 
-local function dependants(items: types.ResourceMap, keys: {types.ResourceKey}, changed: {[string]: boolean}): {types.Resource}
-    local all = false
+local function dependants(items: types.ResourceMap, keys: {types.ResourceKey}, changed: {[string]: boolean}, all: boolean?): {types.Resource}
     local bases: {[string]: boolean} = {}
     for _, key in ipairs(keys) do
         if key.kind == "part" then all = true end
@@ -64,6 +63,14 @@ local function message_names(items: {types.Resource}): {string}
     local names = {}
     for i, item in ipairs(items) do names[i] = item.name end
     return names
+end
+
+local function visible_messages(names: {string}, items: types.ResourceMap): {string}
+    local visible = {}
+    for _, name in ipairs(names) do
+        if items["message/" .. name] then visible[#visible + 1] = name end
+    end
+    return visible
 end
 
 local function prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: string,
@@ -154,7 +161,7 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
     if actor_err then return nil, actor_err end
     if not actor then return nil, resources.error(errors.PERMISSION_DENIED, "mail_library_denied", "A principal must edit the mail library") end
     local author = actor:id()
-    local values, globals_err = globals.read()
+    local values, globals_err = globals.library_samples()
     if globals_err then return nil, globals_err end
 
     local saved, error_before_commit = database.transaction(function(tx: sql.Transaction, dialect: string): ({types.Resource}?, error?)
@@ -164,18 +171,17 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
         if load_err then return nil, load_err end
         local key = keys[1]
         if operation == "delete" and key.kind == "asset" then
-            local references, usage_err = draft.asset_usage(items :: types.ResourceMap, values :: types.RenderGlobals)
+            local references, usage_err = store.asset_usage(tx, key.name)
             if usage_err then return nil, usage_err end
             local messages = references[key.name] or {}
             if #messages > 0 then
                 return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = "Messages use this mail asset",
-                    details = {code = "mail_resource_in_use", resource = key, messages = messages}})
+                    details = {code = "mail_resource_in_use", resource = key, messages = visible_messages(messages, items :: types.ResourceMap)}})
             end
         end
         local candidates: {types.ResourceContent} = {}
         local previous: {types.Resource} = {}
         local restore_versions: {[integer]: integer} = {}
-        local asset_usage: {[string]: {string}}?
         for i, edit in ipairs(edits) do
             local candidate, err, restored_from = prepare(tx, edit, operation, items :: types.ResourceMap, originals :: types.OriginalMap)
             if err then return nil, err end
@@ -184,11 +190,6 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
             items[id] = candidate :: types.Resource
             candidates[i] = candidate
             if restored_from then restore_versions[i] = restored_from end
-        end
-        if key.kind == "asset" and edits[1].content then
-            local usage_err
-            asset_usage, usage_err = draft.asset_usage(items :: types.ResourceMap, values :: types.RenderGlobals)
-            if usage_err then return nil, usage_err end
         end
         for _, candidate in ipairs(candidates) do
             local base_err = base_exists(items :: types.ResourceMap, candidate)
@@ -201,18 +202,32 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
             local unbound = preview_id.verify(receipt, candidates, author, operation, time.now():unix())
             if unbound then return nil, unbound end
         end
-        local dependent = dependants(items :: types.ResourceMap, keys, changed)
-        if operation == "delete" and key.kind == "base" and #dependent ~= 0 then
-            return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = "Messages use this base template",
-                details = {code = "mail_resource_in_use", resource = key, messages = message_names(dependent)}})
+        if operation == "delete" and key.kind == "base" then
+            local dependent = dependants(items :: types.ResourceMap, keys, changed)
+            if #dependent ~= 0 then
+                return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = "Messages use this base template",
+                    details = {code = "mail_resource_in_use", resource = key, messages = message_names(dependent)}})
+            end
         end
-        if key.kind ~= "asset" then
-            local validation_err = draft.validate(items :: types.ResourceMap, key, candidates, dependent, values :: types.RenderGlobals)
-            if validation_err then return nil, validation_err end
+        local full_usage = false
+        for _, edited in ipairs(keys) do
+            if edited.kind ~= "message" then full_usage = true end
         end
+        local dependent = dependants(items :: types.ResourceMap, keys, changed, full_usage)
+        local usage, validation_err
+        if key.kind == "asset" then
+            usage, validation_err = draft.asset_usage(items :: types.ResourceMap, values :: types.RenderGlobals)
+        else
+            usage, validation_err = draft.validate(items :: types.ResourceMap, key, candidates, dependent, values :: types.RenderGlobals)
+        end
+        if validation_err then return nil, validation_err end
+        for _, item in ipairs(dependent) do changed[resources.key(item)] = true end
+        local assets = asset_refs.from_items(items :: types.ResourceMap)
         if operation == "delete" then
             local remove_err = store.remove(tx, key, true)
             if remove_err then return nil, remove_err end
+            local usage_err = store.save_asset_usage(tx, assets, usage :: types.AssetUsage, changed)
+            if usage_err then return nil, usage_err end
             return previous, nil
         end
 
@@ -251,8 +266,13 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
                 if remove_err then return nil, remove_err end
                 item.state, item.author, item.created_at, item.updated_at = "original", nil, nil, nil
             end
-            if asset_usage then item.used_by = {messages = asset_usage[item.name] or {}} end
             results[i] = item
+        end
+        local usage_err = store.save_asset_usage(tx, assets, usage :: types.AssetUsage, changed)
+        if usage_err then return nil, usage_err end
+        if key.kind == "asset" and edits[1].content then
+            local names = (usage :: types.AssetUsage)[key.name] or {}
+            results[1].used_by = {messages = visible_messages(names, items :: types.ResourceMap)}
         end
         return results, nil
     end)
@@ -359,21 +379,22 @@ local function count(input: unknown): integer
     return size
 end
 
-local function sampled_asset_usage(): ({[string]: {string}}?, error?)
-    local values, err = globals.read()
-    if err then return nil, err end
-    return database.transaction(function(tx: sql.Transaction, dialect: string): ({[string]: {string}}?, error?)
-        local lock_err = store.lock(tx, dialect)
-        if lock_err then return nil, lock_err end
-        local items, load_err = resources.load(tx)
-        if load_err then return nil, load_err end
-        return draft.asset_usage(items :: types.ResourceMap, values :: types.RenderGlobals)
+local function read_asset_usage(name: string?): (types.AssetUsage?, error?)
+    local usage, err = database.read(function(db: sql.DB): (types.AssetUsage?, error?)
+        return store.asset_usage(db, name)
     end)
+    if err then return nil, err end
+    local messages, list_err = resources.list({kind = "message"})
+    if list_err then return nil, list_err end
+    local visible: types.ResourceMap = {}
+    for _, item in ipairs(messages) do visible[resources.key(item)] = item end
+    for asset, names in pairs(usage) do usage[asset] = visible_messages(names, visible) end
+    return usage, nil
 end
 
 local function used_by(item: types.Resource): (types.UsedBy?, error?)
     if item.kind == "asset" then
-        local usage, err = sampled_asset_usage()
+        local usage, err = read_asset_usage(item.name)
         if err then return nil, err end
         return {messages = usage[item.name] or {}}, nil
     elseif item.kind == "base" then
@@ -445,6 +466,7 @@ function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, erro
     end, limit :: integer, cursor)
     local rows: {types.LibraryListRow} = {}
     local base_counts: {[string]: integer}?
+    local asset_usage: types.AssetUsage?
     for i, value in ipairs(page) do
         local item = value :: types.Resource
         local usage: types.UsedBy?
@@ -458,6 +480,13 @@ function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, erro
                     base_counts[base] = (base_counts[base] or 0) + 1
                 end
             end
+        elseif item.kind == "asset" then
+            if not asset_usage then
+                local usage_err
+                asset_usage, usage_err = read_asset_usage()
+                if usage_err then return nil, usage_err end
+            end
+            usage = {messages = asset_usage[item.name] or {}}
         elseif item.kind == "message" then
             local usage_err
             usage, usage_err = used_by(item)

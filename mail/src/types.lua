@@ -81,6 +81,7 @@ type Resource = {
 }
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
+type AssetUsage = {[string]: {string}}
 type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}
 type Original = {resource: Resource, entries: {[string]: string}}
 type ResourceMap = {[string]: Resource}
@@ -100,7 +101,7 @@ type OriginalRevisions = {[string]: {[string]: integer}}
 type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, resources: {ResourceContent}?, message: string, vars: JsonObject?}
 type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
 type EditPreview = DraftRequest & {create: ResourceCreate?}
-type DraftIssue = {code: string, message: string, resource: ResourceKey, face: string, candidate_resources: {ResourceKey}}
+type DraftIssue = {code: string, engine_message: string?, message: string, resource: ResourceKey, face: string, candidate_resources: {ResourceKey}}
 type DraftPreview = {subject: string?, html: string?, text: string?, errors: {DraftIssue},
     dependent_messages: {string}, preview_id: string?, inline_assets: InlineAssets?, library_assets: {AssetRef}?}
 type LibraryPageRequest = ResourceFilter & {limit: integer?, cursor: string?}
@@ -137,11 +138,15 @@ type TemplateSet = {
 }
 type SchemaIssue = {schema_path: string, instance_path: string}
 type Driver = {id: string, label: string, icon: string, description: string, binding: string,
-    settings_ns: string, available_func: string, max_recipients: integer?, max_message_bytes: integer?}
-type Availability = {available: boolean, reason: string?}
+    settings_ns: string, available_func: string, settings_view: string?, max_recipients: integer?, max_message_bytes: integer?}
+type Availability = {available: boolean, code: string?, reason: string?}
+type DriverSetting = {namespace: string, key: string, value_type: string, is_secret: boolean, has_value: boolean?,
+    value: unknown, default: unknown, title: string?, description: string, order: number?, editable: boolean, schema: unknown}
+type DriverSummary = {id: string, label: string, icon: string, description: string, settings_ns: string,
+    settings_view: string?, availability: Availability, settings: {DriverSetting}}
 type Settings = {driver: string, from_address: string, from_name: string, reply_to: string}
 type ApiSettings = {api_key: string?}
-type SettingsResult = {success: boolean, values: Record?, error: string?}
+type SettingsResult = {success: boolean, values: Record?, overridden: {string}?, error: string?}
 type SettingsContract = {get_namespace: (self: SettingsContract, input: {namespace: string}) -> (SettingsResult?, error?)}
 type SettingInput = {value: unknown}
 type SettingValidation = {valid: boolean, error: string?}
@@ -173,7 +178,7 @@ type WritableSink = {
     fail: (string, string?, boolean?, string?, Record?) -> SinkFailure,
 }
 type Realtime = {broadcast: (self: Realtime, input: {topic: string, data: Record}) -> ({success: boolean, error: string?}?, error?)}
-type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, from: Mailbox?, reply_to: string?, reason: string?}
+type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, from: Mailbox?, reply_to: string?, code: string?, reason: string?}
 type TestSend = {message: string, vars: JsonObject?}
 
 type HttpAuth = {user: string, pass: string}
@@ -188,7 +193,7 @@ return {
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
-    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, UsedBy = UsedBy,
+    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
@@ -196,7 +201,8 @@ return {
     PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,
     ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, SchemaIssue = SchemaIssue,
-    Driver = Driver, Availability = Availability, Settings = Settings, ApiSettings = ApiSettings,
+    Driver = Driver, Availability = Availability, DriverSetting = DriverSetting, DriverSummary = DriverSummary,
+    Settings = Settings, ApiSettings = ApiSettings,
     SettingsResult = SettingsResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
     Mailer = Mailer, Transport = Transport, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
     ContentFailure = ContentFailure, ContentProvider = ContentProvider, SinkRequest = SinkRequest,

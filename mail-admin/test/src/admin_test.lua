@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local contract = require("contract")
 local fs = require("fs")
 local funcs = require("funcs")
 local http_client = require("http_client")
@@ -96,7 +97,12 @@ local function cases()
         end)
 
         test.it("lists installed delivery drivers with their settings views to delivery administrators only", function()
-            local status, body = get(signed_in({"app:delivery", "app:user"}), "/mail-admin/drivers")
+            local settings_contract = assert(assert(contract.get("kickside.settings:settings")):open())
+            local written = assert(settings_contract:set({namespace = "app.fixture", key = "api_key", value = "fixture-key-private"}))
+            assert(written.success, tostring(written.error))
+            local status, body = get(signed_in({"app:delivery", "app:user"}), "/mail/delivery/drivers")
+            local cleared = assert(settings_contract:unset({namespace = "app.fixture", key = "api_key"}))
+            assert(cleared.success, tostring(cleared.error))
             test.eq(status, 200, json.encode(body))
             local items = (body.data :: {[string]: unknown}).items :: {{[string]: unknown}}
             local fixture
@@ -105,8 +111,25 @@ local function cases()
             test.eq(fixture.label, "Fixture delivery")
             test.eq(fixture.settings_ns, "app.fixture")
             test.eq(fixture.settings_view, "app-fixture-settings")
+            test.eq(false, fixture.availability.available)
+            test.eq("fixture_key_required", fixture.availability.code)
+            test.eq("Add a key for the fixture service.", fixture.availability.reason)
+            local settings = fixture.settings
+            test.eq(2, #settings)
+            test.eq("api_key", settings[1].key)
+            test.is_true(settings[1].is_secret)
+            test.is_true(settings[1].has_value)
+            test.is_nil(settings[1].value)
+            test.is_nil(settings[1].default)
+            test.eq("region", settings[2].key)
+            test.eq("us", settings[2].value)
+            test.is_nil((json.encode(body):find("fixture-key-private", 1, true)))
+            test.is_nil((json.encode(body):find("fixture-key-default", 1, true)))
+            local unconfigured_status, unconfigured = get(signed_in({"app:delivery", "app:user"}), "/mail/delivery/drivers")
+            test.eq(200, unconfigured_status)
+            test.is_false(unconfigured.data.items[1].settings[1].has_value)
 
-            local denied = get(signed_in({"app:editor", "app:user"}), "/mail-admin/drivers")
+            local denied = get(signed_in({"app:editor", "app:user"}), "/mail/delivery/drivers")
             test.eq(denied, 403, "an editor without delivery administration never learns the services")
         end)
 
@@ -117,6 +140,18 @@ local function cases()
             test.eq(block.data.component_tag, "kickside-mail-delivery")
             local view = assert(registry.get("kickside.mail.admin:delivery"))
             test.eq(view.meta.tag_name, "kickside-mail-delivery")
+            local status, body = get(signed_in({"app:settings_admin", "app:user"}), "/settings/blocks")
+            test.eq(status, 200, json.encode(body))
+            local count = 0
+            for _, item in ipairs(body.blocks :: {{[string]: unknown}}) do
+                test.neq("app.fixture", item.namespace)
+                if item.namespace == "kickside.mail" then
+                    count = count + 1
+                    test.eq("Integrations", item.group)
+                    test.eq("kickside-mail-delivery", item.component_tag)
+                end
+            end
+            test.eq(1, count)
         end)
     end)
 end

@@ -101,6 +101,68 @@ function M.read(key: types.ResourceKey): (types.Resource?, error?)
     return database.read(function(db: sql.DB): (types.Resource?, error?) return M.get(db, key) end)
 end
 
+function M.asset_usage(db: types.Executor, name: string?): (types.AssetUsage?, error?)
+    local select_usage = "SELECT name,used_by_json FROM mail_library_asset"
+    local rows, err
+    if name then
+        rows, err = db:query(select_usage .. " WHERE name=$1", {name})
+    else
+        rows, err = db:query(select_usage)
+    end
+    if err then return nil, err end
+    local usage: types.AssetUsage = {}
+    for _, row in ipairs(rows) do
+        local names, decode_err = json.decode(row.used_by_json :: string)
+        if decode_err then return nil, decode_err end
+        usage[row.name :: string] = names :: {string}
+    end
+    return usage, nil
+end
+
+function M.save_asset_usage(tx: sql.Transaction, assets: {types.Resource}, usage: types.AssetUsage,
+    changed: {[string]: boolean}?): error?
+    local previous, read_err = M.asset_usage(tx)
+    if read_err then return read_err end
+    for _, asset in ipairs(assets) do
+        local names = usage[asset.name] or {}
+        local prior = previous[asset.name]
+        if changed and prior then
+            for _, name in ipairs(prior) do
+                if not changed["message/" .. name] then names[#names + 1] = name end
+            end
+        end
+        table.sort(names)
+        usage[asset.name] = names
+        local encoded, encode_err = json.encode(names)
+        if encode_err then return encode_err end
+        local _, err
+        if prior then
+            _, err = tx:execute([[UPDATE mail_library_asset SET used_by_json=$1
+                WHERE name=$2 AND used_by_json IS DISTINCT FROM $1]], {encoded, asset.name})
+        else
+            -- Packaged assets have no upload, so usage does not shadow their declarations.
+            _, err = tx:execute([[INSERT INTO mail_library_asset
+                (name,title,description,origin,author,created_at,updated_at,used_by_json)
+                VALUES ($1,$2,$3,$4,'system:kickside.mail.library',0,0,$5)]],
+                {asset.name, asset.title, asset.description, asset.origin or sql.NULL, encoded})
+        end
+        if err then return err end
+    end
+    return nil
+end
+
+function M.prune_packaged_asset_usage(tx: sql.Transaction, usage: types.AssetUsage): error?
+    local rows, err = tx:query("SELECT name FROM mail_library_asset WHERE upload_id IS NULL")
+    if err then return err end
+    for _, row in ipairs(rows) do
+        if not usage[row.name :: string] then
+            local _, remove_err = tx:execute("DELETE FROM mail_library_asset WHERE name=$1 AND upload_id IS NULL", {row.name})
+            if remove_err then return remove_err end
+        end
+    end
+    return nil
+end
+
 function M.original_revisions(db: types.Executor): (types.OriginalRevisions?, error?)
     local rows, err = db:query([[SELECT kind,name,MAX(revision) AS revision
         FROM mail_library_revision WHERE state='original' GROUP BY kind,name]])
@@ -155,7 +217,8 @@ local function write_asset(tx: sql.Transaction, item: types.Resource, change: ty
         (name,title,description,origin,author,created_at,updated_at,upload_id)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
         ON CONFLICT(name) DO UPDATE SET title=excluded.title, description=excluded.description,
-            revision=excluded.revision, author=excluded.author, updated_at=excluded.updated_at, upload_id=excluded.upload_id
+            revision=excluded.revision, origin=excluded.origin, author=excluded.author, created_at=excluded.created_at,
+            updated_at=excluded.updated_at, upload_id=excluded.upload_id
         RETURNING revision]],
         {item.name, item.title, item.description, item.origin or sql.NULL, item.author, item.created_at, item.updated_at, upload or sql.NULL})
     if err then return nil, err end
