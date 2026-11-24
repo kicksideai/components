@@ -11,7 +11,7 @@ local function handler()
             return nil, request.invalid("Limit and since must be integers")
         end
         return client.list_messages({limit = size, since = start, status = req:query("status") :: string?,
-            template = req:query("message") :: string?, cursor = req:query("cursor") :: string?})
+            q = req:query("q") :: string?, template = req:query("message") :: string?, cursor = req:query("cursor") :: string?})
     end)
 end
 

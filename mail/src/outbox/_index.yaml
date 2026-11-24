@@ -34,6 +34,7 @@ entries:
       database: kickside.mail.outbox:database
       identity: kickside.execution:execution_identity
       failure: kickside.mail.outbox:failure
+      policy: kickside.mail.outbox:policy
       store: kickside.mail.outbox:store
       types: kickside.mail:types
   - name: get_message

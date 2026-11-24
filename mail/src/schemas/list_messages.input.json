@@ -15,6 +15,7 @@
       "minimum": 0,
       "maximum": 9007199254740991
     },
+    "q": {"type": "string", "maxLength": 256, "description": "Case-insensitive substring of the subject or any recipient address."},
     "limit": {
       "type": "integer",
       "minimum": 1,

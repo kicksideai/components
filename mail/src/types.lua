@@ -30,8 +30,8 @@ type TransportResult = {provider_message_id: string?}
 type SendResult = {message_id: string, status: string}
 type MessageRef = {message_id: string}
 type Capabilities = {send: boolean, edit_library: boolean, administer_delivery: boolean}
-type ListRequest = {status: string?, template: string?, since: integer?, limit: integer, cursor: string?}
-type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean}
+type ListRequest = {status: string?, template: string?, since: integer?, q: string?, limit: integer, cursor: string?}
+type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean, total: integer?, failed_today: integer?}
 type MessageError = {kind: string, code: string, message: string, provider_detail: string?}
 type LogMessage = Addresses & {
     message_id: string, status: string, created_at: integer, attempts: integer,
