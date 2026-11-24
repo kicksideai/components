@@ -33,6 +33,10 @@ function M.require_admin(): error?
     return nil
 end
 
+function M.require_activity(): error?
+    return M.require_admin() and M.require_send()
+end
+
 function M.require_library(): error?
     if not security.can("access", LIBRARY) then
         return errors.new({kind = errors.PERMISSION_DENIED, message = "Edit mail library access is required",

@@ -11,7 +11,7 @@ entries:
     meta: { type: test, suite: mail_api }
     source: file://api_test.lua
     method: run
-    modules: [funcs, http_client, json, registry, sql, system, time]
+    modules: [funcs, http_client, json, registry, sql, system, time, uuid]
     imports:
       test: wippy.test:test
       library_fixtures: app.mail_library:fixtures

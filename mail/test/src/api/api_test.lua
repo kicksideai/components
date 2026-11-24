@@ -6,6 +6,7 @@ local registry = require("registry")
 local sql = require("sql")
 local system = require("system")
 local time = require("time")
+local uuid = require("uuid")
 local test = require("test")
 local library_fixtures = require("library_fixtures")
 local fixtures = require("fixtures")
@@ -33,6 +34,17 @@ local function data(who, method, path, payload, expected)
     return body.data
 end
 
+local function await_delivery(who, id)
+    local entry
+    local deadline = time.now():add(10 * time.SECOND):unix_nano()
+    repeat
+        entry = data(who, "GET", "/activity/" .. id)
+        if entry.status == "queued" then time.sleep("20ms") end
+    until entry.status ~= "queued" or time.now():unix_nano() >= deadline
+    test.eq("sent", entry.status)
+    return entry
+end
+
 local function fixture(kind, name, content)
     local result = {kind = kind, name = name, title = name, description = "", html = content, text = content,
         schema = {type = "object", properties = {}}, samples = {}}
@@ -41,9 +53,9 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail HTTP", function()
-        local owned, configured
+        local owned, activity_rows, configured
         test.before_each(function()
-            owned, configured = {}, false
+            owned, activity_rows, configured = {}, {}, false
         end)
         local function own(item)
             owned[#owned + 1] = {kind = item.kind, name = item.name}
@@ -53,8 +65,30 @@ return {run = test.run_cases(function()
             configured = true
             settings("capture", "mail@example.org")
         end
+        local function failed(sender, subject, recipient, at)
+            local id = uuid.v4()
+            activity_rows[#activity_rows + 1] = id
+            local now = at or time.now():unix_nano() // 1000000
+            local db = assert(sql.get("app:db"))
+            assert(db:execute([[INSERT INTO mail_message
+                (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments,driver_id,
+                error_kind,error_code,error_message,provider_detail,failed_html,failed_text)
+                VALUES ($1,$2,$2,'failed',$3,$4,$5,'mail@example.org','[]','fixture',
+                'PERMISSION_DENIED','credentials_invalid','Provider authorization refused','Provider response',
+                '<p>Saved content</p>','Saved content')]],
+                {id, now, sender, assert(json.encode({to = {recipient}})), subject}))
+            assert(db:release())
+            return id
+        end
         test.after_each(function()
             library_fixtures.remove(owned)
+            if #activity_rows > 0 then
+                local db = assert(sql.get("app:db"))
+                for _, id in ipairs(activity_rows) do
+                    assert(db:execute("DELETE FROM mail_message WHERE id=$1", {id}))
+                end
+                assert(db:release())
+            end
             if configured then settings("", "") end
         end)
 
@@ -69,7 +103,7 @@ return {run = test.run_cases(function()
                     count = count + 1
                     local path = endpoint.data.path:sub(#"/mail" + 1):gsub("{kind}", "message"):gsub("{name}", "notice"):gsub("{id}", ZERO)
                     test.eq(401, (request(nil, endpoint.data.method, path, {})), endpoint.id)
-                    if path ~= "/capabilities" and not path:match("/resend$") then
+                    if path:match("^/library") or path:match("^/delivery") then
                         local denied, _, raw = request(sender, endpoint.data.method, path, {})
                         assert(denied == 403, endpoint.id .. " returned " .. denied .. ": " .. raw)
                     end
@@ -145,6 +179,32 @@ return {run = test.run_cases(function()
                 test.eq(flags[2], capabilities.edit_library, role)
                 test.eq(flags[3], capabilities.administer_delivery, role)
             end
+        end)
+
+        test.it("lets senders read and resend only their own messages over HTTP", function()
+            local sender = session("sender")
+            local other = session("sender")
+            local admin = session("delivery")
+            local editor = session("editor")
+            local own_id = failed(sender.id, "Sender activity", "reader@example.org")
+            local other_id = failed(other.id, "Sender activity", "other@example.org")
+            local page = data(sender, "GET", "/activity")
+            test.eq(1, #page.items)
+            test.eq(own_id, page.items[1].message_id)
+            local message = data(sender, "GET", "/activity/" .. own_id)
+            test.is_nil(message.driver_id)
+            test.is_nil(message.provider_message_id)
+            test.is_nil(message.last_error.provider_detail)
+            test.eq("Ask a mail administrator to check delivery authorization.", message.last_error.message)
+            test.eq(404, (request(sender, "GET", "/activity/" .. other_id)))
+            test.eq(404, (request(sender, "POST", "/activity/" .. other_id .. "/resend")))
+            test.eq(403, (request(editor, "GET", "/activity")))
+            local full = data(admin, "GET", "/activity/" .. own_id)
+            test.eq("fixture", full.driver_id)
+            test.eq("Provider response", full.last_error.provider_detail)
+            configure()
+            local resent = data(sender, "POST", "/activity/" .. own_id .. "/resend", nil, 202)
+            test.eq(own_id, await_delivery(sender, resent.message_id).resend_of)
         end)
 
         test.it("lists the packaged asset and previews its CID under the editor capability", function()
@@ -285,7 +345,7 @@ return {run = test.run_cases(function()
             test.eq("capture", status.driver.id)
             test.is_true(status.configured)
             test.eq("mail@example.org", status.from.address)
-            test.eq(403, request(sender, "GET", "/activity"))
+            test.eq(0, #data(sender, "GET", "/activity").items)
             test.eq(400, request(editor, "POST", "/library/send-test", {message = "notice", to = {"other@example.org"}}))
             test.eq(400, request(admin, "POST", "/delivery/send-test", {to = {"other@example.org"}}))
             local messages = {
@@ -294,13 +354,7 @@ return {run = test.run_cases(function()
             }
             for _, pair in ipairs(messages) do
                 local id, actor = pair[1].message_id, pair[2]
-                local entry
-                local deadline = time.now():add(10 * time.SECOND):unix_nano()
-                repeat
-                    entry = data(admin, "GET", "/activity/" .. id)
-                    if entry.status == "queued" then time.sleep("20ms") end
-                until entry.status ~= "queued" or time.now():unix_nano() >= deadline
-                test.eq("sent", entry.status)
+                local entry = await_delivery(admin, id)
                 test.eq(1, #entry.to)
                 test.eq(actor.email, entry.to[1])
                 test.eq("test", entry.origin.kind)

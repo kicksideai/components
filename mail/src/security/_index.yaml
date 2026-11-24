@@ -438,6 +438,8 @@ entries:
     meta: { private: true }
     policy:
       resources:
+        - kickside.mail.api:activity_list.endpoint
+        - kickside.mail.api:activity_get.endpoint
         - kickside.mail.api:activity_resend.endpoint
       actions: [access]
       effect: allow
