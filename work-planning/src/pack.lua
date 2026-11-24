@@ -17,9 +17,6 @@ function M.adopt_fields(input: { config: mapping.Config }): (types.SchemaResult?
     local extensions: { types.ItemTypeExtension } = {}
     local by_type: { [string]: types.ItemTypeExtension } = {}
     for _, id in ipairs(input.config.issue_types or {}) do
-        if id == "issue" or id == "sprint" or id == "milestone" then
-            return nil, errors.new({ kind = errors.INVALID, message = "Adoption requires a custom issue type.", details = { code = "planning_invalid_issue_type" } })
-        end
         local extension = { id = id, fields = { "current_sprint", "milestone" } }
         extensions[#extensions + 1], by_type[id] = extension, extension
     end

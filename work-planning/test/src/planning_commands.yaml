@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: planning_commands_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work_planning_commands, timeout: 120s}
+  source: file://planning_commands.lua
+  method: run
+  modules: [contract, funcs, json, registry]
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    steps: app:steps
+- name: planning_capability
+  kind: function.lua
+  source: file://planning_commands.lua
+  method: call_capability
+  modules: [contract, funcs, json, registry]
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    fixture: app:fixture
+    steps: app:steps
+- name: planning_capability_test_access
+  kind: security.policy
+  groups: [app.security:work_test, app.security:work_admin, kickside.security.groups:members]
+  policy: {resources: ['app:planning_capability'], actions: [funcs.call], effect: allow}

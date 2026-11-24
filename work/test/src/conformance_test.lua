@@ -134,7 +134,8 @@ local function define()
             local expected = { ["kickside.work:target_db"] = true, ["kickside.work:api_router"] = true,
                 ["kickside.work:registry_admin_grant"] = true, ["kickside.work:board_event_retention_days"] = true,
                 ["kickside.work.security:user_security_scope"] = true, ["kickside.work.planning:user_security_scope"] = true,
-                ["kickside.work.planning:target_db"] = true, ["kickside.work.planning.capacity:user_security_scope"] = true }
+                ["kickside.work.planning:target_db"] = true, ["kickside.work.planning.capacity:user_security_scope"] = true,
+                ["kickside.work.planning.api:api_router"] = true, ["kickside.work.planning.api:user_security_scope"] = true }
             for _, entry in ipairs(requirements) do
                 if tostring(entry.id):match("^kickside%.work[.:]") then
                     test.is_true(expected[tostring(entry.id)] == true, tostring(entry.id))
@@ -146,6 +147,15 @@ local function define()
                 local endpoint = assert(registry.get("kickside.work.api.sprints:" .. method .. ".endpoint"))
                 test.eq(endpoint.meta.router, work_router)
             end
+            local planning_router = assert(registry.get("kickside.work.planning.api:api_router"))
+            local planning_targets = {}
+            for _, target in ipairs(planning_router.data.targets) do planning_targets[target.entry] = target.path end
+            for _, method in ipairs({ "plan_sprint", "move_dates", "check_capacity", "set_capacity" }) do
+                local id = "kickside.work.planning.api:" .. method .. ".endpoint"
+                test.eq(planning_targets[id], ".meta.router", id)
+                test.eq(assert(registry.get(id)).meta.router, work_router, id)
+            end
+            test.eq(#planning_router.data.targets, 4)
             local binding = assert(registry.get("kickside.work.binding:board"))
             test.is_nil(binding.meta.component)
             test.eq(binding.meta.retention.event_days, 17)

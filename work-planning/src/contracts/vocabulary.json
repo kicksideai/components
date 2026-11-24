@@ -1,0 +1,676 @@
+{
+  "definitions": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "minutes",
+        "points"
+      ]
+    },
+    "amount": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "period_date": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 30
+    },
+    "work_date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "membership": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$planning_ref": "id"
+        },
+        "expected_version": {
+          "$planning_ref": "version"
+        },
+        "sprint_id": {
+          "anyOf": [
+            {
+              "$planning_ref": "id"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The sprint being planned. Null or an omitted assignment sends the item to the backlog."
+        }
+      },
+      "required": [
+        "item",
+        "expected_version"
+      ],
+      "additionalProperties": false
+    },
+    "plan_sprint": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$planning_ref": "id"
+        },
+        "sprint_id": {
+          "$planning_ref": "id"
+        },
+        "key": {
+          "$planning_ref": "id"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$planning_ref": "membership"
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "board_id",
+        "sprint_id",
+        "key",
+        "changes"
+      ],
+      "additionalProperties": false
+    },
+    "move_dates": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$planning_ref": "id"
+        },
+        "item": {
+          "$planning_ref": "id"
+        },
+        "key": {
+          "$planning_ref": "id"
+        },
+        "expected_version": {
+          "$planning_ref": "version"
+        },
+        "start": {
+          "$planning_ref": "period_date"
+        },
+        "finish": {
+          "$planning_ref": "period_date"
+        }
+      },
+      "required": [
+        "board_id",
+        "item",
+        "key",
+        "expected_version",
+        "start",
+        "finish"
+      ],
+      "additionalProperties": false
+    },
+    "set_capacity": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$planning_ref": "id"
+        },
+        "sprint_id": {
+          "$planning_ref": "id"
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740990,
+          "description": "Use zero when capacity has never been set for this sprint."
+        },
+        "unit": {
+          "$planning_ref": "unit"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "person": {
+                "$planning_ref": "id"
+              },
+              "amount": {
+                "$planning_ref": "amount"
+              }
+            },
+            "required": [
+              "person",
+              "amount"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "board_id",
+        "sprint_id",
+        "expected_version",
+        "unit",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "capacity_written": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "$planning_ref": "version"
+        },
+        "unit": {
+          "$planning_ref": "unit"
+        }
+      },
+      "required": [
+        "version",
+        "unit"
+      ],
+      "additionalProperties": false
+    },
+    "check_capacity": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$planning_ref": "id"
+        },
+        "sprint_id": {
+          "$planning_ref": "id"
+        }
+      },
+      "required": [
+        "board_id",
+        "sprint_id"
+      ],
+      "additionalProperties": false
+    },
+    "capacity_bucket": {
+      "type": "object",
+      "properties": {
+        "load": {
+          "type": "number"
+        },
+        "items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_estimates": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capacity": {
+          "$planning_ref": "amount"
+        }
+      },
+      "required": [
+        "load",
+        "items",
+        "missing_estimates"
+      ],
+      "additionalProperties": false
+    },
+    "capacity_person": {
+      "type": "object",
+      "properties": {
+        "load": {
+          "type": "number"
+        },
+        "items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_estimates": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "person": {
+          "$planning_ref": "id"
+        },
+        "capacity": {
+          "$planning_ref": "amount"
+        }
+      },
+      "required": [
+        "load",
+        "items",
+        "missing_estimates",
+        "person"
+      ],
+      "additionalProperties": false
+    },
+    "capacity_report": {
+      "type": "object",
+      "properties": {
+        "unit": {
+          "$planning_ref": "unit"
+        },
+        "version": {
+          "$planning_ref": "version"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$planning_ref": "capacity_person"
+          }
+        },
+        "total": {
+          "type": "object",
+          "properties": {
+            "load": {
+              "type": "number"
+            },
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "missing_estimates": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "capacity": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "load",
+            "items",
+            "missing_estimates"
+          ],
+          "additionalProperties": false
+        },
+        "unassigned": {
+          "$planning_ref": "capacity_bucket"
+        },
+        "estimates_available": {
+          "type": "boolean"
+        },
+        "caller_visible": {
+          "type": "boolean",
+          "const": true
+        },
+        "incomplete": {
+          "type": "boolean"
+        },
+        "as_of": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "rows",
+        "total",
+        "unassigned",
+        "estimates_available",
+        "caller_visible",
+        "incomplete",
+        "as_of"
+      ],
+      "additionalProperties": false
+    },
+    "apply_result": {
+      "type": "object",
+      "properties": {
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "applied": {
+          "type": "boolean"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "as_of": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "outcomes",
+        "applied"
+      ],
+      "additionalProperties": false
+    },
+    "resolve": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$planning_ref": "id"
+        },
+        "item": {
+          "$planning_ref": "id"
+        },
+        "work_date": {
+          "$planning_ref": "work_date"
+        },
+        "sprint_id": {
+          "$planning_ref": "id"
+        }
+      },
+      "required": [
+        "board_id",
+        "item",
+        "work_date"
+      ],
+      "additionalProperties": false
+    },
+    "resolved": {
+      "type": "object",
+      "properties": {
+        "sprint_id": {
+          "$planning_ref": "id"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "report": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$planning_ref": "id"
+        },
+        "sprint_id": {
+          "$planning_ref": "id"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        }
+      },
+      "required": [
+        "board_id",
+        "sprint_id",
+        "limit"
+      ],
+      "additionalProperties": false
+    },
+    "sprint_report": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$planning_ref": "id"
+          },
+          "minItems": 0,
+          "maxItems": 4096
+        },
+        "as_of": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "limited"
+          ]
+        },
+        "unit": {
+          "$planning_ref": "unit"
+        },
+        "points_field": {
+          "$planning_ref": "id"
+        }
+      },
+      "required": [
+        "items",
+        "as_of",
+        "coverage",
+        "unit"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "operations": [
+    {
+      "method": "plan_sprint",
+      "output": "apply_result",
+      "title": "Plan sprint membership",
+      "http": "POST",
+      "tool": "WorkPlanSprint",
+      "scope": "state.write"
+    },
+    {
+      "method": "move_dates",
+      "output": "apply_result",
+      "title": "Move Planning dates",
+      "http": "POST",
+      "tool": "WorkMovePlanningDates",
+      "scope": "state.write"
+    },
+    {
+      "method": "check_capacity",
+      "output": "capacity_report",
+      "title": "Check sprint capacity",
+      "http": "POST",
+      "tool": "WorkCheckSprintCapacity",
+      "scope": "state.read",
+      "storage": true
+    },
+    {
+      "method": "set_capacity",
+      "output": "capacity_written",
+      "title": "Set sprint capacity",
+      "http": "POST",
+      "tool": "WorkSetSprintCapacity",
+      "scope": "state.write",
+      "storage": true
+    },
+    {
+      "method": "resolve",
+      "output": "resolved",
+      "title": "Resolve a work date to a readable sprint",
+      "capability": true
+    },
+    {
+      "method": "report",
+      "output": "sprint_report",
+      "title": "Read bounded sprint membership for a time report",
+      "capability": true,
+      "storage": true
+    }
+  ],
+  "fixtures": {
+    "plan_sprint": {
+      "valid": [
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "key": "plan",
+          "changes": [
+            {
+              "item": "issue",
+              "expected_version": 1,
+              "sprint_id": "sprint"
+            }
+          ]
+        },
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "key": "plan",
+          "changes": [
+            {
+              "item": "issue",
+              "expected_version": 1
+            }
+          ]
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "key": "plan",
+          "changes": [
+            {
+              "item": "issue",
+              "expected_version": 1,
+              "sprint_id": "sprint"
+            }
+          ],
+          "capacity": {
+            "board_id": "board",
+            "sprint_id": "sprint",
+            "expected_version": 0,
+            "unit": "points",
+            "rows": [
+              {
+                "person": "person",
+                "amount": 0
+              }
+            ]
+          }
+        },
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "key": "plan",
+          "changes": []
+        },
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "key": "plan",
+          "changes": [
+            {
+              "item": "issue"
+            }
+          ]
+        }
+      ]
+    },
+    "move_dates": {
+      "valid": [
+        {
+          "board_id": "board",
+          "item": "sprint",
+          "key": "dates",
+          "expected_version": 1,
+          "start": "2026-01-01",
+          "finish": "2026-01-02"
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "item": "sprint",
+          "key": "dates",
+          "expected_version": 0,
+          "start": "2026-01-01",
+          "finish": "2026-01-02"
+        }
+      ]
+    },
+    "check_capacity": {
+      "valid": [
+        {
+          "board_id": "board",
+          "sprint_id": "sprint"
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board"
+        }
+      ]
+    },
+    "set_capacity": {
+      "valid": [
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "expected_version": 0,
+          "unit": "points",
+          "rows": [
+            {
+              "person": "person",
+              "amount": 0
+            }
+          ]
+        },
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "expected_version": 0,
+          "unit": "points",
+          "rows": []
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "expected_version": 0,
+          "unit": "points",
+          "rows": [
+            {
+              "person": "person",
+              "amount": -1
+            }
+          ]
+        }
+      ]
+    },
+    "resolve": {
+      "valid": [
+        {
+          "board_id": "board",
+          "item": "issue",
+          "work_date": "2026-01-01"
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "item": "issue",
+          "work_date": "tomorrow"
+        }
+      ]
+    },
+    "report": {
+      "valid": [
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "limit": 4096
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "sprint_id": "sprint",
+          "limit": 4097
+        }
+      ]
+    }
+  }
+}
