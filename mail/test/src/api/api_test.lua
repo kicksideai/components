@@ -376,6 +376,26 @@ return {run = test.run_cases(function()
             test.eq(403, (request(sender, "POST", "/library", {kind = "asset", name = "proof"})))
         end)
 
+        test.it("names the candidate sources when a draft message include fails", function()
+            local editor = session("editor")
+            local part = own(fixture("part", "candidate-part", "Static"))
+            data(editor, "POST", "/library", part, 201)
+            local base = own(fixture("base", "candidate-base",
+                '{{ include "/part/candidate-part" }}{{ block body() }}{{ end }}'))
+            data(editor, "POST", "/library", base, 201)
+            local message = own(fixture("message", "candidate-message", "{{ block body() }}Content{{ end }}"))
+            message.base, message.subject = base.name, "Candidate diagnostic"
+            data(editor, "POST", "/library", message, 201)
+            part.html = "{{ missing_value }}"
+            local _, body = request(editor, "POST", "/library/preview", {message = message.name, resource = part})
+            test.eq(message.name, body.details.resource.name)
+            local candidates = body.details.candidate_resources
+            test.eq(3, #candidates)
+            test.eq(message.name, candidates[1].name)
+            test.eq(base.name, candidates[2].name)
+            test.eq(part.name, candidates[3].name)
+        end)
+
         test.it("serves library edits and candidate previews through the router", function()
             local editor = session("editor")
             local base = own(fixture("base", "http-frame", "[{{ block body() }}{{ end }}]"))

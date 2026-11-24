@@ -78,6 +78,23 @@ local function invalid(err: error): error
     return errors.new({kind = errors.INVALID, retryable = false, message = err:message(), details = err:details()})
 end
 
+local function diagnostic(err: error, item: types.ResourceContent, changed: {types.ResourceContent}): error
+    local details = err:details()
+    local candidates: {types.ResourceKey} = {}
+    local seen: {[string]: boolean} = {}
+    local function add(resource: types.ResourceKey)
+        local key = resources.key(resource)
+        if seen[key] then return end
+        seen[key] = true
+        candidates[#candidates + 1] = {kind = resource.kind, name = resource.name}
+    end
+    add(item)
+    if item.base then add({kind = "base", name = item.base}) end
+    for _, candidate in ipairs(changed) do add(candidate) end
+    details.candidate_resources = candidates
+    return errors.new({kind = err:kind(), retryable = false, message = err:message(), details = details})
+end
+
 local function render_message(item: types.ResourceContent, vars: types.JsonObject, values: types.RenderGlobals,
     html: types.TemplateSet, text: types.TemplateSet, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     local result, err = render.faces(item, vars, values, html, text, attachments)
@@ -108,7 +125,7 @@ end
 local function issue(err: error): types.DraftIssue
     local details = err:details()
     return {code = details.code :: string, message = err:message(), resource = details.resource :: types.ResourceKey,
-        face = details.face :: string}
+        face = details.face :: string, candidate_resources = details.candidate_resources :: {types.ResourceKey}}
 end
 
 local function check(candidates: {types.ResourceContent}, dependants: {types.Resource}, values: types.RenderGlobals,
@@ -119,6 +136,7 @@ local function check(candidates: {types.ResourceContent}, dependants: {types.Res
     for _, candidate in ipairs(candidates) do
         local err = validate_faces(candidate, values, html, text)
         if err then
+            err = diagnostic(err, candidate, candidates)
             result.errors[#result.errors + 1] = issue(err)
             candidate_error = candidate_error or err
         end
@@ -126,6 +144,7 @@ local function check(candidates: {types.ResourceContent}, dependants: {types.Res
     for _, item in ipairs(dependants) do
         local err = validate_faces(item, values, html, text)
         if err then
+            err = diagnostic(err, item, candidates)
             result.errors[#result.errors + 1] = issue(err)
             result.dependent_messages[#result.dependent_messages + 1] = item.name
             dependent_error = dependent_error or err
@@ -162,7 +181,7 @@ function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.J
         local result = check(candidates, dependants, values, html, text)
         local rendered, err = render_message(item, vars, values, html, text, attachments)
         if err then
-            local problem = issue(err)
+            local problem = issue(diagnostic(err, item, candidates))
             for _, existing in ipairs(result.errors) do
                 if existing.resource.kind == problem.resource.kind and existing.resource.name == problem.resource.name
                     and existing.face == problem.face and existing.message == problem.message then
@@ -197,11 +216,14 @@ function M.asset_usage(items: types.ResourceMap, values: types.RenderGlobals): (
     end)
 end
 
-function M.render(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, values: types.RenderGlobals,
+function M.render(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject,
+    candidates: {types.ResourceContent}, values: types.RenderGlobals,
     attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     values.assets = asset_refs.from_items(items)
     return with_draft(items, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
-        return render_message(item, vars, values, html, text, attachments)
+        local result, err = render_message(item, vars, values, html, text, attachments)
+        if err then return nil, diagnostic(err, item, candidates) end
+        return result, nil
     end)
 end
 

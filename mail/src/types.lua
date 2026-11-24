@@ -99,7 +99,7 @@ type OriginalRevisions = {[string]: {[string]: integer}}
 type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, resources: {ResourceContent}?, message: string, vars: JsonObject?}
 type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
 type EditPreview = DraftRequest & {create: ResourceCreate?}
-type DraftIssue = {code: string, message: string, resource: ResourceKey, face: string}
+type DraftIssue = {code: string, message: string, resource: ResourceKey, face: string, candidate_resources: {ResourceKey}}
 type DraftPreview = {subject: string?, html: string?, text: string?, errors: {DraftIssue},
     dependent_messages: {string}, preview_id: string?, inline_assets: InlineAssets?, library_assets: {AssetRef}?}
 type LibraryPageRequest = ResourceFilter & {limit: integer?, cursor: string?}

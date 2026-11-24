@@ -620,7 +620,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         local vars = input.vars
         if vars == nil then vars = item.samples end
         if not bind then
-            return draft.render(items :: types.ResourceMap, item, vars, values :: types.RenderGlobals, input.attachments)
+            return draft.render(items :: types.ResourceMap, item, vars, candidates, values :: types.RenderGlobals, input.attachments)
         end
         local dependent = dependants(items :: types.ResourceMap, keys, changed)
         local result, draft_err = draft.preview(items :: types.ResourceMap, item, vars, candidates, dependent,
