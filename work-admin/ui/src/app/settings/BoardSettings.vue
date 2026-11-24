@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
-import Select from 'primevue/select'
+import Listbox from 'primevue/listbox'
 import NativeDialog from '../../NativeDialog.vue'
 import { computed, provide, nextTick, onUnmounted, reactive, ref, useId, watch } from 'vue'
 import Button from 'primevue/button'
@@ -520,14 +520,12 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
           <p role="alert">{{ pack.error }}</p>
           <Button label="Reload packs" severity="secondary" outlined @click="pack.load()" />
         </div>
-        <label v-else-if="pack.choices.length" class="work-stack work-tight">Pack
-          <Select v-model="pack.installPack" aria-label="Pack to install" appendTo="self" optionLabel="title" optionValue="id" optionDisabled="disabled" :options="pack.choices"
-            :pt="{ option: ({ context }) => ({ 'aria-label': [context.option.title, context.option.unavailable].filter(Boolean).join('. ') }) }">
-            <template #option="{ option }">
-              <span>{{ option.title }}<small v-if="option.unavailable" class="work-pack-unavailable work-block">{{ option.unavailable }}</small></span>
-            </template>
-          </Select>
-        </label>
+        <Listbox v-else-if="pack.choices.length" v-model="pack.installPack" aria-label="Pack to install"
+          dataKey="id" :optionLabel="option => [option.title, option.unavailable].filter(Boolean).join('. ')" optionValue="id" optionDisabled="disabled" :options="pack.choices">
+          <template #option="{ option }">
+            <span>{{ option.title }}<small v-if="option.unavailable" class="work-pack-unavailable work-block">{{ option.unavailable }}</small></span>
+          </template>
+        </Listbox>
         <p v-else class="work-muted">No available packs were found.</p>
         <footer class="work-dialog-actions"><Button label="Cancel" severity="secondary" outlined @click="pack.installing = false" /><Button type="submit" label="Review pack" :disabled="!pack.installChoice || !pack.canManage || pack.loading || !!pack.error" /></footer>
       </form>

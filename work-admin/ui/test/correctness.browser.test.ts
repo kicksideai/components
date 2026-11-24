@@ -790,9 +790,17 @@ it('shows the pack version and planned resources before applying', async () => {
   const { page, requests } = await fixture('settings')
   try {
     await page.getByRole('button', { name: 'Install pack', exact: true }).click()
-    await page.getByRole('combobox', { name: 'Pack to install' }).click()
-    await page.getByRole('option', { name: /Release pipeline/ }).click()
-    await page.getByRole('button', { name: 'Review pack', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Install pack' })
+    const choices = dialog.getByRole('listbox', { name: 'Pack to install' })
+    const releasePack = choices.getByRole('option', { name: 'Release pipeline', exact: true })
+    const clippedHeight = await releasePack.evaluate(option => {
+      const dialog = option.closest('dialog')!
+      const bottom = dialog.getBoundingClientRect().top + dialog.clientTop + dialog.clientHeight
+      return option.getBoundingClientRect().bottom - bottom
+    })
+    expect(clippedHeight, 'the pack option should fit inside the dialog scrollport').toBeLessThanOrEqual(0)
+    await releasePack.click()
+    await dialog.getByRole('button', { name: 'Review pack', exact: true }).click()
     const resources = page.getByRole('region', { name: 'Pack resources' })
     for (const name of ['1.0.0', 'Change register', 'review-notification', 'app:review_trait', 'Board enhancements']) {
       await resources.getByText(name, { exact: true }).waitFor({ timeout: 2000 })
@@ -851,10 +859,10 @@ it('recovers pack discovery and continues the frozen operation with the same key
     const dialog = page.getByRole('dialog', { name: 'Install pack' })
     await dialog.getByText('Pack discovery offline', { exact: false }).waitFor({ timeout: 2000 })
     await dialog.getByRole('button', { name: 'Reload packs', exact: true }).click()
-    await dialog.getByRole('combobox', { name: 'Pack to install' }).click()
-    const malformed = dialog.getByRole('option', { name: /Broken installed pack.*Pack data is malformed.*invalid_pack/ })
+    const choices = dialog.getByRole('listbox', { name: 'Pack to install' })
+    const malformed = choices.getByRole('option', { name: /Broken installed pack.*Pack data is malformed.*invalid_pack/ })
     expect(await malformed.getAttribute('aria-disabled')).toBe('true')
-    await dialog.getByRole('option', { name: /Release pipeline/ }).click()
+    await choices.getByRole('option', { name: 'Release pipeline', exact: true }).click()
     await dialog.getByRole('button', { name: 'Review pack', exact: true }).click()
     await page.getByRole('button', { name: 'Apply changes', exact: true }).click()
     const operation = page.getByRole('region', { name: 'Pack installation' })
