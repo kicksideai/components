@@ -35,7 +35,7 @@ type DirectoryPrincipal = PrincipalRef & {label: string}
 type PrincipalDirectory = {resolve: (PrincipalDirectory, {refs: {PrincipalRef}}) -> ({principals: {DirectoryPrincipal}}?, error?)}
 type Capabilities = {send: boolean, edit_library: boolean, administer_delivery: boolean}
 type ListRequest = {status: string?, template: string?, since: integer?, q: string?, limit: integer, cursor: string?}
-type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean, total: integer?, failed_today: integer?}
+type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean, total: integer?, total_is_lower_bound: boolean?, failed_today: integer?}
 type MessageError = {kind: string, code: string, message: string, provider_detail: string?}
 type LogMessage = Addresses & {
     message_id: string, status: string, created_at: integer, attempts: integer,
@@ -82,6 +82,7 @@ type Resource = {
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
 type AssetUsage = {[string]: {string}}
+type AssetUsageFilter = {dialect: string, assets: {string}, messages: {string}}
 type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}
 type Original = {resource: Resource, entries: {[string]: string}}
 type ResourceMap = {[string]: Resource}
@@ -111,7 +112,8 @@ type LibraryListRow = LibraryRowSummary & {
     title: string, description: string, origin: string?, origin_label: string?,
     base: string?, author: string?, updated_at: integer?,
 }
-type LibraryPage = {items: {LibraryListRow}, next_cursor: string?}
+type LibraryDeclaration = ResourceKey & {base: string?, selected: integer}
+type LibraryPage = {items: {LibraryListRow}, next_cursor: string?, total: integer}
 type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?, note: string?, from: ResourceKey?}
 type LibraryRow = {
     asset_upload_id: string?, filename: string?, content_type: string?, size_bytes: integer?, width: integer?, height: integer?,
@@ -194,7 +196,7 @@ return {
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
-    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,
+    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, AssetUsageFilter = AssetUsageFilter, UsedBy = UsedBy,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,

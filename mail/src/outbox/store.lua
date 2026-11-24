@@ -131,6 +131,26 @@ function M.recent_senders(template: string, since: integer): ({types.RecentSende
     end)
 end
 
+function M.recent_sender_counts(templates: {string}, since: integer): ({[string]: integer}?, error?)
+    return database.read(function(db: sql.DB): ({[string]: integer}?, error?)
+        local args: {unknown} = {since}
+        local placeholders = {}
+        for i, name in ipairs(templates) do
+            args[i + 1] = name
+            placeholders[i] = "$" .. (i + 1)
+        end
+        local rows, err = db:query([[SELECT template,COUNT(*) AS count FROM (
+            SELECT template,sender,origin_kind,origin_id,origin_label FROM mail_message
+            WHERE created_at>=$1 AND status='sent' AND template IN (]] .. table.concat(placeholders, ",") .. [[)
+            GROUP BY template,sender,origin_kind,origin_id,origin_label
+        ) AS sources GROUP BY template]], args)
+        if err then return nil, err end
+        local counts: {[string]: integer} = {}
+        for _, row in ipairs(rows) do counts[row.template :: string] = row.count :: integer end
+        return counts, nil
+    end)
+end
+
 function M.content(row: types.MessageRow): (types.Addresses?, {types.AttachmentRef}?, error?)
     local addresses, addr_err = json.decode(row.recipients)
     if addr_err then return nil, nil, addr_err end

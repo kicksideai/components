@@ -63,6 +63,11 @@ for (let index = 0; index < registries.length; index += 1) {
   for (const failure of checkDependencies(registry.entries)) report(`${relative(root, file)}:${failure}`)
 }
 for (const failure of checkEndpoints(entries)) report(failure)
+const migrationTargets = new Set(rootIndex.entries.find(entry => entry.name === 'target_db')?.targets
+  .filter(target => target.path === '.meta.target_db').map(target => target.entry))
+for (const entry of entries.filter(entry => entry.meta?.type === 'migration')) {
+  if (!migrationTargets.has(entry.id)) report(`${entry.id} is missing from the target_db requirement`)
+}
 const installedIds = new Map(installed.map(entry => [entry.id, entry.kind]))
 for (const entry of entries) {
   if (installedIds.get(entry.id) !== entry.kind) report(`${entry.id} is missing or has a different kind in the installed registry; run make lockrefresh`)

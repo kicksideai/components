@@ -14,6 +14,7 @@ local COLUMNS = [[id, status, created_at, attempts, next_attempt_at, sent_at, fi
     error_kind, error_code, error_message, provider_detail, origin_kind, origin_id, origin_label, resend_of,
     CASE WHEN failed_html IS NOT NULL OR failed_text IS NOT NULL THEN 1 ELSE 0 END AS has_failed_content]]
 local ADMIN = "kickside.mail:mailer"
+local SUMMARY_WINDOW = 10000
 
 local function invalid(message: string): error
     return errors.new({kind = errors.INVALID, message = message, retryable = false, details = {code = "invalid_request"}})
@@ -146,12 +147,24 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
         if input.template then filters[#filters + 1] = "template=" .. bind(input.template) end
         if input.status then filters[#filters + 1] = "status=" .. bind(input.status) end
         if input.since then filters[#filters + 1] = "created_at>=" .. bind(input.since) end
+        local scope = where(filters)
+        local order = " ORDER BY created_at DESC,id DESC"
+        local bound = " LIMIT " .. tostring(SUMMARY_WINDOW)
+        local search_cte = ""
+        local summary = "SELECT COUNT(*) AS total,0 AS search_limited FROM (SELECT id FROM mail_message"
+            .. scope .. " LIMIT " .. tostring(SUMMARY_WINDOW + 1) .. ") AS counted"
+        local page_source = "mail_message"
         if input.q and input.q ~= "" then
             local dialect, dialect_err = db:type()
             if dialect_err then return nil, dialect_err end
-            filters[#filters + 1] = search_clause(dialect, bind(input.q:lower()))
+            local search = search_clause(dialect, bind(input.q:lower()))
+            search_cte = "search_window AS MATERIALIZED (SELECT id,created_at,subject,recipients FROM mail_message"
+                .. scope .. order .. bound .. "), matches AS MATERIALIZED (SELECT id,created_at FROM search_window WHERE "
+                .. search .. "), "
+            summary = "SELECT COUNT(*) AS total, (SELECT COUNT(*) FROM search_window) AS search_limited FROM matches"
+            filters = {}
+            page_source = "matches"
         end
-        local summary = "SELECT COUNT(*) AS total FROM mail_message" .. where(filters)
         local start = (policy.now() // policy.DAY_MS) * policy.DAY_MS
         local failures = "SELECT COUNT(*) AS failed_today FROM mail_message WHERE status='failed' AND finished_at>="
             .. bind(start) .. " AND finished_at<" .. bind(start + policy.DAY_MS)
@@ -159,11 +172,11 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
         if cursor_time then
             filters[#filters + 1] = "(created_at,id)<(" .. bind(cursor_time) .. "," .. bind(cursor_id) .. ")"
         end
-        local page = "SELECT " .. COLUMNS .. " FROM mail_message" .. where(filters)
-            .. " ORDER BY created_at DESC, id DESC LIMIT " .. bind(input.limit + 1)
-        local query = "WITH summary AS (" .. summary .. "), failures AS (" .. failures .. "), page AS (" .. page .. ") "
-            .. "SELECT page.*,total,failed_today FROM summary CROSS JOIN failures LEFT JOIN page ON 1=1 "
-            .. "ORDER BY page.created_at DESC, page.id DESC"
+        local page_ids = "SELECT id FROM " .. page_source .. where(filters) .. order .. " LIMIT " .. bind(input.limit + 1)
+        local page = "SELECT " .. COLUMNS .. " FROM mail_message WHERE id IN (" .. page_ids .. ")"
+        local query = "WITH " .. search_cte .. "summary AS (" .. summary .. "), failures AS (" .. failures
+            .. "), page AS (" .. page .. ") SELECT page.*,total,search_limited,failed_today FROM summary "
+            .. "CROSS JOIN failures LEFT JOIN page ON 1=1 ORDER BY page.created_at DESC,page.id DESC"
         local rows, read_err = db:query(query, args)
         if read_err then return nil, read_err end
         local size = rows[1].id and #rows or 0
@@ -175,7 +188,10 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
         end
         local more = size > input.limit
         local last = items[#items]
-        return {items = items, has_more = more, total = rows[1].total :: integer, failed_today = rows[1].failed_today :: integer,
+        local total = rows[1].total :: integer
+        local lower_bound = total > SUMMARY_WINDOW or (rows[1].search_limited :: integer) >= SUMMARY_WINDOW
+        return {items = items, has_more = more, total = math.min(total, SUMMARY_WINDOW),
+            total_is_lower_bound = lower_bound or nil, failed_today = rows[1].failed_today :: integer,
             next_cursor = more and (tostring(last.created_at) .. ":" .. last.message_id) or nil}, nil
     end)
 end

@@ -54,9 +54,9 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail HTTP", function()
-        local owned, activity_rows, configured
+        local owned, activity_rows, activity_sender, configured
         test.before_each(function()
-            owned, activity_rows, configured = {}, {}, false
+            owned, activity_rows, activity_sender, configured = {}, {}, nil, false
         end)
         local function own(item)
             owned[#owned + 1] = {kind = item.kind, name = item.name}
@@ -83,8 +83,11 @@ return {run = test.run_cases(function()
         end
         test.after_each(function()
             library_fixtures.remove(owned)
-            if #activity_rows > 0 then
+            if #activity_rows > 0 or activity_sender then
                 local db = assert(sql.get("app:db"))
+                if activity_sender then
+                    assert(db:execute("DELETE FROM mail_message WHERE sender=$1", {activity_sender}))
+                end
                 for _, id in ipairs(activity_rows) do
                     assert(db:execute("DELETE FROM mail_message WHERE id=$1", {id}))
                 end
@@ -253,6 +256,31 @@ return {run = test.run_cases(function()
             test.is_true(bases.items[1].used_by.messages >= 1)
         end)
 
+        test.it("returns an exact total and one order across stored and packaged library pages", function()
+            local editor = session("editor")
+            for _, name in ipairs({"zz-paging", "aa-paging"}) do
+                data(editor, "POST", "/library", own(fixture("part", name, "Pagination entry")), 201)
+            end
+            local route = "/library?kind=part&view=summary&limit=2"
+            local all = data(editor, "GET", "/library?kind=part").items
+            local offset, cursor = 1, nil
+            repeat
+                local page = data(editor, "GET", route .. (cursor and "&cursor=" .. cursor or ""))
+                test.eq(#all, page.total)
+                for _, item in ipairs(page.items) do
+                    test.eq(all[offset].name, item.name)
+                    test.is_nil(item.html)
+                    offset = offset + 1
+                end
+                cursor = page.next_cursor
+            until not cursor or offset > #all
+            test.eq(#all + 1, offset)
+            test.is_nil(cursor)
+            local absent = data(editor, "GET", route .. "&q=not-a-matching-resource")
+            test.eq(0, absent.total)
+            test.eq(0, #absent.items)
+        end)
+
         test.it("searches activity subjects and recipients with unpaged totals and today's failures", function()
             local admin = session("delivery")
             local first = failed(admin.id, "Status Needle", "reader@example.org")
@@ -274,6 +302,34 @@ return {run = test.run_cases(function()
             local empty = data(admin, "GET", "/activity?q=unmatched-string")
             test.eq(0, empty.total)
             test.eq(page.failed_today, empty.failed_today)
+        end)
+
+        test.it("reports bounded Activity totals and preserves tied message cursors", function()
+            local sender = session("sender")
+            activity_sender = sender.id
+            local older = failed(sender.id, "Window boundary", "reader@example.org", 1)
+            local first = failed(sender.id, "Window boundary", "reader@example.org", 10002)
+            local second = failed(sender.id, "Window boundary", "reader@example.org", 10002)
+            local db = assert(sql.get("app:db"))
+            assert(db:execute([[WITH RECURSIVE sequence(n) AS (
+                SELECT 2 UNION ALL SELECT n+1 FROM sequence WHERE n<10001
+            )
+            INSERT INTO mail_message (id,created_at,finished_at,sender,recipients,subject,from_address,attachments,driver_id,status)
+            SELECT 'window-' || n,n,n,$1,'{"to":["reader@example.org"]}','Digest','mail@example.org','[]','fixture','failed'
+            FROM sequence]], {sender.id}))
+            assert(db:release())
+            local list = data(sender, "GET", "/activity?limit=1")
+            test.eq(10000, list.total)
+            test.is_true(list.total_is_lower_bound)
+            local search = data(sender, "GET", "/activity?q=Window%20boundary&limit=1")
+            test.eq(2, search.total)
+            test.is_true(search.total_is_lower_bound)
+            test.is_true(search.has_more)
+            local next_page = data(sender, "GET", "/activity?q=Window%20boundary&limit=1&cursor=" .. search.next_cursor)
+            test.is_false(next_page.has_more)
+            local seen = {[search.items[1].message_id] = true, [next_page.items[1].message_id] = true}
+            test.is_true(seen[first] and seen[second])
+            test.is_nil(seen[older])
         end)
 
         test.it("encodes empty sample and schema maps as JSON objects", function()

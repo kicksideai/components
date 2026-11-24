@@ -103,7 +103,7 @@ function M.boot(): {status: string, message: string?}
         local assets = asset_refs.from_items(items :: types.ResourceMap)
         local usage, usage_err = draft.asset_usage(items :: types.ResourceMap, values :: types.RenderGlobals)
         if usage_err then return nil, usage_err end
-        local save_err = store.save_asset_usage(tx, assets, usage :: types.AssetUsage)
+        local save_err = store.save_asset_usage(tx, dialect, assets, usage :: types.AssetUsage)
         if save_err then return nil, save_err end
         local prune_err = store.prune_packaged_asset_usage(tx, usage :: types.AssetUsage)
         if prune_err then return nil, prune_err end

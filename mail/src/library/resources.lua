@@ -259,6 +259,34 @@ local function matches(item: types.Resource, q: string?): boolean
         or contains(item.html, q) or contains(item.text, q)
 end
 
+function M.page(filter: types.ResourceFilter, after: types.ResourceKey?, limit: integer): (types.LibraryPage?, error?)
+    local originals, err = M.originals()
+    if err then return nil, err end
+    local declarations: {types.LibraryDeclaration} = {}
+    for _, declared in pairs(originals) do
+        local item = declared.resource
+        local selected = (not filter.kind or item.kind == filter.kind) and (not filter.base or item.base == filter.base)
+            and matches(item, filter.q and filter.q:lower())
+        declarations[#declarations + 1] = {kind = item.kind, name = item.name, base = item.base, selected = selected and 1 or 0}
+    end
+    return database.read(function(db: sql.DB): (types.LibraryPage?, error?)
+        local page, read_err = store.summary(db, declarations, filter, after, limit)
+        if read_err then return nil, read_err end
+        for _, row in ipairs(page.items) do
+            local original = originals[M.key(row)]
+            if row.state == "original" then
+                local item = original.resource
+                row.title, row.description, row.origin = item.title, item.description, item.origin
+                row.origin_label = item.origin_label
+            else
+                local origin_err = M.match_origin((row :: unknown) :: types.Resource, original)
+                if origin_err then return nil, origin_err end
+            end
+        end
+        return page, nil
+    end)
+end
+
 function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
     local q = filter.q and filter.q:lower()
     return database.read(function(db: sql.DB): ({types.Resource}?, error?)

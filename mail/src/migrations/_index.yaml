@@ -82,3 +82,11 @@ entries:
     imports:
       migration: wippy.migration:migration
       types: kickside.mail:types
+  - name: 11_library_page_indexes
+    kind: function.lua
+    meta: { type: migration, timestamp: '2026-11-23T00:10:00Z' }
+    source: file://11_library_page_indexes.lua
+    method: migrate
+    imports:
+      migration: wippy.migration:migration
+      types: kickside.mail:types

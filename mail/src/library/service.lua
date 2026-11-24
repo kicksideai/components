@@ -270,7 +270,7 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
         if operation == "delete" then
             local remove_err = store.remove(tx, key, true)
             if remove_err then return nil, remove_err end
-            local usage_err = store.save_asset_usage(tx, assets, usage :: types.AssetUsage, changed)
+            local usage_err = store.save_asset_usage(tx, dialect, assets, usage :: types.AssetUsage, changed)
             if usage_err then return nil, usage_err end
             return previous, nil
         end
@@ -312,7 +312,7 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
             end
             results[i] = item
         end
-        local usage_err = store.save_asset_usage(tx, assets, usage :: types.AssetUsage, changed)
+        local usage_err = store.save_asset_usage(tx, dialect, assets, usage :: types.AssetUsage, changed)
         if usage_err then return nil, usage_err end
         if key.kind == "asset" and edits[1].content then
             local names = (usage :: types.AssetUsage)[key.name] or {}
@@ -452,6 +452,14 @@ local function read_asset_usage(name: string?): (types.AssetUsage?, error?)
     return usage, nil
 end
 
+local function recent_since(): (integer?, error?)
+    local config, err = settings.read("kickside.mail")
+    if err then return nil, err end
+    local days = policy.retention_days(config.log_retention_days)
+    if not days then return nil, settings.missing("Mail delivery log retention days are invalid") end
+    return policy.now() - days * policy.DAY_MS, nil
+end
+
 local function used_by(item: types.Resource): (types.UsedBy?, error?)
     if item.kind == "asset" then
         local usage, err = read_asset_usage(item.name)
@@ -462,11 +470,9 @@ local function used_by(item: types.Resource): (types.UsedBy?, error?)
         if read_err then return nil, read_err end
         return {messages = message_names(messages)}, nil
     elseif item.kind == "message" then
-        local config, config_err = settings.read("kickside.mail")
-        if config_err then return nil, config_err end
-        local days = policy.retention_days(config.log_retention_days)
-        if not days then return nil, settings.missing("Mail delivery log retention days are invalid") end
-        local senders, read_err = outbox.recent_senders(item.name, policy.now() - days * policy.DAY_MS)
+        local since, since_err = recent_since()
+        if since_err then return nil, since_err end
+        local senders, read_err = outbox.recent_senders(item.name, since :: integer)
         if read_err then return nil, read_err end
         return {recent_senders = senders}, nil
     end
@@ -519,47 +525,33 @@ function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, erro
     if invalid then return nil, invalid end
     local limit, cursor, page_err = keyset.args(input)
     if page_err then return nil, page_err end
-    local items, read_err = M.list(input)
-    if read_err then return nil, read_err end
-    local page, next_cursor = keyset.page(items, function(row: unknown): string
-        return resources.key(row :: types.ResourceKey)
-    end, limit :: integer, cursor)
-    local rows: {types.LibraryListRow} = {}
-    local base_counts: {[string]: integer}?
-    local asset_usage: types.AssetUsage?
-    for i, value in ipairs(page) do
-        local item = value :: types.Resource
-        local usage: types.UsedBy?
-        if item.kind == "base" then
-            if not base_counts then
-                local messages, read_err = resources.list({kind = "message"})
-                if read_err then return nil, read_err end
-                base_counts = {}
-                for _, message in ipairs(messages) do
-                    local base = message.base :: string
-                    base_counts[base] = (base_counts[base] or 0) + 1
-                end
-            end
-        elseif item.kind == "asset" then
-            if not asset_usage then
-                local usage_err
-                asset_usage, usage_err = read_asset_usage()
-                if usage_err then return nil, usage_err end
-            end
-            usage = {messages = asset_usage[item.name] or {}}
-        elseif item.kind == "message" then
-            local usage_err
-            usage, usage_err = used_by(item)
-            if usage_err then return nil, usage_err end
+    local after: types.ResourceKey?
+    if cursor then
+        local kind, name = cursor:match("^([a-z]+)/([a-z0-9][a-z0-9_%-]*)$")
+        if not kind or not name then
+            return nil, resources.error(errors.INVALID, "invalid_mail_filter", "Use the next cursor from a library page")
         end
-        rows[i] = {kind = item.kind, name = item.name, title = item.title, description = item.description,
-            state = item.state, revision = item.revision, origin = item.origin, origin_label = item.origin_label,
-            base = item.base, author = item.author, updated_at = item.updated_at,
-            used_by = base_counts and item.kind == "base" and {messages = base_counts[item.name] or 0}
-                or usage and {messages = usage.messages and #usage.messages or nil,
-                    recent_sources = usage.recent_senders and #usage.recent_senders or nil} or nil}
+        after = {kind = kind, name = name}
+        if resources.check_key(after) then
+            return nil, resources.error(errors.INVALID, "invalid_mail_filter", "Use the next cursor from a library page")
+        end
     end
-    return {items = rows, next_cursor = next_cursor}, nil
+    local page, err = resources.page(input, after, limit :: integer)
+    if err then return nil, err end
+    local names: {string} = {}
+    for _, row in ipairs(page.items) do
+        if row.kind == "message" then names[#names + 1] = row.name end
+    end
+    if #names > 0 then
+        local since, since_err = recent_since()
+        if since_err then return nil, since_err end
+        local counts, counts_err = outbox.recent_sender_counts(names, since :: integer)
+        if counts_err then return nil, counts_err end
+        for _, row in ipairs(page.items) do
+            if row.kind == "message" then row.used_by = {recent_sources = counts[row.name] or 0} end
+        end
+    end
+    return page, nil
 end
 
 local function create_edit(input: types.ResourceCreate): types.LibraryEdit
