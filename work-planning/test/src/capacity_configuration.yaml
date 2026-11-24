@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: capacity_configuration
+  kind: function.lua
+  meta: {type: test, suite: kickside_work_planning_capacity, timeout: 120s}
+  source: file://capacity_configuration.lua
+  method: run
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+- name: capacity_work_validation
+  kind: function.lua
+  meta: {type: test, suite: kickside_work_planning_work_validation, timeout: 120s}
+  source: file://capacity_configuration.lua
+  method: work_validation
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
