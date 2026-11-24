@@ -176,17 +176,31 @@ local function define()
 
         test.it("reports eligibility that crosses the cutoff while another item is being purged", function()
             local h = trash_board()
+            local other = trash_board()
             local expired, next_item = steps.create(h, "task"), steps.create(h, "task")
             steps.retention_sweep()
             trash_at(h, expired, clock.offset(-60))
             local future = clock.deadline(5000)
+            local expected_deadline = future.ns // 1000000 + 1
+            local other_deadline = expected_deadline - 1
             trash_at(h, next_item, future.at)
             append_probe.wait_on_purge(h.id, expired, future.at)
             start_at(h)
+            -- Another board has an earlier wake outside this discovery page.
+            local db = assert(store.open())
+            assert(db:execute("UPDATE kickside_work_board SET retention_due_ms=$1 WHERE board_id=$2",
+                { other_deadline, other.id }))
+            assert(db:execute("UPDATE kickside_work_retention SET board_through=$1 WHERE owner_id='work'", { h.id }))
+            db:release()
             local result = steps.retention_run()
+            db = assert(store.open())
+            local scheduled = assert(db:query("SELECT retention_due_ms FROM kickside_work_board WHERE board_id=$1", { h.id }))[1]
+            db:release()
+            test.eq(store.int(scheduled.retention_due_ms), expected_deadline)
+            test.is_true(assert(store.int(result.deadline_ms)) <= other_deadline, "the owner must cover the earlier wake")
+            test.is_true(result.needs_continue, "a deadline elapsed during the pass")
             test.eq(life(h, expired), "purged")
             test.eq(life(h, next_item), "trashed", "the target was future-eligible at collection")
-            test.eq(result.deadline_ms, future.ns // 1000000 + 1)
         end)
         test.it("collects future-eligible trash at the reported deadline without another change", function()
             local pid,err=process.spawn_monitored(NAME,"app:processes")
