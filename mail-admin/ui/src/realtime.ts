@@ -17,7 +17,7 @@ function payload(message: unknown): Record<string, unknown> {
 
 export function libraryChange(message: unknown): LibraryChange | undefined {
   const data = payload(message)
-  if ((data.kind === 'message' || data.kind === 'base' || data.kind === 'part') && typeof data.name === 'string' && typeof data.revision === 'number') {
+  if ((data.kind === 'message' || data.kind === 'base' || data.kind === 'part' || data.kind === 'asset') && typeof data.name === 'string' && typeof data.revision === 'number') {
     return { kind: data.kind, name: data.name, revision: data.revision }
   }
 }

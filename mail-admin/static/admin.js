@@ -1,28 +1,32 @@
-import { defineComponent as ae, useId as de, openBlock as l, createElementBlock as i, unref as a, normalizeClass as oe, createElementVNode as t, createTextVNode as K, toDisplayString as u, createCommentVNode as V, renderSlot as Se, computed as z, createBlock as B, resolveDynamicComponent as Ha, normalizeProps as Fa, guardReactiveProps as Ka, createSlots as aa, withCtx as T, Fragment as H, renderList as re, createVNode as s, inject as Ja, shallowRef as fe, ref as p, watch as Q, reactive as Wa, withModifiers as xe, onBeforeUnmount as Qe, useModel as Ya, mergeModels as Ga, defineAsyncComponent as Xe, withDirectives as Za, vShow as Qa, provide as Xa } from "vue";
-import { u as De, a as el, b as al } from "./wc-runtime-IM7bQYl9.js";
+import { defineComponent as te, useId as ve, openBlock as l, createElementBlock as n, unref as a, normalizeClass as ne, createElementVNode as t, createTextVNode as G, toDisplayString as h, createCommentVNode as T, renderSlot as ze, computed as P, createBlock as O, resolveDynamicComponent as nl, normalizeProps as ol, guardReactiveProps as rl, createSlots as fa, withCtx as j, Fragment as Y, renderList as me, inject as ul, ref as _, shallowRef as ge, onBeforeUnmount as Be, onMounted as dl, createVNode as s, watch as X, reactive as cl, nextTick as ea, withModifiers as je, useModel as za, mergeModels as ua, defineAsyncComponent as da, withDirectives as vl, vShow as ml, provide as fl } from "vue";
+import { u as la, a as bl, b as yl, c as pl } from "./wc-runtime-CYKoUhqs.js";
 import "pinia";
-import { u as Ne, l as le, i as Le, d as ne, k as me, A as ll, e as _e, p as ye, a as pe, _ as Je, b as la, c as be, s as _a, f as tl, g as ta, h as Pe, o as We, j as sl, m as il, n as qe, q as xa, r as He, t as nl, v as Ca, w as Va, x as Sa, y as Ra, z as Fe, B as ol, C as rl, D as ul, E as dl, F as cl } from "./SettingsDraftActions.vue_vue_type_script_setup_true_lang-iB-gd4CJ.js";
-import { api as vl, host as Re, define as ml } from "@wippy-fe/proxy";
-import { Icon as L } from "@iconify/vue";
-import F from "primevue/button";
-import ue from "primevue/column";
-import sa from "primevue/datatable";
-import ia from "primevue/iconfield";
-import na from "primevue/inputicon";
+import { u as Ea, l as se, d as ie, i as qe, k as be, A as gl, e as Ue, a as we, p as pe, b as ke, _ as ta, c as ba, f as ye, s as Oa, g as Fe, h as ya, j as Je, o as sa, m as hl, n as kl, q as Pa, r as Ma, t as aa, v as Da, w as Ba, x as qa, y as Ha, z as De, B as $l, C as wl, D as _l, E as xl, F as Cl, G as Vl } from "./SettingsDraftActions.vue_vue_type_script_setup_true_lang-DyE7BiXg.js";
+import { host as Re, api as Sl, on as Tl, define as Rl } from "@wippy-fe/proxy";
+import { Icon as N } from "@iconify/vue";
+import Ce from "primevue/skeleton";
+import D from "primevue/button";
+import de from "primevue/column";
+import pa from "primevue/datatable";
+import ga from "primevue/iconfield";
+import ha from "primevue/inputicon";
 import ce from "primevue/inputtext";
-import he from "primevue/selectbutton";
-import Ce from "primevue/dialog";
-import Ue from "primevue/tag";
-import Ae from "primevue/select";
-import bl from "primevue/accordion";
-import fl from "primevue/accordioncontent";
-import pl from "primevue/accordionheader";
-import yl from "primevue/accordionpanel";
-import hl from "primevue/checkbox";
-import Ta from "primevue/drawer";
-import gl from "primevue/fileupload";
-import kl from "primevue/textarea";
-const $l = ["aria-labelledby"], wl = { class: "kx-railhead" }, _l = ["id"], xl = { key: 0 }, Cl = { class: "kx-railhead-acts" }, Vl = { class: "kx-rail-body" }, Sl = /* @__PURE__ */ ae({
+import $e from "primevue/selectbutton";
+import Ae from "primevue/dialog";
+import Ul from "primevue/progressbar";
+import Ee from "primevue/tag";
+import Oe from "primevue/select";
+import jl from "primevue/accordion";
+import Al from "primevue/accordioncontent";
+import Il from "primevue/accordionheader";
+import Ll from "primevue/accordionpanel";
+import Nl from "primevue/menu";
+import zl from "primevue/checkbox";
+import El from "primevue/inputnumber";
+import ca from "primevue/textarea";
+import Fa from "primevue/drawer";
+import Ol from "primevue/fileupload";
+const Pl = ["aria-labelledby"], Ml = { class: "kx-railhead" }, Dl = ["id"], Bl = { key: 0 }, ql = { class: "kx-railhead-acts" }, Hl = { class: "kx-rail-body" }, Fl = /* @__PURE__ */ te({
   __name: "ListRail",
   props: {
     title: {},
@@ -30,33 +34,33 @@ const $l = ["aria-labelledby"], wl = { class: "kx-railhead" }, _l = ["id"], xl =
     settings: { type: Boolean }
   },
   setup(e) {
-    const d = de();
-    return (r, f) => (l(), i("aside", {
-      class: oe(["kx-rail", { "kx-settings-list-rail": e.settings }]),
-      "aria-labelledby": a(d)
+    const v = ve();
+    return (r, c) => (l(), n("aside", {
+      class: ne(["kx-rail", { "kx-settings-list-rail": e.settings }]),
+      "aria-labelledby": a(v)
     }, [
-      t("div", wl, [
+      t("div", Ml, [
         t("span", {
-          id: a(d),
+          id: a(v),
           class: "kx-railhead-title"
         }, [
-          K(u(e.title), 1),
-          e.count !== void 0 ? (l(), i("b", xl, u(e.count), 1)) : V("", !0)
-        ], 8, _l),
-        t("div", Cl, [
-          Se(r.$slots, "actions")
+          G(h(e.title), 1),
+          e.count !== void 0 ? (l(), n("b", Bl, h(e.count), 1)) : T("", !0)
+        ], 8, Dl),
+        t("div", ql, [
+          ze(r.$slots, "actions")
         ])
       ]),
-      Se(r.$slots, "toolbar"),
-      t("div", Vl, [
-        Se(r.$slots, "default")
+      ze(r.$slots, "toolbar"),
+      t("div", Hl, [
+        ze(r.$slots, "default")
       ])
-    ], 10, $l));
+    ], 10, Pl));
   }
-}), Rl = ["aria-label"], Tl = {
+}), Jl = ["aria-label"], Wl = {
   key: 0,
   class: "kx-settings-rail-group"
-}, Ul = ["aria-current", "onClick"], Al = { class: "kx-settings-rail-label" }, Ll = /* @__PURE__ */ ae({
+}, Kl = ["aria-current", "onClick"], Yl = { class: "kx-settings-rail-label" }, Gl = /* @__PURE__ */ te({
   __name: "SettingsRail",
   props: {
     label: {},
@@ -68,151 +72,168 @@ const $l = ["aria-labelledby"], wl = { class: "kx-railhead" }, _l = ["id"], xl =
   },
   emits: ["update:value"],
   setup(e) {
-    const d = e, r = z(() => d.leadingItem ? [{ items: [d.leadingItem] }, ...d.groups] : d.groups);
-    function f($) {
-      const c = [...$.currentTarget.querySelectorAll(".kx-settings-rail-item")], n = c.indexOf($.target);
-      if (n < 0) return;
-      let w;
-      switch ($.key) {
+    const v = e, r = P(() => v.leadingItem ? [{ items: [v.leadingItem] }, ...v.groups] : v.groups);
+    function c(y) {
+      const o = [...y.currentTarget.querySelectorAll(".kx-settings-rail-item")], k = o.indexOf(y.target);
+      if (k < 0) return;
+      let b;
+      switch (y.key) {
         case "ArrowDown":
         case "ArrowRight":
-          w = (n + 1) % c.length;
+          b = (k + 1) % o.length;
           break;
         case "ArrowUp":
         case "ArrowLeft":
-          w = (n + c.length - 1) % c.length;
+          b = (k + o.length - 1) % o.length;
           break;
         case "Home":
-          w = 0;
+          b = 0;
           break;
         case "End":
-          w = c.length - 1;
+          b = o.length - 1;
           break;
         default:
           return;
       }
-      $.preventDefault(), c[w]?.focus();
+      y.preventDefault(), o[b]?.focus();
     }
-    return ($, c) => (l(), B(Ha(e.title ? Sl : "div"), Fa(Ka(e.title ? { title: e.title, count: e.count, settings: !0 } : { class: "kx-settings-rail-standalone" })), aa({
-      default: T(() => [
+    return (y, o) => (l(), O(nl(e.title ? Fl : "div"), ol(rl(e.title ? { title: e.title, count: e.count, settings: !0 } : { class: "kx-settings-rail-standalone" })), fa({
+      default: j(() => [
         t("nav", {
-          class: oe(["kx-settings-rail", { "kx-settings-rail-framed": e.title }]),
+          class: ne(["kx-settings-rail", { "kx-settings-rail-framed": e.title }]),
           "aria-label": e.label,
-          onKeydown: f
+          onKeydown: c
         }, [
-          (l(!0), i(H, null, re(r.value, (n, w) => (l(), i("div", {
-            key: n.items[0]?.value ?? w,
-            class: oe(["kx-settings-rail-section", { "kx-settings-rail-leading": e.leadingItem && w === 0 }])
+          (l(!0), n(Y, null, me(r.value, (k, b) => (l(), n("div", {
+            key: k.items[0]?.value ?? b,
+            class: ne(["kx-settings-rail-section", { "kx-settings-rail-leading": e.leadingItem && b === 0 }])
           }, [
-            n.heading ? (l(), i("div", Tl, u(n.heading), 1)) : V("", !0),
-            (l(!0), i(H, null, re(n.items, (k) => (l(), i("button", {
-              key: k.value,
+            k.heading ? (l(), n("div", Wl, h(k.heading), 1)) : T("", !0),
+            (l(!0), n(Y, null, me(k.items, (x) => (l(), n("button", {
+              key: x.value,
               type: "button",
               class: "kx-settings-rail-item",
-              "aria-current": k.value === e.value ? "true" : void 0,
-              onClick: (y) => $.$emit("update:value", k.value)
+              "aria-current": x.value === e.value ? "true" : void 0,
+              onClick: (V) => y.$emit("update:value", x.value)
             }, [
-              k.icon ? (l(), B(a(L), {
+              x.icon ? (l(), O(a(N), {
                 key: 0,
                 class: "kx-settings-rail-icon",
-                icon: k.icon,
+                icon: x.icon,
                 "aria-hidden": "true"
-              }, null, 8, ["icon"])) : V("", !0),
-              t("span", Al, u(k.label), 1)
-            ], 8, Ul))), 128))
+              }, null, 8, ["icon"])) : T("", !0),
+              t("span", Yl, h(x.label), 1)
+            ], 8, Kl))), 128))
           ], 2))), 128))
-        ], 42, Rl)
+        ], 42, Jl)
       ]),
       _: 2
     }, [
-      e.title && $.$slots.actions ? {
+      e.title && y.$slots.actions ? {
         name: "actions",
-        fn: T(() => [
-          Se($.$slots, "actions")
+        fn: j(() => [
+          ze(y.$slots, "actions")
         ]),
         key: "0"
       } : void 0
     ]), 1040));
   }
-}), jl = /* @__PURE__ */ ae({
-  __name: "SettingsDirectoryActions",
-  props: {
-    createLabel: {}
-  },
-  emits: ["create", "defaults"],
-  setup(e) {
-    return (d, r) => (l(), i(H, null, [
-      s(a(F), {
-        type: "button",
-        text: "",
-        "aria-label": e.createLabel,
-        title: e.createLabel,
-        onClick: r[0] || (r[0] = (f) => d.$emit("create"))
-      }, {
-        icon: T(() => [
-          s(a(L), {
-            icon: "tabler:plus",
-            "aria-hidden": "true"
-          })
-        ]),
-        _: 1
-      }, 8, ["aria-label", "title"]),
-      s(a(F), {
-        type: "button",
-        text: "",
-        "aria-label": "Application defaults",
-        title: "Application defaults",
-        onClick: r[1] || (r[1] = (f) => d.$emit("defaults"))
-      }, {
-        icon: T(() => [
-          s(a(L), {
-            icon: "tabler:settings",
-            "aria-hidden": "true"
-          })
-        ]),
-        _: 1
-      })
-    ], 64));
-  }
-}), Ua = Symbol("mail-admin");
-function ve() {
-  const e = Ja(Ua);
+}), Ja = Symbol("mail-admin");
+function fe() {
+  const e = ul(Ja);
   if (!e) throw new Error("Mail administration context is missing");
   return e;
 }
-function ge() {
+function ka(e) {
+  const { kind: v, name: r, title: c, description: y, state: o, revision: k, origin: b, origin_label: x, base: V, author: i, author_label: U, updated_at: S, used_by: R } = e, C = R && {
+    messages: R.messages?.length,
+    recent_sources: R.recent_senders?.length
+  };
+  return { kind: v, name: r, title: c, description: y, state: o, revision: k, origin: b, origin_label: x, base: V, author: i, author_label: U, updated_at: S, used_by: C };
+}
+function Zl() {
+  const e = Object.fromEntries(["message", "base", "part", "asset"].map((u) => [u, { rows: ge([]), loaded: _(!1), loading: _(!1), error: _(""), users: 0, stale: !1 }])), v = /* @__PURE__ */ new Map(), r = /* @__PURE__ */ new Set();
+  function c(u) {
+    const d = v.get(u);
+    if (d) return d;
+    const m = e[u];
+    m.loading.value = !0;
+    const $ = (async () => {
+      try {
+        const A = [];
+        let I;
+        do {
+          const M = await se.page({ kind: u, cursor: I });
+          A.push(...M.items), I = M.next_cursor;
+        } while (I);
+        m.rows.value = A, m.loaded.value = !0, m.stale = !1, m.error.value = "";
+      } catch (A) {
+        m.error.value = ie(A, "The mail library could not be loaded.");
+      } finally {
+        m.loading.value = !1, v.delete(u);
+      }
+    })();
+    return v.set(u, $), $;
+  }
+  function y(u) {
+    const d = e[u];
+    (!d.loaded.value || d.stale) && !d.loading.value && c(u);
+  }
+  function o(...u) {
+    dl(() => {
+      for (const d of u)
+        e[d].users++, y(d);
+    }), Be(() => {
+      for (const d of u) e[d].users--;
+    });
+  }
+  function k(u, d, m) {
+    const $ = e[u];
+    if (!$.loaded.value) return;
+    const A = $.rows.value.filter((I) => I.name !== d);
+    m && A.push(m), $.rows.value = A;
+  }
+  async function b(u) {
+    let d, m;
+    try {
+      m = await se.get(u), d = ka(m);
+    } catch ($) {
+      if (!qe($)) {
+        e[u.kind].stale = !0, e[u.kind].users > 0 && y(u.kind);
+        return;
+      }
+    }
+    k(u.kind, u.name, d);
+    for (const $ of r) $(u, d, m);
+  }
+  Ea((u) => {
+    b(u);
+  });
+  function x() {
+    for (const u of Object.values(e)) u.stale = u.loaded.value;
+    for (const [u, d] of Object.entries(e)) d.users > 0 && y(u);
+  }
+  function V(u) {
+    r.add(u), Be(() => r.delete(u));
+  }
+  const i = (u, d) => e[u].rows.value.find((m) => m.name === d);
+  function U(u, d) {
+    const m = i(u, d);
+    return m ? m.title : (y(u), e[u].loaded.value ? d : void 0);
+  }
+  return { kinds: e, use: o, ensure: y, load: c, find: i, title: U, ofKind: (u) => [...e[u].rows.value].sort((d, m) => d.title.localeCompare(m.title)), ready: (u) => e[u].loaded.value, failed: (u) => e[u].error.value, onRow: V, refresh: x, patch: k };
+}
+function xe() {
   let e = 0;
   return () => {
-    const d = ++e;
-    return () => d === e;
+    const v = ++e;
+    return () => v === e;
   };
 }
-function Il() {
-  const e = fe([]), d = p(!0), r = p(!1), f = p(!1), $ = p(""), c = p(0), n = ge();
-  async function w() {
-    const x = n();
-    r.value || (d.value = !0);
-    try {
-      const m = await le.all();
-      if (!x()) return;
-      e.value = m, $.value = "", f.value = !1, r.value = !0, c.value++;
-    } catch (m) {
-      if (!x()) return;
-      f.value = Le(m), $.value = f.value ? "" : ne(m, "The mail library could not be loaded.");
-    } finally {
-      x() && (d.value = !1);
-    }
-  }
-  Ne(() => {
-    w();
-  }), De(w);
-  const k = z(() => new Map(e.value.map((x) => [x.kind + "/" + x.name, x])));
-  return { resources: e, loading: d, loaded: r, denied: f, error: $, version: c, load: w, find: (x, m) => k.value.get(x + "/" + m), ofKind: (x) => e.value.filter((m) => m.kind === x).sort((m, _) => m.title.localeCompare(_.title)) };
-}
-const Dl = { class: "kx-empty" }, Nl = { class: "kx-empty-ico" }, Pl = { class: "kx-empty-title" }, El = {
+const Ql = { class: "kx-empty" }, Xl = { class: "kx-empty-ico" }, et = { class: "kx-empty-title" }, at = {
   key: 0,
   class: "kx-empty-sub"
-}, oa = /* @__PURE__ */ ae({
+}, $a = /* @__PURE__ */ te({
   __name: "EmptyState",
   props: {
     icon: {},
@@ -223,388 +244,531 @@ const Dl = { class: "kx-empty" }, Nl = { class: "kx-empty-ico" }, Pl = { class: 
   },
   emits: ["cta"],
   setup(e) {
-    return (d, r) => (l(), i("div", Dl, [
-      t("div", Nl, [
-        s(a(L), {
+    return (v, r) => (l(), n("div", Ql, [
+      t("div", Xl, [
+        s(a(N), {
           icon: e.icon,
           "aria-hidden": "true"
         }, null, 8, ["icon"])
       ]),
-      t("div", Pl, u(e.title), 1),
-      e.hint || d.$slots.hint ? (l(), i("p", El, [
-        Se(d.$slots, "hint", {}, () => [
-          K(u(e.hint), 1)
+      t("div", et, h(e.title), 1),
+      e.hint || v.$slots.hint ? (l(), n("p", at, [
+        ze(v.$slots, "hint", {}, () => [
+          G(h(e.hint), 1)
         ])
-      ])) : V("", !0),
-      e.cta ? (l(), B(a(F), {
+      ])) : T("", !0),
+      e.cta ? (l(), O(a(D), {
         key: 1,
         label: e.cta,
-        onClick: r[0] || (r[0] = (f) => d.$emit("cta"))
-      }, aa({ _: 2 }, [
+        onClick: r[0] || (r[0] = (c) => v.$emit("cta"))
+      }, fa({ _: 2 }, [
         e.ctaIcon ? {
           name: "icon",
-          fn: T(({ class: f }) => [
-            s(a(L), {
+          fn: j(({ class: c }) => [
+            s(a(N), {
               icon: e.ctaIcon,
-              class: oe(f),
+              class: ne(c),
               "aria-hidden": "true"
             }, null, 8, ["icon", "class"])
           ]),
           key: "0"
         } : void 0
-      ]), 1032, ["label"])) : V("", !0)
+      ]), 1032, ["label"])) : T("", !0)
     ]));
   }
-}), ra = {
+}), wa = {
   message: "messages",
   base: "bases",
   part: "parts"
-}, Aa = Object.fromEntries(Object.entries(ra).map(([e, d]) => [d, e])), zl = ["content", "variables", "used-by", "history"];
-function ea(e) {
-  return ra[e];
+}, Wa = Object.fromEntries(Object.entries(wa).map(([e, v]) => [v, e])), lt = ["content", "variables", "used-by", "history"];
+function va(e) {
+  return wa[e];
 }
-function Ml(e) {
-  return Aa[e];
+function tt(e) {
+  return Wa[e];
 }
-function La(e) {
-  return e === "base" ? ["content", "used-by", "history"] : zl;
+function Ka(e) {
+  return e === "base" ? ["content", "used-by", "history"] : e === "part" ? ["content", "variables", "history"] : lt;
 }
-function ka(e) {
-  return e.name === "activity" ? e.message ? `activity/${encodeURIComponent(e.message)}` : e.template ? `activity/template/${encodeURIComponent(e.template)}` : "activity" : e.name === "library" ? e.section === "assets" && e.asset ? `assets/${encodeURIComponent(e.asset)}` : e.section === "all" ? "" : e.section : `${ra[e.kind]}/${encodeURIComponent(e.resource)}/${e.section}`;
+function Ne(e) {
+  return e.name === "activity" ? e.message ? `activity/${encodeURIComponent(e.message)}` : e.template ? `activity/template/${encodeURIComponent(e.template)}` : "activity" : e.name === "library" ? e.section === "assets" && e.asset ? `assets/${encodeURIComponent(e.asset)}` : e.section === "all" ? "" : e.section : `${wa[e.kind]}/${encodeURIComponent(e.resource)}/${e.section}`;
 }
-function $a(e) {
-  const d = (e ?? "").replace(/^\/+|\/+$/g, "").split("/").filter(Boolean), [r, f, $] = d;
+function Ia(e) {
+  const v = (e ?? "").replace(/^\/+|\/+$/g, "").split("/").filter(Boolean), [r, c, y] = v;
   if (!r) return { name: "library", section: "all" };
   try {
     if (r === "activity")
-      return f === "template" && $ ? { name: "activity", template: decodeURIComponent($) } : f ? { name: "activity", message: decodeURIComponent(f) } : { name: "activity" };
-    if (r === "assets") return f ? { name: "library", section: "assets", asset: decodeURIComponent(f) } : { name: "library", section: "assets" };
-    const c = Aa[r];
-    if (!c) return { name: "library", section: "all" };
-    if (!f) return { name: "library", section: r };
-    const w = La(c).find((k) => k === $) ?? "content";
-    return { name: "resource", kind: c, resource: decodeURIComponent(f), section: w };
+      return c === "template" && y ? { name: "activity", template: decodeURIComponent(y) } : c ? { name: "activity", message: decodeURIComponent(c) } : { name: "activity" };
+    if (r === "assets") return c ? { name: "library", section: "assets", asset: decodeURIComponent(c) } : { name: "library", section: "assets" };
+    const o = Wa[r];
+    if (!o) return { name: "library", section: "all" };
+    if (!c) return { name: "library", section: r };
+    const b = Ka(o).find((x) => x === y) ?? "content";
+    return { name: "resource", kind: o, resource: decodeURIComponent(c), section: b };
   } catch {
     return { name: "library", section: "all" };
   }
 }
-function ua(e, d) {
+const st = "default-src 'none'; img-src data:; style-src 'unsafe-inline'", ra = `<meta http-equiv="Content-Security-Policy" content="${st}">`;
+function _a(e, v) {
   let r = e;
-  for (const [f, $] of Object.entries(d ?? {}))
-    r = r.split("cid:" + f).join($);
-  return r;
+  for (const [o, k] of Object.entries(v ?? {}))
+    r = r.split("cid:" + o).join(k);
+  const c = /<head(\s[^>]*)?>/i.exec(r);
+  if (c) return r.slice(0, c.index + c[0].length) + ra + r.slice(c.index + c[0].length);
+  const y = /<html(\s[^>]*)?>/i.exec(r);
+  return y ? r.slice(0, y.index + y[0].length) + "<head>" + ra + "</head>" + r.slice(y.index + y[0].length) : ra + r;
 }
-const Ol = {
+const it = {
   class: "mail-problem",
   role: "alert"
-}, Bl = { class: "mail-problem-lead" }, ql = { class: "mail-problem-detail" }, Hl = {
+}, nt = { class: "mail-problem-lead" }, ot = { class: "mail-problem-detail" }, rt = {
   key: 0,
   class: "mail-problem-involved"
-}, Fl = ["onClick"], Ke = /* @__PURE__ */ ae({
+}, ut = {
+  key: 0,
+  class: "mail-problem-self"
+}, ma = /* @__PURE__ */ te({
   __name: "ProblemNote",
   props: {
     problem: {},
-    draft: {},
-    lastGood: { type: Boolean }
+    draft: {}
   },
   setup(e) {
-    const d = e, { library: r, go: f } = ve(), $ = { html: "HTML", text: "plain text", subject: "subject", variables: "variables", samples: "sample values" }, c = (g) => r.find(g.kind, g.name)?.title ?? g.name, n = (g) => !!g && !!d.draft && g.kind === d.draft.kind && g.name === d.draft.name, w = z(() => {
-      const { resource: g, face: x, previewOf: m } = d.problem, _ = x ? $[x] : "";
-      if (g && d.draft && d.draft.kind !== "message" && g.kind === "message" && g.name === m)
-        return `${c(g)} does not render with your changes.`;
-      if (!g || n(g)) {
-        const o = d.draft ? `this ${me[d.draft.kind].toLowerCase()}` : "it";
-        return _ ? `The ${_} of ${o} does not render.` : `${o[0].toUpperCase()}${o.slice(1)} does not render.`;
+    const v = e, { library: r, go: c } = fe(), y = { html: "HTML", text: "plain text", subject: "subject", variables: "variables", samples: "sample values" }, o = (i) => r.title(i.kind, i.name), k = (i) => !!i && !!v.draft && i.kind === v.draft.kind && i.name === v.draft.name, b = P(() => {
+      const { resource: i, face: U, previewOf: S } = v.problem, R = U ? y[U] : "";
+      if (i && v.draft && v.draft.kind !== "message" && i.kind === "message" && i.name === S)
+        return `${o(i) ?? "The message"} does not render with your changes.`;
+      if (!i || k(i)) {
+        const C = v.draft ? `this ${be[v.draft.kind].toLowerCase()}` : "it";
+        return R ? `The ${R} of ${C} does not render.` : `${C[0].toUpperCase()}${C.slice(1)} does not render.`;
       }
-      return `${c(g)} does not render${_ ? ` (${_})` : ""}.`;
-    }), k = z(() => (d.problem.candidates ?? []).filter((g) => !n(g)));
-    function y(g) {
-      g.kind === "asset" ? f({ name: "library", section: "assets", asset: g.name }) : f({ name: "resource", kind: g.kind, resource: g.name, section: "content" });
+      return `${o(i) ?? "A resource it uses"} does not render${R ? ` (${R})` : ""}.`;
+    }), x = P(() => v.problem.candidates ?? []);
+    function V(i) {
+      i.kind === "asset" ? c({ name: "library", section: "assets", asset: i.name }) : c({ name: "resource", kind: i.kind, resource: i.name, section: "content" });
     }
-    return (g, x) => (l(), i("div", Ol, [
-      t("p", Bl, [
-        s(a(L), {
+    return (i, U) => (l(), n("div", it, [
+      t("p", nt, [
+        s(a(N), {
           icon: "tabler:alert-triangle",
           "aria-hidden": "true"
         }),
-        t("span", null, [
-          K(u(w.value), 1),
-          e.lastGood ? (l(), i(H, { key: 0 }, [
-            K(" The preview shows the last version that rendered.")
-          ], 64)) : V("", !0)
-        ])
+        t("span", null, h(b.value), 1)
       ]),
-      t("code", ql, u(e.problem.message), 1),
-      k.value.length ? (l(), i("p", Hl, [
-        x[0] || (x[0] = t("span", { class: "mail-muted" }, "Involved:", -1)),
-        (l(!0), i(H, null, re(k.value, (m) => (l(), i("button", {
-          key: m.kind + m.name,
-          type: "button",
-          class: "mail-text-link",
-          onClick: (_) => y(m)
-        }, u(c(m)), 9, Fl))), 128))
-      ])) : V("", !0)
+      t("code", ot, h(e.problem.engine ?? e.problem.message), 1),
+      x.value.length ? (l(), n("p", rt, [
+        U[0] || (U[0] = t("span", { class: "mail-muted" }, "The render used these; one of them holds the problem:", -1)),
+        (l(!0), n(Y, null, me(x.value, (S) => (l(), n(Y, {
+          key: S.kind + S.name
+        }, [
+          k(S) ? (l(), n("span", ut, "This " + h(a(be)[S.kind].toLowerCase()), 1)) : o(S) === void 0 ? (l(), O(a(Ce), {
+            key: 1,
+            width: "6rem",
+            height: "1rem"
+          })) : (l(), O(a(D), {
+            key: 2,
+            link: "",
+            size: "small",
+            label: o(S),
+            class: "mail-inline-link",
+            onClick: (R) => V(S)
+          }, null, 8, ["label", "onClick"]))
+        ], 64))), 128))
+      ])) : T("", !0)
     ]));
   }
-}), wa = ["html", "text", "subject", "variables", "samples"];
-function Be(e) {
+}), La = ["html", "text", "subject", "variables", "samples"];
+function Ze(e) {
   return !!e && typeof e == "object" && typeof e.kind == "string" && typeof e.name == "string";
 }
-function Te(e) {
-  if (!(e instanceof ll)) return;
-  const d = e.details ?? {};
-  if (_e(e) === "mail_resource_in_use") {
-    const w = Array.isArray(d.messages) ? d.messages.filter((y) => typeof y == "string") : [], k = d.dependent;
+function He(e) {
+  if (!(e instanceof gl)) return;
+  const v = e.details ?? {};
+  if (Ue(e) === "mail_resource_in_use") {
+    const x = Array.isArray(v.messages) ? v.messages.filter((i) => typeof i == "string") : [], V = v.dependent;
     return {
       message: e.message,
-      dependents: w,
-      face: wa.find((y) => y === k?.face),
-      resource: Be(k?.resource) ? k.resource : void 0
+      dependents: x,
+      face: La.find((i) => i === V?.face),
+      resource: Ze(V?.resource) ? V.resource : void 0
     };
   }
-  const f = wa.find((w) => w === d.face);
-  if (!f) return;
-  const $ = Array.isArray(d.dependent_messages) ? d.dependent_messages.filter((w) => typeof w == "string") : [], c = Array.isArray(d.errors) ? d.errors.flatMap((w) => {
-    const k = w;
-    return Be(k.resource) && typeof k.message == "string" ? [{ name: k.resource.name, message: k.message }] : [];
-  }) : [], n = Array.isArray(d.candidate_resources) ? d.candidate_resources.filter(Be) : [];
+  const c = La.find((x) => x === v.face);
+  if (!c) return;
+  const y = Array.isArray(v.dependent_messages) ? v.dependent_messages.filter((x) => typeof x == "string") : [], o = Array.isArray(v.errors) ? v.errors.flatMap((x) => {
+    const V = x;
+    return Ze(V.resource) && typeof V.message == "string" ? [{ name: V.resource.name, message: V.message }] : [];
+  }) : [], k = Array.isArray(v.candidate_resources) ? v.candidate_resources.filter(Ze) : [], b = typeof v.engine_message == "string" ? v.engine_message : void 0;
   return {
     message: e.message,
-    face: f,
-    resource: Be(d.resource) ? d.resource : void 0,
-    dependents: $.length ? $ : void 0,
-    reasons: c.length ? c : void 0,
-    candidates: n.length ? n : void 0
+    engine: b,
+    face: c,
+    resource: Ze(v.resource) ? v.resource : void 0,
+    dependents: y.length ? y : void 0,
+    reasons: o.length ? o : void 0,
+    candidates: k.length ? k : void 0
   };
 }
-const Kl = {
+const dt = {
   html: "HTML",
   text: "Plain text",
   subject: "Subject",
   variables: "Variables",
   samples: "Sample values"
-}, Jl = { class: "kx-modal-head-icon" }, Wl = {
+}, ct = { class: "kx-modal-head-icon" }, vt = {
   key: 0,
-  class: "mail-muted"
-}, Yl = { class: "mail-gallery" }, Gl = ["aria-label", "onClick"], Zl = { class: "mail-gallery-title" }, Ql = { class: "mail-sub" }, Xl = { class: "mail-gallery-frame" }, et = {
-  key: 0,
+  class: "mail-gallery-progress",
+  role: "status"
+}, mt = {
+  key: 1,
   class: "kx-loading",
   role: "status"
-}, at = {
+}, ft = {
+  key: 2,
+  class: "mail-muted"
+}, bt = ["data-name"], yt = { class: "mail-gallery-title" }, pt = { class: "mail-sub" }, gt = { class: "mail-gallery-frame" }, ht = {
+  key: 0,
+  class: "mail-muted mail-gallery-wait"
+}, kt = {
   key: 1,
+  class: "kx-loading",
+  role: "status"
+}, $t = {
+  key: 2,
   class: "mail-gallery-problem"
-}, lt = {
+}, wt = {
   key: 1,
   role: "alert"
-}, tt = ["srcdoc", "title"], st = /* @__PURE__ */ ae({
+}, _t = ["srcdoc", "title"], xt = {
+  key: 3,
+  class: "mail-more"
+}, Ct = {
+  key: 0,
+  class: "kx-err inline",
+  role: "alert"
+}, Vt = 3, St = /* @__PURE__ */ te({
   __name: "PreviewGallery",
   props: {
     visible: { type: Boolean }
   },
   emits: ["close"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, { library: $, go: c } = ve(), n = p([]);
-    let w = 0;
-    async function k(m, _) {
+  setup(e, { emit: v }) {
+    const r = e, c = v, { go: y } = fe();
+    we(() => r.visible);
+    const o = _([]), k = _(), b = _(!1), x = _("");
+    let V = 0, i = [], U = 0, S;
+    async function R(g, p) {
+      g.state = "loading";
       try {
-        const o = await le.preview(m.name, []);
-        if (_ !== w) return;
-        m.subject = o.subject, m.document = o.html ? ua(o.html, o.inline_assets) : "", m.state = "ready";
-      } catch (o) {
-        if (_ !== w) return;
-        m.problem = Te(o), m.failure = m.problem ? "" : ne(o, "This message could not be rendered."), m.state = "failed";
+        const f = await se.preview(g.name, []);
+        if (p !== V) return;
+        g.subject = f.subject, g.document = f.html ? _a(f.html, f.inline_assets) : "", g.state = "ready";
+      } catch (f) {
+        if (p !== V) return;
+        g.problem = He(f), g.failure = g.problem ? "" : ie(f, "This message could not be rendered."), g.state = "failed";
       }
     }
-    async function y() {
-      const m = ++w;
-      n.value = $.ofKind("message").map((v) => Wa({ name: v.name, title: v.title, state: "loading" }));
-      const _ = [...n.value], o = Array.from({ length: 3 }, async () => {
-        for (let v = _.shift(); v; v = _.shift()) await k(v, m);
+    function C(g) {
+      for (; g === V && U < Vt && i.length; ) {
+        const p = i.shift();
+        p.state === "waiting" && (U++, R(p, g).finally(() => {
+          U--, C(g);
+        }));
+      }
+    }
+    function u(g) {
+      g.state !== "waiting" || i.includes(g) || (i.push(g), C(V));
+    }
+    const d = _();
+    function m() {
+      if (S?.disconnect(), typeof IntersectionObserver > "u" || !d.value) {
+        for (const g of o.value) u(g);
+        return;
+      }
+      S = new IntersectionObserver((g) => {
+        for (const p of g) {
+          if (!p.isIntersecting) continue;
+          const f = o.value.find((w) => w.name === p.target.dataset.name);
+          f && u(f);
+        }
+      }, { root: d.value.closest(".p-dialog-content"), rootMargin: "200px" });
+      for (const g of d.value.querySelectorAll("[data-name]")) S.observe(g);
+    }
+    async function $(g) {
+      b.value = !0, x.value = "";
+      try {
+        const p = await se.page({ kind: "message", cursor: k.value });
+        if (g !== V) return;
+        o.value = [...o.value, ...p.items.map((f) => cl({ name: f.name, title: f.title, state: "waiting" }))], k.value = p.next_cursor, await ea(), m();
+      } catch (p) {
+        g === V && (x.value = ie(p, "The messages could not be listed."));
+      } finally {
+        g === V && (b.value = !1);
+      }
+    }
+    function A() {
+      V++, i = [], S?.disconnect(), S = void 0;
+    }
+    function I() {
+      A(), o.value = [], k.value = void 0, $(V);
+    }
+    function M() {
+      const g = ++V;
+      i = [];
+      for (const p of o.value) Object.assign(p, { state: "waiting", subject: void 0, document: void 0, problem: void 0, failure: void 0 });
+      ea(() => {
+        g === V && m();
       });
-      await Promise.all(o);
     }
-    Q(() => r.visible, (m) => {
-      m ? y() : w++;
+    X(() => r.visible, (g) => {
+      g ? I() : A();
+    }), Be(A);
+    const L = P(() => o.value.filter((g) => g.state === "ready" || g.state === "failed").length), E = P(() => o.value.filter((g) => g.state === "failed").length), ae = P(() => {
+      if (!o.value.length) return "";
+      const g = `${L.value} of ${pe(o.value.length, "message")}${k.value ? " listed so far" : ""} rendered`;
+      return E.value ? `${g}, ${E.value} with a problem.` : g + ".";
     });
-    function g(m) {
-      f("close"), c({ name: "resource", kind: "message", resource: m, section: "content" });
+    function le(g) {
+      c("close"), y({ name: "resource", kind: "message", resource: g, section: "content" });
     }
-    const x = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
-    return (m, _) => (l(), B(a(Ce), {
+    const q = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
+    return (g, p) => (l(), O(a(Ae), {
       visible: e.visible,
       modal: "",
       draggable: !1,
       class: "mail-dialog mail-dialog-gallery",
-      pt: x,
+      pt: q,
       "aria-label": "Preview all messages",
-      "onUpdate:visible": _[0] || (_[0] = (o) => {
-        o || f("close");
+      "onUpdate:visible": p[1] || (p[1] = (f) => {
+        f || c("close");
       })
     }, {
-      header: T(() => [
-        t("span", Jl, [
-          s(a(L), {
+      header: j(() => [
+        t("span", ct, [
+          s(a(N), {
             icon: "tabler:layout-grid",
             "aria-hidden": "true"
           })
         ]),
-        _[1] || (_[1] = t("span", { class: "kx-modal-head-text" }, [
+        p[2] || (p[2] = t("span", { class: "kx-modal-head-text" }, [
           t("span", { class: "kx-modal-head-title" }, "All messages"),
           t("span", { class: "kx-modal-head-sub" }, "Each message with its sample values, through the current library.")
         ], -1))
       ]),
-      footer: T(() => [
-        s(a(F), {
+      footer: j(() => [
+        s(a(D), {
           label: "Render again",
           severity: "secondary",
           outlined: "",
-          onClick: y
+          disabled: !o.value.length,
+          onClick: M
         }, {
-          icon: T(() => [
-            s(a(L), {
+          icon: j(() => [
+            s(a(N), {
               icon: "tabler:refresh",
               "aria-hidden": "true"
             })
           ]),
           _: 1
-        })
+        }, 8, ["disabled"])
       ]),
-      default: T(() => [
-        n.value.length ? V("", !0) : (l(), i("p", Wl, "There are no messages yet.")),
-        t("ul", Yl, [
-          (l(!0), i(H, null, re(n.value, (o) => (l(), i("li", {
-            key: o.name,
-            class: oe(["mail-gallery-tile", { "mail-gallery-failed": o.state === "failed" }])
+      default: j(() => [
+        o.value.length ? (l(), n("div", vt, [
+          t("span", null, h(ae.value), 1),
+          s(a(Ul), {
+            value: Math.round(L.value / o.value.length * 100),
+            "show-value": !1,
+            "aria-hidden": "true"
+          }, null, 8, ["value"])
+        ])) : T("", !0),
+        b.value && !o.value.length ? (l(), n("p", mt, [
+          s(a(N), {
+            icon: "tabler:loader-2",
+            class: "spin",
+            "aria-hidden": "true"
+          }),
+          p[3] || (p[3] = G("Listing messages…", -1))
+        ])) : !b.value && !x.value && !o.value.length ? (l(), n("p", ft, "There are no messages yet.")) : T("", !0),
+        t("ul", {
+          ref_key: "list",
+          ref: d,
+          class: "mail-gallery"
+        }, [
+          (l(!0), n(Y, null, me(o.value, (f) => (l(), n("li", {
+            key: f.name,
+            "data-name": f.name,
+            class: ne(["mail-gallery-tile", { "mail-gallery-failed": f.state === "failed" }])
           }, [
-            t("button", {
-              type: "button",
+            s(a(D), {
+              text: "",
+              severity: "secondary",
               class: "mail-gallery-open",
-              "aria-label": "Open " + o.title,
-              onClick: (v) => g(o.name)
-            }, [
-              t("span", Zl, u(o.title), 1),
-              t("span", Ql, u(o.subject ?? ""), 1)
-            ], 8, Gl),
-            t("div", Xl, [
-              o.state === "loading" ? (l(), i("p", et, [
-                s(a(L), {
+              "aria-label": "Open " + f.title,
+              onClick: (w) => le(f.name)
+            }, {
+              default: j(() => [
+                t("span", yt, h(f.title), 1),
+                t("span", pt, h(f.subject ?? ""), 1)
+              ]),
+              _: 2
+            }, 1032, ["aria-label", "onClick"]),
+            t("div", gt, [
+              f.state === "waiting" ? (l(), n("p", ht, "Renders when shown.")) : f.state === "loading" ? (l(), n("p", kt, [
+                s(a(N), {
                   icon: "tabler:loader-2",
                   class: "spin",
                   "aria-hidden": "true"
                 }),
-                _[2] || (_[2] = K("Rendering…", -1))
-              ])) : o.state === "failed" ? (l(), i("div", at, [
-                o.problem ? (l(), B(Ke, {
+                p[4] || (p[4] = G("Rendering…", -1))
+              ])) : f.state === "failed" ? (l(), n("div", $t, [
+                f.problem ? (l(), O(ma, {
                   key: 0,
-                  problem: o.problem,
-                  draft: { kind: "message", name: o.name }
-                }, null, 8, ["problem", "draft"])) : (l(), i("p", lt, u(o.failure), 1))
-              ])) : (l(), i("iframe", {
-                key: 2,
+                  problem: f.problem,
+                  draft: { kind: "message", name: f.name }
+                }, null, 8, ["problem", "draft"])) : (l(), n("p", wt, h(f.failure), 1))
+              ])) : (l(), n("iframe", {
+                key: 3,
                 sandbox: "",
-                srcdoc: o.document,
-                title: o.title + " preview",
+                srcdoc: f.document,
+                title: f.title + " preview",
                 tabindex: "-1"
-              }, null, 8, tt))
+              }, null, 8, _t))
             ])
-          ], 2))), 128))
-        ])
+          ], 10, bt))), 128))
+        ], 512),
+        k.value || x.value ? (l(), n("div", xt, [
+          x.value ? (l(), n("span", Ct, h(x.value), 1)) : T("", !0),
+          s(a(D), {
+            label: x.value ? "Retry" : "Show more messages",
+            severity: "secondary",
+            outlined: "",
+            loading: b.value,
+            onClick: p[0] || (p[0] = (f) => $(a(V)))
+          }, null, 8, ["label", "loading"])
+        ])) : T("", !0)
       ]),
       _: 1
     }, 8, ["visible"]));
   }
-}), it = { class: "mail-source" }, nt = { key: 0 }, ot = { key: 1 }, da = /* @__PURE__ */ ae({
+}), Tt = { class: "mail-source" }, Rt = { key: 0 }, Ut = { key: 1 }, xa = /* @__PURE__ */ te({
   __name: "ResourceSource",
   props: {
     resource: {}
   },
   setup(e) {
-    return (d, r) => (l(), i("span", it, [
-      e.resource.state === "created" ? (l(), i("span", nt, u((e.resource.kind === "asset" ? "Uploaded by " : "Created by ") + a(ye)(e.resource.author_label, e.resource.author)), 1)) : (l(), i("span", ot, "Included with " + u(e.resource.origin_label), 1)),
-      e.resource.state === "customized" ? (l(), B(a(Ue), {
+    return (v, r) => (l(), n("span", Tt, [
+      e.resource.state === "created" ? (l(), n("span", Rt, h((e.resource.kind === "asset" ? "Uploaded by " : "Created by ") + a(ke)(e.resource.author_label, e.resource.author)), 1)) : (l(), n("span", Ut, "Included with " + h(e.resource.origin_label), 1)),
+      e.resource.state === "customized" ? (l(), O(a(Ee), {
         key: 2,
         severity: "info",
         value: e.resource.kind === "asset" ? "Replaced" : "Customized",
         class: "kx-tag-sm"
-      }, null, 8, ["value"])) : V("", !0)
+      }, null, 8, ["value"])) : T("", !0)
     ]));
   }
-}), rt = {
+}), jt = {
   key: 0,
   class: "kx-notice warn mail-block",
   role: "alert"
-}, ut = {
+}, At = {
   key: 1,
   class: "kx-err mail-error",
   role: "alert"
-}, dt = {
+}, It = {
   key: 2,
+  class: "kx-err mail-error",
+  role: "alert"
+}, Lt = {
+  key: 3,
   class: "kx-loading",
   role: "status"
-}, ct = { class: "mail-toolbar" }, vt = {
+}, Nt = { class: "mail-toolbar" }, zt = {
   class: "mail-count",
   role: "status"
-}, mt = {
+}, Et = {
   key: 0,
   class: "mail-muted mail-nomatch",
   role: "status"
-}, bt = ["onClick"], ft = {
+}, Ot = {
   key: 0,
   class: "mail-sub"
-}, pt = { class: "mail-kind" }, yt = { class: "mail-muted" }, ht = {
+}, Pt = { class: "mail-kind" }, Mt = { class: "mail-muted" }, Dt = {
   key: 2,
   class: "mail-more"
-}, gt = /* @__PURE__ */ ae({
+}, Bt = {
+  key: 0,
+  class: "kx-err inline",
+  role: "alert"
+}, qt = /* @__PURE__ */ te({
   __name: "LibraryPage",
   props: {
     section: {}
   },
   setup(e) {
-    const d = e, { library: r, go: f, create: $ } = ve(), c = z(() => Ml(d.section)), n = p("all"), w = p(""), k = p("");
-    let y;
-    Q(w, (P) => {
-      clearTimeout(y), y = setTimeout(() => {
-        k.value = P.trim();
+    const v = e, { library: r, go: c, create: y } = fe(), o = P(() => tt(v.section));
+    X(o, (Z) => {
+      Z === "message" && r.ensure("base");
+    }, { immediate: !0 });
+    const k = _("all"), b = _(""), x = _("");
+    let V;
+    X(b, (Z) => {
+      clearTimeout(V), V = setTimeout(() => {
+        x.value = Z.trim();
       }, 250);
-    }), Q(() => d.section, () => {
-      w.value = k.value = "", n.value = "all";
+    }), X(() => v.section, () => {
+      b.value = x.value = "", k.value = "all";
     });
-    const g = fe([]), x = p(), m = p(!0), _ = p(!1), o = p(!1), v = p(!1), b = p(""), O = ge(), A = () => ({ kind: c.value, state: n.value === "all" ? void 0 : n.value, q: k.value || void 0 });
-    async function j() {
-      const P = O();
-      m.value = !0;
+    const i = ge([]), U = _(), S = _(!0), R = _(!1), C = _(!1), u = _(!1), d = _(""), m = _(""), $ = _(""), A = xe(), I = () => ({ kind: o.value, state: k.value === "all" ? void 0 : k.value, q: x.value || void 0 });
+    async function M(Z = !1) {
+      const F = A();
+      S.value = !0;
       try {
-        const q = await le.page(A());
-        if (!P()) return;
-        g.value = q.items, x.value = q.next_cursor, b.value = "", v.value = !1, _.value = !0;
-      } catch (q) {
-        if (!P()) return;
-        v.value = Le(q), b.value = v.value ? "" : ne(q, "The mail library could not be loaded.");
+        const W = await se.page(I());
+        if (!F()) return;
+        i.value = W.items, U.value = W.next_cursor, d.value = m.value = $.value = "", u.value = !1, R.value = !0;
+      } catch (W) {
+        if (!F()) return;
+        u.value = Fe(W);
+        const oe = u.value ? "" : ie(W, "The mail library could not be loaded.");
+        Z && R.value && !u.value ? $.value = oe : d.value = oe;
       } finally {
-        P() && (m.value = !1);
+        F() && (S.value = !1);
       }
     }
-    async function S() {
-      if (!x.value || o.value) return;
-      const P = O();
-      o.value = !0;
+    async function L() {
+      if (!U.value || C.value) return;
+      const Z = A();
+      C.value = !0, m.value = "";
       try {
-        const q = await le.page({ ...A(), cursor: x.value });
-        if (!P()) return;
-        g.value = [...g.value, ...q.items], x.value = q.next_cursor;
-      } catch (q) {
-        P() && (b.value = ne(q, "More resources could not be loaded."));
+        const F = await se.page({ ...I(), cursor: U.value });
+        if (!Z()) return;
+        i.value = [...i.value, ...F.items], U.value = F.next_cursor;
+      } catch (F) {
+        Z() && (m.value = ie(F, "More resources could not be loaded."));
       } finally {
-        o.value = !1;
+        C.value = !1;
       }
     }
-    Q([c, n, k], () => {
-      j();
-    }), De(j), Ne(() => {
-      j();
+    X([o, k, x], () => {
+      M();
+    }), la(() => M(R.value));
+    const E = (Z) => Z.kind + "/" + Z.name;
+    r.onRow((Z, F) => {
+      const W = E(Z), oe = i.value.findIndex((J) => E(J) === W);
+      if (oe >= 0) {
+        const J = [...i.value];
+        F ? J[oe] = F : J.splice(oe, 1), i.value = J;
+        return;
+      }
+      if (!F || o.value && F.kind !== o.value || k.value !== "all" || x.value) return;
+      const Ve = i.value[i.value.length - 1];
+      if (U.value && Ve && W > E(Ve)) return;
+      const ee = i.value.findIndex((J) => E(J) > W), K = [...i.value];
+      K.splice(ee < 0 ? K.length : ee, 0, F), i.value = K;
     });
-    const N = z(() => {
-      switch (c.value) {
+    const ae = P(() => {
+      switch (o.value) {
         case "message":
           return { title: "Messages", description: "What recipients read. Each message follows its base template." };
         case "base":
@@ -614,53 +778,53 @@ const Kl = {
         default:
           return { title: "All resources", description: "Everything your email is made of. Messages follow the base templates and parts they use." };
       }
-    }), te = [
+    }), le = [
       { label: "All", value: "all" },
       { label: "Customized", value: "customized" },
       { label: "Created here", value: "created" },
       { label: "Original", value: "original" }
-    ], W = { base: 0, part: 1, message: 2, asset: 3 }, R = z(() => [...g.value].sort((P, q) => W[P.kind] - W[q.kind] || P.title.localeCompare(q.title))), h = z(() => {
-      const P = c.value ? me[c.value].toLowerCase() : "resource";
-      return pe(g.value.length, P) + (x.value ? " so far" : "");
+    ], q = P(() => {
+      const Z = o.value ? be[o.value].toLowerCase() : "resource";
+      return U.value ? `First ${pe(i.value.length, Z)}` : pe(i.value.length, Z);
     });
-    function U(P) {
-      const q = P.used_by;
-      return P.kind === "base" || P.kind === "asset" ? q?.messages ? pe(q.messages, "message") : "—" : P.kind === "message" ? q?.recent_sources ? pe(q.recent_sources, "recent sender") : "—" : "";
+    function g(Z) {
+      const F = Z.used_by;
+      return Z.kind === "base" || Z.kind === "asset" ? F?.messages ? pe(F.messages, "message") : "—" : Z.kind === "message" ? F?.recent_sources ? pe(F.recent_sources, "recent sender") : "—" : "";
     }
-    function D(P) {
-      return P.base ? r.find("base", P.base)?.title ?? P.base : "";
+    function p(Z) {
+      return Z.base ? r.title("base", Z.base) : "";
     }
-    function I(P) {
-      P.kind === "asset" ? f({ name: "library", section: "assets", asset: P.name }) : f({ name: "resource", kind: P.kind, resource: P.name, section: "content" });
+    function f(Z) {
+      Z.kind === "asset" ? c({ name: "library", section: "assets", asset: Z.name }) : c({ name: "resource", kind: Z.kind, resource: Z.name, section: "content" });
     }
-    const G = z(() => _.value && !b.value && c.value && !g.value.length && n.value === "all" && !k.value), C = p(!1);
-    return (P, q) => (l(), i(H, null, [
-      s(Je, {
-        title: N.value.title,
-        description: N.value.description
+    const w = P(() => R.value && !d.value && o.value && !i.value.length && k.value === "all" && !x.value), z = _(!1);
+    return (Z, F) => (l(), n(Y, null, [
+      s(ta, {
+        title: ae.value.title,
+        description: ae.value.description
       }, {
-        actions: T(() => [
-          !c.value || c.value === "message" ? (l(), B(a(F), {
+        actions: j(() => [
+          !o.value || o.value === "message" ? (l(), O(a(D), {
             key: 0,
             label: "Preview all messages",
             severity: "secondary",
             outlined: "",
-            onClick: q[0] || (q[0] = (Z) => C.value = !0)
+            onClick: F[0] || (F[0] = (W) => z.value = !0)
           }, {
-            icon: T(() => [
-              s(a(L), {
+            icon: j(() => [
+              s(a(N), {
                 icon: "tabler:eye",
                 "aria-hidden": "true"
               })
             ]),
             _: 1
-          })) : V("", !0),
-          s(a(F), {
-            label: c.value ? "New " + a(me)[c.value].toLowerCase() : "New",
-            onClick: q[1] || (q[1] = (Z) => a($)({ kind: c.value }))
+          })) : T("", !0),
+          s(a(D), {
+            label: o.value ? "New " + a(be)[o.value].toLowerCase() : "New",
+            onClick: F[1] || (F[1] = (W) => a(y)({ kind: o.value }))
           }, {
-            icon: T(() => [
-              s(a(L), {
+            icon: j(() => [
+              s(a(N), {
                 icon: "tabler:plus",
                 "aria-hidden": "true"
               })
@@ -670,204 +834,222 @@ const Kl = {
         ]),
         _: 1
       }, 8, ["title", "description"]),
-      v.value ? (l(), i("p", rt, [
-        s(a(L), {
+      u.value ? (l(), n("p", jt, [
+        s(a(N), {
           icon: "tabler:lock",
           "aria-hidden": "true"
         }),
-        q[8] || (q[8] = K("Ask an administrator to grant you access to the mail library. ", -1))
-      ])) : b.value ? (l(), i("div", ut, [
-        t("span", null, u(b.value), 1),
-        s(a(F), {
+        F[9] || (F[9] = G("Ask an administrator to grant you access to the mail library. ", -1))
+      ])) : d.value ? (l(), n("div", At, [
+        t("span", null, h(d.value), 1),
+        s(a(D), {
           label: "Retry",
           severity: "secondary",
           outlined: "",
           size: "small",
-          onClick: q[2] || (q[2] = (Z) => j())
+          onClick: F[2] || (F[2] = (W) => M())
         })
-      ])) : m.value && !_.value ? (l(), i("p", dt, [
-        s(a(L), {
+      ])) : T("", !0),
+      $.value ? (l(), n("div", It, [
+        t("span", null, h($.value) + " The list shows what was loaded before.", 1),
+        s(a(D), {
+          label: "Retry",
+          severity: "secondary",
+          outlined: "",
+          size: "small",
+          onClick: F[3] || (F[3] = (W) => M(!0))
+        })
+      ])) : S.value && !R.value ? (l(), n("p", Lt, [
+        s(a(N), {
           icon: "tabler:loader-2",
           class: "spin",
           "aria-hidden": "true"
         }),
-        q[9] || (q[9] = K("Loading mail library…", -1))
-      ])) : G.value && c.value ? (l(), B(oa, {
-        key: 3,
-        icon: a(be)[c.value],
-        title: "No " + a(la)[c.value].toLowerCase() + " yet",
-        hint: "Create a " + a(me)[c.value].toLowerCase() + " from blank or from an existing one.",
-        cta: "New " + a(me)[c.value].toLowerCase(),
+        F[10] || (F[10] = G("Loading mail library…", -1))
+      ])) : w.value && o.value ? (l(), O($a, {
+        key: 4,
+        icon: a(ye)[o.value],
+        title: "No " + a(ba)[o.value].toLowerCase() + " yet",
+        hint: "Create a " + a(be)[o.value].toLowerCase() + " from blank or from an existing one.",
+        cta: "New " + a(be)[o.value].toLowerCase(),
         "cta-icon": "tabler:plus",
-        onCta: q[3] || (q[3] = (Z) => a($)({ kind: c.value }))
-      }, null, 8, ["icon", "title", "hint", "cta"])) : _.value ? (l(), i(H, { key: 4 }, [
-        t("div", ct, [
-          s(a(he), {
-            modelValue: n.value,
-            "onUpdate:modelValue": q[4] || (q[4] = (Z) => n.value = Z),
-            options: te,
+        onCta: F[4] || (F[4] = (W) => a(y)({ kind: o.value }))
+      }, null, 8, ["icon", "title", "hint", "cta"])) : R.value ? (l(), n(Y, { key: 5 }, [
+        t("div", Nt, [
+          s(a($e), {
+            modelValue: k.value,
+            "onUpdate:modelValue": F[5] || (F[5] = (W) => k.value = W),
+            options: le,
             "option-label": "label",
             "option-value": "value",
             "allow-empty": !1,
             "aria-label": "Show resources"
           }, null, 8, ["modelValue"]),
-          s(a(ia), { class: "mail-search" }, {
-            default: T(() => [
-              s(a(na), null, {
-                default: T(() => [
-                  s(a(L), {
-                    icon: m.value ? "tabler:loader-2" : "tabler:search",
-                    class: oe({ spin: m.value }),
+          s(a(ga), { class: "mail-search" }, {
+            default: j(() => [
+              s(a(ha), null, {
+                default: j(() => [
+                  s(a(N), {
+                    icon: S.value ? "tabler:loader-2" : "tabler:search",
+                    class: ne({ spin: S.value }),
                     "aria-hidden": "true"
                   }, null, 8, ["icon", "class"])
                 ]),
                 _: 1
               }),
               s(a(ce), {
-                modelValue: w.value,
-                "onUpdate:modelValue": q[5] || (q[5] = (Z) => w.value = Z),
+                modelValue: b.value,
+                "onUpdate:modelValue": F[6] || (F[6] = (W) => b.value = W),
                 type: "search",
-                "aria-label": "Search " + N.value.title.toLowerCase(),
+                "aria-label": "Search " + ae.value.title.toLowerCase(),
                 placeholder: "Search names and content…"
               }, null, 8, ["modelValue", "aria-label"])
             ]),
             _: 1
           }),
-          t("span", vt, u(h.value), 1)
+          t("span", zt, h(q.value), 1)
         ]),
-        g.value.length ? (l(), B(a(sa), {
+        i.value.length ? (l(), O(a(pa), {
           key: 1,
-          value: R.value,
-          "data-key": (Z) => Z.kind + "/" + Z.name,
+          value: i.value,
+          "data-key": (W) => W.kind + "/" + W.name,
           class: "mail-table",
           "row-hover": "",
-          pt: { table: { "aria-label": N.value.title } },
-          onRowClick: q[6] || (q[6] = (Z) => I(Z.data))
+          pt: { table: { "aria-label": ae.value.title } },
+          onRowClick: F[7] || (F[7] = (W) => f(W.data))
         }, {
-          default: T(() => [
-            s(a(ue), {
+          default: j(() => [
+            s(a(de), {
               header: "Name",
               "header-class": "mail-col-name",
               "body-class": "mail-col-name"
             }, {
-              body: T(({ data: Z }) => [
-                t("button", {
-                  type: "button",
+              body: j(({ data: W }) => [
+                s(a(D), {
+                  link: "",
                   class: "mail-name",
-                  onClick: xe((X) => I(Z), ["stop"])
-                }, u(Z.title), 9, bt),
-                Z.description ? (l(), i("span", ft, u(Z.description), 1)) : V("", !0)
+                  label: W.title,
+                  onClick: je((oe) => f(W), ["stop"])
+                }, null, 8, ["label", "onClick"]),
+                W.description ? (l(), n("span", Ot, h(W.description), 1)) : T("", !0)
               ]),
               _: 1
             }),
-            c.value ? V("", !0) : (l(), B(a(ue), {
+            o.value ? T("", !0) : (l(), O(a(de), {
               key: 0,
               header: "Kind",
               "header-class": "mail-col-kind",
               "body-class": "mail-col-kind"
             }, {
-              body: T(({ data: Z }) => [
-                t("span", pt, [
-                  s(a(L), {
-                    icon: a(be)[Z.kind],
+              body: j(({ data: W }) => [
+                t("span", Pt, [
+                  s(a(N), {
+                    icon: a(ye)[W.kind],
                     "aria-hidden": "true"
                   }, null, 8, ["icon"]),
-                  K(u(a(me)[Z.kind]), 1)
+                  G(h(a(be)[W.kind]), 1)
                 ])
               ]),
               _: 1
             })),
-            c.value === "message" ? (l(), B(a(ue), {
+            o.value === "message" ? (l(), O(a(de), {
               key: 1,
               header: "Base template"
             }, {
-              body: T(({ data: Z }) => [
-                K(u(D(Z)), 1)
+              body: j(({ data: W }) => [
+                p(W) === void 0 ? (l(), O(a(Ce), {
+                  key: 0,
+                  width: "8rem",
+                  height: "1rem"
+                })) : (l(), n(Y, { key: 1 }, [
+                  G(h(p(W)), 1)
+                ], 64))
               ]),
               _: 1
-            })) : V("", !0),
-            s(a(ue), {
+            })) : T("", !0),
+            s(a(de), {
               header: "Source",
               "header-class": "mail-col-source",
               "body-class": "mail-col-source"
             }, {
-              body: T(({ data: Z }) => [
-                s(da, { resource: Z }, null, 8, ["resource"])
+              body: j(({ data: W }) => [
+                s(xa, { resource: W }, null, 8, ["resource"])
               ]),
               _: 1
             }),
-            c.value !== "part" ? (l(), B(a(ue), {
+            o.value !== "part" ? (l(), O(a(de), {
               key: 2,
               header: "Used by",
               "header-class": "mail-col-used",
               "body-class": "mail-col-used"
             }, {
-              body: T(({ data: Z }) => [
-                K(u(U(Z)), 1)
+              body: j(({ data: W }) => [
+                G(h(g(W)), 1)
               ]),
               _: 1
-            })) : V("", !0),
-            s(a(ue), {
+            })) : T("", !0),
+            s(a(de), {
               header: "Updated",
               "header-class": "mail-col-updated",
               "body-class": "mail-col-updated"
             }, {
-              body: T(({ data: Z }) => [
-                t("span", yt, u(Z.state === "original" ? "—" : a(_a)(Z.updated_at)), 1)
+              body: j(({ data: W }) => [
+                t("span", Mt, h(W.state === "original" ? "—" : a(Oa)(W.updated_at)), 1)
               ]),
               _: 1
             })
           ]),
           _: 1
-        }, 8, ["value", "data-key", "pt"])) : (l(), i("p", mt, "Nothing matches. Try another name or a word from the template.")),
-        x.value ? (l(), i("div", ht, [
-          s(a(F), {
-            label: "Show more",
+        }, 8, ["value", "data-key", "pt"])) : (l(), n("p", Et, "Nothing matches. Try another name or a word from the template.")),
+        U.value ? (l(), n("div", Dt, [
+          m.value ? (l(), n("span", Bt, h(m.value), 1)) : T("", !0),
+          s(a(D), {
+            label: m.value ? "Retry" : "Show more",
             severity: "secondary",
             outlined: "",
-            loading: o.value,
-            onClick: S
-          }, null, 8, ["loading"])
-        ])) : V("", !0)
-      ], 64)) : V("", !0),
-      s(st, {
-        visible: C.value,
-        onClose: q[7] || (q[7] = (Z) => C.value = !1)
+            loading: C.value,
+            onClick: L
+          }, null, 8, ["label", "loading"])
+        ])) : T("", !0)
+      ], 64)) : T("", !0),
+      s(St, {
+        visible: z.value,
+        onClose: F[8] || (F[8] = (W) => z.value = !1)
       }, null, 8, ["visible"])
     ], 64));
   }
 });
-function kt(e) {
+function Ht(e) {
   return JSON.parse(JSON.stringify(e));
 }
-function ke(e) {
-  const d = kt(e);
+function _e(e) {
+  const v = Ht(e);
   return {
-    kind: d.kind,
-    name: d.name,
-    title: d.title,
-    description: d.description,
-    html: d.html,
-    text: d.text,
-    base: d.base,
-    subject: d.subject,
-    schema: d.schema,
-    samples: d.samples
+    kind: v.kind,
+    name: v.name,
+    title: v.title,
+    description: v.description,
+    html: v.html,
+    text: v.text,
+    base: v.base,
+    subject: v.subject,
+    schema: v.schema,
+    samples: v.samples
   };
 }
-function $t(e, d) {
-  return JSON.stringify(ke(e)) === JSON.stringify(ke(d));
+function Ft(e, v) {
+  return JSON.stringify(_e(e)) === JSON.stringify(_e(v));
 }
-function wt(e, d, r, f, $) {
-  const c = { type: "object", properties: {} };
+function Jt(e, v, r, c, y) {
+  const o = { type: "object", properties: {} };
   return e === "message" ? {
     kind: e,
-    name: d,
+    name: v,
     title: r,
-    description: f,
-    base: $,
+    description: c,
+    base: y,
     subject: r,
-    schema: c,
+    schema: o,
     samples: {},
     html: `{{ block body() }}
   <p>Write your message here.</p>
@@ -879,10 +1061,10 @@ Write your message here.
 `
   } : e === "base" ? {
     kind: e,
-    name: d,
+    name: v,
     title: r,
-    description: f,
-    schema: c,
+    description: c,
+    schema: o,
     samples: {},
     html: `<!doctype html>
 <html lang="en">
@@ -897,234 +1079,236 @@ Write your message here.
 `,
     text: `{{ block body() }}{{ end }}
 `
-  } : { kind: e, name: d, title: r, description: f, schema: c, samples: {}, html: `<p>{{ site.title }}</p>
+  } : { kind: e, name: v, title: r, description: c, schema: o, samples: {}, html: `<p>{{ site.title }}</p>
 `, text: `{{ site.title }}
 ` };
 }
-function _t(e) {
+function Wt(e) {
   if (typeof e == "string") return JSON.stringify(e);
   if (typeof e == "number" || typeof e == "boolean") return String(e);
 }
-function xt(e) {
-  const d = [], r = e.samples;
-  for (const [f, $] of Object.entries(e.schema.properties)) {
-    const c = _t(r[f] ?? $.default ?? ($.type === "string" ? "" : null));
-    c !== void 0 && d.push(`${JSON.stringify(f)}, ${c}`);
+function Kt(e) {
+  const v = [], r = e.samples;
+  for (const [c, y] of Object.entries(e.schema.properties)) {
+    const o = Wt(r[c] ?? y.default ?? (y.type === "string" ? "" : null));
+    o !== void 0 && v.push(`${JSON.stringify(c)}, ${o}`);
   }
-  return d.length ? `{{ include "/part/${e.name}" map(${d.join(", ")}) }}` : `{{ include "/part/${e.name}" }}`;
+  return v.length ? `{{ include "/part/${e.name}" map(${v.join(", ")}) }}` : `{{ include "/part/${e.name}" }}`;
 }
-function ja(e) {
+function Ya(e) {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(e) ? `{{ assets.${e} }}` : `{{ assets[${JSON.stringify(e)}] }}`;
 }
-function Ct(e, d, r) {
-  const f = r ? ` width="${r}"` : "";
-  return `<img src="${ja(e)}" alt="${d.replace(/"/g, "&quot;")}"${f} style="display:block;border:0;max-width:100%;height:auto;">`;
+function Yt(e, v, r) {
+  const c = r ? ` width="${r}"` : "";
+  return `<img src="${Ya(e)}" alt="${v.replace(/"/g, "&quot;")}"${c} style="display:block;border:0;max-width:100%;height:auto;">`;
 }
-const Vt = /* @__PURE__ */ new Set(["site", "sender", "message", "assets", "vars"]);
-function St(e) {
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(e) && !Vt.has(e) ? `{{ ${e} }}` : /^[A-Za-z_][A-Za-z0-9_]*$/.test(e) ? `{{ vars.${e} }}` : `{{ vars[${JSON.stringify(e)}] }}`;
+const Gt = /* @__PURE__ */ new Set(["site", "sender", "message", "assets", "vars"]);
+function Zt(e) {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(e) && !Gt.has(e) ? `{{ ${e} }}` : /^[A-Za-z_][A-Za-z0-9_]*$/.test(e) ? `{{ vars.${e} }}` : `{{ vars[${JSON.stringify(e)}] }}`;
 }
-const Rt = "{{ block body() }}{{ end }}", Tt = {
+const Qt = "{{ block body() }}{{ end }}", Xt = {
   class: "mail-preview",
   "aria-label": "Preview"
-}, Ut = { class: "mail-preview-bar" }, At = {
+}, es = { class: "mail-preview-bar" }, as = {
   key: 0,
   class: "mail-preview-with"
-}, Lt = ["for"], jt = {
+}, ls = ["for"], ts = {
+  key: 0,
+  class: "mail-field-hint"
+}, ss = {
   key: 1,
+  class: "mail-preview-busy",
+  role: "status"
+}, is = {
+  key: 2,
   class: "mail-preview-envelope"
-}, It = ["aria-busy"], Dt = {
+}, ns = ["aria-busy"], os = {
   key: 0,
   class: "kx-loading",
   role: "status"
-}, Nt = {
+}, rs = {
   key: 1,
   class: "mail-muted mail-preview-empty"
-}, Pt = ["srcdoc", "title"], Et = {
+}, us = ["srcdoc", "title"], ds = {
   key: 1,
   class: "mail-preview-text"
-}, zt = {
-  key: 2,
-  class: "mail-preview-foot mail-preview-problem"
-}, Mt = {
+}, cs = {
   key: 3,
   class: "mail-preview-foot mail-preview-problem",
-  role: "alert"
-}, Ot = {
+  role: "status"
+}, vs = {
   key: 4,
   class: "mail-preview-foot mail-preview-problem",
   role: "alert"
-}, Bt = {
+}, ms = {
   key: 5,
   class: "mail-preview-foot"
-}, qt = /* @__PURE__ */ ae({
+}, fs = /* @__PURE__ */ te({
   __name: "PreviewPane",
   props: {
     draft: {},
     messages: {}
   },
   emits: ["problem"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, { library: $, delivery: c } = ve(), n = { message: de() }, w = p("email"), k = p("desktop"), y = [{ label: "Email", value: "email" }, { label: "Plain text", value: "text" }], g = [{ label: "Desktop", value: "desktop", icon: "tabler:device-desktop" }, { label: "Phone", value: "phone", icon: "tabler:device-mobile" }], x = z(() => (r.messages ?? $.ofKind("message").map((C) => C.name)).map((C) => ({ value: C, label: $.find("message", C)?.title ?? C }))), m = p("");
-    Q(x, (G) => {
-      r.draft.kind !== "message" && (G.some((C) => C.value === m.value) || (m.value = G[0]?.value ?? ""));
+  setup(e, { emit: v }) {
+    const r = e, c = v, { library: y, delivery: o } = fe();
+    r.draft.kind !== "message" && y.ensure("message");
+    const k = { message: ve() }, b = _("email"), x = _("desktop"), V = [{ label: "Email", value: "email" }, { label: "Plain text", value: "text" }], i = [{ label: "Desktop", value: "desktop", icon: "tabler:device-desktop" }, { label: "Phone", value: "phone", icon: "tabler:device-mobile" }], U = P(() => y.ready("message") ? (r.messages ?? y.ofKind("message").map((p) => p.name)).map((p) => ({ value: p, label: y.title("message", p) ?? p })).sort((p, f) => p.label.localeCompare(f.label)) : []), S = _("");
+    X(U, (g) => {
+      r.draft.kind !== "message" && (g.some((p) => p.value === S.value) || (S.value = g[0]?.value ?? ""));
     }, { immediate: !0 });
-    const _ = z(() => r.draft.kind === "message" ? r.draft.name : m.value), o = fe(), v = p(!1), b = p(), O = p(""), A = ge();
-    let j, S = !1, N = !1, te = !1;
-    const W = () => {
-      te = !0, clearTimeout(j);
-    };
-    window.addEventListener("pagehide", W), window.addEventListener("beforeunload", W), Qe(() => {
-      window.removeEventListener("pagehide", W), window.removeEventListener("beforeunload", W);
-    });
-    const R = p(!1);
-    async function h() {
-      const G = _.value;
-      if (!G || te) return;
-      if (S) {
-        N = !0;
+    const R = P(() => r.draft.kind !== "message" && S.value && S.value === U.value[0]?.value ? "The first message by title. Choose another to see it around different content." : ""), C = P(() => r.draft.kind === "message" ? r.draft.name : S.value), u = ge(), d = _(!1), m = _(), $ = _(""), A = xe();
+    let I, M = !1, L = !1;
+    async function E() {
+      const g = C.value;
+      if (!g) return;
+      if (M) {
+        L = !0;
         return;
       }
-      S = !0;
-      const C = A();
-      v.value = !0;
+      M = !0;
+      const p = A();
+      d.value = !0;
       try {
-        const P = await le.preview(G, [r.draft]);
-        if (!C()) return;
-        o.value = P, R.value = !1, b.value = void 0, O.value = "";
-      } catch (P) {
-        if (!C()) return;
-        R.value = tl(P);
-        const q = R.value ? void 0 : Te(P);
-        b.value = q ? { ...q, previewOf: G } : void 0, O.value = b.value ? "" : ne(P, "The preview could not be rendered.");
+        const f = await se.preview(g, [r.draft]);
+        if (!p()) return;
+        u.value = f, m.value = void 0, $.value = "";
+      } catch (f) {
+        if (!p()) return;
+        const w = He(f);
+        m.value = w ? { ...w, previewOf: g } : void 0, $.value = m.value ? "" : ie(f, "The preview could not be rendered.");
       } finally {
-        S = !1, C() && (v.value = !1), N && (N = !1, h());
+        M = !1, p() && (d.value = !1), L && (L = !1, E());
       }
     }
-    function U() {
-      clearTimeout(j), j = setTimeout(() => {
-        h();
+    function ae() {
+      clearTimeout(I), I = setTimeout(() => {
+        E();
       }, 450);
     }
-    Q(() => JSON.stringify(r.draft), U), Q(_, () => {
-      o.value = void 0, h();
-    }, { immediate: !0 }), Q(b, (G) => f("problem", G)), Qe(() => clearTimeout(j));
-    const D = z(() => o.value?.html ? ua(o.value.html, o.value.inline_assets) : ""), I = z(() => {
-      const G = c.value?.from;
-      return G ? G.name ? `${G.name} <${G.address}>` : G.address : "";
+    X(() => JSON.stringify(r.draft), ae), X(C, () => {
+      u.value = void 0, E();
+    }, { immediate: !0 }), X(m, (g) => c("problem", g)), Be(() => clearTimeout(I));
+    const le = P(() => u.value?.html ? _a(u.value.html, u.value.inline_assets) : ""), q = P(() => {
+      const g = o.value?.from;
+      return g ? g.name ? `${g.name} <${g.address}>` : g.address : "";
     });
-    return (G, C) => (l(), i("section", Tt, [
-      t("div", Ut, [
-        s(a(he), {
-          modelValue: w.value,
-          "onUpdate:modelValue": C[0] || (C[0] = (P) => w.value = P),
-          options: y,
+    return (g, p) => (l(), n("section", Xt, [
+      t("div", es, [
+        s(a($e), {
+          modelValue: b.value,
+          "onUpdate:modelValue": p[0] || (p[0] = (f) => b.value = f),
+          options: V,
           "option-label": "label",
           "option-value": "value",
           "allow-empty": !1,
           "aria-label": "Preview format"
         }, null, 8, ["modelValue"]),
-        w.value === "email" ? (l(), B(a(he), {
+        b.value === "email" ? (l(), O(a($e), {
           key: 0,
-          modelValue: k.value,
-          "onUpdate:modelValue": C[1] || (C[1] = (P) => k.value = P),
-          options: g,
+          modelValue: x.value,
+          "onUpdate:modelValue": p[1] || (p[1] = (f) => x.value = f),
+          options: i,
           "option-label": "label",
           "option-value": "value",
           "allow-empty": !1,
           "aria-label": "Preview width"
         }, {
-          option: T(({ option: P }) => [
-            s(a(L), {
-              icon: P.icon,
+          option: j(({ option: f }) => [
+            s(a(N), {
+              icon: f.icon,
               "aria-hidden": "true"
             }, null, 8, ["icon"]),
-            K(u(P.label), 1)
+            G(h(f.label), 1)
           ]),
           _: 1
-        }, 8, ["modelValue"])) : V("", !0)
+        }, 8, ["modelValue"])) : T("", !0)
       ]),
-      e.draft.kind !== "message" ? (l(), i("div", At, [
+      e.draft.kind !== "message" ? (l(), n("div", as, [
         t("label", {
-          for: n.message
-        }, "Preview with", 8, Lt),
-        s(a(Ae), {
-          modelValue: m.value,
-          "onUpdate:modelValue": C[2] || (C[2] = (P) => m.value = P),
-          "input-id": n.message,
-          options: x.value,
+          for: k.message
+        }, "Preview with", 8, ls),
+        s(a(Oe), {
+          modelValue: S.value,
+          "onUpdate:modelValue": p[2] || (p[2] = (f) => S.value = f),
+          "input-id": k.message,
+          options: U.value,
           "option-label": "label",
           "option-value": "value",
           "append-to": "self",
           placeholder: "Choose a message…",
-          "empty-message": "No messages yet"
-        }, null, 8, ["modelValue", "input-id", "options"])
-      ])) : V("", !0),
-      o.value ? (l(), i("dl", jt, [
-        I.value ? (l(), i(H, { key: 0 }, [
-          C[3] || (C[3] = t("dt", null, "From", -1)),
-          t("dd", null, u(I.value), 1)
-        ], 64)) : V("", !0),
-        C[4] || (C[4] = t("dt", null, "Subject", -1)),
-        t("dd", null, u(o.value.subject), 1)
-      ])) : V("", !0),
+          "empty-message": "No messages yet",
+          loading: !a(y).ready("message")
+        }, null, 8, ["modelValue", "input-id", "options", "loading"]),
+        R.value ? (l(), n("small", ts, h(R.value), 1)) : T("", !0)
+      ])) : T("", !0),
+      d.value && u.value ? (l(), n("p", ss, [
+        s(a(N), {
+          icon: "tabler:loader-2",
+          class: "spin",
+          "aria-hidden": "true"
+        }),
+        p[3] || (p[3] = G("Updating the preview…", -1))
+      ])) : T("", !0),
+      u.value ? (l(), n("dl", is, [
+        q.value ? (l(), n(Y, { key: 0 }, [
+          p[4] || (p[4] = t("dt", null, "From", -1)),
+          t("dd", null, h(q.value), 1)
+        ], 64)) : T("", !0),
+        p[5] || (p[5] = t("dt", null, "Subject", -1)),
+        t("dd", null, h(u.value.subject), 1)
+      ])) : T("", !0),
       t("div", {
-        class: oe(["mail-preview-body", ["mail-preview-" + k.value, { "mail-preview-stale": b.value || O.value }]]),
-        "aria-busy": v.value
+        class: ne(["mail-preview-body", ["mail-preview-" + x.value, { "mail-preview-stale": m.value || $.value }]]),
+        "aria-busy": d.value
       }, [
-        !o.value && v.value ? (l(), i("p", Dt, [
-          s(a(L), {
+        !u.value && d.value ? (l(), n("p", os, [
+          s(a(N), {
             icon: "tabler:loader-2",
             class: "spin",
             "aria-hidden": "true"
           }),
-          C[5] || (C[5] = K("Rendering preview…", -1))
-        ])) : _.value ? o.value ? (l(), i(H, { key: 2 }, [
-          w.value === "email" ? (l(), i("iframe", {
+          p[6] || (p[6] = G("Rendering preview…", -1))
+        ])) : C.value ? u.value ? (l(), n(Y, { key: 2 }, [
+          b.value === "email" ? (l(), n("iframe", {
             key: 0,
             class: "mail-preview-frame",
             sandbox: "",
-            srcdoc: D.value,
-            title: "Email preview: " + (o.value.subject ?? "")
-          }, null, 8, Pt)) : (l(), i("pre", Et, u(o.value.text), 1))
-        ], 64)) : V("", !0) : (l(), i("p", Nt, "Choose a message to see this " + u(e.draft.kind === "base" ? "base template" : "part") + " around real content.", 1))
-      ], 10, It),
-      b.value ? (l(), i("div", zt, [
-        s(Ke, {
-          problem: b.value,
-          draft: e.draft,
-          "last-good": !!o.value
-        }, null, 8, ["problem", "draft", "last-good"])
-      ])) : R.value ? (l(), i("p", Mt, [
-        s(a(L), {
-          icon: "tabler:plug-connected-x",
-          "aria-hidden": "true"
-        }),
-        t("span", null, u(O.value), 1)
-      ])) : O.value ? (l(), i("p", Ot, [
-        s(a(L), {
+            srcdoc: le.value,
+            title: "Email preview: " + (u.value.subject ?? "")
+          }, null, 8, us)) : (l(), n("pre", ds, h(u.value.text), 1))
+        ], 64)) : T("", !0) : (l(), n("p", rs, "Choose a message to see this " + h(e.draft.kind === "base" ? "base template" : "part") + " around real content.", 1))
+      ], 10, ns),
+      m.value ? (l(), n("p", cs, [
+        s(a(N), {
           icon: "tabler:alert-triangle",
           "aria-hidden": "true"
         }),
-        t("span", null, u(O.value), 1)
-      ])) : (l(), i("p", Bt, [
-        s(a(L), {
+        t("span", null, h(u.value ? "The preview shows the last version that rendered." : "Nothing to show until it renders.") + " The problem is shown beside the source.", 1)
+      ])) : $.value ? (l(), n("p", vs, [
+        s(a(N), {
+          icon: "tabler:alert-triangle",
+          "aria-hidden": "true"
+        }),
+        t("span", null, h($.value), 1)
+      ])) : (l(), n("p", ms, [
+        s(a(N), {
           icon: "tabler:info-circle",
           "aria-hidden": "true"
         }),
-        K(" " + u(e.draft.kind === "message" ? "Filled with the sample values from Variables." : "Your unsaved version around a real message, filled with its sample values."), 1)
+        G(" " + h(e.draft.kind === "message" ? "Filled with the sample values from Variables." : "Your unsaved version around a real message, filled with its sample values."), 1)
       ]))
     ]));
   }
-}), Ht = { class: "kx-modal-head-icon" }, Ft = { class: "kx-modal-head-text" }, Kt = { class: "kx-modal-head-sub" }, Jt = { class: "mail-change-list" }, Wt = { class: "mail-muted" }, Yt = { class: "mail-field" }, Gt = ["for"], Zt = {
+}), bs = { class: "kx-modal-head-icon" }, ys = { class: "kx-modal-head-text" }, ps = { class: "kx-modal-head-sub" }, gs = { class: "mail-change-list" }, hs = { class: "mail-muted" }, ks = { class: "mail-field" }, $s = ["for"], ws = {
   key: 0,
   class: "kx-notice error mail-block",
   role: "alert"
-}, Qt = { class: "mail-failure-body" }, Xt = { class: "mail-dependents" }, es = ["onClick"], as = {
+}, _s = { class: "mail-failure-body" }, xs = { class: "mail-dependents" }, Cs = {
   key: 1,
   class: "kx-err inline",
   role: "alert"
-}, ls = /* @__PURE__ */ ae({
+}, Vs = /* @__PURE__ */ te({
   __name: "ReviewDialog",
   props: {
     visible: { type: Boolean },
@@ -1132,52 +1316,53 @@ const Rt = "{{ block body() }}{{ end }}", Tt = {
     draft: {},
     busy: { type: Boolean },
     error: {},
-    dependents: {}
+    dependents: {},
+    suggestedNote: {}
   },
   emits: ["close", "save"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, { library: $, go: c } = ve(), n = p(""), w = de();
-    Q(() => r.visible, (x) => {
-      x && (n.value = "");
-    });
-    const k = z(() => {
-      const x = r.saved, m = r.draft, _ = [];
-      return (x.title !== m.title || x.description !== m.description) && _.push("Name and description"), x.base !== m.base && _.push(`Base template: ${$.find("base", m.base ?? "")?.title ?? m.base}`), x.subject !== m.subject && _.push("Subject"), x.html !== m.html && _.push("HTML"), x.text !== m.text && _.push("Plain text"), (JSON.stringify(x.schema.properties) !== JSON.stringify(m.schema.properties) || JSON.stringify(x.schema.required ?? []) !== JSON.stringify(m.schema.required ?? [])) && _.push(m.kind === "message" ? "Variables" : "Inputs"), JSON.stringify(x.samples) !== JSON.stringify(m.samples) && _.push("Sample values"), _;
-    }), y = z(() => r.draft.kind === "message" ? "Email sent after you save uses this version." : `Every message that uses this ${me[r.draft.kind].toLowerCase()} changes when you save.`), g = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
-    return (x, m) => (l(), B(a(Ce), {
+  setup(e, { emit: v }) {
+    const r = e, c = v, { library: y, go: o } = fe(), k = _(""), b = ve();
+    X(() => r.visible, (U) => {
+      U && (k.value = r.suggestedNote ?? "");
+    }), we(() => r.visible);
+    const x = P(() => {
+      const U = r.saved, S = r.draft, R = [];
+      return (U.title !== S.title || U.description !== S.description) && R.push("Name and description"), U.base !== S.base && R.push(`Base template: ${y.title("base", S.base ?? "") ?? S.base}`), U.subject !== S.subject && R.push("Subject"), U.html !== S.html && R.push("HTML"), U.text !== S.text && R.push("Plain text"), (JSON.stringify(U.schema.properties) !== JSON.stringify(S.schema.properties) || JSON.stringify(U.schema.required ?? []) !== JSON.stringify(S.schema.required ?? [])) && R.push(S.kind === "message" ? "Variables" : "Inputs"), JSON.stringify(U.samples) !== JSON.stringify(S.samples) && R.push("Sample values"), R;
+    }), V = P(() => r.draft.kind === "message" ? "Email sent after you save uses this version." : `Every message that uses this ${be[r.draft.kind].toLowerCase()} changes when you save.`), i = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
+    return (U, S) => (l(), O(a(Ae), {
       visible: e.visible,
       modal: "",
       draggable: !1,
       closable: !e.busy,
       "close-on-escape": !e.busy,
       class: "mail-dialog",
-      pt: g,
+      pt: i,
       "aria-label": "Review changes",
-      "onUpdate:visible": m[3] || (m[3] = (_) => {
-        _ || f("close");
+      "onUpdate:visible": S[3] || (S[3] = (R) => {
+        R || c("close");
       })
     }, {
-      header: T(() => [
-        t("span", Ht, [
-          s(a(L), {
+      header: j(() => [
+        t("span", bs, [
+          s(a(N), {
             icon: "tabler:checklist",
             "aria-hidden": "true"
           })
         ]),
-        t("span", Ft, [
-          m[4] || (m[4] = t("span", { class: "kx-modal-head-title" }, "Review changes", -1)),
-          t("span", Kt, u(e.draft.title), 1)
+        t("span", ys, [
+          S[4] || (S[4] = t("span", { class: "kx-modal-head-title" }, "Review changes", -1)),
+          t("span", ps, h(e.draft.title), 1)
         ])
       ]),
-      footer: T(() => [
-        s(a(F), {
+      footer: j(() => [
+        s(a(D), {
           label: "Keep editing",
           severity: "secondary",
           outlined: "",
           disabled: e.busy,
-          onClick: m[2] || (m[2] = (_) => f("close"))
+          onClick: S[2] || (S[2] = (R) => c("close"))
         }, null, 8, ["disabled"]),
-        s(a(F), {
+        s(a(D), {
           label: "Save",
           type: "submit",
           form: "mail-review",
@@ -1185,60 +1370,62 @@ const Rt = "{{ block body() }}{{ end }}", Tt = {
           disabled: !!e.dependents
         }, null, 8, ["loading", "disabled"])
       ]),
-      default: T(() => [
+      default: j(() => [
         t("form", {
           id: "mail-review",
           class: "mail-form",
-          onSubmit: m[1] || (m[1] = xe((_) => f("save", n.value.trim()), ["prevent"]))
+          onSubmit: S[1] || (S[1] = je((R) => c("save", k.value.trim()), ["prevent"]))
         }, [
           t("div", null, [
-            m[5] || (m[5] = t("p", { class: "mail-field-label" }, "Changed", -1)),
-            t("ul", Jt, [
-              (l(!0), i(H, null, re(k.value, (_) => (l(), i("li", { key: _ }, u(_), 1))), 128))
+            S[5] || (S[5] = t("p", { class: "mail-field-label" }, "Changed", -1)),
+            t("ul", gs, [
+              (l(!0), n(Y, null, me(x.value, (R) => (l(), n("li", { key: R }, h(R), 1))), 128))
             ])
           ]),
-          t("p", Wt, u(y.value) + " The previous version stays in History.", 1),
-          t("div", Yt, [
+          t("p", hs, h(V.value) + " The previous version stays in History.", 1),
+          t("div", ks, [
             t("label", {
               class: "mail-field-label",
-              for: a(w)
-            }, "Note for History", 8, Gt),
+              for: a(b)
+            }, "Note for History", 8, $s),
             s(a(ce), {
-              id: a(w),
-              modelValue: n.value,
-              "onUpdate:modelValue": m[0] || (m[0] = (_) => n.value = _),
+              id: a(b),
+              modelValue: k.value,
+              "onUpdate:modelValue": S[0] || (S[0] = (R) => k.value = R),
               placeholder: "What changed and why…",
               disabled: e.busy
             }, null, 8, ["id", "modelValue", "disabled"])
           ]),
-          e.dependents ? (l(), i("div", Zt, [
-            s(a(L), {
+          e.dependents ? (l(), n("div", ws, [
+            s(a(N), {
               icon: "tabler:alert-triangle",
               "aria-hidden": "true"
             }),
-            t("div", Qt, [
-              t("strong", null, u(e.dependents.names.length === 1 ? "1 message would break" : e.dependents.names.length + " messages would break") + ".", 1),
-              t("span", null, u(e.dependents.reason), 1),
-              t("span", Xt, [
-                (l(!0), i(H, null, re(e.dependents.names, (_) => (l(), i("button", {
-                  key: _,
-                  type: "button",
-                  class: "mail-text-link",
-                  onClick: (o) => {
-                    f("close"), a(c)({ name: "resource", kind: "message", resource: _, section: "content" });
+            t("div", _s, [
+              t("strong", null, h(e.dependents.names.length === 1 ? "1 message would break" : e.dependents.names.length + " messages would break") + ".", 1),
+              t("span", null, h(e.dependents.reason), 1),
+              t("span", xs, [
+                (l(!0), n(Y, null, me(e.dependents.names, (R) => (l(), O(a(D), {
+                  key: R,
+                  link: "",
+                  size: "small",
+                  class: "mail-inline-link",
+                  label: a(y).title("message", R) ?? R,
+                  onClick: (C) => {
+                    c("close"), a(o)({ name: "resource", kind: "message", resource: R, section: "content" });
                   }
-                }, u(a($).find("message", _)?.title ?? _), 9, es))), 128))
+                }, null, 8, ["label", "onClick"]))), 128))
               ])
             ])
-          ])) : e.error ? (l(), i("p", as, u(e.error), 1)) : V("", !0)
+          ])) : e.error ? (l(), n("p", Cs, h(e.error), 1)) : T("", !0)
         ], 32)
       ]),
       _: 1
     }, 8, ["visible", "closable", "close-on-escape"]));
   }
-}), Ia = /* @__PURE__ */ ae({
+}), Ga = /* @__PURE__ */ te({
   __name: "Disclosure",
-  props: /* @__PURE__ */ Ga({
+  props: /* @__PURE__ */ ua({
     label: {}
   }, {
     open: { type: Boolean, default: !1 },
@@ -1246,30 +1433,30 @@ const Rt = "{{ block body() }}{{ end }}", Tt = {
   }),
   emits: ["update:open"],
   setup(e) {
-    const d = Ya(e, "open");
-    return (r, f) => (l(), B(a(bl), {
+    const v = za(e, "open");
+    return (r, c) => (l(), O(a(jl), {
       class: "kx-disclosure",
-      value: d.value ? "content" : void 0,
-      "onUpdate:value": f[0] || (f[0] = ($) => d.value = $ === "content")
+      value: v.value ? "content" : void 0,
+      "onUpdate:value": c[0] || (c[0] = (y) => v.value = y === "content")
     }, {
-      default: T(() => [
-        s(a(yl), {
+      default: j(() => [
+        s(a(Ll), {
           class: "kx-disclosure-panel",
           value: "content"
         }, {
-          default: T(() => [
-            s(a(pl), { class: "kx-disclosure-toggle" }, {
-              default: T(() => [
-                K(u(e.label), 1)
+          default: j(() => [
+            s(a(Il), { class: "kx-disclosure-toggle" }, {
+              default: j(() => [
+                G(h(e.label), 1)
               ]),
               _: 1
             }),
-            s(a(fl), { pt: {
+            s(a(Al), { pt: {
               transition: { name: "kx-disclosure-motion" },
               contentWrapper: { class: "kx-disclosure-content" }
             } }, {
-              default: T(() => [
-                Se(r.$slots, "default")
+              default: j(() => [
+                ze(r.$slots, "default")
               ]),
               _: 3
             })
@@ -1280,283 +1467,164 @@ const Rt = "{{ block body() }}{{ end }}", Tt = {
       _: 3
     }, 8, ["value"]));
   }
-}), Ze = /* @__PURE__ */ new Map();
-function ts(e, d) {
-  const r = `${e}@${d}`;
-  let f = Ze.get(r);
-  return f || (f = Promise.resolve(vl.get(`/api/v1/mail/library/asset/${encodeURIComponent(e)}/content`, { responseType: "blob" })).then(($) => $.data instanceof Blob ? URL.createObjectURL($.data) : void 0, () => {
-    Ze.delete(r);
-  }), Ze.set(r, f)), f;
-}
-const ss = ["src", "alt"], is = {
-  key: 0,
-  "aria-hidden": "true"
-}, ca = /* @__PURE__ */ ae({
-  __name: "AssetTile",
-  props: {
-    name: {},
-    revision: {},
-    asset: {},
-    large: { type: Boolean },
-    alt: {}
-  },
-  setup(e) {
-    const d = e, r = p();
-    Q(() => [d.name, d.revision], async ([$, c]) => {
-      r.value = void 0, r.value = await ts($, c);
-    }, { immediate: !0 });
-    const f = z(() => d.asset?.content_type?.replace(/^image\//, "").replace("jpeg", "jpg").toUpperCase() ?? "");
-    return ($, c) => (l(), i("span", {
-      class: oe(["mail-asset-tile", { "mail-asset-tile-large": e.large }])
-    }, [
-      r.value ? (l(), i("img", {
-        key: 0,
-        src: r.value,
-        alt: e.alt ?? ""
-      }, null, 8, ss)) : (l(), i(H, { key: 1 }, [
-        s(a(L), {
-          icon: "tabler:photo",
-          "aria-hidden": "true"
-        }),
-        f.value ? (l(), i("span", is, u(f.value), 1)) : V("", !0)
-      ], 64))
-    ], 2));
-  }
-}), ns = { class: "kx-modal-head-icon" }, os = { class: "kx-modal-head-text" }, rs = { class: "kx-modal-head-sub" }, us = { class: "mail-form" }, ds = {
+}), Ss = {
   key: 0,
   class: "kx-err inline",
   role: "alert"
-}, cs = {
-  key: 1,
-  class: "mail-list mail-insert-list"
-}, vs = ["onClick"], ms = { class: "mail-list-main" }, bs = { class: "mail-mono" }, fs = {
-  key: 0,
-  class: "mail-sub"
-}, ps = {
-  key: 0,
-  class: "mail-muted"
-}, ys = {
-  key: 1,
-  class: "mail-list mail-insert-list"
-}, hs = ["disabled", "onClick"], gs = { class: "mail-list-main" }, ks = { class: "mail-sub" }, $s = { class: "mail-field" }, ws = ["for"], _s = { class: "mail-dialog-actions" }, xs = {
-  key: 1,
-  class: "mail-muted"
-}, Cs = {
-  key: 2,
-  class: "mail-list mail-insert-list"
-}, Vs = ["disabled", "onClick"], Ss = { class: "mail-list-main" }, Rs = { class: "mail-sub mail-mono-block" }, Ts = {
-  key: 4,
-  class: "mail-list mail-insert-list"
-}, Us = /* @__PURE__ */ ae({
-  __name: "InsertDialog",
+}, Ts = { class: "kx-modal-head-icon" }, Rs = { class: "kx-modal-head-text" }, Us = { class: "kx-modal-head-title" }, js = { class: "mail-field" }, As = ["for"], Is = /* @__PURE__ */ te({
+  __name: "InsertMenu",
   props: {
-    visible: { type: Boolean },
     draft: {},
     face: {}
   },
-  emits: ["close", "insert"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, { library: $ } = ve(), c = p("variable"), n = z(() => [
-      { label: "Variable", value: "variable" },
-      { label: "Part", value: "part" },
-      ...r.face === "html" ? [{ label: "Image", value: "image" }] : [],
-      ...r.draft.kind === "base" ? [{ label: "Message body", value: "block" }] : []
-    ]);
-    Q(() => r.visible, (j) => {
-      j && (c.value = "variable", o.value = void 0, m.value = "");
-    });
-    const w = [
-      { name: "site.title", hint: "Your workspace name" },
-      { name: "site.url", hint: "Your workspace address" },
-      { name: "sender.name", hint: "The person sending the message" },
-      { name: "message.subject", hint: "This message’s subject" }
-    ], k = z(() => [...Object.entries(r.draft.schema.properties).map(([S, N]) => ({
-      text: r.draft.kind === "part" ? `{{ .${S} }}` : St(S),
-      name: S,
-      hint: typeof N.description == "string" ? N.description : ""
-    })), ...w.map((S) => ({ text: `{{ ${S.name} }}`, name: S.name, hint: S.hint }))]), y = z(() => $.ofKind("part").filter((j) => !(r.draft.kind === "part" && j.name === r.draft.name))), g = z(() => $.ofKind("asset")), x = p(""), m = p("");
-    async function _(j) {
-      x.value = j, m.value = "";
+  emits: ["insert"],
+  setup(e, { expose: v, emit: r }) {
+    const c = e, y = r, { library: o } = fe(), k = _(), b = _("");
+    function x(A) {
+      b.value = "", o.ensure("part"), c.face === "html" && o.ensure("asset"), k.value?.toggle(A);
+    }
+    v({ toggle: x });
+    const V = [
+      { name: "site.title", label: "Workspace name" },
+      { name: "site.url", label: "Workspace address" },
+      { name: "sender.name", label: "Sender’s name" },
+      { name: "message.subject", label: "Subject" }
+    ], i = (A) => ({ label: A, disabled: !0, icon: "tabler:loader-2" });
+    async function U(A) {
+      b.value = "";
       try {
-        f("insert", xt(await le.get({ kind: "part", name: j })));
-      } catch (S) {
-        m.value = ne(S, "The part could not be read.");
-      } finally {
-        x.value = "";
+        y("insert", Kt(await se.get({ kind: "part", name: A })));
+      } catch (I) {
+        b.value = ie(I, "The part could not be read.");
       }
     }
-    const o = p(), v = p(""), b = de();
-    async function O(j, S) {
-      x.value = j, m.value = "";
+    const S = _(), R = _(""), C = ve();
+    we(() => !!S.value);
+    async function u(A, I) {
+      b.value = "";
       try {
-        const N = await le.get({ kind: "asset", name: j });
-        o.value = { name: j, title: S, width: N.asset?.width }, v.value = S;
-      } catch (N) {
-        m.value = ne(N, "The image could not be read.");
-      } finally {
-        x.value = "";
+        const M = await se.get({ kind: "asset", name: A });
+        S.value = { name: A, title: I, width: M.asset?.width }, R.value = I;
+      } catch (M) {
+        b.value = ie(M, "The image could not be read.");
       }
     }
-    const A = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
-    return (j, S) => (l(), B(a(Ce), {
-      visible: e.visible,
-      modal: "",
-      draggable: !1,
-      class: "mail-dialog",
-      pt: A,
-      "aria-label": "Insert",
-      "onUpdate:visible": S[5] || (S[5] = (N) => {
-        N || f("close");
-      })
-    }, {
-      header: T(() => [
-        t("span", ns, [
-          s(a(L), {
-            icon: "tabler:code-plus",
+    function d() {
+      S.value && (y("insert", Yt(S.value.name, R.value, S.value.width)), S.value = void 0);
+    }
+    const m = P(() => {
+      const A = Object.entries(c.draft.schema.properties).map(([L]) => ({
+        label: L,
+        icon: "tabler:variable",
+        command: () => y("insert", c.draft.kind === "part" ? `{{ .${L} }}` : Zt(L))
+      })), I = [{
+        label: c.draft.kind === "part" ? "Inputs and values" : "Variables and values",
+        items: [...A, ...V.map((L) => ({
+          label: L.label,
+          icon: "tabler:world",
+          command: () => y("insert", `{{ ${L.name} }}`)
+        }))]
+      }], M = o.ofKind("part").filter((L) => !(c.draft.kind === "part" && L.name === c.draft.name));
+      if (I.push({ label: "Parts", items: o.ready("part") ? M.length ? M.map((L) => ({ label: L.title, icon: ye.part, command: () => {
+        U(L.name);
+      } })) : [{ label: "There are no parts to include yet.", disabled: !0 }] : [i("Loading parts…")] }), c.face === "html") {
+        const L = o.ofKind("asset");
+        I.push({ label: "Images", items: o.ready("asset") ? L.length ? L.map((E) => ({ label: E.title, icon: ye.asset, command: () => {
+          u(E.name, E.title);
+        } })) : [{ label: "There are no images yet. Upload one in Images.", disabled: !0 }] : [i("Loading images…")] });
+      }
+      return c.draft.kind === "base" && I.push({ label: "Layout", items: [{
+        label: "Message body",
+        icon: "tabler:layout-rows",
+        command: () => y("insert", Qt)
+      }] }), I;
+    }), $ = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
+    return (A, I) => (l(), n(Y, null, [
+      s(a(Nl), {
+        ref_key: "menu",
+        ref: k,
+        model: m.value,
+        popup: "",
+        "aria-label": "Insert into " + (e.face === "html" ? "HTML" : "plain text"),
+        pt: { root: { style: "max-height: min(420px, 70vh); overflow-y: auto; min-width: 260px" } }
+      }, {
+        itemicon: j(({ item: M, class: L }) => [
+          M.icon ? (l(), O(a(N), {
+            key: 0,
+            icon: M.icon,
+            class: ne(L),
             "aria-hidden": "true"
+          }, null, 8, ["icon", "class"])) : T("", !0)
+        ]),
+        _: 1
+      }, 8, ["model", "aria-label"]),
+      b.value ? (l(), n("p", Ss, h(b.value), 1)) : T("", !0),
+      s(a(Ae), {
+        visible: !!S.value,
+        modal: "",
+        draggable: !1,
+        class: "mail-dialog",
+        pt: $,
+        "aria-label": "Insert image",
+        "onUpdate:visible": I[2] || (I[2] = (M) => {
+          M || (S.value = void 0);
+        })
+      }, {
+        header: j(() => [
+          t("span", Ts, [
+            s(a(N), {
+              icon: "tabler:photo-plus",
+              "aria-hidden": "true"
+            })
+          ]),
+          t("span", Rs, [
+            t("span", Us, "Insert " + h(S.value?.title), 1),
+            I[3] || (I[3] = t("span", { class: "kx-modal-head-sub" }, "Added at the cursor in HTML.", -1))
+          ])
+        ]),
+        footer: j(() => [
+          s(a(D), {
+            label: "Cancel",
+            severity: "secondary",
+            outlined: "",
+            onClick: I[1] || (I[1] = (M) => S.value = void 0)
+          }),
+          s(a(D), {
+            label: "Insert image",
+            type: "submit",
+            form: "mail-insert-image"
           })
         ]),
-        t("span", os, [
-          S[6] || (S[6] = t("span", { class: "kx-modal-head-title" }, "Insert", -1)),
-          t("span", rs, "Added at the cursor in " + u(e.face === "html" ? "HTML" : "plain text") + ".", 1)
-        ])
-      ]),
-      default: T(() => [
-        t("div", us, [
-          s(a(he), {
-            modelValue: c.value,
-            "onUpdate:modelValue": S[0] || (S[0] = (N) => c.value = N),
-            options: n.value,
-            "option-label": "label",
-            "option-value": "value",
-            "allow-empty": !1,
-            "aria-label": "What to insert"
-          }, null, 8, ["modelValue", "options"]),
-          m.value ? (l(), i("p", ds, u(m.value), 1)) : V("", !0),
-          c.value === "variable" ? (l(), i("ul", cs, [
-            (l(!0), i(H, null, re(k.value, (N) => (l(), i("li", {
-              key: N.name
-            }, [
-              t("button", {
-                type: "button",
-                class: "mail-row-link",
-                onClick: (te) => f("insert", N.text)
-              }, [
-                s(a(L), {
-                  icon: "tabler:variable",
-                  "aria-hidden": "true"
-                }),
-                t("span", ms, [
-                  t("span", bs, u(N.name), 1),
-                  N.hint ? (l(), i("span", fs, u(N.hint), 1)) : V("", !0)
-                ])
-              ], 8, vs)
-            ]))), 128))
-          ])) : c.value === "part" ? (l(), i(H, { key: 2 }, [
-            y.value.length ? (l(), i("ul", ys, [
-              (l(!0), i(H, null, re(y.value, (N) => (l(), i("li", {
-                key: N.name
-              }, [
-                t("button", {
-                  type: "button",
-                  class: "mail-row-link",
-                  disabled: !!x.value,
-                  onClick: (te) => _(N.name)
-                }, [
-                  s(a(L), {
-                    icon: x.value === N.name ? "tabler:loader-2" : a(be).part,
-                    class: oe({ spin: x.value === N.name }),
-                    "aria-hidden": "true"
-                  }, null, 8, ["icon", "class"]),
-                  t("span", gs, [
-                    t("span", null, u(N.title), 1),
-                    t("span", ks, u(N.description), 1)
-                  ])
-                ], 8, hs)
-              ]))), 128))
-            ])) : (l(), i("p", ps, "There are no parts to include yet."))
-          ], 64)) : c.value === "image" ? (l(), i(H, { key: 3 }, [
-            o.value ? (l(), i("form", {
-              key: 0,
-              class: "mail-form",
-              onSubmit: S[3] || (S[3] = xe((N) => f("insert", a(Ct)(o.value.name, v.value, o.value.width)), ["prevent"]))
-            }, [
-              t("div", $s, [
-                t("label", {
-                  class: "mail-field-label",
-                  for: a(b)
-                }, "Alternative text for " + u(o.value.title), 9, ws),
-                s(a(ce), {
-                  id: a(b),
-                  modelValue: v.value,
-                  "onUpdate:modelValue": S[1] || (S[1] = (N) => v.value = N),
-                  autofocus: ""
-                }, null, 8, ["id", "modelValue"]),
-                S[7] || (S[7] = t("small", { class: "mail-field-hint" }, "Shown when the image does not load, and read aloud by screen readers.", -1))
-              ]),
-              t("div", _s, [
-                s(a(F), {
-                  label: "Back",
-                  severity: "secondary",
-                  outlined: "",
-                  onClick: S[2] || (S[2] = (N) => o.value = void 0)
-                }),
-                s(a(F), {
-                  label: "Insert image",
-                  type: "submit"
-                })
-              ])
-            ], 32)) : g.value.length ? (l(), i("ul", Cs, [
-              (l(!0), i(H, null, re(g.value, (N) => (l(), i("li", {
-                key: N.name
-              }, [
-                t("button", {
-                  type: "button",
-                  class: "mail-row-link",
-                  disabled: !!x.value,
-                  onClick: (te) => O(N.name, N.title)
-                }, [
-                  s(ca, {
-                    name: N.name,
-                    revision: N.revision
-                  }, null, 8, ["name", "revision"]),
-                  t("span", Ss, [
-                    t("span", null, u(N.title), 1),
-                    t("span", Rs, u(N.name), 1)
-                  ]),
-                  x.value === N.name ? (l(), B(a(L), {
-                    key: 0,
-                    icon: "tabler:loader-2",
-                    class: "spin",
-                    "aria-hidden": "true"
-                  })) : V("", !0)
-                ], 8, Vs)
-              ]))), 128))
-            ])) : (l(), i("p", xs, "There are no images yet. Upload one in Assets."))
-          ], 64)) : (l(), i("ul", Ts, [
-            t("li", null, [
-              t("button", {
-                type: "button",
-                class: "mail-row-link",
-                onClick: S[4] || (S[4] = (N) => f("insert", a(Rt)))
-              }, [
-                s(a(L), {
-                  icon: "tabler:layout-rows",
-                  "aria-hidden": "true"
-                }),
-                S[8] || (S[8] = t("span", { class: "mail-list-main" }, [
-                  t("span", null, "Message body"),
-                  t("span", { class: "mail-sub" }, "Where each message that uses this base template appears.")
-                ], -1))
-              ])
+        default: j(() => [
+          t("form", {
+            id: "mail-insert-image",
+            class: "mail-form",
+            onSubmit: je(d, ["prevent"])
+          }, [
+            t("div", js, [
+              t("label", {
+                class: "mail-field-label",
+                for: a(C)
+              }, "Alternative text", 8, As),
+              s(a(ce), {
+                id: a(C),
+                modelValue: R.value,
+                "onUpdate:modelValue": I[0] || (I[0] = (M) => R.value = M),
+                autofocus: ""
+              }, null, 8, ["id", "modelValue"]),
+              I[4] || (I[4] = t("small", { class: "mail-field-hint" }, "Shown when the image does not load, and read aloud by screen readers.", -1))
             ])
-          ]))
-        ])
-      ]),
-      _: 1
-    }, 8, ["visible"]));
+          ], 32)
+        ]),
+        _: 1
+      }, 8, ["visible"])
+    ], 64));
   }
-}), As = ["disabled", "inert"], Ls = { class: "mail-form" }, js = { class: "mail-field" }, Is = ["for"], Ds = { class: "mail-field" }, Ns = ["for"], Ps = { class: "mail-field-hint" }, Es = { class: "mail-mono" }, zs = { class: "mail-field" }, Ms = ["for"], Os = { class: "mail-base-row" }, Bs = { class: "mail-kind" }, qs = ["id"], Hs = { class: "mail-code-frame mail-code-subject" }, Fs = { class: "mail-face-bar" }, Ks = { class: "mail-code-frame mail-code-body" }, Js = /* @__PURE__ */ ae({
+}), Ls = ["disabled", "inert"], Ns = { class: "mail-form" }, zs = { class: "mail-field" }, Es = ["for"], Os = { class: "mail-field" }, Ps = ["for"], Ms = { class: "mail-field-hint" }, Ds = { class: "mail-mono" }, Bs = { class: "mail-field" }, qs = ["for"], Hs = { class: "mail-base-row" }, Fs = { class: "mail-kind" }, Js = ["id"], Ws = { class: "mail-code-frame mail-code-subject" }, Ks = {
+  key: 0,
+  class: "mail-field-error",
+  role: "alert"
+}, Ys = { class: "mail-face-bar" }, Gs = { class: "mail-code-frame mail-code-body" }, Zs = /* @__PURE__ */ te({
   __name: "SourceEditor",
   props: {
     draft: {},
@@ -1564,134 +1632,144 @@ const ss = ["src", "alt"], is = {
     disabled: { type: Boolean }
   },
   setup(e) {
-    const d = Xe(() => import("./CodeEditor-CIrhfC0V.js")), r = e, { library: f, go: $ } = ve(), c = { base: de(), title: de(), description: de(), face: de() }, n = p("html"), w = [{ label: "HTML", value: "html" }, { label: "Plain text", value: "text" }], k = z(() => f.ofKind("base").map((o) => ({ value: o.name, label: o.title }))), y = p(), g = p(!1);
-    function x(o) {
-      g.value = !1, y.value?.insert(o);
+    const v = da(() => import("./CodeEditor-CIrhfC0V.js")), r = e, { library: c, go: y } = fe();
+    c.use("base");
+    const o = { base: ve(), title: ve(), description: ve(), face: ve() }, k = _("html"), b = [{ label: "HTML", value: "html" }, { label: "Plain text", value: "text" }], x = P(() => c.ofKind("base").map((u) => ({ value: u.name, label: u.title }))), V = P(() => r.draft.kind === "message" && /[\r\n]/.test(r.draft.subject ?? "")), i = _(), U = _();
+    function S(u) {
+      i.value?.insert(u);
     }
-    const m = z(() => {
-      const o = r.problem;
-      if (o)
-        return o.face === "html" || o.face === "text" || o.face === "subject" ? o.face : n.value;
-    }), _ = z(() => (r.draft.kind === "message" ? "Body" : "Source") + (n.value === "html" ? ", HTML" : ", plain text"));
-    return (o, v) => (l(), i("fieldset", {
+    const R = P(() => {
+      const u = r.problem;
+      if (u)
+        return u.face === "html" || u.face === "text" || u.face === "subject" ? u.face : k.value;
+    }), C = P(() => (r.draft.kind === "message" ? "Body" : "Source") + (k.value === "html" ? ", HTML" : ", plain text"));
+    return (u, d) => (l(), n("fieldset", {
       class: "mail-source-column",
       disabled: e.disabled,
       inert: e.disabled || void 0
     }, [
-      s(Ia, { label: "Name and description" }, {
-        default: T(() => [
-          t("div", Ls, [
-            t("div", js, [
+      s(Ga, { label: "Name and description" }, {
+        default: j(() => [
+          t("div", Ns, [
+            t("div", zs, [
               t("label", {
                 class: "mail-field-label",
-                for: c.title
-              }, "Name", 8, Is),
+                for: o.title
+              }, "Name", 8, Es),
               s(a(ce), {
-                id: c.title,
+                id: o.title,
                 modelValue: e.draft.title,
-                "onUpdate:modelValue": v[0] || (v[0] = (b) => e.draft.title = b)
+                "onUpdate:modelValue": d[0] || (d[0] = (m) => e.draft.title = m)
               }, null, 8, ["id", "modelValue"])
             ]),
-            t("div", Ds, [
+            t("div", Os, [
               t("label", {
                 class: "mail-field-label",
-                for: c.description
-              }, "Description", 8, Ns),
+                for: o.description
+              }, "Description", 8, Ps),
               s(a(ce), {
-                id: c.description,
+                id: o.description,
                 modelValue: e.draft.description,
-                "onUpdate:modelValue": v[1] || (v[1] = (b) => e.draft.description = b)
+                "onUpdate:modelValue": d[1] || (d[1] = (m) => e.draft.description = m)
               }, null, 8, ["id", "modelValue"])
             ]),
-            t("p", Ps, [
-              v[10] || (v[10] = K("Reference ", -1)),
-              t("span", Es, u(e.draft.name), 1),
-              K(", used to " + u(e.draft.kind === "message" ? "send" : "include") + " it. It cannot change.", 1)
+            t("p", Ms, [
+              d[9] || (d[9] = G("Reference ", -1)),
+              t("span", Ds, h(e.draft.name), 1),
+              G(", used to " + h(e.draft.kind === "message" ? "send" : "include") + " it. It cannot change.", 1)
             ])
           ])
         ]),
         _: 1
       }),
-      e.draft.kind === "message" ? (l(), i(H, { key: 0 }, [
-        t("div", zs, [
+      e.draft.kind === "message" ? (l(), n(Y, { key: 0 }, [
+        t("div", Bs, [
           t("label", {
             class: "mail-field-label",
-            for: c.base
-          }, "Base template", 8, Ms),
-          t("div", Os, [
-            s(a(Ae), {
+            for: o.base
+          }, "Base template", 8, qs),
+          t("div", Hs, [
+            s(a(Oe), {
               modelValue: e.draft.base,
-              "onUpdate:modelValue": v[2] || (v[2] = (b) => e.draft.base = b),
-              "input-id": c.base,
-              options: k.value,
+              "onUpdate:modelValue": d[2] || (d[2] = (m) => e.draft.base = m),
+              "input-id": o.base,
+              options: x.value,
               "option-label": "label",
               "option-value": "value",
               "append-to": "self",
-              class: "mail-base-select"
+              class: "mail-base-select",
+              loading: !a(c).ready("base")
             }, {
-              value: T(({ value: b }) => [
-                t("span", Bs, [
-                  s(a(L), {
-                    icon: a(be).base,
+              value: j(({ value: m }) => [
+                t("span", Fs, [
+                  s(a(N), {
+                    icon: a(ye).base,
                     "aria-hidden": "true"
                   }, null, 8, ["icon"]),
-                  K(u(k.value.find((O) => O.value === b)?.label ?? b), 1)
+                  m && a(c).title("base", m) === void 0 ? (l(), O(a(Ce), {
+                    key: 0,
+                    width: "8rem",
+                    height: "1rem"
+                  })) : (l(), n(Y, { key: 1 }, [
+                    G(h(a(c).title("base", m)), 1)
+                  ], 64))
                 ])
               ]),
               _: 1
-            }, 8, ["modelValue", "input-id", "options"]),
-            e.draft.base ? (l(), B(a(F), {
+            }, 8, ["modelValue", "input-id", "options", "loading"]),
+            e.draft.base ? (l(), O(a(D), {
               key: 0,
               text: "",
               label: "Open",
               severity: "secondary",
-              onClick: v[3] || (v[3] = (b) => a($)({ name: "resource", kind: "base", resource: e.draft.base, section: "content" }))
-            })) : V("", !0)
+              onClick: d[3] || (d[3] = (m) => a(y)({ name: "resource", kind: "base", resource: e.draft.base, section: "content" }))
+            })) : T("", !0)
           ])
         ]),
         t("div", {
-          class: oe(["mail-field", { "mail-field-invalid": m.value === "subject" }])
+          class: ne(["mail-field", { "mail-field-invalid": R.value === "subject" || V.value }])
         }, [
           t("span", {
-            id: c.face + "-subject",
+            id: o.face + "-subject",
             class: "mail-field-label"
-          }, "Subject", 8, qs),
-          t("div", Hs, [
-            s(a(d), {
+          }, "Subject", 8, Js),
+          t("div", Ws, [
+            s(a(v), {
               modelValue: e.draft.subject,
-              "onUpdate:modelValue": v[4] || (v[4] = (b) => e.draft.subject = b),
+              "onUpdate:modelValue": d[4] || (d[4] = (m) => e.draft.subject = m),
               label: "Subject"
             }, null, 8, ["modelValue"])
           ]),
-          e.problem && m.value === "subject" ? (l(), B(Ke, {
-            key: 0,
+          V.value ? (l(), n("small", Ks, "A subject is one line. Remove the line break.")) : e.problem && R.value === "subject" ? (l(), O(ma, {
+            key: 1,
             problem: e.problem,
             draft: e.draft
-          }, null, 8, ["problem", "draft"])) : V("", !0)
+          }, null, 8, ["problem", "draft"])) : T("", !0)
         ], 2)
-      ], 64)) : V("", !0),
+      ], 64)) : T("", !0),
       t("div", {
-        class: oe(["mail-field", { "mail-field-invalid": e.problem && m.value !== "subject" }])
+        class: ne(["mail-field", { "mail-field-invalid": e.problem && R.value !== "subject" }])
       }, [
-        t("div", Fs, [
-          s(a(he), {
-            modelValue: n.value,
-            "onUpdate:modelValue": v[5] || (v[5] = (b) => n.value = b),
-            options: w,
+        t("div", Ys, [
+          s(a($e), {
+            modelValue: k.value,
+            "onUpdate:modelValue": d[5] || (d[5] = (m) => k.value = m),
+            options: b,
             "option-label": "label",
             "option-value": "value",
             "allow-empty": !1,
             "aria-label": (e.draft.kind === "message" ? "Body" : "Source") + " format"
           }, null, 8, ["modelValue", "aria-label"]),
-          s(a(F), {
+          s(a(D), {
             label: "Insert",
             severity: "secondary",
             outlined: "",
             size: "small",
-            onClick: v[6] || (v[6] = (b) => g.value = !0)
+            "aria-haspopup": "true",
+            onClick: d[6] || (d[6] = (m) => U.value?.toggle(m))
           }, {
-            icon: T(() => [
-              s(a(L), {
+            icon: j(() => [
+              s(a(N), {
                 icon: "tabler:plus",
                 "aria-hidden": "true"
               })
@@ -1699,62 +1777,225 @@ const ss = ["src", "alt"], is = {
             _: 1
           })
         ]),
-        t("div", Ks, [
-          n.value === "html" ? (l(), B(a(d), {
+        t("div", Gs, [
+          k.value === "html" ? (l(), O(a(v), {
             ref_key: "editor",
-            ref: y,
+            ref: i,
             key: "html",
             modelValue: e.draft.html,
-            "onUpdate:modelValue": v[7] || (v[7] = (b) => e.draft.html = b),
-            label: _.value
-          }, null, 8, ["modelValue", "label"])) : (l(), B(a(d), {
+            "onUpdate:modelValue": d[7] || (d[7] = (m) => e.draft.html = m),
+            label: C.value
+          }, null, 8, ["modelValue", "label"])) : (l(), O(a(v), {
             ref_key: "editor",
-            ref: y,
+            ref: i,
             key: "text",
             modelValue: e.draft.text,
-            "onUpdate:modelValue": v[8] || (v[8] = (b) => e.draft.text = b),
-            label: _.value
+            "onUpdate:modelValue": d[8] || (d[8] = (m) => e.draft.text = m),
+            label: C.value
           }, null, 8, ["modelValue", "label"]))
         ]),
-        e.problem && m.value !== "subject" ? (l(), B(Ke, {
+        e.problem && R.value !== "subject" ? (l(), O(ma, {
           key: 0,
           problem: e.problem,
           draft: e.draft
-        }, null, 8, ["problem", "draft"])) : V("", !0)
+        }, null, 8, ["problem", "draft"])) : T("", !0)
       ], 2),
-      s(Us, {
-        visible: g.value,
+      s(Is, {
+        ref_key: "inserter",
+        ref: U,
         draft: e.draft,
-        face: n.value,
-        onClose: v[9] || (v[9] = (b) => g.value = !1),
-        onInsert: x
-      }, null, 8, ["visible", "draft", "face"])
-    ], 8, As));
+        face: k.value,
+        onInsert: S
+      }, null, 8, ["draft", "face"])
+    ], 8, Ls));
   }
-}), Ws = ["disabled", "inert"], Ys = { class: "mail-sr-only" }, Gs = {
+}), Qs = { class: "mail-value-field" }, Xs = {
+  key: 0,
+  class: "mail-field-error",
+  role: "alert"
+}, Na = /* @__PURE__ */ te({
+  __name: "ValueField",
+  props: /* @__PURE__ */ ua({
+    type: {},
+    itemType: {},
+    label: {},
+    disabled: { type: Boolean }
+  }, {
+    modelValue: { type: [null, Boolean, Number, String, Array, Object] },
+    modelModifiers: {}
+  }),
+  emits: /* @__PURE__ */ ua(["invalid"], ["update:modelValue"]),
+  setup(e, { emit: v }) {
+    const r = e, c = za(e, "modelValue"), y = v, o = (m) => m === null || ["string", "number", "boolean"].includes(typeof m), k = (m) => m === void 0 || Array.isArray(m) && m.every(o), b = (m) => m === void 0 || !!m && typeof m == "object" && !Array.isArray(m) && Object.values(m).every(($) => typeof $ == "string"), x = _(!1);
+    X(() => r.type, () => {
+      x.value = !1;
+    });
+    const V = P(() => x.value ? "written" : r.type === "array" ? k(c.value) ? "list" : "written" : r.type === "object" ? b(c.value) ? "record" : "written" : r.type), i = P({
+      get: () => Array.isArray(c.value) ? c.value.map((m) => m === null ? "" : String(m)).join(`
+`) : "",
+      set: (m) => {
+        const $ = m.split(`
+`).map((I) => I.trim()).filter(Boolean), A = r.itemType === "number" || r.itemType === "integer";
+        c.value = $.length ? $.map((I) => A && I !== "" && !Number.isNaN(Number(I)) ? Number(I) : I) : void 0;
+      }
+    }), U = _([]);
+    X(c, (m) => {
+      if (V.value !== "record") return;
+      const $ = m ?? {};
+      JSON.stringify(Object.fromEntries(U.value.filter((A) => A.key).map((A) => [A.key, A.value]))) !== JSON.stringify($) && (U.value = Object.entries($).map(([A, I]) => ({ key: A, value: I })));
+    }, { immediate: !0 });
+    function S() {
+      const m = U.value.filter(($) => $.key.trim());
+      c.value = m.length ? Object.fromEntries(m.map(($) => [$.key.trim(), $.value])) : void 0;
+    }
+    const R = _(""), C = _("");
+    X([c, V], () => {
+      V.value === "written" && !C.value && (R.value = c.value === void 0 ? "" : JSON.stringify(c.value, null, 2));
+    }, { immediate: !0 });
+    function u(m) {
+      if (R.value = m, !m.trim()) {
+        C.value = "", c.value = void 0;
+        return;
+      }
+      try {
+        const $ = JSON.parse(m), A = r.type === "array" ? Array.isArray($) : !!$ && typeof $ == "object" && !Array.isArray($);
+        C.value = A ? "" : r.type === "array" ? 'Write a list, for example ["a", "b"].' : 'Write a record, for example {"key": "value"}.', A && (c.value = $);
+      } catch {
+        C.value = r.type === "array" ? 'Write a list, for example ["a", "b"].' : 'Write a record, for example {"key": "value"}.';
+      }
+    }
+    X(C, (m) => y("invalid", m), { immediate: !0 });
+    const d = [{ label: "Yes", value: !0 }, { label: "No", value: !1 }];
+    return (m, $) => (l(), n("div", Qs, [
+      V.value === "string" ? (l(), O(a(ce), {
+        key: 0,
+        "model-value": typeof c.value == "string" ? c.value : "",
+        "aria-label": e.label,
+        disabled: e.disabled,
+        fluid: "",
+        "onUpdate:modelValue": $[0] || ($[0] = (A) => c.value = A || void 0)
+      }, null, 8, ["model-value", "aria-label", "disabled"])) : V.value === "number" || V.value === "integer" ? (l(), O(a(El), {
+        key: 1,
+        "model-value": typeof c.value == "number" ? c.value : null,
+        "aria-label": e.label,
+        "max-fraction-digits": V.value === "integer" ? 0 : 6,
+        "use-grouping": !1,
+        disabled: e.disabled,
+        fluid: "",
+        "onUpdate:modelValue": $[1] || ($[1] = (A) => c.value = A ?? void 0)
+      }, null, 8, ["model-value", "aria-label", "max-fraction-digits", "disabled"])) : V.value === "boolean" ? (l(), O(a($e), {
+        key: 2,
+        "model-value": typeof c.value == "boolean" ? c.value : null,
+        options: d,
+        "option-label": "label",
+        "option-value": "value",
+        "aria-label": e.label,
+        disabled: e.disabled,
+        "onUpdate:modelValue": $[2] || ($[2] = (A) => c.value = typeof A == "boolean" ? A : void 0)
+      }, null, 8, ["model-value", "aria-label", "disabled"])) : V.value === "list" ? (l(), O(a(ca), {
+        key: 3,
+        modelValue: i.value,
+        "onUpdate:modelValue": $[3] || ($[3] = (A) => i.value = A),
+        "aria-label": e.label,
+        rows: "3",
+        "auto-resize": "",
+        disabled: e.disabled,
+        fluid: "",
+        placeholder: "One item per line"
+      }, null, 8, ["modelValue", "aria-label", "disabled"])) : V.value === "record" ? (l(), n(Y, { key: 4 }, [
+        (l(!0), n(Y, null, me(U.value, (A, I) => (l(), n("div", {
+          key: I,
+          class: "mail-value-entry"
+        }, [
+          s(a(ce), {
+            modelValue: A.key,
+            "onUpdate:modelValue": [(M) => A.key = M, S],
+            "aria-label": e.label + ", name " + (I + 1),
+            placeholder: "Name",
+            disabled: e.disabled
+          }, null, 8, ["modelValue", "onUpdate:modelValue", "aria-label", "disabled"]),
+          s(a(ce), {
+            modelValue: A.value,
+            "onUpdate:modelValue": [(M) => A.value = M, S],
+            "aria-label": e.label + ", value " + (I + 1),
+            placeholder: "Value",
+            disabled: e.disabled
+          }, null, 8, ["modelValue", "onUpdate:modelValue", "aria-label", "disabled"]),
+          s(a(D), {
+            text: "",
+            severity: "secondary",
+            size: "small",
+            "aria-label": "Remove " + (A.key || "entry"),
+            disabled: e.disabled,
+            onClick: (M) => {
+              U.value.splice(I, 1), S();
+            }
+          }, {
+            icon: j(() => [
+              s(a(N), {
+                icon: "tabler:x",
+                "aria-hidden": "true"
+              })
+            ]),
+            _: 1
+          }, 8, ["aria-label", "disabled", "onClick"])
+        ]))), 128)),
+        s(a(D), {
+          label: "Add a name and value",
+          severity: "secondary",
+          text: "",
+          size: "small",
+          disabled: e.disabled,
+          onClick: $[4] || ($[4] = (A) => U.value.push({ key: "", value: "" }))
+        }, {
+          icon: j(() => [
+            s(a(N), {
+              icon: "tabler:plus",
+              "aria-hidden": "true"
+            })
+          ]),
+          _: 1
+        }, 8, ["disabled"])
+      ], 64)) : (l(), n(Y, { key: 5 }, [
+        s(a(ca), {
+          "model-value": R.value,
+          "aria-label": e.label,
+          rows: "3",
+          "auto-resize": "",
+          class: "mail-mono-input",
+          invalid: !!C.value,
+          disabled: e.disabled,
+          fluid: "",
+          "onUpdate:modelValue": u
+        }, null, 8, ["model-value", "aria-label", "invalid", "disabled"]),
+        C.value ? (l(), n("small", Xs, h(C.value), 1)) : T("", !0)
+      ], 64)),
+      (e.type === "array" || e.type === "object") && V.value !== "written" ? (l(), O(a(D), {
+        key: 6,
+        link: "",
+        size: "small",
+        class: "mail-inline-link",
+        label: "Write it as data",
+        disabled: e.disabled,
+        onClick: $[5] || ($[5] = (A) => x.value = !0)
+      }, null, 8, ["disabled"])) : T("", !0)
+    ]));
+  }
+}), ei = ["disabled", "inert"], ai = { class: "mail-sr-only" }, li = {
   key: 0,
   class: "kx-err inline",
   role: "alert"
-}, Zs = {
+}, ti = {
   key: 1,
   class: "mail-muted"
-}, Qs = ["aria-label"], Xs = {
-  class: "mail-variable-row mail-variable-head",
-  role: "row"
-}, ei = {
+}, si = ["aria-label"], ii = { class: "mail-variable-grid" }, ni = { class: "mail-field" }, oi = { class: "mail-field" }, ri = { class: "mail-field" }, ui = ["id"], di = { class: "mail-variable-check" }, ci = { class: "mail-field" }, vi = { class: "mail-variable-values" }, mi = {
   key: 0,
-  role: "columnheader"
-}, ai = { role: "cell" }, li = { role: "cell" }, ti = {
-  role: "cell",
-  class: "mail-variable-check"
-}, si = { role: "cell" }, ii = {
+  class: "mail-field"
+}, fi = { class: "mail-field" }, bi = {
   key: 0,
-  role: "cell"
-}, ni = { role: "cell" }, oi = { role: "cell" }, ri = {
-  key: 1,
-  class: "mail-field-error mail-variable-error",
+  class: "mail-field-error",
   role: "alert"
-}, ui = /* @__PURE__ */ ae({
+}, yi = /* @__PURE__ */ te({
   __name: "VariablesEditor",
   props: {
     draft: {},
@@ -1763,8 +2004,8 @@ const ss = ["src", "alt"], is = {
     disabled: { type: Boolean }
   },
   emits: ["invalid"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, $ = [
+  setup(e, { emit: v }) {
+    const r = e, c = v, y = [
       { value: "string", label: "Text" },
       { value: "number", label: "Number" },
       { value: "integer", label: "Whole number" },
@@ -1772,146 +2013,147 @@ const ss = ["src", "alt"], is = {
       { value: "array", label: "List" },
       { value: "object", label: "Record" }
     ];
-    let c = 0;
-    function n(o) {
-      return o == null ? "" : typeof o == "string" ? o : JSON.stringify(o);
+    let o = 0;
+    function k(C) {
+      const u = new Set(C.schema.required ?? []);
+      return Object.entries(C.schema.properties).map(([d, m]) => {
+        const $ = m.items;
+        return {
+          id: o++,
+          name: d,
+          schema: m,
+          title: typeof m.title == "string" ? m.title : "",
+          type: y.some((A) => A.value === m.type) ? m.type : "string",
+          itemType: typeof $?.type == "string" ? $.type : void 0,
+          required: u.has(d),
+          description: typeof m.description == "string" ? m.description : "",
+          sample: C.samples[d],
+          fallback: m.default,
+          valueErrors: { sample: "", fallback: "" }
+        };
+      });
     }
-    function w(o) {
-      const v = new Set(o.schema.required ?? []), b = o.samples;
-      return Object.entries(o.schema.properties).map(([O, A]) => ({
-        id: c++,
-        name: O,
-        schema: A,
-        type: $.some((j) => j.value === A.type) ? A.type : "string",
-        required: v.has(O),
-        description: typeof A.description == "string" ? A.description : "",
-        sample: n(b[O]),
-        fallback: n(A.default)
-      }));
-    }
-    const k = p(w(r.draft));
-    Q(() => r.draft, (o) => {
-      k.value = w(o);
+    const b = _([]);
+    b.value = k(r.draft), X(() => r.draft, (C) => {
+      b.value = k(C);
     });
-    function y(o, v) {
-      if (v === "") return {};
-      if (o.type === "string") return { value: v };
-      try {
-        const b = JSON.parse(v);
-        return (o.type === "array" ? Array.isArray(b) : o.type === "object" ? !!b && typeof b == "object" && !Array.isArray(b) : o.type === "boolean" ? typeof b == "boolean" : typeof b == "number" && (o.type === "number" || Number.isInteger(b))) ? { value: b } : { invalid: `Enter a ${$.find((A) => A.value === o.type)?.label.toLowerCase()} value.` };
-      } catch {
-        return { invalid: o.type === "array" ? 'Enter a list, for example ["a", "b"].' : o.type === "object" ? 'Enter a record, for example {"key": "value"}.' : o.type === "boolean" ? "Enter true or false." : "Enter a number." };
+    function x(C, u) {
+      if (u === void 0) return !0;
+      switch (C.type) {
+        case "string":
+          return typeof u == "string";
+        case "number":
+          return typeof u == "number";
+        case "integer":
+          return typeof u == "number" && Number.isInteger(u);
+        case "boolean":
+          return typeof u == "boolean";
+        case "array":
+          return Array.isArray(u);
+        default:
+          return !!u && typeof u == "object" && !Array.isArray(u);
       }
     }
-    const g = z(() => k.value.map((o) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(o.name) ? k.value.some((v) => v !== o && v.name === o.name) ? "Another one has this name." : y(o, o.sample).invalid ?? y(o, o.fallback).invalid ?? "" : "Use letters, digits and underscores, starting with a letter."));
-    Q(g, (o) => f("invalid", o.some(Boolean)), { immediate: !0 }), Q(k, (o) => {
-      if (g.value.some(Boolean)) return;
-      const v = {}, b = {};
-      for (const A of o) {
-        const j = { ...A.schema, type: A.type };
-        A.description ? j.description = A.description : delete j.description;
-        const S = y(A, A.fallback).value;
-        S !== void 0 ? j.default = S : delete j.default, v[A.name] = j;
-        const N = y(A, A.sample).value;
-        N !== void 0 && (b[A.name] = N);
+    function V(C, u) {
+      C.type = u, x(C, C.sample) || (C.sample = void 0), x(C, C.fallback) || (C.fallback = void 0);
+    }
+    const i = P(() => b.value.map((C) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(C.name) ? b.value.some((u) => u !== C && u.name === C.name) ? "Another one has this name." : C.valueErrors.sample || C.valueErrors.fallback || "" : "Use letters, digits and underscores, starting with a letter."));
+    X(i, (C) => c("invalid", C.some(Boolean)), { immediate: !0 }), X(b, (C) => {
+      if (i.value.some(Boolean)) return;
+      const u = {}, d = {};
+      for (const $ of C) {
+        const A = { ...$.schema, type: $.type };
+        for (const [I, M] of [["title", $.title], ["description", $.description]])
+          M ? A[I] = M : delete A[I];
+        $.fallback !== void 0 ? A.default = $.fallback : delete A.default, u[$.name] = A, $.sample !== void 0 && (d[$.name] = $.sample);
       }
-      const O = o.filter((A) => A.required).map((A) => A.name);
-      r.draft.schema = { ...r.draft.schema, properties: v, required: O.length ? O : void 0 }, r.draft.samples = b;
+      const m = C.filter(($) => $.required).map(($) => $.name);
+      r.draft.schema = { ...r.draft.schema, properties: u, required: m.length ? m : void 0 }, r.draft.samples = d;
     }, { deep: !0 });
-    function x() {
-      let o = k.value.length + 1;
-      for (; k.value.some((v) => v.name === `value_${o}`); ) o++;
-      k.value.push({ id: c++, name: `value_${o}`, type: "string", required: !1, description: "", sample: "", fallback: "", schema: {} });
+    function U() {
+      let C = b.value.length + 1;
+      for (; b.value.some((u) => u.name === `value_${C}`); ) C++;
+      b.value.push({
+        id: o++,
+        name: `value_${C}`,
+        title: "",
+        type: "string",
+        required: !1,
+        description: "",
+        sample: void 0,
+        fallback: void 0,
+        schema: {},
+        valueErrors: { sample: "", fallback: "" }
+      });
     }
-    const m = z(() => r.draft.kind === "part"), _ = z(() => r.problem && (r.problem.face === "variables" || r.problem.face === "samples") ? `${Kl[r.problem.face]}: ${r.problem.message}` : "");
-    return (o, v) => (l(), i("fieldset", {
+    const S = P(() => r.draft.kind === "part"), R = P(() => r.problem && (r.problem.face === "variables" || r.problem.face === "samples") ? `${dt[r.problem.face]}: ${r.problem.engine ?? r.problem.message}` : "");
+    return (C, u) => (l(), n("fieldset", {
       class: "mail-variables",
       disabled: e.disabled,
       inert: e.disabled || void 0
     }, [
-      t("legend", Ys, u(e.label), 1),
-      _.value ? (l(), i("p", Gs, u(_.value), 1)) : V("", !0),
-      k.value.length ? (l(), i("div", {
+      t("legend", ai, h(e.label), 1),
+      R.value ? (l(), n("p", li, h(R.value), 1)) : T("", !0),
+      b.value.length ? (l(), n("ul", {
         key: 2,
-        class: "mail-variable-grid",
-        role: "table",
+        class: "mail-variable-list",
         "aria-label": e.label
       }, [
-        t("div", Xs, [
-          v[0] || (v[0] = t("span", { role: "columnheader" }, "Name", -1)),
-          v[1] || (v[1] = t("span", { role: "columnheader" }, "Type", -1)),
-          v[2] || (v[2] = t("span", { role: "columnheader" }, "Required", -1)),
-          v[3] || (v[3] = t("span", { role: "columnheader" }, "Description", -1)),
-          m.value ? (l(), i("span", ei, "Default")) : V("", !0),
-          v[4] || (v[4] = t("span", { role: "columnheader" }, "Sample value", -1)),
-          v[5] || (v[5] = t("span", { role: "columnheader" }, [
-            t("span", { class: "mail-sr-only" }, "Remove")
-          ], -1))
-        ]),
-        (l(!0), i(H, null, re(k.value, (b, O) => (l(), i("div", {
-          key: b.id,
-          class: oe(["mail-variable-row", { "mail-variable-invalid": g.value[O] }]),
-          role: "row"
+        (l(!0), n(Y, null, me(b.value, (d, m) => (l(), n("li", {
+          key: d.id,
+          class: ne(["mail-variable-card", { "mail-variable-invalid": i.value[m] }])
         }, [
-          t("span", ai, [
-            s(a(ce), {
-              modelValue: b.name,
-              "onUpdate:modelValue": (A) => b.name = A,
-              class: "mail-mono-input",
-              "aria-label": "Name of " + (b.name || "value"),
-              invalid: !!g.value[O]
-            }, null, 8, ["modelValue", "onUpdate:modelValue", "aria-label", "invalid"])
-          ]),
-          t("span", li, [
-            s(a(Ae), {
-              modelValue: b.type,
-              "onUpdate:modelValue": (A) => b.type = A,
-              options: $,
-              "option-label": "label",
-              "option-value": "value",
-              "append-to": "self",
-              "aria-label": "Type of " + b.name
-            }, null, 8, ["modelValue", "onUpdate:modelValue", "aria-label"])
-          ]),
-          t("span", ti, [
-            s(a(hl), {
-              modelValue: b.required,
-              "onUpdate:modelValue": (A) => b.required = A,
-              binary: "",
-              "aria-label": b.name + " is required"
-            }, null, 8, ["modelValue", "onUpdate:modelValue", "aria-label"])
-          ]),
-          t("span", si, [
-            s(a(ce), {
-              modelValue: b.description,
-              "onUpdate:modelValue": (A) => b.description = A,
-              "aria-label": "Description of " + b.name
-            }, null, 8, ["modelValue", "onUpdate:modelValue", "aria-label"])
-          ]),
-          m.value ? (l(), i("span", ii, [
-            s(a(ce), {
-              modelValue: b.fallback,
-              "onUpdate:modelValue": (A) => b.fallback = A,
-              "aria-label": "Default of " + b.name
-            }, null, 8, ["modelValue", "onUpdate:modelValue", "aria-label"])
-          ])) : V("", !0),
-          t("span", ni, [
-            s(a(ce), {
-              modelValue: b.sample,
-              "onUpdate:modelValue": (A) => b.sample = A,
-              "aria-label": "Sample value of " + b.name
-            }, null, 8, ["modelValue", "onUpdate:modelValue", "aria-label"])
-          ]),
-          t("span", oi, [
-            s(a(F), {
+          t("div", ii, [
+            t("label", ni, [
+              u[0] || (u[0] = t("span", { class: "mail-field-label" }, "Name in templates", -1)),
+              s(a(ce), {
+                modelValue: d.name,
+                "onUpdate:modelValue": ($) => d.name = $,
+                class: "mail-mono-input",
+                invalid: !!i.value[m] && !d.valueErrors.sample && !d.valueErrors.fallback
+              }, null, 8, ["modelValue", "onUpdate:modelValue", "invalid"])
+            ]),
+            t("label", oi, [
+              u[1] || (u[1] = t("span", { class: "mail-field-label" }, "Label", -1)),
+              s(a(ce), {
+                modelValue: d.title,
+                "onUpdate:modelValue": ($) => d.title = $,
+                placeholder: d.name
+              }, null, 8, ["modelValue", "onUpdate:modelValue", "placeholder"])
+            ]),
+            t("div", ri, [
+              t("span", {
+                id: "type-" + d.id,
+                class: "mail-field-label"
+              }, "Type", 8, ui),
+              s(a(Oe), {
+                "model-value": d.type,
+                options: y,
+                "option-label": "label",
+                "option-value": "value",
+                "append-to": "self",
+                "aria-labelledby": "type-" + d.id,
+                "onUpdate:modelValue": ($) => V(d, $)
+              }, null, 8, ["model-value", "aria-labelledby", "onUpdate:modelValue"])
+            ]),
+            t("label", di, [
+              s(a(zl), {
+                modelValue: d.required,
+                "onUpdate:modelValue": ($) => d.required = $,
+                binary: ""
+              }, null, 8, ["modelValue", "onUpdate:modelValue"]),
+              u[2] || (u[2] = t("span", null, "Required", -1))
+            ]),
+            s(a(D), {
               text: "",
               severity: "secondary",
-              "aria-label": "Remove " + b.name,
-              title: "Remove " + b.name,
-              onClick: (A) => k.value.splice(O, 1)
+              class: "mail-variable-remove",
+              "aria-label": "Remove " + d.name,
+              title: "Remove " + d.name,
+              onClick: ($) => b.value.splice(m, 1)
             }, {
-              icon: T(() => [
-                s(a(L), {
+              icon: j(() => [
+                s(a(N), {
                   icon: "tabler:trash",
                   "aria-hidden": "true"
                 })
@@ -1919,19 +2161,51 @@ const ss = ["src", "alt"], is = {
               _: 1
             }, 8, ["aria-label", "title", "onClick"])
           ]),
-          g.value[O] ? (l(), i("small", ri, u(b.name) + ": " + u(g.value[O]), 1)) : V("", !0)
+          t("label", ci, [
+            u[3] || (u[3] = t("span", { class: "mail-field-label" }, "Description", -1)),
+            s(a(ce), {
+              modelValue: d.description,
+              "onUpdate:modelValue": ($) => d.description = $,
+              placeholder: "What senders put here"
+            }, null, 8, ["modelValue", "onUpdate:modelValue"])
+          ]),
+          t("div", vi, [
+            S.value ? (l(), n("div", mi, [
+              u[4] || (u[4] = t("span", { class: "mail-field-label" }, "Default", -1)),
+              s(Na, {
+                modelValue: d.fallback,
+                "onUpdate:modelValue": ($) => d.fallback = $,
+                type: d.type,
+                "item-type": d.itemType,
+                label: "Default of " + d.name,
+                onInvalid: ($) => d.valueErrors.fallback = $
+              }, null, 8, ["modelValue", "onUpdate:modelValue", "type", "item-type", "label", "onInvalid"])
+            ])) : T("", !0),
+            t("div", fi, [
+              u[5] || (u[5] = t("span", { class: "mail-field-label" }, "Sample value", -1)),
+              s(Na, {
+                modelValue: d.sample,
+                "onUpdate:modelValue": ($) => d.sample = $,
+                type: d.type,
+                "item-type": d.itemType,
+                label: "Sample value of " + d.name,
+                onInvalid: ($) => d.valueErrors.sample = $
+              }, null, 8, ["modelValue", "onUpdate:modelValue", "type", "item-type", "label", "onInvalid"])
+            ])
+          ]),
+          i.value[m] ? (l(), n("small", bi, h(d.name) + ": " + h(i.value[m]), 1)) : T("", !0)
         ], 2))), 128))
-      ], 8, Qs)) : (l(), i("p", Zs, u(e.draft.title) + " takes no " + u(e.label.toLowerCase()) + " yet.", 1)),
+      ], 8, si)) : (l(), n("p", ti, h(e.draft.title) + " takes no " + h(e.label.toLowerCase()) + " yet.", 1)),
       t("div", null, [
-        s(a(F), {
-          label: m.value ? "Add input" : "Add variable",
+        s(a(D), {
+          label: S.value ? "Add input" : "Add variable",
           severity: "secondary",
           outlined: "",
           size: "small",
-          onClick: x
+          onClick: U
         }, {
-          icon: T(() => [
-            s(a(L), {
+          icon: j(() => [
+            s(a(N), {
               icon: "tabler:plus",
               "aria-hidden": "true"
             })
@@ -1939,27 +2213,27 @@ const ss = ["src", "alt"], is = {
           _: 1
         }, 8, ["label"])
       ])
-    ], 8, Ws));
+    ], 8, ei));
   }
-}), di = { class: "kx-modal-head-icon" }, ci = {
+}), pi = { class: "kx-modal-head-icon" }, gi = {
   key: 0,
   class: "kx-modal-head-text"
-}, vi = { class: "kx-modal-head-title" }, mi = {
+}, hi = { class: "kx-modal-head-title" }, ki = {
   key: 0,
   class: "kx-modal-head-sub"
-}, bi = {
+}, $i = {
   key: 1,
   class: "kx-modal-head-sub"
-}, fi = {
+}, wi = {
   key: 0,
   class: "mail-form"
-}, pi = { class: "mail-face-bar" }, yi = {
+}, _i = { class: "mail-face-bar" }, xi = {
   key: 0,
   class: "mail-version-subject"
-}, hi = { class: "mail-mono-block" }, gi = {
+}, Ci = { class: "mail-mono-block" }, Vi = {
   key: 1,
   class: "mail-code-frame mail-code-version"
-}, ki = /* @__PURE__ */ ae({
+}, Si = /* @__PURE__ */ te({
   __name: "VersionDialog",
   props: {
     revision: {},
@@ -1969,142 +2243,144 @@ const ss = ["src", "alt"], is = {
     included: { type: Boolean }
   },
   emits: ["close", "restore", "reset"],
-  setup(e, { emit: d }) {
-    const r = Xe(() => import("./CodeEditor-CIrhfC0V.js")), f = Xe(() => import("./DiffView-CjA70e3n.js")), $ = e, c = d, n = p("version"), w = p("html");
-    Q(() => $.revision, (v) => {
-      v && (n.value = $.compare ? "compare" : "version", w.value = "html");
+  setup(e, { emit: v }) {
+    const r = da(() => import("./CodeEditor-CIrhfC0V.js")), c = da(() => import("./DiffView-CjA70e3n.js")), y = e, o = v;
+    we(() => !!y.revision);
+    const k = _("version"), b = _("html");
+    X(() => y.revision, (u) => {
+      u && (k.value = y.compare ? "compare" : "version", b.value = "html");
     });
-    const k = [{ label: "This version", value: "version" }, { label: "Compare with current", value: "compare" }], y = [{ label: "HTML", value: "html" }, { label: "Plain text", value: "text" }], g = z(() => $.revision?.revision === $.current.revision), x = z(() => {
-      const v = $.revision;
-      return v ? $.included || v.state === "original" && v.action === "reset" ? `${$.current.title}: the version included with ${$.current.origin_label}` : `${$.current.title}, version ${v.version}` : "";
-    }), m = z(() => $.revision ? w.value === "html" ? $.revision.content.html : $.revision.content.text : ""), _ = z(() => w.value === "html" ? $.current.html : $.current.text), o = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
-    return (v, b) => (l(), B(a(Ce), {
+    const x = [{ label: "This version", value: "version" }, { label: "Compare with current", value: "compare" }], V = [{ label: "HTML", value: "html" }, { label: "Plain text", value: "text" }], i = P(() => y.revision?.revision === y.current.revision), U = P(() => {
+      const u = y.revision;
+      return u ? y.included || u.state === "original" && u.action === "reset" ? `${y.current.title}: the version included with ${y.current.origin_label}` : `${y.current.title}, version ${u.version}` : "";
+    }), S = P(() => y.revision ? b.value === "html" ? y.revision.content.html : y.revision.content.text : ""), R = P(() => b.value === "html" ? y.current.html : y.current.text), C = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
+    return (u, d) => (l(), O(a(Ae), {
       visible: !!e.revision,
       modal: "",
       draggable: !1,
       class: "mail-dialog mail-dialog-wide",
-      pt: o,
-      "aria-label": x.value,
+      pt: C,
+      "aria-label": U.value,
       closable: !1,
       "close-on-escape": !e.busy,
-      "onUpdate:visible": b[5] || (b[5] = (O) => {
-        O || c("close");
+      "onUpdate:visible": d[5] || (d[5] = (m) => {
+        m || o("close");
       })
     }, {
-      header: T(() => [
-        t("span", di, [
-          s(a(L), {
+      header: j(() => [
+        t("span", pi, [
+          s(a(N), {
             icon: "tabler:history",
             "aria-hidden": "true"
           })
         ]),
-        e.revision ? (l(), i("span", ci, [
-          t("span", vi, u(x.value), 1),
-          e.included ? (l(), i("span", mi, "Compare it with your customized version, or reset to it.")) : (l(), i("span", bi, u(a(ta)[e.revision.action]) + " by " + u(a(ye)(e.revision.author_label, e.revision.author)) + " · " + u(a(Pe)(e.revision.created_at)), 1))
-        ])) : V("", !0)
+        e.revision ? (l(), n("span", gi, [
+          t("span", hi, h(U.value), 1),
+          e.included ? (l(), n("span", ki, "Compare it with your customized version, or reset to it.")) : (l(), n("span", $i, h(a(ya)[e.revision.action]) + " by " + h(a(ke)(e.revision.author_label, e.revision.author)) + " · " + h(a(Je)(e.revision.created_at)), 1))
+        ])) : T("", !0)
       ]),
-      footer: T(() => [
-        s(a(F), {
+      footer: j(() => [
+        s(a(D), {
           label: "Close",
           severity: "secondary",
           outlined: "",
           disabled: e.busy,
-          onClick: b[2] || (b[2] = (O) => c("close"))
+          onClick: d[2] || (d[2] = (m) => o("close"))
         }, null, 8, ["disabled"]),
-        e.revision && e.included ? (l(), B(a(F), {
+        e.revision && e.included ? (l(), O(a(D), {
           key: 0,
           label: "Reset to original",
           loading: e.busy,
-          onClick: b[3] || (b[3] = (O) => c("reset"))
+          onClick: d[3] || (d[3] = (m) => o("reset"))
         }, {
-          icon: T(() => [
-            s(a(L), {
+          icon: j(() => [
+            s(a(N), {
               icon: "tabler:arrow-back-up",
               "aria-hidden": "true"
             })
           ]),
           _: 1
-        }, 8, ["loading"])) : e.revision && !g.value ? (l(), B(a(F), {
+        }, 8, ["loading"])) : e.revision && !i.value ? (l(), O(a(D), {
           key: 1,
           label: "Restore this version",
           loading: e.busy,
-          onClick: b[4] || (b[4] = (O) => c("restore", e.revision))
+          onClick: d[4] || (d[4] = (m) => o("restore", e.revision))
         }, {
-          icon: T(() => [
-            s(a(L), {
+          icon: j(() => [
+            s(a(N), {
               icon: "tabler:restore",
               "aria-hidden": "true"
             })
           ]),
           _: 1
-        }, 8, ["loading"])) : V("", !0)
+        }, 8, ["loading"])) : T("", !0)
       ]),
-      default: T(() => [
-        e.revision ? (l(), i("div", fi, [
-          t("div", pi, [
-            g.value ? V("", !0) : (l(), B(a(he), {
+      default: j(() => [
+        e.revision ? (l(), n("div", wi, [
+          t("div", _i, [
+            i.value ? T("", !0) : (l(), O(a($e), {
               key: 0,
-              modelValue: n.value,
-              "onUpdate:modelValue": b[0] || (b[0] = (O) => n.value = O),
-              options: k,
+              modelValue: k.value,
+              "onUpdate:modelValue": d[0] || (d[0] = (m) => k.value = m),
+              options: x,
               "option-label": "label",
               "option-value": "value",
               "allow-empty": !1,
               "aria-label": "Show"
             }, null, 8, ["modelValue"])),
-            s(a(he), {
-              modelValue: w.value,
-              "onUpdate:modelValue": b[1] || (b[1] = (O) => w.value = O),
-              options: y,
+            s(a($e), {
+              modelValue: b.value,
+              "onUpdate:modelValue": d[1] || (d[1] = (m) => b.value = m),
+              options: V,
               "option-label": "label",
               "option-value": "value",
               "allow-empty": !1,
               "aria-label": "Format"
             }, null, 8, ["modelValue"])
           ]),
-          e.revision.content.subject !== void 0 && n.value === "version" ? (l(), i("p", yi, [
-            b[6] || (b[6] = t("span", { class: "mail-muted" }, "Subject", -1)),
-            b[7] || (b[7] = K()),
-            t("span", hi, u(e.revision.content.subject), 1)
-          ])) : V("", !0),
-          n.value === "version" ? (l(), i("div", gi, [
-            (l(), B(a(r), {
-              key: w.value,
-              "model-value": m.value,
-              label: x.value + (w.value === "html" ? ", HTML" : ", plain text"),
+          e.revision.content.subject !== void 0 && k.value === "version" ? (l(), n("p", xi, [
+            d[6] || (d[6] = t("span", { class: "mail-muted" }, "Subject", -1)),
+            d[7] || (d[7] = G()),
+            t("span", Ci, h(e.revision.content.subject), 1)
+          ])) : T("", !0),
+          k.value === "version" ? (l(), n("div", Vi, [
+            (l(), O(a(r), {
+              key: b.value,
+              "model-value": S.value,
+              label: U.value + (b.value === "html" ? ", HTML" : ", plain text"),
               "read-only": ""
             }, null, 8, ["model-value", "label"]))
-          ])) : (l(), B(a(f), {
-            key: "diff-" + w.value,
-            before: m.value,
-            after: _.value,
+          ])) : (l(), O(a(c), {
+            key: "diff-" + b.value,
+            before: S.value,
+            after: R.value,
             "before-label": e.included || e.revision.state === "original" && e.revision.action === "reset" ? "Included version" : "Version " + e.revision.version,
             "after-label": "Current version"
           }, null, 8, ["before", "after", "before-label"]))
-        ])) : V("", !0)
+        ])) : T("", !0)
       ]),
       _: 1
     }, 8, ["visible", "aria-label", "close-on-escape"]));
   }
-}), $i = {
+}), Ti = {
   key: 0,
   class: "kx-err mail-error",
   role: "alert"
-}, wi = {
+}, Ri = {
   key: 1,
   class: "kx-loading",
   role: "status"
-}, _i = {
+}, Ui = {
   key: 2,
   class: "mail-muted",
   role: "status"
-}, xi = {
+}, ji = {
   key: 3,
   class: "mail-history"
-}, Ci = { class: "mail-history-head" }, Vi = { class: "mail-history-main" }, Si = { class: "mail-history-title" }, Ri = { class: "mail-sub" }, Ti = {
+}, Ai = { class: "mail-history-head" }, Ii = { class: "mail-history-main" }, Li = { class: "mail-history-title" }, Ni = { class: "mail-sub" }, zi = {
   key: 0,
   class: "mail-history-note"
-}, Ui = { class: "mail-history-actions" }, Ai = /* @__PURE__ */ ae({
+}, Ei = { class: "mail-history-actions" }, Oi = /* @__PURE__ */ te({
   __name: "HistoryList",
   props: {
     resource: {},
@@ -2115,294 +2391,293 @@ const ss = ["src", "alt"], is = {
   },
   emits: ["show", "restore", "retry"],
   setup(e) {
-    return (d, r) => e.error ? (l(), i("div", $i, [
-      t("span", null, u(e.error), 1),
-      s(a(F), {
+    return (v, r) => e.error ? (l(), n("div", Ti, [
+      t("span", null, h(e.error), 1),
+      s(a(D), {
         label: "Retry",
         severity: "secondary",
         outlined: "",
         size: "small",
-        onClick: r[0] || (r[0] = (f) => d.$emit("retry"))
+        onClick: r[0] || (r[0] = (c) => v.$emit("retry"))
       })
-    ])) : e.loading && !e.revisions.length ? (l(), i("p", wi, [
-      s(a(L), {
+    ])) : e.loading && !e.revisions.length ? (l(), n("p", Ri, [
+      s(a(N), {
         icon: "tabler:loader-2",
         class: "spin",
         "aria-hidden": "true"
       }),
-      r[1] || (r[1] = K("Loading history…", -1))
-    ])) : e.revisions.length ? (l(), i("ol", xi, [
-      (l(!0), i(H, null, re(e.revisions, (f) => (l(), i("li", {
-        key: f.revision,
+      r[1] || (r[1] = G("Loading history…", -1))
+    ])) : e.revisions.length ? (l(), n("ol", ji, [
+      (l(!0), n(Y, null, me(e.revisions, (c) => (l(), n("li", {
+        key: c.revision,
         class: "mail-history-row"
       }, [
-        t("div", Ci, [
-          t("div", Vi, [
-            t("span", Si, [
-              K(" Version " + u(f.version) + " · " + u(a(ta)[f.action]) + u(f.restored_from ? " from version " + f.restored_from : "") + " ", 1),
-              f.revision === e.resource.revision ? (l(), B(a(Ue), {
+        t("div", Ai, [
+          t("div", Ii, [
+            t("span", Li, [
+              G(" Version " + h(c.version) + " · " + h(a(ya)[c.action]) + h(c.restored_from ? " from version " + c.restored_from : "") + " ", 1),
+              c.revision === e.resource.revision ? (l(), O(a(Ee), {
                 key: 0,
                 severity: "success",
                 value: "Current",
                 class: "kx-tag-sm"
-              })) : V("", !0)
+              })) : T("", !0)
             ]),
-            t("span", Ri, u(a(ye)(f.author_label, f.author)) + " · " + u(a(Pe)(f.created_at)), 1),
-            f.note ? (l(), i("span", Ti, u(f.note), 1)) : V("", !0)
+            t("span", Ni, h(a(ke)(c.author_label, c.author)) + " · " + h(a(Je)(c.created_at)), 1),
+            c.note ? (l(), n("span", zi, h(c.note), 1)) : T("", !0)
           ]),
-          t("div", Ui, [
-            s(a(F), {
+          t("div", Ei, [
+            s(a(D), {
               label: "Show this version",
               severity: "secondary",
               text: "",
               size: "small",
-              onClick: ($) => d.$emit("show", f)
+              onClick: (y) => v.$emit("show", c)
             }, {
-              icon: T(() => [
-                s(a(L), {
+              icon: j(() => [
+                s(a(N), {
                   icon: "tabler:eye",
                   "aria-hidden": "true"
                 })
               ]),
               _: 1
             }, 8, ["onClick"]),
-            f.revision !== e.resource.revision ? (l(), B(a(F), {
+            c.revision !== e.resource.revision ? (l(), O(a(D), {
               key: 0,
               label: "Restore",
               severity: "secondary",
               outlined: "",
               size: "small",
-              loading: e.busy === f.revision,
+              loading: e.busy === c.revision,
               disabled: e.busy !== void 0,
-              onClick: ($) => d.$emit("restore", f)
+              onClick: (y) => v.$emit("restore", c)
             }, {
-              icon: T(() => [
-                s(a(L), {
+              icon: j(() => [
+                s(a(N), {
                   icon: "tabler:restore",
                   "aria-hidden": "true"
                 })
               ]),
               _: 1
-            }, 8, ["loading", "disabled", "onClick"])) : V("", !0)
+            }, 8, ["loading", "disabled", "onClick"])) : T("", !0)
           ])
         ])
       ]))), 128))
-    ])) : (l(), i("p", _i, u(e.resource.title) + " has not been changed yet. Each saved change is kept here, newest first. ", 1));
+    ])) : (l(), n("p", Ui, h(e.resource.title) + " has not been changed yet. Each saved change is kept here, newest first. ", 1));
   }
-}), Li = { class: "kx-modal-head-icon mail-head-warn" }, ji = { class: "kx-modal-head-text" }, Ii = { class: "kx-modal-head-title" }, Di = { class: "mail-dialog-text" }, Ni = {
+}), Pi = { class: "kx-modal-head-icon mail-head-warn" }, Mi = { class: "kx-modal-head-text" }, Di = { class: "kx-modal-head-title" }, Bi = { class: "mail-dialog-text" }, qi = {
   key: 0,
   class: "mail-list"
-}, Pi = ["onClick"], Da = /* @__PURE__ */ ae({
+}, Za = /* @__PURE__ */ te({
   __name: "RefusalDialog",
   props: {
     refusal: {}
   },
   emits: ["close"],
-  setup(e, { emit: d }) {
-    const r = d, f = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
-    function $(c) {
-      r("close"), c();
+  setup(e, { emit: v }) {
+    const r = e;
+    we(() => !!r.refusal);
+    const c = v, y = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
+    function o(k) {
+      c("close"), k();
     }
-    return (c, n) => (l(), B(a(Ce), {
+    return (k, b) => (l(), O(a(Ae), {
       visible: !!e.refusal,
       modal: "",
       draggable: !1,
       closable: !1,
       "close-on-escape": "",
       class: "mail-dialog",
-      pt: f,
+      pt: y,
       role: "alertdialog",
       "aria-label": e.refusal?.header,
-      "onUpdate:visible": n[1] || (n[1] = (w) => {
-        w || r("close");
+      "onUpdate:visible": b[1] || (b[1] = (x) => {
+        x || c("close");
       })
     }, {
-      header: T(() => [
-        t("span", Li, [
-          s(a(L), {
+      header: j(() => [
+        t("span", Pi, [
+          s(a(N), {
             icon: "tabler:alert-triangle",
             "aria-hidden": "true"
           })
         ]),
-        t("span", ji, [
-          t("span", Ii, u(e.refusal?.header), 1)
+        t("span", Mi, [
+          t("span", Di, h(e.refusal?.header), 1)
         ])
       ]),
-      footer: T(() => [
-        s(a(F), {
+      footer: j(() => [
+        s(a(D), {
           label: "Close",
           autofocus: "",
-          onClick: n[0] || (n[0] = (w) => r("close"))
+          onClick: b[0] || (b[0] = (x) => c("close"))
         })
       ]),
-      default: T(() => [
-        t("p", Di, u(e.refusal?.message), 1),
-        e.refusal?.links.length ? (l(), i("ul", Ni, [
-          (l(!0), i(H, null, re(e.refusal.links, (w) => (l(), i("li", {
-            key: w.label
+      default: j(() => [
+        t("p", Bi, h(e.refusal?.message), 1),
+        e.refusal?.links.length ? (l(), n("ul", qi, [
+          (l(!0), n(Y, null, me(e.refusal.links, (x) => (l(), n("li", {
+            key: x.label
           }, [
-            t("button", {
-              type: "button",
+            s(a(D), {
+              text: "",
+              severity: "secondary",
               class: "mail-row-link",
-              onClick: (k) => $(w.open)
-            }, [
-              s(a(L), {
-                icon: "tabler:mail",
-                "aria-hidden": "true"
-              }),
-              t("span", null, u(w.label), 1)
-            ], 8, Pi)
+              onClick: (V) => o(x.open)
+            }, {
+              default: j(() => [
+                s(a(N), {
+                  icon: "tabler:mail",
+                  "aria-hidden": "true"
+                }),
+                t("span", null, h(x.label), 1)
+              ]),
+              _: 2
+            }, 1032, ["onClick"])
           ]))), 128))
-        ])) : V("", !0)
+        ])) : T("", !0)
       ]),
       _: 1
     }, 8, ["visible", "aria-label"]));
   }
-}), Ei = { class: "mail-stack" }, zi = {
+}), Hi = { class: "mail-stack" }, Fi = {
   key: 0,
   class: "mail-group",
   "aria-labelledby": "used-by-messages"
-}, Mi = {
+}, Ji = {
   key: 0,
   class: "mail-muted"
-}, Oi = {
+}, Wi = {
   key: 1,
   class: "mail-list"
-}, Bi = ["onClick"], qi = {
+}, Ki = { key: 1 }, Yi = {
+  key: 1,
   class: "mail-group",
   "aria-labelledby": "used-by-recent"
-}, Hi = { class: "mail-group-head" }, Fi = {
+}, Gi = { class: "mail-group-head" }, Zi = {
   key: 0,
   class: "mail-muted"
-}, Ki = {
+}, Qi = {
   key: 1,
   class: "mail-list"
-}, Ji = { class: "mail-list-main" }, Wi = {
+}, Xi = { class: "mail-list-main" }, en = {
   key: 0,
   class: "mail-sub"
-}, Yi = { class: "mail-muted" }, Gi = {
-  key: 2,
-  class: "mail-group",
-  "aria-labelledby": "used-by-templates"
-}, Zi = { class: "mail-muted" }, Qi = /* @__PURE__ */ ae({
+}, an = { class: "mail-muted" }, ln = /* @__PURE__ */ te({
   __name: "UsedBy",
   props: {
     resource: {}
   },
   setup(e) {
-    const d = e, { library: r, go: f, capabilities: $ } = ve(), c = z(() => (d.resource.used_by?.messages ?? []).map((w) => ({
-      name: w,
-      title: r.find("message", w)?.title ?? w
-    }))), n = z(() => d.resource.used_by?.recent_senders ?? []);
-    return (w, k) => (l(), i("div", Ei, [
-      e.resource.kind === "base" || e.resource.kind === "asset" ? (l(), i("section", zi, [
-        k[1] || (k[1] = t("h2", {
+    const v = e, { library: r, go: c, capabilities: y } = fe(), o = P(() => (v.resource.used_by?.messages ?? []).map((b) => ({
+      name: b,
+      title: r.title("message", b)
+    }))), k = P(() => v.resource.used_by?.recent_senders ?? []);
+    return (b, x) => (l(), n("div", Hi, [
+      e.resource.kind === "base" || e.resource.kind === "asset" ? (l(), n("section", Fi, [
+        x[1] || (x[1] = t("h2", {
           id: "used-by-messages",
           class: "mail-label"
         }, "Messages", -1)),
-        c.value.length ? (l(), i("ul", Oi, [
-          (l(!0), i(H, null, re(c.value, (y) => (l(), i("li", {
-            key: y.name
+        o.value.length ? (l(), n("ul", Wi, [
+          (l(!0), n(Y, null, me(o.value, (V) => (l(), n("li", {
+            key: V.name
           }, [
-            t("button", {
-              type: "button",
+            s(a(D), {
+              text: "",
+              severity: "secondary",
               class: "mail-row-link",
-              onClick: (g) => a(f)({ name: "resource", kind: "message", resource: y.name, section: "content" })
-            }, [
-              s(a(L), {
-                icon: a(be).message,
-                "aria-hidden": "true"
-              }, null, 8, ["icon"]),
-              t("span", null, u(y.title), 1)
-            ], 8, Bi)
-          ]))), 128))
-        ])) : (l(), i("p", Mi, "No messages " + u(e.resource.kind === "asset" ? "show" : "use") + " " + u(e.resource.title) + ".", 1))
-      ])) : e.resource.kind === "message" ? (l(), i(H, { key: 1 }, [
-        t("section", qi, [
-          t("div", Hi, [
-            k[2] || (k[2] = t("h2", {
-              id: "used-by-recent",
-              class: "mail-label"
-            }, "Sent in the last 30 days", -1)),
-            a($)?.administer_delivery ? (l(), i("button", {
-              key: 0,
-              type: "button",
-              class: "mail-text-link",
-              onClick: k[0] || (k[0] = (y) => a(f)({ name: "activity", template: e.resource.name }))
-            }, "Open in Activity")) : V("", !0)
-          ]),
-          n.value.length ? (l(), i("ul", Ki, [
-            (l(!0), i(H, null, re(n.value, (y) => (l(), i("li", {
-              key: y.sender + (y.origin?.id ?? ""),
-              class: "mail-list-row"
-            }, [
-              s(a(L), {
-                icon: y.origin ? "tabler:bolt" : "tabler:user",
-                "aria-hidden": "true"
-              }, null, 8, ["icon"]),
-              t("span", Ji, [
-                t("span", null, u(a(ye)(y.sender_label, y.sender)), 1),
-                y.origin ? (l(), i("span", Wi, u(a(We)(y.origin)), 1)) : V("", !0)
+              onClick: (i) => a(c)({ name: "resource", kind: "message", resource: V.name, section: "content" })
+            }, {
+              default: j(() => [
+                s(a(N), {
+                  icon: a(ye).message,
+                  "aria-hidden": "true"
+                }, null, 8, ["icon"]),
+                V.title === void 0 ? (l(), O(a(Ce), {
+                  key: 0,
+                  width: "8rem",
+                  height: "1rem"
+                })) : (l(), n("span", Ki, h(V.title), 1))
               ]),
-              t("span", Yi, u(a(pe)(y.count, "message")), 1)
-            ]))), 128))
-          ])) : (l(), i("p", Fi, "Nobody has sent " + u(e.resource.title) + " recently.", 1))
-        ]),
-        k[3] || (k[3] = t("section", {
-          class: "mail-group",
-          "aria-labelledby": "used-by-setup"
-        }, [
-          t("h2", {
-            id: "used-by-setup",
+              _: 2
+            }, 1032, ["onClick"])
+          ]))), 128))
+        ])) : (l(), n("p", Ji, "No messages " + h(e.resource.kind === "asset" ? "show" : "use") + " " + h(e.resource.title) + ".", 1))
+      ])) : e.resource.kind === "message" ? (l(), n("section", Yi, [
+        t("div", Gi, [
+          x[2] || (x[2] = t("h2", {
+            id: "used-by-recent",
             class: "mail-label"
-          }, "Set up to send"),
-          t("p", { class: "mail-muted" }, "Workflows, automations and agents that name this message are not listed here yet.")
-        ], -1))
-      ], 64)) : (l(), i("section", Gi, [
-        k[4] || (k[4] = t("h2", {
-          id: "used-by-templates",
-          class: "mail-label"
-        }, "Templates", -1)),
-        t("p", Zi, "Templates that include " + u(e.resource.title) + " are not listed here yet. Deleting a part checks every message first.", 1)
-      ]))
+          }, "Sent in the last 30 days", -1)),
+          a(y)?.administer_delivery ? (l(), O(a(D), {
+            key: 0,
+            link: "",
+            size: "small",
+            class: "mail-inline-link",
+            label: "Open in Activity",
+            onClick: x[0] || (x[0] = (V) => a(c)({ name: "activity", template: e.resource.name }))
+          })) : T("", !0)
+        ]),
+        k.value.length ? (l(), n("ul", Qi, [
+          (l(!0), n(Y, null, me(k.value, (V) => (l(), n("li", {
+            key: V.sender + (V.origin?.id ?? ""),
+            class: "mail-list-row"
+          }, [
+            s(a(N), {
+              icon: V.origin ? "tabler:bolt" : "tabler:user",
+              "aria-hidden": "true"
+            }, null, 8, ["icon"]),
+            t("span", Xi, [
+              t("span", null, h(a(ke)(V.sender_label, V.sender)), 1),
+              V.origin ? (l(), n("span", en, h(a(sa)(V.origin)), 1)) : T("", !0)
+            ]),
+            t("span", an, h(a(pe)(V.count, "message")), 1)
+          ]))), 128))
+        ])) : (l(), n("p", Zi, "Nobody has sent " + h(e.resource.title) + " recently.", 1))
+      ])) : T("", !0)
     ]));
   }
-}), Xi = {
+}), tn = {
   key: 1,
   class: "kx-notice warn mail-block",
   role: "alert"
-}, en = {
+}, sn = {
   key: 0,
   class: "kx-err mail-error",
   role: "alert"
-}, an = {
+}, nn = {
   key: 1,
   class: "kx-loading",
   role: "status"
-}, ln = {
+}, on = {
   key: 0,
   class: "kx-notice warn mail-block",
   role: "alert"
-}, tn = {
+}, rn = {
   key: 1,
   class: "mail-muted mail-blocked",
   role: "status"
-}, sn = {
+}, un = {
   key: 2,
+  class: "mail-muted mail-blocked",
+  role: "status"
+}, dn = {
+  key: 3,
   class: "kx-notice warn mail-block",
   role: "alert"
-}, nn = {
-  key: 3,
+}, cn = {
+  key: 4,
   class: "kx-err mail-error",
   role: "alert"
-}, on = {
-  key: 4,
+}, vn = {
+  key: 5,
   class: "kx-notice info mail-block",
   role: "status"
-}, rn = {
-  key: 5,
+}, mn = {
+  key: 6,
   class: "kx-notice mail-customized"
-}, un = { class: "mail-customized-text" }, dn = { class: "mail-editor-layout" }, cn = /* @__PURE__ */ ae({
+}, fn = { class: "mail-customized-text" }, bn = { class: "mail-editor-layout" }, yn = /* @__PURE__ */ te({
   __name: "ResourcePage",
   props: {
     kind: {},
@@ -2410,784 +2685,982 @@ const ss = ["src", "alt"], is = {
     section: {}
   },
   setup(e) {
-    const d = e, { library: r, capabilities: f, delivery: $, go: c, create: n, setDirty: w } = ve(), k = z(() => ({ kind: d.kind, name: d.name })), y = fe(), g = p(), x = p(!0), m = p(!1), _ = p(!1), o = p(""), v = p(), b = ge(), O = z(() => !!g.value && !!y.value && !$t(g.value, y.value));
-    Q(O, (E) => w(E), { immediate: !0 }), Qe(() => w(!1));
-    async function A(E = {}) {
-      const M = b();
+    const v = e, { library: r, capabilities: c, delivery: y, go: o, create: k, setDirty: b, setTitle: x } = fe(), V = P(() => ({ kind: v.kind, name: v.name })), i = ge(), U = _(), S = _(!0), R = _(!1), C = _(!1), u = _(""), d = _(), m = xe(), $ = P(() => !!U.value && !!i.value && !Ft(U.value, i.value));
+    X($, (B) => b(B), { immediate: !0 }), Be(() => b(!1));
+    async function A(B = {}) {
+      const H = m();
       try {
-        const J = await le.get(k.value);
-        if (!M()) return;
-        if (E.keepDraft && O.value && y.value && J.revision !== y.value.revision) {
-          v.value = { revision: J.revision, by: ye(J.author_label, J.author) || "Someone" };
+        const Q = await se.get(V.value);
+        if (!H()) return;
+        if (B.keepDraft && $.value && i.value && Q.revision !== i.value.revision) {
+          d.value = { revision: Q.revision, by: ke(Q.author_label, Q.author) || "Someone" };
           return;
         }
-        y.value = J, g.value = ke(J), v.value = void 0, m.value = _.value = !1, o.value = "";
-      } catch (J) {
-        if (!M()) return;
-        m.value = qe(J), _.value = Le(J), o.value = m.value || _.value ? "" : ne(J, "This resource could not be loaded."), m.value && (y.value = void 0, g.value = void 0);
+        i.value = Q, U.value = _e(Q), I.value = void 0, x(Q.title), d.value = void 0, R.value = C.value = !1, u.value = "";
+      } catch (Q) {
+        if (!H()) return;
+        R.value = qe(Q), C.value = Fe(Q), u.value = R.value || C.value ? "" : ie(Q, "This resource could not be loaded."), R.value && (i.value = void 0, U.value = void 0);
       } finally {
-        M() && (x.value = !1);
+        H() && (S.value = !1);
       }
     }
-    const j = fe([]), S = p(!1), N = p(""), te = ge();
-    async function W() {
-      const E = te();
-      S.value = !0;
+    const I = _(), M = ge([]), L = _(!1), E = _(""), ae = xe();
+    async function le() {
+      const B = ae();
+      L.value = !0;
       try {
-        const M = await le.history(k.value);
-        if (!E()) return;
-        j.value = M, N.value = "";
-      } catch (M) {
-        if (!E()) return;
-        N.value = qe(M) ? "" : ne(M, "History could not be loaded.");
+        const H = await se.history(V.value);
+        if (!B()) return;
+        M.value = H, E.value = "";
+      } catch (H) {
+        if (!B()) return;
+        E.value = qe(H) ? "" : ie(H, "History could not be loaded.");
       } finally {
-        E() && (S.value = !1);
+        B() && (L.value = !1);
       }
     }
-    async function R() {
-      await Promise.all([A({ keepDraft: !0 }), W()]);
+    async function q() {
+      await Promise.all([A({ keepDraft: !0 }), le()]);
     }
-    De(R), Ne((E) => {
-      E.kind === d.kind && E.name === d.name ? R() : d.kind === "base" && E.kind === "message" && A({ keepDraft: !0 });
+    la(q), Ea((B) => {
+      B.kind === v.kind && B.name === v.name ? q() : v.kind === "base" && B.kind === "message" && A({ keepDraft: !0 });
     });
-    const h = p(), U = p(""), D = p(!1), I = p(""), G = p(), C = z(() => y.value?.title ?? d.name), P = z(() => {
-      const E = y.value, M = C.value, J = E?.used_by?.messages?.length ?? 0, ie = E?.used_by?.recent_senders?.find((Ge) => Ge.origin);
+    const g = _(), p = _(""), f = _(!1), w = _(""), z = _(), Z = P(() => i.value?.title ?? v.name), F = P(() => {
+      const B = i.value, H = Z.value, Q = B?.used_by?.messages?.length ?? 0, re = B?.used_by?.recent_senders?.find((oa) => oa.origin);
       return {
         content: {
-          message: { title: "Message", description: "What recipients read." + (ie?.origin ? ` Sent recently by “${We(ie.origin)}”.` : "") },
-          base: { title: "Layout", description: J ? `The frame around the ${pe(J, "message")} that ${J === 1 ? "uses" : "use"} ${M}.` : `The frame around messages that use ${M}.` },
-          part: { title: "Content", description: `Shown wherever ${M} is included.` }
-        }[d.kind],
-        variables: d.kind === "message" ? { title: "Variables", description: "The values a sender provides, with the samples used for previews and tests." } : { title: "Inputs", description: `The values passed to ${M} where it is included, with their defaults.` },
+          message: { title: "Message", description: "What recipients read." + (re?.origin ? ` Sent recently by “${sa(re.origin)}”.` : "") },
+          base: { title: "Layout", description: Q ? `The frame around the ${pe(Q, "message")} that ${Q === 1 ? "uses" : "use"} ${H}.` : `The frame around messages that use ${H}.` },
+          part: { title: "Content", description: `Shown wherever ${H} is included.` }
+        }[v.kind],
+        variables: v.kind === "message" ? { title: "Variables", description: "The values a sender provides, with the samples used for previews and tests." } : { title: "Inputs", description: `The values passed to ${H} where it is included, with their defaults.` },
         "used-by": {
           title: "Used by",
-          description: d.kind === "message" ? `Who sends ${M}.` : d.kind === "base" ? `Messages that use ${M}.` : `Templates that include ${M}.`
+          description: v.kind === "message" ? `Who sends ${H}.` : v.kind === "base" ? `Messages that use ${H}.` : `Templates that include ${H}.`
         },
-        history: { title: "History", description: `Every saved version of ${M}, newest first.` }
-      }[d.section];
-    }), q = z(() => {
-      const E = y.value;
-      return E?.state !== "customized" ? "" : `Customized by ${ye(E.author_label, E.author)} ${sl(E.updated_at)} from the version included with ${E.origin_label}.`;
-    }), Z = z(() => {
-      const E = y.value;
-      if (!E?.original) return;
-      const { kind: M, name: J, title: ie, description: se } = E;
+        history: { title: "History", description: `Every saved version of ${H}, newest first.` }
+      }[v.section];
+    }), W = P(() => {
+      const B = i.value;
+      return B?.state !== "customized" ? "" : `Customized by ${ke(B.author_label, B.author)} ${hl(B.updated_at)} from the version included with ${B.origin_label}.`;
+    }), oe = P(() => {
+      const B = i.value;
+      if (!B?.original) return;
+      const { kind: H, name: Q, title: re, description: ue } = B;
       return {
-        kind: M,
-        name: J,
+        kind: H,
+        name: Q,
         revision: -1,
         version: 0,
         action: "reset",
         state: "original",
         author: "",
         created_at: 0,
-        content: { kind: M, name: J, title: ie, description: se, ...E.original }
+        content: { kind: H, name: Q, title: re, description: ue, ...B.original }
       };
-    }), X = p(), Y = p(), ee = p(!1), je = z(() => Y.value ?? X.value);
-    Q(() => JSON.stringify(g.value), () => {
-      Y.value = void 0;
+    }), Ve = _(), ee = _(), K = _(!1), J = P(() => ee.value ?? Ve.value);
+    X(() => JSON.stringify(U.value), () => {
+      ee.value = void 0;
     });
-    const Pa = z(() => !!je.value || ee.value || !!v.value), va = z(() => v.value ? "Discard your changes to load the newer version first." : ee.value ? "Fix the variables first." : je.value ? "Fix the error first." : "");
-    function Ee(E, M) {
-      D.value = _e(E) === "mail_revision_conflict", D.value && R(), U.value = ne(E, M);
+    const he = P(() => v.kind === "message" && /[\r\n]/.test(U.value?.subject ?? "")), Ie = P(() => !!J.value || K.value || !!d.value || he.value), Ca = P(() => d.value ? "Discard your changes to load the newer version first." : K.value ? "Fix the variables first." : he.value ? "Put the subject on one line first." : J.value ? "Fix the error first." : "");
+    function ia(B, H) {
+      f.value = Ue(B) === "mail_revision_conflict", f.value && q(), p.value = ie(B, H);
     }
-    function ma() {
-      if (!y.value) return;
-      const E = !!v.value;
-      g.value = ke(y.value), v.value = void 0, Y.value = void 0, E && A();
+    function Va() {
+      if (!i.value) return;
+      const B = !!d.value;
+      U.value = _e(i.value), d.value = void 0, ee.value = void 0, I.value = void 0, B && A();
     }
-    const Ve = p(!1), ze = p(""), Me = p();
-    function Ea() {
-      ze.value = "", Me.value = void 0, Ve.value = !0;
+    const Le = _(!1), We = _(""), Ke = _();
+    function el() {
+      We.value = "", Ke.value = void 0, Le.value = !0;
     }
-    async function za(E) {
-      const M = y.value, J = g.value;
-      if (!(!M || !J || h.value !== void 0)) {
-        h.value = "save", ze.value = U.value = I.value = "", Me.value = void 0;
+    async function al(B) {
+      const H = i.value, Q = U.value;
+      if (!(!H || !Q || g.value !== void 0)) {
+        g.value = "save", We.value = p.value = w.value = "", Ke.value = void 0;
         try {
-          const ie = await le.update(J, M.revision, E || void 0);
-          y.value = { ...M, ...ie }, g.value = ke(y.value), Ve.value = !1, I.value = `Saved ${ie.title}.${d.kind === "message" ? "" : " Every message that uses it has the change."}`, await R();
-        } catch (ie) {
-          const se = Te(ie), $e = se?.resource?.kind === J.kind && se.resource.name === J.name;
-          se?.dependents?.length && !$e ? Me.value = { names: se.dependents, reason: se.reasons?.[0]?.message ?? se.message } : se ? (Y.value = se, Ve.value = !1) : _e(ie) === "mail_revision_conflict" ? (Ve.value = !1, await A({ keepDraft: !0 })) : ze.value = ne(ie, `${J.title} could not be saved.`);
+          const re = await se.update(Q, H.revision, B || void 0);
+          i.value = { ...H, ...re }, U.value = _e(i.value), Le.value = !1, w.value = I.value ? `Version ${I.value.version} from ${Je(I.value.created_at)} is now in effect.` : `Saved ${re.title}.${v.kind === "message" ? "" : " Every message that uses it has the change."}`, I.value = void 0, await q();
+        } catch (re) {
+          const ue = He(re), Se = ue?.resource?.kind === Q.kind && ue.resource.name === Q.name;
+          ue?.dependents?.length && !Se ? Ke.value = { names: ue.dependents, reason: ue.reasons?.[0]?.message ?? ue.message } : ue ? (ee.value = ue, Le.value = !1) : Ue(re) === "mail_revision_conflict" ? (Le.value = !1, await A({ keepDraft: !0 })) : We.value = ie(re, `${Q.title} could not be saved.`);
         } finally {
-          h.value = void 0;
+          g.value = void 0;
         }
       }
     }
-    async function Ma() {
-      const E = y.value;
-      if (!(!E || h.value !== void 0)) {
-        h.value = "test", U.value = I.value = "";
+    async function ll() {
+      const B = i.value;
+      if (!(!B || g.value !== void 0)) {
+        g.value = "test", p.value = w.value = "";
         try {
-          await le.sendTest(E.name), I.value = "Test sent to you with the sample values. It appears in Activity.";
-        } catch (M) {
-          Ee(M, "The test could not be sent.");
+          await se.sendTest(B.name), w.value = "Test sent to you with the sample values. It appears in Activity.";
+        } catch (H) {
+          ia(H, "The test could not be sent.");
         } finally {
-          h.value = void 0;
+          g.value = void 0;
         }
       }
     }
-    const ba = z(() => O.value ? "Save your changes to send a test." : f.value?.send ? $.value && !$.value.configured ? "Mail delivery is not set up. Open Delivery settings." : "" : "Ask an administrator for permission to send mail.");
-    async function fa() {
-      const E = y.value;
-      if (!(!E || h.value !== void 0 || !await Re.confirm({
-        header: `Reset ${E.title} to the original?`,
-        message: `Your changes are replaced by the version included with ${E.origin_label}. They stay in History, so you can restore them.`,
+    const Ye = P(() => $.value ? "Save your changes to send a test." : c.value?.send ? y.value && !y.value.configured ? "Mail delivery is not set up yet, so a test cannot be sent." : "" : "Ask an administrator for permission to send mail.");
+    async function Sa() {
+      const B = i.value;
+      if (!(!B || g.value !== void 0 || !await Re.confirm({
+        header: `Reset ${B.title} to the original?`,
+        message: `Your changes are replaced by the version included with ${B.origin_label}. They stay in History, so you can restore them.`,
         acceptLabel: "Reset to original",
         rejectLabel: "Cancel"
       }))) {
-        h.value = "reset", U.value = I.value = "", D.value = !1;
+        g.value = "reset", p.value = w.value = "", f.value = !1;
         try {
-          y.value = await le.reset(k.value, E.revision), g.value = ke(y.value), I.value = `${E.title} is back to the original. Your changes are in History.`, await R();
-        } catch (J) {
-          Ee(J, `${E.title} could not be reset.`);
+          i.value = await se.reset(V.value, B.revision), U.value = _e(i.value), w.value = `${B.title} is back to the original. Your changes are in History.`, await q();
+        } catch (Q) {
+          ia(Q, `${B.title} could not be reset.`);
         } finally {
-          h.value = void 0;
+          g.value = void 0;
         }
       }
     }
-    const Ie = p(), pa = p(!1), ya = p(!1);
-    function ha(E, M = !1, J = !1) {
-      pa.value = M, ya.value = J, Ie.value = E;
+    const Pe = _(), Ta = _(!1), Ra = _(!1);
+    function Ua(B, H = !1, Q = !1) {
+      Ta.value = H, Ra.value = Q, Pe.value = B;
     }
-    async function ga(E) {
-      const M = y.value;
-      if (!(!M || h.value !== void 0 || !await Re.confirm({
-        header: `Restore version ${E.version} of ${M.title}?`,
-        message: "It becomes the current version. The current version stays in History.",
-        acceptLabel: "Restore this version",
-        rejectLabel: "Cancel"
-      }))) {
-        h.value = E.revision, U.value = I.value = "";
-        try {
-          y.value = await le.restore(k.value, E.revision, M.revision), g.value = ke(y.value), Ie.value = void 0, I.value = `Version ${E.version} from ${Pe(E.created_at)} is now in effect.`, await R();
-        } catch (ie) {
-          const se = Te(ie);
-          se?.dependents?.length ? Ye(M, se.dependents, `Restoring version ${E.version} would break them: ${se.message}`) : Ee(ie, "That version could not be restored.");
-        } finally {
-          h.value = void 0;
-        }
-      }
+    async function ja(B) {
+      const H = i.value;
+      if (!H || g.value !== void 0 || $.value && !await Re.confirm({
+        header: `Replace your unsaved changes with version ${B.version}?`,
+        message: "Your unsaved changes to this resource are discarded. The saved version stays as it is until you save.",
+        acceptLabel: "Load this version",
+        rejectLabel: "Keep my changes"
+      })) return;
+      U.value = { ..._e(B.content), kind: H.kind, name: H.name }, I.value = B, Pe.value = void 0, p.value = "";
+      const Q = `Version ${B.version} is loaded as your draft. Review and save to restore it.`;
+      v.section === "content" ? w.value = Q : (na = Q, o({ name: "resource", kind: v.kind, resource: v.name, section: "content" }));
     }
-    function Ye(E, M, J) {
-      const ie = M.map(($e) => r.find("message", $e)?.title ?? $e), se = E.kind === "base" ? "use" : "include";
-      G.value = {
-        header: J ? `${E.title} cannot change this way` : `${E.title} is in use`,
-        message: J ?? `${pe(M.length, "message")} ${M.length === 1 ? se + "s" : se} it: ${ie.join(", ")}. Remove it from ${M.length === 1 ? "that message" : "them"} first.`,
-        links: M.map(($e, Ge) => ({ label: ie[Ge], open: () => c({ name: "resource", kind: "message", resource: $e, section: "content" }) }))
+    function Aa(B, H, Q) {
+      const re = H.map((Se) => r.title("message", Se) ?? Se), ue = B.kind === "base" ? "use" : "include";
+      z.value = {
+        header: `${B.title} is in use`,
+        message: `${pe(H.length, "message")} ${H.length === 1 ? ue + "s" : ue} it: ${re.join(", ")}. Remove it from ${H.length === 1 ? "that message" : "them"} first.`,
+        links: H.map((Se, oa) => ({ label: re[oa], open: () => o({ name: "resource", kind: "message", resource: Se, section: "content" }) }))
       };
     }
-    async function Oa() {
-      const E = y.value;
-      if (!E || E.state !== "created" || h.value !== void 0) return;
-      const M = E.used_by?.messages ?? [];
-      if (E.kind === "base" && M.length) {
-        Ye(E, M);
+    async function tl() {
+      const B = i.value;
+      if (!B || B.state !== "created" || g.value !== void 0) return;
+      const H = B.used_by?.messages ?? [];
+      if (B.kind === "base" && H.length) {
+        Aa(B, H);
         return;
       }
       if (await Re.confirm({
-        header: `Delete ${E.title}?`,
-        message: E.kind === "base" ? "It is not used anywhere. You can't undo this." : "You can't undo this.",
-        acceptLabel: `Delete ${me[E.kind].toLowerCase()}`,
+        header: `Delete ${B.title}?`,
+        message: B.kind === "base" ? "It is not used anywhere. You can't undo this." : "You can't undo this.",
+        acceptLabel: `Delete ${be[B.kind].toLowerCase()}`,
         rejectLabel: "Cancel",
         acceptClass: "p-button-danger"
       })) {
-        h.value = "delete", U.value = I.value = "";
+        g.value = "delete", p.value = w.value = "";
         try {
-          await le.remove(k.value, E.revision), w(!1), c({ name: "library", section: ea(d.kind) });
-        } catch (ie) {
-          const se = Te(ie);
-          se?.dependents?.length ? Ye(E, se.dependents) : Ee(ie, `${E.title} could not be deleted.`);
+          await se.remove(V.value, B.revision), b(!1), o({ name: "library", section: va(v.kind) });
+        } catch (re) {
+          const ue = He(re);
+          ue?.dependents?.length ? Aa(B, ue.dependents) : ia(re, `${B.title} could not be deleted.`);
         } finally {
-          h.value = void 0;
+          g.value = void 0;
         }
       }
     }
-    function Ba() {
-      const E = y.value;
-      E && n({ kind: d.kind, from: { kind: E.kind, name: E.name } });
+    function sl() {
+      const B = i.value;
+      B && k({ kind: v.kind, from: { kind: B.kind, name: B.name } });
     }
-    const qa = z(() => d.kind === "base" ? y.value?.used_by?.messages : void 0), Oe = z(() => h.value === "save");
-    return A(), Q(() => d.section, (E) => {
-      E === "history" && !j.value.length && W();
-    }, { immediate: !0 }), (E, M) => (l(), i(H, null, [
-      m.value ? (l(), B(oa, {
+    const il = P(() => v.kind === "base" ? i.value?.used_by?.messages : void 0), Ge = P(() => g.value === "save");
+    A(), X(() => v.section, (B) => {
+      B === "history" && !M.value.length && le();
+    }, { immediate: !0 });
+    let na = "";
+    return X(() => v.section, () => {
+      w.value = na, na = "", p.value = "";
+    }), (B, H) => (l(), n(Y, null, [
+      R.value ? (l(), O($a, {
         key: 0,
         icon: "tabler:file-off",
         title: "This resource no longer exists",
         hint: "It was deleted while you were away.",
-        cta: "All " + a(la)[e.kind].toLowerCase(),
+        cta: "All " + a(ba)[e.kind].toLowerCase(),
         "cta-icon": "tabler:table",
-        onCta: M[0] || (M[0] = (J) => a(c)({ name: "library", section: a(ea)(e.kind) }))
-      }, null, 8, ["cta"])) : _.value ? (l(), i("p", Xi, [
-        s(a(L), {
+        onCta: H[0] || (H[0] = (Q) => a(o)({ name: "library", section: a(va)(e.kind) }))
+      }, null, 8, ["cta"])) : C.value ? (l(), n("p", tn, [
+        s(a(N), {
           icon: "tabler:lock",
           "aria-hidden": "true"
         }),
-        M[9] || (M[9] = K("Ask an administrator to grant you access to the mail library. ", -1))
-      ])) : (l(), i(H, { key: 2 }, [
-        s(Je, {
-          title: P.value.title,
-          description: P.value.description
-        }, aa({ _: 2 }, [
-          y.value ? {
+        H[10] || (H[10] = G("Ask an administrator to grant you access to the mail library. ", -1))
+      ])) : (l(), n(Y, { key: 2 }, [
+        s(ta, {
+          title: F.value.title,
+          description: F.value.description
+        }, fa({ _: 2 }, [
+          i.value ? {
             name: "actions",
-            fn: T(() => [
-              O.value ? (l(), B(il, {
+            fn: j(() => [
+              $.value ? (l(), O(kl, {
                 key: 0,
-                busy: Oe.value,
-                "review-disabled": Pa.value,
-                onDiscard: ma,
-                onReview: Ea
-              }, null, 8, ["busy", "review-disabled"])) : (l(), i(H, { key: 1 }, [
-                e.kind === "message" ? (l(), B(a(F), {
+                busy: Ge.value,
+                "review-disabled": Ie.value,
+                onDiscard: Va,
+                onReview: el
+              }, null, 8, ["busy", "review-disabled"])) : (l(), n(Y, { key: 1 }, [
+                e.kind === "message" ? (l(), O(a(D), {
                   key: 0,
                   label: "Send test to me",
                   severity: "secondary",
                   outlined: "",
-                  loading: h.value === "test",
-                  disabled: !!ba.value || h.value !== void 0,
-                  title: ba.value || void 0,
-                  onClick: Ma
+                  loading: g.value === "test",
+                  disabled: !!Ye.value || g.value !== void 0,
+                  title: Ye.value || void 0,
+                  onClick: ll
                 }, {
-                  icon: T(() => [
-                    s(a(L), {
+                  icon: j(() => [
+                    s(a(N), {
                       icon: "tabler:send",
                       "aria-hidden": "true"
                     })
                   ]),
                   _: 1
-                }, 8, ["loading", "disabled", "title"])) : V("", !0),
-                s(a(F), {
+                }, 8, ["loading", "disabled", "title"])) : T("", !0),
+                s(a(D), {
                   label: "Duplicate",
                   severity: "secondary",
                   outlined: "",
-                  disabled: h.value !== void 0,
-                  onClick: Ba
+                  disabled: g.value !== void 0,
+                  onClick: sl
                 }, {
-                  icon: T(() => [
-                    s(a(L), {
+                  icon: j(() => [
+                    s(a(N), {
                       icon: "tabler:copy",
                       "aria-hidden": "true"
                     })
                   ]),
                   _: 1
                 }, 8, ["disabled"]),
-                y.value.state === "created" ? (l(), B(a(F), {
+                i.value.state === "created" ? (l(), O(a(D), {
                   key: 1,
                   label: "Delete",
                   severity: "danger",
                   outlined: "",
-                  loading: h.value === "delete",
-                  disabled: h.value !== void 0,
-                  onClick: Oa
+                  loading: g.value === "delete",
+                  disabled: g.value !== void 0,
+                  onClick: tl
                 }, {
-                  icon: T(() => [
-                    s(a(L), {
+                  icon: j(() => [
+                    s(a(N), {
                       icon: "tabler:trash",
                       "aria-hidden": "true"
                     })
                   ]),
                   _: 1
-                }, 8, ["loading", "disabled"])) : V("", !0)
+                }, 8, ["loading", "disabled"])) : T("", !0)
               ], 64))
             ]),
             key: "0"
           } : void 0
         ]), 1032, ["title", "description"]),
-        o.value ? (l(), i("div", en, [
-          t("span", null, u(o.value), 1),
-          s(a(F), {
+        u.value ? (l(), n("div", sn, [
+          t("span", null, h(u.value), 1),
+          s(a(D), {
             label: "Retry",
             severity: "secondary",
             outlined: "",
             size: "small",
-            onClick: M[1] || (M[1] = (J) => R())
+            onClick: H[1] || (H[1] = (Q) => q())
           })
-        ])) : x.value ? (l(), i("p", an, [
-          s(a(L), {
+        ])) : S.value ? (l(), n("p", nn, [
+          s(a(N), {
             icon: "tabler:loader-2",
             class: "spin",
             "aria-hidden": "true"
           }),
-          K("Loading " + u(C.value) + "…", 1)
-        ])) : V("", !0),
-        y.value && g.value ? (l(), i(H, { key: 2 }, [
-          v.value ? (l(), i("p", ln, [
-            s(a(L), {
+          G("Loading " + h(Z.value) + "…", 1)
+        ])) : T("", !0),
+        i.value && U.value ? (l(), n(Y, { key: 2 }, [
+          d.value ? (l(), n("p", on, [
+            s(a(N), {
               icon: "tabler:alert-triangle",
               "aria-hidden": "true"
             }),
             t("span", null, [
-              K(u(v.value.by) + " saved " + u(y.value.title) + " while you were editing. Discard your changes to load theirs, or compare first. ", 1),
-              t("button", {
-                type: "button",
-                class: "mail-text-link",
-                onClick: ma
-              }, "Discard and load")
+              G(h(d.value.by) + " saved " + h(i.value.title) + " while you were editing. Discard your changes to load theirs, or compare first. ", 1),
+              s(a(D), {
+                link: "",
+                size: "small",
+                class: "mail-inline-link",
+                label: "Discard and load",
+                onClick: Va
+              })
             ])
-          ])) : V("", !0),
-          O.value && va.value && !v.value ? (l(), i("p", tn, u(va.value), 1)) : V("", !0),
-          U.value && D.value ? (l(), i("p", sn, [
-            s(a(L), {
+          ])) : T("", !0),
+          $.value && Ca.value && !d.value ? (l(), n("p", rn, h(Ca.value), 1)) : e.kind === "message" && !$.value && Ye.value ? (l(), n("p", un, [
+            G(h(Ye.value) + " ", 1),
+            a(c)?.administer_delivery && a(y) && !a(y).configured ? (l(), O(a(D), {
+              key: 0,
+              link: "",
+              size: "small",
+              class: "mail-inline-link",
+              label: "Open delivery settings",
+              onClick: H[2] || (H[2] = (Q) => a(Re).navigate("/system/settings/mail"))
+            })) : T("", !0)
+          ])) : T("", !0),
+          p.value && f.value ? (l(), n("p", dn, [
+            s(a(N), {
               icon: "tabler:alert-triangle",
               "aria-hidden": "true"
             }),
-            K(u(U.value), 1)
-          ])) : U.value ? (l(), i("p", nn, [
-            t("span", null, u(U.value), 1)
-          ])) : V("", !0),
-          I.value ? (l(), i("p", on, [
-            s(a(L), {
+            G(h(p.value), 1)
+          ])) : p.value ? (l(), n("p", cn, [
+            t("span", null, h(p.value), 1)
+          ])) : T("", !0),
+          w.value ? (l(), n("p", vn, [
+            s(a(N), {
               icon: "tabler:circle-check",
               "aria-hidden": "true"
             }),
-            K(u(I.value), 1)
-          ])) : V("", !0),
-          q.value && e.section === "content" ? (l(), i("div", rn, [
-            s(a(L), {
+            G(h(w.value), 1)
+          ])) : T("", !0),
+          W.value && e.section === "content" ? (l(), n("div", mn, [
+            s(a(N), {
               icon: "tabler:pencil",
               "aria-hidden": "true"
             }),
-            t("span", un, u(q.value), 1),
-            Z.value ? (l(), B(a(F), {
+            t("span", fn, [
+              G(h(W.value), 1),
+              $.value ? (l(), n(Y, { key: 0 }, [
+                G(" Save or discard your changes to reset it.")
+              ], 64)) : T("", !0)
+            ]),
+            oe.value ? (l(), O(a(D), {
               key: 0,
               label: "Compare with original",
               severity: "secondary",
               outlined: "",
               size: "small",
-              onClick: M[2] || (M[2] = (J) => ha(Z.value, !0, !0))
+              onClick: H[3] || (H[3] = (Q) => Ua(oe.value, !0, !0))
             }, {
-              icon: T(() => [
-                s(a(L), {
+              icon: j(() => [
+                s(a(N), {
                   icon: "tabler:arrows-diff",
                   "aria-hidden": "true"
                 })
               ]),
               _: 1
-            })) : V("", !0),
-            s(a(F), {
+            })) : T("", !0),
+            s(a(D), {
               label: "Reset to original",
               severity: "secondary",
               outlined: "",
               size: "small",
-              loading: h.value === "reset",
-              disabled: h.value !== void 0 || O.value,
-              onClick: fa
+              loading: g.value === "reset",
+              disabled: g.value !== void 0 || $.value,
+              onClick: Sa
             }, {
-              icon: T(() => [
-                s(a(L), {
+              icon: j(() => [
+                s(a(N), {
                   icon: "tabler:arrow-back-up",
                   "aria-hidden": "true"
                 })
               ]),
               _: 1
             }, 8, ["loading", "disabled"])
-          ])) : V("", !0),
-          Za(t("div", dn, [
-            s(Js, {
-              draft: g.value,
-              problem: je.value,
-              disabled: Oe.value
+          ])) : T("", !0),
+          vl(t("div", bn, [
+            s(Zs, {
+              draft: U.value,
+              problem: J.value,
+              disabled: Ge.value
             }, null, 8, ["draft", "problem", "disabled"]),
-            s(qt, {
-              draft: g.value,
-              messages: qa.value,
-              onProblem: M[3] || (M[3] = (J) => X.value = J)
+            s(fs, {
+              draft: U.value,
+              messages: il.value,
+              onProblem: H[4] || (H[4] = (Q) => Ve.value = Q)
             }, null, 8, ["draft", "messages"])
           ], 512), [
-            [Qa, e.section === "content"]
+            [ml, e.section === "content"]
           ]),
-          e.section === "variables" ? (l(), B(ui, {
-            key: 6,
-            draft: g.value,
-            label: P.value.title,
-            problem: je.value,
-            disabled: Oe.value,
-            onInvalid: M[4] || (M[4] = (J) => ee.value = J)
-          }, null, 8, ["draft", "label", "problem", "disabled"])) : e.section === "used-by" ? (l(), B(Qi, {
+          e.section === "variables" ? (l(), O(yi, {
             key: 7,
-            resource: y.value
-          }, null, 8, ["resource"])) : e.section === "history" ? (l(), B(Ai, {
+            draft: U.value,
+            label: F.value.title,
+            problem: J.value,
+            disabled: Ge.value,
+            onInvalid: H[5] || (H[5] = (Q) => K.value = Q)
+          }, null, 8, ["draft", "label", "problem", "disabled"])) : e.section === "used-by" ? (l(), O(ln, {
             key: 8,
-            resource: y.value,
-            revisions: j.value,
-            loading: S.value,
-            error: N.value,
-            busy: typeof h.value == "number" ? h.value : h.value ? -1 : void 0,
-            onShow: ha,
-            onRestore: ga,
-            onRetry: W
-          }, null, 8, ["resource", "revisions", "loading", "error", "busy"])) : V("", !0)
-        ], 64)) : V("", !0)
+            resource: i.value
+          }, null, 8, ["resource"])) : e.section === "history" ? (l(), O(Oi, {
+            key: 9,
+            resource: i.value,
+            revisions: M.value,
+            loading: L.value,
+            error: E.value,
+            busy: typeof g.value == "number" ? g.value : g.value ? -1 : void 0,
+            onShow: Ua,
+            onRestore: ja,
+            onRetry: le
+          }, null, 8, ["resource", "revisions", "loading", "error", "busy"])) : T("", !0)
+        ], 64)) : T("", !0)
       ], 64)),
-      y.value && g.value ? (l(), B(ls, {
+      i.value && U.value ? (l(), O(Vs, {
         key: 3,
-        visible: Ve.value,
-        saved: a(ke)(y.value),
-        draft: g.value,
-        busy: Oe.value,
-        error: ze.value,
-        dependents: Me.value,
-        onClose: M[5] || (M[5] = (J) => Ve.value = !1),
-        onSave: za
-      }, null, 8, ["visible", "saved", "draft", "busy", "error", "dependents"])) : V("", !0),
-      y.value ? (l(), B(ki, {
+        visible: Le.value,
+        saved: a(_e)(i.value),
+        draft: U.value,
+        busy: Ge.value,
+        error: We.value,
+        dependents: Ke.value,
+        "suggested-note": I.value ? `Restore version ${I.value.version}` : void 0,
+        onClose: H[6] || (H[6] = (Q) => Le.value = !1),
+        onSave: al
+      }, null, 8, ["visible", "saved", "draft", "busy", "error", "dependents", "suggested-note"])) : T("", !0),
+      i.value ? (l(), O(Si, {
         key: 4,
-        revision: Ie.value,
-        current: y.value,
-        compare: pa.value,
-        included: ya.value,
-        busy: typeof h.value == "number" || h.value === "reset",
-        onClose: M[6] || (M[6] = (J) => Ie.value = void 0),
-        onRestore: ga,
-        onReset: M[7] || (M[7] = (J) => {
-          Ie.value = void 0, fa();
+        revision: Pe.value,
+        current: i.value,
+        compare: Ta.value,
+        included: Ra.value,
+        busy: typeof g.value == "number" || g.value === "reset",
+        onClose: H[7] || (H[7] = (Q) => Pe.value = void 0),
+        onRestore: ja,
+        onReset: H[8] || (H[8] = (Q) => {
+          Pe.value = void 0, Sa();
         })
-      }, null, 8, ["revision", "current", "compare", "included", "busy"])) : V("", !0),
-      s(Da, {
-        refusal: G.value,
-        onClose: M[8] || (M[8] = (J) => G.value = void 0)
+      }, null, 8, ["revision", "current", "compare", "included", "busy"])) : T("", !0),
+      s(Za, {
+        refusal: z.value,
+        onClose: H[9] || (H[9] = (Q) => z.value = void 0)
       }, null, 8, ["refusal"])
     ], 64));
   }
-}), vn = { class: "kx-modal-head-icon" }, mn = { class: "kx-modal-head-text" }, bn = { class: "kx-modal-head-title" }, fn = { class: "kx-modal-head-sub" }, pn = ["disabled", "inert"], yn = ["for"], hn = { class: "mail-muted" }, gn = {
+}), Qe = /* @__PURE__ */ new Map();
+function pn(e, v) {
+  const r = Qe.get(e);
+  if (r && r.revision >= v) return r.url;
+  const c = Promise.resolve(Sl.get(`/api/v1/mail/library/asset/${encodeURIComponent(e)}/content`, { responseType: "blob" })).then((y) => y.data instanceof Blob ? URL.createObjectURL(y.data) : void 0, () => {
+    Qe.get(e)?.url === c && Qe.delete(e);
+  });
+  return Qe.set(e, { revision: v, url: c }), r && r.url.then((y) => {
+    y && URL.revokeObjectURL(y);
+  }), c;
+}
+const gn = ["src", "alt"], hn = {
+  key: 0,
+  "aria-hidden": "true"
+}, Qa = /* @__PURE__ */ te({
+  __name: "AssetTile",
+  props: {
+    name: {},
+    revision: {},
+    asset: {},
+    large: { type: Boolean },
+    alt: {}
+  },
+  setup(e) {
+    const v = e, r = _();
+    X(() => [v.name, v.revision], async ([y, o]) => {
+      r.value = void 0, r.value = await pn(y, o);
+    }, { immediate: !0 });
+    const c = P(() => v.asset?.content_type?.replace(/^image\//, "").replace("jpeg", "jpg").toUpperCase() ?? "");
+    return (y, o) => (l(), n("span", {
+      class: ne(["mail-asset-tile", { "mail-asset-tile-large": e.large }])
+    }, [
+      r.value ? (l(), n("img", {
+        key: 0,
+        src: r.value,
+        alt: e.alt ?? ""
+      }, null, 8, gn)) : (l(), n(Y, { key: 1 }, [
+        s(a(N), {
+          icon: "tabler:photo",
+          "aria-hidden": "true"
+        }),
+        c.value ? (l(), n("span", hn, h(c.value), 1)) : T("", !0)
+      ], 64))
+    ], 2));
+  }
+});
+function Me(e) {
+  return !!e && typeof e == "object" && !Array.isArray(e);
+}
+function kn(e, v) {
+  return e;
+}
+function $n(e, v, r) {
+  if (v !== void 0 && !v) return null;
+  const c = Me(e) ? e : {}, y = [
+    c,
+    Me(c.data) ? c.data : null,
+    Me(c.payload) ? c.payload : null,
+    Me(c.detail) ? c.detail : null
+  ].filter(Boolean);
+  for (const o of y) {
+    if (o.event !== "component.meta.changed" && o.event !== "component.deleting" && o.event !== "component.deleted") continue;
+    const k = String(o.component_id || ""), b = String(c.topic || o.topic || "");
+    if (v === void 0) {
+      if (!k && (!b.startsWith("component.") || b === "component.")) continue;
+    } else if (k && k !== v || !k && b !== `component.${v}`) continue;
+    const x = k || v || b.slice(10);
+    return o.event === "component.deleting" && typeof o.deletion_job_id == "string" && o.deletion_job_id ? { event: o.event, component_id: x, deletion_job_id: o.deletion_job_id } : o.event !== "component.meta.changed" ? { event: o.event, component_id: x } : {
+      event: "component.meta.changed",
+      component_id: x,
+      meta: kn(Me(o.meta) ? o.meta : {}),
+      deleted: Array.isArray(o.deleted) ? o.deleted.map(String) : []
+    };
+  }
+  return null;
+}
+function wn(e, v, r) {
+  const c = $n(e, v);
+  return c?.event === "component.meta.changed" ? c : null;
+}
+function _n(e, v, r) {
+  if (!e) return null;
+  const c = Tl(`component.${e}`, (y) => {
+    const o = wn(y, e);
+    o && v(o);
+  });
+  return typeof c == "function" ? c : null;
+}
+class Xe extends Error {
+}
+function xn(e, v) {
+  return new Promise((r, c) => {
+    let y = null, o = !1, k = !1, b = !1;
+    const x = (i) => {
+      b || (b = !0, y?.(), i ? c(i) : r());
+    };
+    async function V() {
+      if (!b) {
+        if (v.cancelled) {
+          x(new Xe("cancelled"));
+          return;
+        }
+        if (o) {
+          k = !0;
+          return;
+        }
+        o = !0;
+        try {
+          const i = await Pa.state(e);
+          i.status === "completed" ? x() : i.status === "error" ? x(new Xe(i.error ?? "")) : y || (y = _n(i.component_id, () => {
+            V();
+          }), y ? k = !0 : x(new Xe("")));
+        } catch (i) {
+          x(i);
+        } finally {
+          o = !1, k && !b && (k = !1, V());
+        }
+      }
+    }
+    V();
+  });
+}
+const Cn = { class: "kx-modal-head-icon" }, Vn = { class: "kx-modal-head-text" }, Sn = { class: "kx-modal-head-title" }, Tn = { class: "kx-modal-head-sub" }, Rn = ["disabled", "inert"], Un = ["for"], jn = { class: "mail-muted" }, An = {
   key: 0,
   class: "mail-field-error",
   role: "alert"
-}, kn = {
+}, In = {
   key: 0,
   class: "mail-field"
-}, $n = ["for"], wn = ["for"], _n = ["id"], xn = {
+}, Ln = ["for"], Nn = ["for"], zn = ["id"], En = {
   key: 0,
+  class: "kx-loading",
+  role: "status"
+}, On = {
+  key: 1,
   class: "kx-err inline",
   role: "alert"
-}, Cn = 1024 * 1024, Na = /* @__PURE__ */ ae({
+}, Pn = 1024 * 1024, Xa = /* @__PURE__ */ te({
   __name: "UploadAsset",
   props: {
     visible: { type: Boolean },
     replace: {}
   },
   emits: ["close", "done"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, { library: $, go: c } = ve(), n = { file: de(), title: de(), name: de() }, w = ["image/png", "image/jpeg", "image/gif"], k = p(), y = p(), g = p(""), x = p(""), m = p(!1), _ = p(!1), o = p(""), v = p(""), b = p("");
-    Q(() => r.visible, (W) => {
-      W && (k.value = y.value = void 0, g.value = r.replace?.title ?? "", x.value = r.replace?.name ?? "", m.value = !1, o.value = v.value = b.value = "");
-    }), Q(g, (W) => {
-      !r.replace && !m.value && (x.value = xa(W));
+  setup(e, { emit: v }) {
+    const r = e, c = v, { library: y, go: o } = fe(), k = { file: ve(), title: ve(), name: ve() };
+    we(() => r.visible);
+    const b = ["image/png", "image/jpeg", "image/gif"], x = _(), V = _(), i = _(""), U = _(""), S = _(!1), R = _(!1), C = _();
+    let u = { cancelled: !1 };
+    const d = _(""), m = _(""), $ = _("");
+    X(() => r.visible, (q) => {
+      if (!q) {
+        u.cancelled = !0;
+        return;
+      }
+      u = { cancelled: !1 }, r.replace || y.ensure("asset"), x.value = V.value = void 0, i.value = r.replace?.title ?? "", U.value = r.replace?.name ?? "", S.value = !1, d.value = m.value = $.value = "";
+    }), X(i, (q) => {
+      !r.replace && !S.value && (U.value = Ma(q));
     });
-    function O(W) {
-      return new Promise((R) => {
-        const h = URL.createObjectURL(W), U = new Image();
-        U.onload = () => {
-          R({ width: U.naturalWidth, height: U.naturalHeight }), URL.revokeObjectURL(h);
-        }, U.onerror = () => {
-          R(void 0), URL.revokeObjectURL(h);
-        }, U.src = h;
+    function A(q) {
+      return new Promise((g) => {
+        const p = URL.createObjectURL(q), f = new Image();
+        f.onload = () => {
+          g({ width: f.naturalWidth, height: f.naturalHeight }), URL.revokeObjectURL(p);
+        }, f.onerror = () => {
+          g(void 0), URL.revokeObjectURL(p);
+        }, f.src = p;
       });
     }
-    async function A(W) {
-      const R = Array.isArray(W.files) ? W.files[0] : W.files;
-      if (v.value = "", k.value = void 0, !!R) {
-        if (!w.includes(R.type)) {
-          v.value = "Use a PNG, JPEG or GIF image.";
+    async function I(q) {
+      const g = Array.isArray(q.files) ? q.files[0] : q.files;
+      if (m.value = "", x.value = void 0, !!g) {
+        if (!b.includes(g.type)) {
+          m.value = "Use a PNG, JPEG or GIF image.";
           return;
         }
-        if (R.size > Cn) {
-          v.value = "Images must be 1 MB or smaller.";
+        if (g.size > Pn) {
+          m.value = "Images must be 1 MB or smaller.";
           return;
         }
-        k.value = R, y.value = await O(R), !r.replace && !g.value && (g.value = R.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
+        x.value = g, V.value = await A(g), !r.replace && !i.value && (i.value = g.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
       }
     }
-    function j() {
-      return b.value = "", r.replace ? !0 : (Ca.test(x.value) ? $.find("asset", x.value) && (b.value = `An image named ${x.value} already exists. Choose another name or replace ${x.value}.`) : b.value = "Use lower-case letters, digits, hyphens and underscores, starting with a letter or digit.", !b.value);
+    function M() {
+      return $.value = "", r.replace ? !0 : (Da.test(U.value) ? y.find("asset", U.value) && ($.value = `An image named ${U.value} already exists. Choose another name or replace ${U.value}.`) : $.value = "Use lower-case letters, digits, hyphens and underscores, starting with a letter or digit.", !$.value);
     }
-    async function S() {
-      if (!(_.value || !k.value || !g.value.trim() || !j())) {
-        _.value = !0, o.value = "";
-        try {
-          const W = await nl.add(k.value), R = { name: x.value, upload_id: W, title: g.value.trim(), ...y.value }, h = r.replace ? await le.replaceAsset(R, r.replace.revision) : await le.addAsset(R);
-          await $.load(), f("done", h), f("close"), r.replace || c({ name: "library", section: "assets", asset: h.name });
-        } catch (W) {
-          _e(W) === "mail_revision_conflict" && !r.replace ? b.value = `An image named ${x.value} already exists. Choose another name or replace ${x.value}.` : o.value = ne(W, "The image could not be uploaded.");
-        } finally {
-          _.value = !1;
-        }
+    async function L() {
+      if (R.value || !x.value || !i.value.trim() || !M()) return;
+      R.value = !0, d.value = "";
+      const q = u;
+      try {
+        C.value = "upload";
+        const g = await Pa.add(x.value);
+        C.value = "process", await xn(g, q), C.value = "save";
+        const p = { name: U.value, upload_id: g, title: i.value.trim(), ...V.value }, f = r.replace ? await se.replaceAsset(p, r.replace.revision) : await se.addAsset(p);
+        y.patch("asset", f.name, ka(f)), c("done", f), c("close"), r.replace || o({ name: "library", section: "assets", asset: f.name });
+      } catch (g) {
+        if (q.cancelled) return;
+        g instanceof Xe ? d.value = "The image could not be processed. Try another file, or upload it again." : Ue(g) === "mail_revision_conflict" && !r.replace ? $.value = `An image named ${U.value} already exists. Choose another name or replace ${U.value}.` : d.value = ie(g, "The image could not be uploaded.");
+      } finally {
+        R.value = !1, C.value = void 0;
       }
     }
-    const N = z(() => r.replace ? `Replace ${r.replace.title}` : "Upload image"), te = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
-    return (W, R) => (l(), B(a(Ce), {
+    const E = P(() => C.value === "upload" ? "Uploading the image…" : C.value === "process" ? "Processing the image…" : C.value === "save" ? "Adding it to the library…" : ""), ae = P(() => r.replace ? `Replace ${r.replace.title}` : "Upload image"), le = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } };
+    return (q, g) => (l(), O(a(Ae), {
       visible: e.visible,
       modal: "",
       draggable: !1,
-      closable: !_.value,
-      "close-on-escape": !_.value,
+      closable: !R.value || C.value === "process",
+      "close-on-escape": !R.value || C.value === "process",
       class: "mail-dialog",
-      pt: te,
-      "aria-label": N.value,
-      "onUpdate:visible": R[4] || (R[4] = (h) => {
-        h || f("close");
+      pt: le,
+      "aria-label": ae.value,
+      "onUpdate:visible": g[4] || (g[4] = (p) => {
+        p || c("close");
       })
     }, {
-      header: T(() => [
-        t("span", vn, [
-          s(a(L), {
+      header: j(() => [
+        t("span", Cn, [
+          s(a(N), {
             icon: "tabler:photo-up",
             "aria-hidden": "true"
           })
         ]),
-        t("span", mn, [
-          t("span", bn, u(N.value), 1),
-          t("span", fn, u(e.replace ? "Every template that shows it changes at once." : "PNG, JPEG or GIF, up to 1 MB."), 1)
+        t("span", Vn, [
+          t("span", Sn, h(ae.value), 1),
+          t("span", Tn, h(e.replace ? "Every template that shows it changes at once." : "PNG, JPEG or GIF, up to 1 MB."), 1)
         ])
       ]),
-      footer: T(() => [
-        s(a(F), {
+      footer: j(() => [
+        s(a(D), {
           label: "Cancel",
           severity: "secondary",
           outlined: "",
-          disabled: _.value,
-          onClick: R[3] || (R[3] = (h) => f("close"))
+          disabled: R.value && C.value !== "process",
+          onClick: g[3] || (g[3] = (p) => c("close"))
         }, null, 8, ["disabled"]),
-        s(a(F), {
+        s(a(D), {
           label: e.replace ? "Replace image" : "Upload image",
           type: "submit",
           form: "mail-upload",
-          loading: _.value,
-          disabled: !k.value || !e.replace && !g.value.trim()
+          loading: R.value,
+          disabled: !x.value || !e.replace && !i.value.trim()
         }, null, 8, ["label", "loading", "disabled"])
       ]),
-      default: T(() => [
+      default: j(() => [
         t("form", {
           id: "mail-upload",
           class: "mail-form",
-          onSubmit: xe(S, ["prevent"])
+          onSubmit: je(L, ["prevent"])
         }, [
           t("fieldset", {
             class: "mail-fieldset",
-            disabled: _.value,
-            inert: _.value || void 0
+            disabled: R.value,
+            inert: R.value || void 0
           }, [
             t("div", {
-              class: oe(["mail-field", { "mail-field-invalid": v.value }])
+              class: ne(["mail-field", { "mail-field-invalid": m.value }])
             }, [
               t("label", {
                 class: "mail-field-label",
-                for: n.file
-              }, "Image", 8, yn),
-              s(a(gl), {
+                for: k.file
+              }, "Image", 8, Un),
+              s(a(Ol), {
                 mode: "basic",
                 auto: !1,
                 "custom-upload": "",
                 accept: "image/png,image/jpeg,image/gif",
-                "choose-label": k.value ? "Choose another file" : "Choose file",
+                "choose-label": x.value ? "Choose another file" : "Choose file",
                 class: "mail-file-row",
-                pt: { input: { id: n.file, "aria-label": "Image file" } },
-                onSelect: A
+                pt: { input: { id: k.file, "aria-label": "Image file" } },
+                onSelect: I
               }, {
-                chooseicon: T(() => [
-                  s(a(L), {
+                chooseicon: j(() => [
+                  s(a(N), {
                     icon: "tabler:file-upload",
                     "aria-hidden": "true"
                   })
                 ]),
-                filelabel: T(() => [
-                  t("span", hn, u(k.value ? `${k.value.name} · ${a(He)(k.value.size)}${y.value ? ` · ${y.value.width} × ${y.value.height}` : ""}` : "No file chosen"), 1)
+                filelabel: j(() => [
+                  t("span", jn, h(x.value ? `${x.value.name} · ${a(aa)(x.value.size)}${V.value ? ` · ${V.value.width} × ${V.value.height}` : ""}` : "No file chosen"), 1)
                 ]),
                 _: 1
               }, 8, ["choose-label", "pt"]),
-              v.value ? (l(), i("small", gn, u(v.value), 1)) : V("", !0)
+              m.value ? (l(), n("small", An, h(m.value), 1)) : T("", !0)
             ], 2),
-            e.replace ? V("", !0) : (l(), i("div", kn, [
+            e.replace ? T("", !0) : (l(), n("div", In, [
               t("label", {
                 class: "mail-field-label",
-                for: n.title
-              }, "Name", 8, $n),
+                for: k.title
+              }, "Name", 8, Ln),
               s(a(ce), {
-                id: n.title,
-                modelValue: g.value,
-                "onUpdate:modelValue": R[0] || (R[0] = (h) => g.value = h)
+                id: k.title,
+                modelValue: i.value,
+                "onUpdate:modelValue": g[0] || (g[0] = (p) => i.value = p)
               }, null, 8, ["id", "modelValue"])
             ])),
-            e.replace ? V("", !0) : (l(), i("div", {
+            e.replace ? T("", !0) : (l(), n("div", {
               key: 1,
-              class: oe(["mail-field", { "mail-field-invalid": b.value }])
+              class: ne(["mail-field", { "mail-field-invalid": $.value }])
             }, [
               t("label", {
                 class: "mail-field-label",
-                for: n.name
-              }, "Reference", 8, wn),
+                for: k.name
+              }, "Reference", 8, Nn),
               s(a(ce), {
-                id: n.name,
-                modelValue: x.value,
-                "onUpdate:modelValue": R[1] || (R[1] = (h) => x.value = h),
+                id: k.name,
+                modelValue: U.value,
+                "onUpdate:modelValue": g[1] || (g[1] = (p) => U.value = p),
                 class: "mail-mono-input",
-                invalid: !!b.value,
-                "aria-describedby": n.name + "-hint",
-                onInput: R[2] || (R[2] = (h) => m.value = !0)
+                invalid: !!$.value,
+                "aria-describedby": k.name + "-hint",
+                onInput: g[2] || (g[2] = (p) => S.value = !0)
               }, null, 8, ["id", "modelValue", "invalid", "aria-describedby"]),
               t("small", {
-                id: n.name + "-hint",
-                class: oe(b.value ? "mail-field-error" : "mail-field-hint")
-              }, u(b.value || "Templates show it with this name. It cannot change later."), 11, _n)
+                id: k.name + "-hint",
+                class: ne($.value ? "mail-field-error" : "mail-field-hint")
+              }, h($.value || "Templates show it with this name. It cannot change later."), 11, zn)
             ], 2))
-          ], 8, pn),
-          o.value ? (l(), i("p", xn, u(o.value), 1)) : V("", !0)
+          ], 8, Rn),
+          E.value ? (l(), n("p", En, [
+            s(a(N), {
+              icon: "tabler:loader-2",
+              class: "spin",
+              "aria-hidden": "true"
+            }),
+            G(h(E.value), 1)
+          ])) : T("", !0),
+          d.value ? (l(), n("p", On, h(d.value), 1)) : T("", !0)
         ], 32)
       ]),
       _: 1
     }, 8, ["visible", "closable", "close-on-escape", "aria-label"]));
   }
-}), Vn = { class: "mail-drawer-body" }, Sn = { class: "mail-drawer-head" }, Rn = { class: "mail-drawer-title" }, Tn = {
+}), Mn = { class: "mail-drawer-head" }, Dn = { class: "mail-drawer-title" }, Bn = {
   key: 0,
   class: "kx-loading",
   role: "status"
-}, Un = {
+}, qn = {
   key: 1,
   class: "kx-notice mail-block",
   role: "status"
-}, An = {
+}, Hn = {
   key: 2,
   class: "kx-err mail-error",
   role: "alert"
-}, Ln = {
+}, Fn = {
   key: 0,
   class: "kx-notice warn mail-block",
   role: "alert"
-}, jn = {
+}, Jn = {
   key: 1,
   class: "kx-notice info mail-block",
   role: "status"
-}, In = { class: "mail-asset-actions" }, Dn = { class: "mail-asset-hero" }, Nn = { class: "mail-facts mail-card" }, Pn = { class: "mail-reference" }, En = { class: "mail-mono-block" }, zn = {
+}, Wn = { class: "mail-asset-actions" }, Kn = { class: "mail-asset-hero" }, Yn = { class: "mail-facts mail-card" }, Gn = { class: "mail-reference" }, Zn = { class: "mail-mono-block" }, Qn = {
   class: "mail-group",
   "aria-labelledby": "asset-shown"
-}, Mn = {
+}, Xn = {
   key: 0,
   class: "mail-muted"
-}, On = { class: "mail-list" }, Bn = ["onClick"], qn = {
+}, eo = { class: "mail-list" }, ao = { key: 1 }, lo = {
   key: 0,
   class: "mail-asset-context"
-}, Hn = ["srcdoc", "title"], Fn = {
+}, to = ["srcdoc", "title"], so = {
   class: "mail-group",
   "aria-labelledby": "asset-history"
-}, Kn = {
+}, io = {
   key: 0,
   class: "mail-muted"
-}, Jn = {
+}, no = {
   key: 1,
   class: "mail-history"
-}, Wn = { class: "mail-history-head" }, Yn = { class: "mail-history-main" }, Gn = { class: "mail-history-title" }, Zn = { class: "mail-sub" }, Qn = /* @__PURE__ */ ae({
+}, oo = { class: "mail-history-head" }, ro = { class: "mail-history-main" }, uo = { class: "mail-history-title" }, co = { class: "mail-sub" }, vo = /* @__PURE__ */ te({
   __name: "AssetDrawer",
   props: {
     name: {}
   },
   emits: ["close"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, { library: $, go: c } = ve(), n = fe(), w = fe([]), k = fe(), y = p(""), g = p(!1), x = p(!1), m = p(""), _ = p(""), o = p(""), v = p(), b = p(!1), O = p(!1), A = p(), j = ge();
-    async function S() {
-      const U = r.name, D = j();
-      if (!U) {
-        n.value = void 0;
+  setup(e, { emit: v }) {
+    const r = e, c = v, { library: y, go: o } = fe();
+    we(() => !!r.name);
+    const k = _();
+    X(() => !!r.name, (f) => {
+      f && (y.ensure("message"), ea(() => k.value?.focus()));
+    }, { immediate: !0 });
+    const b = ge(), x = ge([]), V = ge(), i = _(""), U = _(!1), S = _(!1), R = _(""), C = _(""), u = _(""), d = _(), m = _(!1), $ = _(!1), A = _(!1), I = _(), M = xe();
+    async function L() {
+      const f = r.name, w = M();
+      if (!f) {
+        b.value = void 0;
         return;
       }
-      g.value = !0;
+      U.value = !0;
       try {
-        const [I, G] = await Promise.all([le.get({ kind: "asset", name: U }), le.history({ kind: "asset", name: U })]);
-        if (!D()) return;
-        n.value = I, w.value = G, x.value = !1, m.value = "";
-        const C = I.used_by?.messages?.[0];
-        y.value = C ?? "", k.value = C ? await le.preview(C, []) : void 0;
-      } catch (I) {
-        if (!D()) return;
-        x.value = qe(I), m.value = x.value ? "" : ne(I, "This image could not be loaded.");
+        const [z, Z] = await Promise.all([se.get({ kind: "asset", name: f }), se.history({ kind: "asset", name: f })]);
+        if (!w()) return;
+        b.value = z, x.value = Z, S.value = !1, R.value = "";
+        const F = z.used_by?.messages?.[0];
+        i.value = F ?? "", V.value = F ? await se.preview(F, []) : void 0;
+      } catch (z) {
+        if (!w()) return;
+        S.value = qe(z), R.value = S.value ? "" : ie(z, "This image could not be loaded.");
       } finally {
-        D() && (g.value = !1);
+        w() && (U.value = !1);
       }
     }
-    Q(() => r.name, () => {
-      b.value = !1, o.value = _.value = "", S();
-    }, { immediate: !0 }), Ne((U) => {
-      U.kind === "asset" && U.name === r.name && S();
+    X(() => r.name, () => {
+      m.value = $.value = !1, u.value = C.value = "", L();
+    }, { immediate: !0 }), y.onRow((f) => {
+      f.kind === "asset" && f.name === r.name && L();
     });
-    const N = z(() => (n.value?.used_by?.messages ?? []).map((U) => ({ name: U, title: $.find("message", U)?.title ?? U }))), te = z(() => n.value ? ja(n.value.name) : "");
-    async function W() {
+    const E = P(() => (b.value?.used_by?.messages ?? []).map((f) => ({ name: f, title: y.title("message", f) })));
+    async function ae() {
+      const f = b.value;
+      if (f)
+        try {
+          await navigator.clipboard.writeText(`${window.location.origin}/system/mail/assets/${encodeURIComponent(f.name)}`), $.value = !0;
+        } catch {
+          $.value = !1;
+        }
+    }
+    const le = P(() => b.value ? Ya(b.value.name) : "");
+    async function q() {
       try {
-        await navigator.clipboard.writeText(te.value), b.value = !0;
+        await navigator.clipboard.writeText(le.value), m.value = !0;
       } catch {
-        b.value = !1;
+        m.value = !1;
       }
     }
-    async function R(U, D) {
-      const I = n.value;
-      if (!I || v.value !== void 0) return;
-      if (U === "delete" && N.value.length) {
-        A.value = {
-          header: `${I.title} is in use`,
-          message: `${pe(N.value.length, "message")} ${N.value.length === 1 ? "shows" : "show"} it: ${N.value.map((C) => C.title).join(", ")}. Remove it from ${N.value.length === 1 ? "that message" : "them"} first.`,
-          links: N.value.map((C) => ({ label: C.title, open: () => c({ name: "resource", kind: "message", resource: C.name, section: "content" }) }))
+    async function g(f, w) {
+      const z = b.value;
+      if (!z || d.value !== void 0) return;
+      if (f === "delete" && E.value.length) {
+        I.value = {
+          header: `${z.title} is in use`,
+          message: `${pe(E.value.length, "message")} ${E.value.length === 1 ? "shows" : "show"} it: ${E.value.map((F) => F.title ?? F.name).join(", ")}. Remove it from ${E.value.length === 1 ? "that message" : "them"} first.`,
+          links: E.value.map((F) => ({ label: F.title ?? F.name, open: () => o({ name: "resource", kind: "message", resource: F.name, section: "content" }) }))
         };
         return;
       }
-      const G = {
-        reset: { header: `Reset ${I.title} to the original?`, message: `The image included with ${I.origin_label} is shown again everywhere. Your image stays in History.`, accept: "Reset to original" },
-        delete: { header: `Delete ${I.title}?`, message: "No message shows it. You can't undo this.", accept: "Delete image" },
-        restore: { header: `Restore version ${D?.version} of ${I.title}?`, message: "Every template that shows it changes at once. The current image stays in History.", accept: "Restore this version" }
-      }[U];
-      if (await Re.confirm({ header: G.header, message: G.message, acceptLabel: G.accept, rejectLabel: "Cancel", ...U === "delete" ? { acceptClass: "p-button-danger" } : {} })) {
-        v.value = D ? D.revision : U, _.value = o.value = "";
+      const Z = {
+        reset: { header: `Reset ${z.title} to the original?`, message: `The image included with ${z.origin_label} is shown again everywhere. Your image stays in History.`, accept: "Reset to original" },
+        delete: { header: `Delete ${z.title}?`, message: "No message shows it. You can't undo this.", accept: "Delete image" },
+        restore: { header: `Restore version ${w?.version} of ${z.title}?`, message: "Every template that shows it changes at once. The current image stays in History.", accept: "Restore this version" }
+      }[f];
+      if (await Re.confirm({ header: Z.header, message: Z.message, acceptLabel: Z.accept, rejectLabel: "Cancel", ...f === "delete" ? { acceptClass: "p-button-danger" } : {} })) {
+        d.value = w ? w.revision : f, C.value = u.value = "";
         try {
-          if (U === "delete") {
-            await le.remove({ kind: "asset", name: I.name }, I.revision), f("close");
+          if (f === "delete") {
+            await se.remove({ kind: "asset", name: z.name }, z.revision), c("close");
             return;
           }
-          n.value = U === "reset" ? await le.reset({ kind: "asset", name: I.name }, I.revision) : await le.restore({ kind: "asset", name: I.name }, D.revision, I.revision), o.value = U === "reset" ? `${I.title} is back to the original.` : `Version ${D.version} is shown again everywhere.`, await S();
-        } catch (C) {
-          const P = Te(C);
-          P?.dependents?.length ? A.value = { header: `${I.title} is in use`, message: P.message, links: P.dependents.map((q) => ({ label: $.find("message", q)?.title ?? q, open: () => c({ name: "resource", kind: "message", resource: q, section: "content" }) })) } : (_.value = _e(C) === "mail_revision_conflict" ? "Someone changed this image while you were looking at it. The latest version is shown now; try again." : ne(C, "The image could not be changed."), _e(C) === "mail_revision_conflict" && S());
+          b.value = f === "reset" ? await se.reset({ kind: "asset", name: z.name }, z.revision) : await se.restore({ kind: "asset", name: z.name }, w.revision, z.revision), u.value = f === "reset" ? `${z.title} is back to the original.` : `Version ${w.version} is shown again everywhere.`, await L();
+        } catch (F) {
+          const W = He(F);
+          W?.dependents?.length ? I.value = { header: `${z.title} is in use`, message: W.message, links: W.dependents.map((oe) => ({ label: y.title("message", oe) ?? oe, open: () => o({ name: "resource", kind: "message", resource: oe, section: "content" }) })) } : (C.value = Ue(F) === "mail_revision_conflict" ? "Someone changed this image while you were looking at it. The latest version is shown now; try again." : ie(F, "The image could not be changed."), Ue(F) === "mail_revision_conflict" && L());
         } finally {
-          v.value = void 0;
+          d.value = void 0;
         }
       }
     }
-    const h = z(() => k.value?.html ? ua(k.value.html, k.value.inline_assets) : "");
-    return (U, D) => (l(), i(H, null, [
-      s(a(Ta), {
+    const p = P(() => V.value?.html ? _a(V.value.html, V.value.inline_assets) : "");
+    return (f, w) => (l(), n(Y, null, [
+      s(a(Fa), {
         visible: !!e.name,
         position: "right",
         modal: !0,
-        dismissable: v.value === void 0,
+        dismissable: d.value === void 0,
         "show-close-icon": !1,
         class: "mail-drawer",
         pt: { root: { style: "width: min(560px, 92vw)" } },
         "aria-label": "Image details",
-        "onUpdate:visible": D[5] || (D[5] = (I) => {
-          I || f("close");
+        "onUpdate:visible": w[5] || (w[5] = (z) => {
+          z || c("close");
         })
       }, {
-        default: T(() => [
-          t("div", Vn, [
-            t("header", Sn, [
-              t("div", Rn, [
-                n.value?.state === "customized" ? (l(), B(a(Ue), {
+        default: j(() => [
+          t("div", {
+            ref_key: "drawer",
+            ref: k,
+            class: "mail-drawer-body",
+            tabindex: "-1"
+          }, [
+            t("header", Mn, [
+              t("div", Dn, [
+                b.value?.state === "customized" ? (l(), O(a(Ee), {
                   key: 0,
                   severity: "info",
                   value: "Replaced",
                   class: "kx-tag-sm"
-                })) : V("", !0),
-                t("h2", null, u(n.value?.title ?? "Image"), 1)
+                })) : T("", !0),
+                t("h2", null, h(b.value?.title ?? "Image"), 1)
               ]),
-              s(a(F), {
+              s(a(D), {
+                text: "",
+                severity: "secondary",
+                disabled: !b.value,
+                "aria-label": $.value ? "Link copied" : "Copy link",
+                title: $.value ? "Link copied" : "Copy link",
+                onClick: ae
+              }, {
+                icon: j(() => [
+                  s(a(N), {
+                    icon: $.value ? "tabler:check" : "tabler:link",
+                    "aria-hidden": "true"
+                  }, null, 8, ["icon"])
+                ]),
+                _: 1
+              }, 8, ["disabled", "aria-label", "title"]),
+              s(a(D), {
                 text: "",
                 severity: "secondary",
                 "aria-label": "Close",
                 title: "Close",
-                disabled: v.value !== void 0,
-                onClick: D[0] || (D[0] = (I) => f("close"))
+                disabled: d.value !== void 0,
+                onClick: w[0] || (w[0] = (z) => c("close"))
               }, {
-                icon: T(() => [
-                  s(a(L), {
+                icon: j(() => [
+                  s(a(N), {
                     icon: "tabler:x",
                     "aria-hidden": "true"
                   })
@@ -3195,306 +3668,332 @@ const ss = ["src", "alt"], is = {
                 _: 1
               }, 8, ["disabled"])
             ]),
-            g.value && !n.value ? (l(), i("p", Tn, [
-              s(a(L), {
+            U.value && !b.value ? (l(), n("p", Bn, [
+              s(a(N), {
                 icon: "tabler:loader-2",
                 class: "spin",
                 "aria-hidden": "true"
               }),
-              D[9] || (D[9] = K("Loading image…", -1))
-            ])) : x.value ? (l(), i("p", Un, [
-              s(a(L), {
+              w[9] || (w[9] = G("Loading image…", -1))
+            ])) : S.value ? (l(), n("p", qn, [
+              s(a(N), {
                 icon: "tabler:photo-off",
                 "aria-hidden": "true"
               }),
-              D[10] || (D[10] = K("This image no longer exists. It was deleted while you were away.", -1))
-            ])) : m.value ? (l(), i("div", An, [
-              t("span", null, u(m.value), 1),
-              s(a(F), {
+              w[10] || (w[10] = G("This image no longer exists. It was deleted while you were away.", -1))
+            ])) : R.value ? (l(), n("div", Hn, [
+              t("span", null, h(R.value), 1),
+              s(a(D), {
                 label: "Retry",
                 severity: "secondary",
                 outlined: "",
                 size: "small",
-                onClick: D[1] || (D[1] = (I) => S())
+                onClick: w[1] || (w[1] = (z) => L())
               })
-            ])) : V("", !0),
-            n.value ? (l(), i(H, { key: 3 }, [
-              _.value ? (l(), i("p", Ln, [
-                s(a(L), {
+            ])) : T("", !0),
+            b.value ? (l(), n(Y, { key: 3 }, [
+              C.value ? (l(), n("p", Fn, [
+                s(a(N), {
                   icon: "tabler:alert-triangle",
                   "aria-hidden": "true"
                 }),
-                K(u(_.value), 1)
-              ])) : V("", !0),
-              o.value ? (l(), i("p", jn, [
-                s(a(L), {
+                G(h(C.value), 1)
+              ])) : T("", !0),
+              u.value ? (l(), n("p", Jn, [
+                s(a(N), {
                   icon: "tabler:circle-check",
                   "aria-hidden": "true"
                 }),
-                K(u(o.value), 1)
-              ])) : V("", !0),
-              t("div", In, [
-                s(a(F), {
+                G(h(u.value), 1)
+              ])) : T("", !0),
+              t("div", Wn, [
+                s(a(D), {
                   label: "Replace",
-                  disabled: v.value !== void 0,
-                  onClick: D[2] || (D[2] = (I) => O.value = !0)
+                  disabled: d.value !== void 0,
+                  onClick: w[2] || (w[2] = (z) => A.value = !0)
                 }, {
-                  icon: T(() => [
-                    s(a(L), {
+                  icon: j(() => [
+                    s(a(N), {
                       icon: "tabler:replace",
                       "aria-hidden": "true"
                     })
                   ]),
                   _: 1
                 }, 8, ["disabled"]),
-                n.value.state === "customized" ? (l(), B(a(F), {
+                b.value.state === "customized" ? (l(), O(a(D), {
                   key: 0,
                   label: "Reset to original",
                   severity: "secondary",
                   outlined: "",
-                  loading: v.value === "reset",
-                  disabled: v.value !== void 0,
-                  onClick: D[3] || (D[3] = (I) => R("reset"))
+                  loading: d.value === "reset",
+                  disabled: d.value !== void 0,
+                  onClick: w[3] || (w[3] = (z) => g("reset"))
                 }, {
-                  icon: T(() => [
-                    s(a(L), {
+                  icon: j(() => [
+                    s(a(N), {
                       icon: "tabler:arrow-back-up",
                       "aria-hidden": "true"
                     })
                   ]),
                   _: 1
-                }, 8, ["loading", "disabled"])) : V("", !0),
-                n.value.state === "created" ? (l(), B(a(F), {
+                }, 8, ["loading", "disabled"])) : T("", !0),
+                b.value.state === "created" ? (l(), O(a(D), {
                   key: 1,
                   label: "Delete",
                   severity: "danger",
                   outlined: "",
-                  loading: v.value === "delete",
-                  disabled: v.value !== void 0,
-                  onClick: D[4] || (D[4] = (I) => R("delete"))
+                  loading: d.value === "delete",
+                  disabled: d.value !== void 0,
+                  onClick: w[4] || (w[4] = (z) => g("delete"))
                 }, {
-                  icon: T(() => [
-                    s(a(L), {
+                  icon: j(() => [
+                    s(a(N), {
                       icon: "tabler:trash",
                       "aria-hidden": "true"
                     })
                   ]),
                   _: 1
-                }, 8, ["loading", "disabled"])) : V("", !0)
+                }, 8, ["loading", "disabled"])) : T("", !0)
               ]),
-              t("div", Dn, [
-                s(ca, {
-                  name: n.value.name,
-                  revision: n.value.revision,
-                  asset: n.value.asset,
+              t("div", Kn, [
+                s(Qa, {
+                  name: b.value.name,
+                  revision: b.value.revision,
+                  asset: b.value.asset,
                   large: "",
-                  alt: n.value.title
+                  alt: b.value.title
                 }, null, 8, ["name", "revision", "asset", "alt"])
               ]),
-              t("dl", Nn, [
-                D[12] || (D[12] = t("dt", null, "Reference", -1)),
-                t("dd", Pn, [
-                  t("span", En, u(te.value), 1),
-                  s(a(F), {
+              t("dl", Yn, [
+                w[12] || (w[12] = t("dt", null, "Reference", -1)),
+                t("dd", Gn, [
+                  t("span", Zn, h(le.value), 1),
+                  s(a(D), {
                     text: "",
                     severity: "secondary",
                     size: "small",
-                    "aria-label": b.value ? "Reference copied" : "Copy reference",
-                    title: b.value ? "Reference copied" : "Copy reference",
-                    onClick: W
+                    "aria-label": m.value ? "Reference copied" : "Copy reference",
+                    title: m.value ? "Reference copied" : "Copy reference",
+                    onClick: q
                   }, {
-                    icon: T(() => [
-                      s(a(L), {
-                        icon: b.value ? "tabler:check" : "tabler:copy",
+                    icon: j(() => [
+                      s(a(N), {
+                        icon: m.value ? "tabler:check" : "tabler:copy",
                         "aria-hidden": "true"
                       }, null, 8, ["icon"])
                     ]),
                     _: 1
                   }, 8, ["aria-label", "title"])
                 ]),
-                D[13] || (D[13] = t("dt", null, "File", -1)),
-                t("dd", null, u(n.value.asset?.filename) + " · " + u(a(He)(n.value.asset?.size)), 1),
-                n.value.asset?.width ? (l(), i(H, { key: 0 }, [
-                  D[11] || (D[11] = t("dt", null, "Size", -1)),
-                  t("dd", null, u(n.value.asset.width) + " × " + u(n.value.asset.height), 1)
-                ], 64)) : V("", !0),
-                D[14] || (D[14] = t("dt", null, "Source", -1)),
+                w[13] || (w[13] = t("dt", null, "File", -1)),
+                t("dd", null, h(b.value.asset?.filename) + " · " + h(a(aa)(b.value.asset?.size)), 1),
+                b.value.asset?.width ? (l(), n(Y, { key: 0 }, [
+                  w[11] || (w[11] = t("dt", null, "Size", -1)),
+                  t("dd", null, h(b.value.asset.width) + " × " + h(b.value.asset.height), 1)
+                ], 64)) : T("", !0),
+                w[14] || (w[14] = t("dt", null, "Source", -1)),
                 t("dd", null, [
-                  s(da, { resource: n.value }, null, 8, ["resource"])
+                  s(xa, { resource: b.value }, null, 8, ["resource"])
                 ])
               ]),
-              t("section", zn, [
-                D[15] || (D[15] = t("h3", {
+              t("section", Qn, [
+                w[15] || (w[15] = t("h3", {
                   id: "asset-shown",
                   class: "mail-label"
                 }, "Shown in", -1)),
-                N.value.length ? (l(), i(H, { key: 1 }, [
-                  t("ul", On, [
-                    (l(!0), i(H, null, re(N.value, (I) => (l(), i("li", {
-                      key: I.name
+                E.value.length ? (l(), n(Y, { key: 1 }, [
+                  t("ul", eo, [
+                    (l(!0), n(Y, null, me(E.value, (z) => (l(), n("li", {
+                      key: z.name
                     }, [
-                      t("button", {
-                        type: "button",
+                      s(a(D), {
+                        text: "",
+                        severity: "secondary",
                         class: "mail-row-link",
-                        onClick: (G) => a(c)({ name: "resource", kind: "message", resource: I.name, section: "content" })
-                      }, [
-                        s(a(L), {
-                          icon: a(be).message,
-                          "aria-hidden": "true"
-                        }, null, 8, ["icon"]),
-                        t("span", null, u(I.title), 1)
-                      ], 8, Bn)
+                        onClick: (Z) => a(o)({ name: "resource", kind: "message", resource: z.name, section: "content" })
+                      }, {
+                        default: j(() => [
+                          s(a(N), {
+                            icon: a(ye).message,
+                            "aria-hidden": "true"
+                          }, null, 8, ["icon"]),
+                          z.title === void 0 ? (l(), O(a(Ce), {
+                            key: 0,
+                            width: "8rem",
+                            height: "1rem"
+                          })) : (l(), n("span", ao, h(z.title), 1))
+                        ]),
+                        _: 2
+                      }, 1032, ["onClick"])
                     ]))), 128))
                   ]),
-                  h.value ? (l(), i("div", qn, [
+                  p.value ? (l(), n("div", lo, [
                     t("iframe", {
                       sandbox: "",
-                      srcdoc: h.value,
-                      title: "How " + n.value.title + " looks in " + (a($).find("message", y.value)?.title ?? y.value)
-                    }, null, 8, Hn)
-                  ])) : V("", !0)
-                ], 64)) : (l(), i("p", Mn, "No message shows " + u(n.value.title) + " with its sample values.", 1))
+                      srcdoc: p.value,
+                      title: "How " + b.value.title + " looks in " + (a(y).title("message", i.value) ?? "")
+                    }, null, 8, to)
+                  ])) : T("", !0)
+                ], 64)) : (l(), n("p", Xn, "No message shows " + h(b.value.title) + " with its sample values.", 1))
               ]),
-              t("section", Fn, [
-                D[16] || (D[16] = t("h3", {
+              t("section", so, [
+                w[16] || (w[16] = t("h3", {
                   id: "asset-history",
                   class: "mail-label"
                 }, "History", -1)),
-                w.value.length ? (l(), i("ol", Jn, [
-                  (l(!0), i(H, null, re(w.value, (I) => (l(), i("li", {
-                    key: I.revision,
+                x.value.length ? (l(), n("ol", no, [
+                  (l(!0), n(Y, null, me(x.value, (z) => (l(), n("li", {
+                    key: z.revision,
                     class: "mail-history-row"
                   }, [
-                    t("div", Wn, [
-                      t("div", Yn, [
-                        t("span", Gn, [
-                          K("Version " + u(I.version) + " · " + u(a(ta)[I.action]) + " ", 1),
-                          I.revision === n.value.revision ? (l(), B(a(Ue), {
+                    t("div", oo, [
+                      t("div", ro, [
+                        t("span", uo, [
+                          G("Version " + h(z.version) + " · " + h(a(ya)[z.action]) + " ", 1),
+                          z.revision === b.value.revision ? (l(), O(a(Ee), {
                             key: 0,
                             severity: "success",
                             value: "Current",
                             class: "kx-tag-sm"
-                          })) : V("", !0)
+                          })) : T("", !0)
                         ]),
-                        t("span", Zn, [
-                          K(u(a(ye)(I.author_label, I.author)) + " · " + u(a(Pe)(I.created_at)) + " ", 1),
-                          I.content.asset?.filename ? (l(), i(H, { key: 0 }, [
-                            K(" · " + u(I.content.asset.filename), 1)
-                          ], 64)) : V("", !0)
+                        t("span", co, [
+                          G(h(a(ke)(z.author_label, z.author)) + " · " + h(a(Je)(z.created_at)) + " ", 1),
+                          z.content.asset?.filename ? (l(), n(Y, { key: 0 }, [
+                            G(" · " + h(z.content.asset.filename), 1)
+                          ], 64)) : T("", !0)
                         ])
                       ]),
-                      I.revision !== n.value.revision ? (l(), B(a(F), {
+                      z.revision !== b.value.revision ? (l(), O(a(D), {
                         key: 0,
                         label: "Restore",
                         severity: "secondary",
                         outlined: "",
                         size: "small",
-                        loading: v.value === I.revision,
-                        disabled: v.value !== void 0,
-                        onClick: (G) => R("restore", I)
+                        loading: d.value === z.revision,
+                        disabled: d.value !== void 0,
+                        onClick: (Z) => g("restore", z)
                       }, {
-                        icon: T(() => [
-                          s(a(L), {
+                        icon: j(() => [
+                          s(a(N), {
                             icon: "tabler:restore",
                             "aria-hidden": "true"
                           })
                         ]),
                         _: 1
-                      }, 8, ["loading", "disabled", "onClick"])) : V("", !0)
+                      }, 8, ["loading", "disabled", "onClick"])) : T("", !0)
                     ])
                   ]))), 128))
-                ])) : (l(), i("p", Kn, u(n.value.title) + " has not been replaced.", 1))
+                ])) : (l(), n("p", io, h(b.value.title) + " has not been replaced.", 1))
               ])
-            ], 64)) : V("", !0)
-          ])
+            ], 64)) : T("", !0)
+          ], 512)
         ]),
         _: 1
       }, 8, ["visible", "dismissable"]),
-      n.value ? (l(), B(Na, {
+      b.value ? (l(), O(Xa, {
         key: 0,
-        visible: O.value,
-        replace: n.value,
-        onClose: D[6] || (D[6] = (I) => O.value = !1),
-        onDone: D[7] || (D[7] = (I) => S())
-      }, null, 8, ["visible", "replace"])) : V("", !0),
-      s(Da, {
-        refusal: A.value,
-        onClose: D[8] || (D[8] = (I) => A.value = void 0)
+        visible: A.value,
+        replace: b.value,
+        onClose: w[6] || (w[6] = (z) => A.value = !1),
+        onDone: w[7] || (w[7] = (z) => L())
+      }, null, 8, ["visible", "replace"])) : T("", !0),
+      s(Za, {
+        refusal: I.value,
+        onClose: w[8] || (w[8] = (z) => I.value = void 0)
       }, null, 8, ["refusal"])
     ], 64));
   }
-}), Xn = {
+}), mo = {
   key: 0,
   class: "kx-notice warn mail-block",
   role: "alert"
-}, eo = {
+}, fo = {
   key: 1,
   class: "kx-err mail-error",
   role: "alert"
-}, ao = {
+}, bo = {
   key: 2,
+  class: "kx-err mail-error",
+  role: "alert"
+}, yo = {
+  key: 3,
   class: "kx-loading",
   role: "status"
-}, lo = { class: "mail-toolbar" }, to = {
+}, po = { class: "mail-toolbar" }, go = {
   class: "mail-count",
   role: "status"
-}, so = {
+}, ho = {
   key: 0,
   class: "mail-muted mail-nomatch",
   role: "status"
-}, io = ["onClick"], no = { class: "mail-sub" }, oo = { class: "mail-mono-block" }, ro = { class: "mail-muted" }, uo = { class: "mail-muted" }, co = /* @__PURE__ */ ae({
+}, ko = { class: "mail-sub" }, $o = { class: "mail-mono-block" }, wo = { class: "mail-muted" }, _o = { key: 1 }, xo = { class: "mail-muted" }, Co = /* @__PURE__ */ te({
   __name: "AssetsPage",
   props: {
     asset: {}
   },
   setup(e) {
-    const d = e, { go: r, upload: f } = ve(), $ = p(""), c = p("");
-    let n;
-    Q($, (A) => {
-      clearTimeout(n), n = setTimeout(() => {
-        c.value = A.trim();
+    const v = e, { go: r, upload: c, library: y } = fe();
+    y.use("asset");
+    const o = _(""), k = _("");
+    let b;
+    X(o, (M) => {
+      clearTimeout(b), b = setTimeout(() => {
+        k.value = M.trim();
       }, 250);
     });
-    const w = fe([]), k = p(!0), y = p(!1), g = p(!1), x = p(""), m = ge();
-    async function _() {
-      const A = m();
-      k.value = !0;
+    const x = ge([]), V = _(!0), i = _(!1), U = _(!1), S = _(""), R = _(""), C = xe();
+    async function u(M = !1) {
+      const L = C();
+      V.value = !0;
       try {
-        const j = await le.assets(c.value || void 0);
-        if (!A()) return;
-        w.value = j.sort((S, N) => S.title.localeCompare(N.title)), x.value = "", g.value = !1, y.value = !0;
-      } catch (j) {
-        if (!A()) return;
-        g.value = Le(j), x.value = g.value ? "" : ne(j, "Assets could not be loaded.");
+        const E = await se.assets(k.value || void 0);
+        if (!L()) return;
+        x.value = E, S.value = R.value = "", U.value = !1, i.value = !0;
+      } catch (E) {
+        if (!L()) return;
+        U.value = Fe(E);
+        const ae = U.value ? "" : ie(E, "Images could not be loaded.");
+        M && i.value && !U.value ? R.value = ae : S.value = ae;
       } finally {
-        A() && (k.value = !1);
+        L() && (V.value = !1);
       }
     }
-    Q(c, () => {
-      _();
-    }), De(_), Ne((A) => {
-      A.kind === "asset" && _();
+    X(k, () => {
+      u();
+    }), la(() => u(i.value)), y.onRow((M, L, E) => {
+      if (M.kind !== "asset") return;
+      const ae = x.value.findIndex((q) => q.name === M.name), le = [...x.value];
+      if (ae >= 0)
+        E ? le[ae] = E : le.splice(ae, 1);
+      else if (E && !k.value) le.push(E);
+      else return;
+      x.value = le;
     });
-    const o = z(() => w.value.reduce((A, j) => A + (j.asset?.size ?? 0), 0)), v = z(() => `${pe(w.value.length, "image")} · ${He(o.value)}`);
-    function b(A) {
-      const j = A.asset;
-      return j ? (j.width && j.height ? `${j.width} × ${j.height} · ` : "") + He(j.size) : "";
+    function d(M) {
+      const L = y.find("asset", M.name)?.used_by?.messages;
+      return L === void 0 ? y.ready("asset") ? "—" : void 0 : L ? pe(L, "message") : "—";
     }
-    function O(A) {
-      r({ name: "library", section: "assets", asset: A.name });
+    const m = P(() => x.value.reduce((M, L) => M + (L.asset?.size ?? 0), 0)), $ = P(() => `${pe(x.value.length, "image")} · ${aa(m.value)}`);
+    function A(M) {
+      const L = M.asset;
+      return L ? (L.width && L.height ? `${L.width} × ${L.height} · ` : "") + aa(L.size) : "";
     }
-    return (A, j) => (l(), i(H, null, [
-      s(Je, {
-        title: "Assets",
+    function I(M) {
+      r({ name: "library", section: "assets", asset: M.name });
+    }
+    return (M, L) => (l(), n(Y, null, [
+      s(ta, {
+        title: "Images",
         description: "Images that templates show inline. Replace one and every template that uses it changes."
       }, {
-        actions: T(() => [
-          s(a(F), {
+        actions: j(() => [
+          s(a(D), {
             label: "Upload image",
-            onClick: j[0] || (j[0] = (S) => a(f)())
+            onClick: L[0] || (L[0] = (E) => a(c)())
           }, {
-            icon: T(() => [
-              s(a(L), {
+            icon: j(() => [
+              s(a(N), {
                 icon: "tabler:upload",
                 "aria-hidden": "true"
               })
@@ -3504,43 +4003,53 @@ const ss = ["src", "alt"], is = {
         ]),
         _: 1
       }),
-      g.value ? (l(), i("p", Xn, [
-        s(a(L), {
+      U.value ? (l(), n("p", mo, [
+        s(a(N), {
           icon: "tabler:lock",
           "aria-hidden": "true"
         }),
-        j[6] || (j[6] = K("Ask an administrator to grant you access to the mail library. ", -1))
-      ])) : x.value ? (l(), i("div", eo, [
-        t("span", null, u(x.value), 1),
-        s(a(F), {
+        L[7] || (L[7] = G("Ask an administrator to grant you access to the mail library. ", -1))
+      ])) : S.value ? (l(), n("div", fo, [
+        t("span", null, h(S.value), 1),
+        s(a(D), {
           label: "Retry",
           severity: "secondary",
           outlined: "",
           size: "small",
-          onClick: j[1] || (j[1] = (S) => _())
+          onClick: L[1] || (L[1] = (E) => u())
         })
-      ])) : k.value && !y.value ? (l(), i("p", ao, [
-        s(a(L), {
+      ])) : T("", !0),
+      R.value ? (l(), n("div", bo, [
+        t("span", null, h(R.value) + " The list shows what was loaded before.", 1),
+        s(a(D), {
+          label: "Retry",
+          severity: "secondary",
+          outlined: "",
+          size: "small",
+          onClick: L[2] || (L[2] = (E) => u(!0))
+        })
+      ])) : V.value && !i.value ? (l(), n("p", yo, [
+        s(a(N), {
           icon: "tabler:loader-2",
           class: "spin",
           "aria-hidden": "true"
         }),
-        j[7] || (j[7] = K("Loading assets…", -1))
-      ])) : y.value && !w.value.length && !c.value ? (l(), B(oa, {
-        key: 3,
+        L[8] || (L[8] = G("Loading images…", -1))
+      ])) : i.value && !x.value.length && !k.value ? (l(), O($a, {
+        key: 4,
         icon: "tabler:photo",
         title: "No images yet",
         hint: "Upload a logo or picture to show it in email. Replace it later and every template changes.",
         cta: "Upload image",
         "cta-icon": "tabler:upload",
-        onCta: j[2] || (j[2] = (S) => a(f)())
-      })) : y.value ? (l(), i(H, { key: 4 }, [
-        t("div", lo, [
-          s(a(ia), { class: "mail-search" }, {
-            default: T(() => [
-              s(a(na), null, {
-                default: T(() => [
-                  s(a(L), {
+        onCta: L[3] || (L[3] = (E) => a(c)())
+      })) : i.value ? (l(), n(Y, { key: 5 }, [
+        t("div", po, [
+          s(a(ga), { class: "mail-search" }, {
+            default: j(() => [
+              s(a(ha), null, {
+                default: j(() => [
+                  s(a(N), {
                     icon: "tabler:search",
                     "aria-hidden": "true"
                   })
@@ -3548,456 +4057,495 @@ const ss = ["src", "alt"], is = {
                 _: 1
               }),
               s(a(ce), {
-                modelValue: $.value,
-                "onUpdate:modelValue": j[3] || (j[3] = (S) => $.value = S),
+                modelValue: o.value,
+                "onUpdate:modelValue": L[4] || (L[4] = (E) => o.value = E),
                 type: "search",
-                "aria-label": "Search assets",
-                placeholder: "Search assets…"
+                "aria-label": "Search images",
+                placeholder: "Search images…"
               }, null, 8, ["modelValue"])
             ]),
             _: 1
           }),
-          t("span", to, u(v.value), 1)
+          t("span", go, h($.value), 1)
         ]),
-        w.value.length ? (l(), B(a(sa), {
+        x.value.length ? (l(), O(a(pa), {
           key: 1,
-          value: w.value,
+          value: x.value,
           "data-key": "name",
           class: "mail-table",
           "row-hover": "",
-          pt: { table: { "aria-label": "Assets" } },
-          onRowClick: j[4] || (j[4] = (S) => O(S.data))
+          pt: { table: { "aria-label": "Images" } },
+          onRowClick: L[5] || (L[5] = (E) => I(E.data))
         }, {
-          default: T(() => [
-            s(a(ue), {
+          default: j(() => [
+            s(a(de), {
               header: "Image",
               "header-class": "mail-col-thumb",
               "body-class": "mail-col-thumb"
             }, {
-              body: T(({ data: S }) => [
-                s(ca, {
-                  name: S.name,
-                  revision: S.revision,
-                  asset: S.asset
+              body: j(({ data: E }) => [
+                s(Qa, {
+                  name: E.name,
+                  revision: E.revision,
+                  asset: E.asset
                 }, null, 8, ["name", "revision", "asset"])
               ]),
               _: 1
             }),
-            s(a(ue), {
+            s(a(de), {
               header: "Name",
               "header-class": "mail-col-name",
               "body-class": "mail-col-name"
             }, {
-              body: T(({ data: S }) => [
-                t("button", {
-                  type: "button",
+              body: j(({ data: E }) => [
+                s(a(D), {
+                  link: "",
                   class: "mail-name",
-                  onClick: xe((N) => O(S), ["stop"])
-                }, u(S.title), 9, io),
-                t("span", no, [
-                  t("span", oo, u(S.name), 1),
-                  S.asset?.filename ? (l(), i(H, { key: 0 }, [
-                    K(" · " + u(S.asset.filename), 1)
-                  ], 64)) : V("", !0)
+                  label: E.title,
+                  onClick: je((ae) => I(E), ["stop"])
+                }, null, 8, ["label", "onClick"]),
+                t("span", ko, [
+                  t("span", $o, h(E.name), 1),
+                  E.asset?.filename ? (l(), n(Y, { key: 0 }, [
+                    G(" · " + h(E.asset.filename), 1)
+                  ], 64)) : T("", !0)
                 ])
               ]),
               _: 1
             }),
-            s(a(ue), {
+            s(a(de), {
               header: "Size",
               "header-class": "mail-col-updated",
               "body-class": "mail-col-updated"
             }, {
-              body: T(({ data: S }) => [
-                t("span", ro, u(b(S)), 1)
+              body: j(({ data: E }) => [
+                t("span", wo, h(A(E)), 1)
               ]),
               _: 1
             }),
-            s(a(ue), {
+            s(a(de), {
+              header: "Used by",
+              "header-class": "mail-col-used",
+              "body-class": "mail-col-used"
+            }, {
+              body: j(({ data: E }) => [
+                d(E) === void 0 ? (l(), O(a(Ce), {
+                  key: 0,
+                  width: "5rem",
+                  height: "1rem"
+                })) : (l(), n("span", _o, h(d(E)), 1))
+              ]),
+              _: 1
+            }),
+            s(a(de), {
               header: "Source",
               "header-class": "mail-col-source",
               "body-class": "mail-col-source"
             }, {
-              body: T(({ data: S }) => [
-                s(da, { resource: S }, null, 8, ["resource"])
+              body: j(({ data: E }) => [
+                s(xa, { resource: E }, null, 8, ["resource"])
               ]),
               _: 1
             }),
-            s(a(ue), {
+            s(a(de), {
               header: "Updated",
               "header-class": "mail-col-updated",
               "body-class": "mail-col-updated"
             }, {
-              body: T(({ data: S }) => [
-                t("span", uo, u(S.state === "original" ? "—" : a(_a)(S.updated_at)), 1)
+              body: j(({ data: E }) => [
+                t("span", xo, h(E.state === "original" ? "—" : a(Oa)(E.updated_at)), 1)
               ]),
               _: 1
             })
           ]),
           _: 1
-        }, 8, ["value"])) : (l(), i("p", so, "Nothing matches. Try another name."))
-      ], 64)) : V("", !0),
-      s(Qn, {
-        name: d.asset,
-        onClose: j[5] || (j[5] = (S) => a(r)({ name: "library", section: "assets" }))
+        }, 8, ["value"])) : (l(), n("p", ho, "Nothing matches. Try another name."))
+      ], 64)) : T("", !0),
+      s(vo, {
+        name: v.asset,
+        onClose: L[6] || (L[6] = (E) => a(r)({ name: "library", section: "assets" }))
       }, null, 8, ["name"])
     ], 64));
   }
-}), vo = { class: "kx-modal-head-icon" }, mo = { class: "kx-modal-head-text" }, bo = { class: "kx-modal-head-title" }, fo = { class: "kx-modal-head-sub" }, po = ["id"], yo = ["disabled", "inert"], ho = {
+}), Vo = { class: "kx-modal-head-icon" }, So = { class: "kx-modal-head-text" }, To = { class: "kx-modal-head-title" }, Ro = { class: "kx-modal-head-sub" }, Uo = ["id"], jo = ["disabled", "inert"], Ao = {
   key: 0,
   class: "mail-field"
-}, go = {
+}, Io = {
   key: 1,
   class: "mail-field"
-}, ko = ["for"], $o = { class: "mail-field" }, wo = ["for"], _o = ["for"], xo = ["id"], Co = { class: "mail-field" }, Vo = ["for"], So = {
+}, Lo = ["for"], No = { class: "mail-field" }, zo = ["for"], Eo = ["for"], Oo = ["id"], Po = { class: "mail-field" }, Mo = ["for"], Do = {
   key: 0,
   class: "kx-err inline",
   role: "alert"
-}, we = "\0blank", Ro = /* @__PURE__ */ ae({
+}, Te = "\0blank", Bo = /* @__PURE__ */ te({
   __name: "CreateResource",
   props: {
     visible: { type: Boolean },
     intent: {}
   },
   emits: ["close"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, { library: $, go: c } = ve(), n = p("message"), w = p(""), k = p(""), y = p(""), g = p(""), x = p(!1), m = p(!1), _ = p(""), o = p(""), v = { title: de(), reference: de(), description: de(), source: de(), hint: de() }, b = ["message", "base", "part"].map((U) => ({ value: U, label: me[U] })), O = z(() => !!r.intent.from), A = z(() => [
-      { value: we, label: "Blank" },
-      ...$.ofKind(n.value).map((U) => ({ value: U.name, label: U.title }))
-    ]), j = z(() => w.value === we || !!$.find(n.value, w.value));
-    function S(U) {
-      if (w.value = U, U === we) return;
-      const D = $.find(n.value, U);
-      D && (g.value = D.description, r.intent.from && (k.value = `${D.title} copy`, x.value = !1));
+  setup(e, { emit: v }) {
+    const r = e, c = v, { library: y, go: o } = fe(), k = _("message"), b = _(""), x = _(""), V = _(""), i = _(""), U = _(!1), S = _(!1), R = _(""), C = _(""), u = { title: ve(), reference: ve(), description: ve(), source: ve(), hint: ve() }, d = ["message", "base", "part"].map((q) => ({ value: q, label: be[q] })), m = P(() => !!r.intent.from), $ = P(() => [
+      { value: Te, label: "Blank" },
+      ...y.ofKind(k.value).map((q) => ({ value: q.name, label: q.title }))
+    ]), A = P(() => b.value === Te || !!y.find(k.value, b.value));
+    function I(q) {
+      if (b.value = q, q === Te) return;
+      const g = y.find(k.value, q);
+      g && (i.value = g.description, r.intent.from && (x.value = `${g.title} copy`, U.value = !1));
     }
-    Q(() => r.visible, (U) => {
-      U && (n.value = r.intent.from?.kind ?? r.intent.kind ?? "message", k.value = y.value = g.value = w.value = "", _.value = o.value = "", x.value = !1, r.intent.from ? S(r.intent.from.name) : w.value = we);
-    }, { immediate: !0 }), Q(n, () => {
-      r.intent.from || (w.value = we, g.value = "");
-    }), Q(k, (U) => {
-      x.value || (y.value = xa(U));
+    X(() => r.visible, async (q) => {
+      q && (k.value = r.intent.from?.kind ?? r.intent.kind ?? "message", x.value = V.value = i.value = b.value = "", R.value = C.value = "", U.value = !1, r.intent.from ? (b.value = r.intent.from.name, y.ready(k.value) || await y.load(k.value), r.visible && I(r.intent.from.name)) : (b.value = Te, y.ensure(k.value)));
+    }, { immediate: !0 }), X(k, (q) => {
+      r.intent.from || (b.value = Te, i.value = "", r.visible && y.ensure(q));
+    }), we(() => r.visible), X(x, (q) => {
+      U.value || (V.value = Ma(q));
     });
-    const N = z(() => n.value === "message" ? "Workflows, automations and agents use this to send the message. It cannot change later." : "Templates use this to include it. It cannot change later.");
-    function te() {
-      return o.value = "", y.value ? Ca.test(y.value) ? $.find(n.value, y.value) && (o.value = `A ${me[n.value].toLowerCase()} with this reference already exists. Choose another.`) : o.value = "Use lower-case letters, digits, hyphens and underscores, starting with a letter or digit." : o.value = "Enter a reference.", !o.value;
+    const M = P(() => k.value === "message" ? "Workflows, automations and agents use this to send the message. It cannot change later." : "Templates use this to include it. It cannot change later.");
+    function L() {
+      return C.value = "", V.value ? Da.test(V.value) ? y.find(k.value, V.value) && (C.value = `A ${be[k.value].toLowerCase()} with this reference already exists. Choose another.`) : C.value = "Use lower-case letters, digits, hyphens and underscores, starting with a letter or digit." : C.value = "Enter a reference.", !C.value;
     }
-    async function W() {
-      if (!(m.value || !k.value.trim() || !j.value || !te())) {
-        m.value = !0, _.value = "";
+    async function E() {
+      if (!(S.value || !x.value.trim() || !A.value || !L())) {
+        S.value = !0, R.value = "";
         try {
-          const U = w.value === we ? await le.create(wt(n.value, y.value, k.value.trim(), g.value.trim())) : await le.copy({
-            kind: n.value,
-            name: y.value,
-            title: k.value.trim(),
-            description: g.value.trim(),
-            from: { kind: n.value, name: w.value }
+          const q = b.value === Te ? await se.create(Jt(k.value, V.value, x.value.trim(), i.value.trim())) : await se.copy({
+            kind: k.value,
+            name: V.value,
+            title: x.value.trim(),
+            description: i.value.trim(),
+            from: { kind: k.value, name: b.value }
           });
-          await $.load(), f("close"), c({ name: "resource", kind: U.kind, resource: U.name, section: "content" });
-        } catch (U) {
-          _e(U) === "mail_revision_conflict" ? o.value = `A ${me[n.value].toLowerCase()} with this reference already exists. Choose another.` : _.value = ne(U, "The resource could not be created.");
+          y.patch(q.kind, q.name, ka(q)), c("close"), o({ name: "resource", kind: q.kind, resource: q.name, section: "content" });
+        } catch (q) {
+          Ue(q) === "mail_revision_conflict" ? C.value = `A ${be[k.value].toLowerCase()} with this reference already exists. Choose another.` : R.value = ie(q, "The resource could not be created.");
         } finally {
-          m.value = !1;
+          S.value = !1;
         }
       }
     }
-    const R = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } }, h = z(() => r.intent.from ? `Duplicate ${$.find(r.intent.from.kind, r.intent.from.name)?.title ?? ""}` : `New ${me[n.value].toLowerCase()}`);
-    return (U, D) => (l(), B(a(Ce), {
+    const ae = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } }, le = P(() => r.intent.from ? `Duplicate ${y.title(r.intent.from.kind, r.intent.from.name) ?? ""}`.trim() : `New ${be[k.value].toLowerCase()}`);
+    return (q, g) => (l(), O(a(Ae), {
       visible: e.visible,
       modal: "",
       draggable: !1,
-      closable: !m.value,
-      "close-on-escape": !m.value,
+      closable: !S.value,
+      "close-on-escape": !S.value,
       class: "mail-dialog",
-      pt: R,
-      "aria-label": h.value,
-      "onUpdate:visible": D[6] || (D[6] = (I) => {
-        I || f("close");
+      pt: ae,
+      "aria-label": le.value,
+      "onUpdate:visible": g[6] || (g[6] = (p) => {
+        p || c("close");
       })
     }, {
-      header: T(() => [
-        t("span", vo, [
-          s(a(L), {
-            icon: a(be)[n.value],
+      header: j(() => [
+        t("span", Vo, [
+          s(a(N), {
+            icon: a(ye)[k.value],
             "aria-hidden": "true"
           }, null, 8, ["icon"])
         ]),
-        t("span", mo, [
-          t("span", bo, u(h.value), 1),
-          t("span", fo, u(w.value === we ? "It starts empty and opens in the editor." : "It starts as a copy and is yours to change."), 1)
+        t("span", So, [
+          t("span", To, h(le.value), 1),
+          t("span", Ro, h(b.value === Te ? "It starts empty and opens in the editor." : "It starts as a copy and is yours to change."), 1)
         ])
       ]),
-      footer: T(() => [
-        s(a(F), {
+      footer: j(() => [
+        s(a(D), {
           label: "Cancel",
           severity: "secondary",
           outlined: "",
-          disabled: m.value,
-          onClick: D[5] || (D[5] = (I) => f("close"))
+          disabled: S.value,
+          onClick: g[5] || (g[5] = (p) => c("close"))
         }, null, 8, ["disabled"]),
-        s(a(F), {
-          label: "Create " + a(me)[n.value].toLowerCase(),
+        s(a(D), {
+          label: "Create " + a(be)[k.value].toLowerCase(),
           type: "submit",
-          form: v.hint,
-          loading: m.value,
-          disabled: !k.value.trim() || !j.value
+          form: u.hint,
+          loading: S.value,
+          disabled: !x.value.trim() || !A.value
         }, null, 8, ["label", "form", "loading", "disabled"])
       ]),
-      default: T(() => [
+      default: j(() => [
         t("form", {
-          id: v.hint,
+          id: u.hint,
           class: "mail-form",
-          onSubmit: xe(W, ["prevent"])
+          onSubmit: je(E, ["prevent"])
         }, [
           t("fieldset", {
             class: "mail-fieldset",
-            disabled: m.value,
-            inert: m.value || void 0
+            disabled: S.value,
+            inert: S.value || void 0
           }, [
-            O.value ? V("", !0) : (l(), i("div", ho, [
-              D[7] || (D[7] = t("span", { class: "mail-field-label" }, "Kind", -1)),
-              s(a(he), {
-                modelValue: n.value,
-                "onUpdate:modelValue": D[0] || (D[0] = (I) => n.value = I),
-                options: a(b),
+            m.value ? T("", !0) : (l(), n("div", Ao, [
+              g[7] || (g[7] = t("span", { class: "mail-field-label" }, "Kind", -1)),
+              s(a($e), {
+                modelValue: k.value,
+                "onUpdate:modelValue": g[0] || (g[0] = (p) => k.value = p),
+                options: a(d),
                 "option-label": "label",
                 "option-value": "value",
                 "allow-empty": !1,
                 "aria-label": "Kind"
               }, null, 8, ["modelValue", "options"])
             ])),
-            O.value ? V("", !0) : (l(), i("div", go, [
+            m.value ? T("", !0) : (l(), n("div", Io, [
               t("label", {
                 class: "mail-field-label",
-                for: v.source
-              }, "Start from", 8, ko),
-              s(a(Ae), {
-                "model-value": w.value,
-                "input-id": v.source,
-                options: A.value,
+                for: u.source
+              }, "Start from", 8, Lo),
+              s(a(Oe), {
+                "model-value": b.value,
+                "input-id": u.source,
+                options: $.value,
                 "option-label": "label",
                 "option-value": "value",
                 "append-to": "self",
                 placeholder: "Choose a resource…",
-                "onUpdate:modelValue": S
-              }, null, 8, ["model-value", "input-id", "options"])
+                filter: "",
+                loading: !a(y).ready(k.value),
+                "onUpdate:modelValue": I
+              }, null, 8, ["model-value", "input-id", "options", "loading"])
             ])),
-            t("div", $o, [
+            t("div", No, [
               t("label", {
                 class: "mail-field-label",
-                for: v.title
-              }, "Name", 8, wo),
+                for: u.title
+              }, "Name", 8, zo),
               s(a(ce), {
-                id: v.title,
-                modelValue: k.value,
-                "onUpdate:modelValue": D[1] || (D[1] = (I) => k.value = I),
+                id: u.title,
+                modelValue: x.value,
+                "onUpdate:modelValue": g[1] || (g[1] = (p) => x.value = p),
                 autofocus: "",
                 required: ""
               }, null, 8, ["id", "modelValue"])
             ]),
             t("div", {
-              class: oe(["mail-field", { "mail-field-invalid": o.value }])
+              class: ne(["mail-field", { "mail-field-invalid": C.value }])
             }, [
               t("label", {
                 class: "mail-field-label",
-                for: v.reference
-              }, "Reference", 8, _o),
+                for: u.reference
+              }, "Reference", 8, Eo),
               s(a(ce), {
-                id: v.reference,
-                modelValue: y.value,
-                "onUpdate:modelValue": D[2] || (D[2] = (I) => y.value = I),
+                id: u.reference,
+                modelValue: V.value,
+                "onUpdate:modelValue": g[2] || (g[2] = (p) => V.value = p),
                 class: "mail-mono-input",
-                invalid: !!o.value,
-                "aria-describedby": v.reference + "-hint",
-                onInput: D[3] || (D[3] = (I) => x.value = !0)
+                invalid: !!C.value,
+                "aria-describedby": u.reference + "-hint",
+                onInput: g[3] || (g[3] = (p) => U.value = !0)
               }, null, 8, ["id", "modelValue", "invalid", "aria-describedby"]),
               t("small", {
-                id: v.reference + "-hint",
-                class: oe(o.value ? "mail-field-error" : "mail-field-hint")
-              }, u(o.value || N.value), 11, xo)
+                id: u.reference + "-hint",
+                class: ne(C.value ? "mail-field-error" : "mail-field-hint")
+              }, h(C.value || M.value), 11, Oo)
             ], 2),
-            t("div", Co, [
+            t("div", Po, [
               t("label", {
                 class: "mail-field-label",
-                for: v.description
-              }, "Description", 8, Vo),
-              s(a(kl), {
-                id: v.description,
-                modelValue: g.value,
-                "onUpdate:modelValue": D[4] || (D[4] = (I) => g.value = I),
+                for: u.description
+              }, "Description", 8, Mo),
+              s(a(ca), {
+                id: u.description,
+                modelValue: i.value,
+                "onUpdate:modelValue": g[4] || (g[4] = (p) => i.value = p),
                 rows: "2",
                 "auto-resize": ""
               }, null, 8, ["id", "modelValue"])
             ])
-          ], 8, yo),
-          _.value ? (l(), i("p", So, u(_.value), 1)) : V("", !0)
-        ], 40, po)
+          ], 8, jo),
+          R.value ? (l(), n("p", Do, h(R.value), 1)) : T("", !0)
+        ], 40, Uo)
       ]),
       _: 1
     }, 8, ["visible", "closable", "close-on-escape", "aria-label"]));
   }
-}), To = { class: "mail-drawer-body" }, Uo = { class: "mail-drawer-head" }, Ao = { class: "mail-drawer-title" }, Lo = {
+}), qo = { class: "mail-drawer-head" }, Ho = { class: "mail-drawer-title" }, Fo = {
   key: 0,
   class: "kx-loading",
   role: "status"
-}, jo = {
+}, Jo = {
   key: 1,
   class: "kx-notice mail-block",
   role: "status"
-}, Io = {
+}, Wo = {
   key: 2,
   class: "kx-notice warn mail-block",
   role: "alert"
-}, Do = {
+}, Ko = {
   key: 3,
   class: "kx-err mail-error",
   role: "alert"
-}, No = {
+}, Yo = {
   key: 0,
   class: "kx-notice error mail-failure"
-}, Po = { class: "mail-failure-body" }, Eo = { key: 0 }, zo = {
+}, Go = { class: "mail-failure-body" }, Zo = { key: 0 }, Qo = {
   key: 1,
   class: "mail-failure-done",
   role: "status"
-}, Mo = {
+}, Xo = {
   key: 2,
   class: "mail-sub"
-}, Oo = {
+}, er = {
   key: 3,
+  class: "mail-sub"
+}, ar = {
+  key: 4,
   class: "mail-field-error",
   role: "alert"
-}, Bo = { key: 4 }, qo = {
+}, lr = { key: 5 }, tr = {
   key: 1,
   class: "kx-notice mail-block",
   role: "status"
-}, Ho = { class: "mail-facts mail-card" }, Fo = { key: 1 }, Ko = {
+}, sr = { class: "mail-facts mail-card" }, ir = { key: 2 }, nr = {
   key: 0,
   class: "mail-sub"
-}, Jo = {
+}, or = {
   class: "mail-group",
   "aria-labelledby": "message-history"
-}, Wo = { class: "mail-timeline" }, Yo = { class: "mail-muted" }, Go = { class: "mail-facts" }, Zo = { class: "mail-mono-block" }, Qo = /* @__PURE__ */ ae({
+}, rr = { class: "mail-timeline" }, ur = { class: "mail-muted" }, dr = { class: "mail-facts" }, cr = { class: "mail-mono-block" }, vr = /* @__PURE__ */ te({
   __name: "MessageDrawer",
   props: {
     messageId: {}
   },
-  emits: ["close", "changed"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, { library: $, go: c } = ve(), n = fe(), w = p(!1), k = p(!1), y = p(!1), g = p(""), x = p(""), m = p(!1), _ = p(), o = p(!1), v = ge();
-    async function b() {
-      const R = r.messageId, h = v();
-      if (!R) {
-        n.value = void 0;
+  emits: ["close"],
+  setup(e, { emit: v }) {
+    const r = e, c = v, { library: y, go: o, capabilities: k } = fe();
+    we(() => !!r.messageId);
+    const b = _();
+    X(() => !!r.messageId, (p) => {
+      p && ea(() => b.value?.focus());
+    }, { immediate: !0 });
+    const x = /* @__PURE__ */ new Set([
+      "invalid_config",
+      "settings_read_failed",
+      "invalid_driver_descriptor",
+      "duplicate_driver_id",
+      "driver_availability_invalid",
+      "provider_endpoint_invalid",
+      "credentials_invalid"
+    ]), V = P(() => !!i.value?.last_error && x.has(i.value.last_error.code)), i = ge(), U = _(!1), S = _(!1), R = _(!1), C = _(""), u = _(""), d = _(!1), m = _(), $ = _(!1), A = xe();
+    async function I() {
+      const p = r.messageId, f = A();
+      if (!p) {
+        i.value = void 0;
         return;
       }
-      w.value = !0;
+      U.value = !0;
       try {
-        const U = await Fe.get(R);
-        if (!h()) return;
-        n.value = U, g.value = "", k.value = y.value = !1;
-      } catch (U) {
-        if (!h()) return;
-        n.value = void 0, k.value = qe(U), y.value = Le(U), g.value = k.value || y.value ? "" : ne(U, "This message could not be loaded.");
+        const w = await De.get(p);
+        if (!f()) return;
+        i.value = w, C.value = "", S.value = R.value = !1;
+      } catch (w) {
+        if (!f()) return;
+        i.value = void 0, S.value = qe(w), R.value = Fe(w), C.value = S.value || R.value ? "" : ie(w, "This message could not be loaded.");
       } finally {
-        h() && (w.value = !1);
+        f() && (U.value = !1);
       }
     }
-    Q(() => r.messageId, (R) => {
-      _.value = void 0, x.value = "", o.value = !1, R !== n.value?.message_id && (n.value = void 0), b();
-    }, { immediate: !0 }), Va((R) => {
-      R.message_id === r.messageId && b();
+    X(() => r.messageId, (p) => {
+      m.value = void 0, u.value = "", $.value = !1, p !== i.value?.message_id && (i.value = void 0), I();
+    }, { immediate: !0 }), Ba((p) => {
+      p.message_id === r.messageId && I();
     });
-    async function O() {
-      const R = n.value;
-      if (!(!R || m.value)) {
-        m.value = !0, x.value = "";
+    async function M() {
+      const p = i.value;
+      if (!(!p || d.value)) {
+        d.value = !0, u.value = "";
         try {
-          _.value = await Fe.resend(R.message_id), f("changed");
-        } catch (h) {
-          x.value = ne(h, "The message could not be sent again.");
+          m.value = await De.resend(p.message_id);
+        } catch (f) {
+          u.value = ie(f, "The message could not be sent again.");
         } finally {
-          m.value = !1;
+          d.value = !1;
         }
       }
     }
-    async function A() {
-      const R = n.value;
-      if (R)
+    async function L() {
+      const p = i.value;
+      if (p)
         try {
-          await navigator.clipboard.writeText(`${window.location.origin}/system/mail/activity/${encodeURIComponent(R.message_id)}`), o.value = !0;
+          await navigator.clipboard.writeText(`${window.location.origin}/system/mail/activity/${encodeURIComponent(p.message_id)}`), $.value = !0;
         } catch {
-          o.value = !1;
+          $.value = !1;
         }
     }
-    const j = z(() => {
-      const R = n.value?.template;
-      return R ? $.find("message", R)?.title ?? R : "";
-    }), S = z(() => !!n.value?.template && !!$.find("message", n.value.template)), N = z(() => {
-      const R = n.value;
-      if (!R) return [];
-      const h = [{ label: "Accepted for delivery", at: R.created_at }];
-      return R.status === "queued" && R.next_attempt_at && h.push({ label: R.attempts ? `Attempt ${R.attempts} did not go through; trying again` : "Next delivery attempt", at: R.next_attempt_at }), R.sent_at ? h.push({ label: R.attempts > 1 ? `Sent after ${R.attempts} attempts` : "Sent", at: R.sent_at }) : R.status === "failed" && R.finished_at && h.push({ label: R.attempts > 1 ? `Failed after ${R.attempts} attempts` : "Failed", at: R.finished_at }), h;
-    }), te = z(() => (n.value?.attachments ?? []).map((R) => R.filename || "Attachment")), W = z(() => {
-      const R = n.value;
-      return R ? [
-        { label: "Message ID", value: R.message_id },
-        { label: "Delivery service", value: R.driver_id },
-        { label: "Service message ID", value: R.provider_message_id },
-        { label: "Error code", value: R.last_error?.code },
-        { label: "Service response", value: R.last_error?.provider_detail }
-      ].filter((h) => !!h.value) : [];
+    const E = P(() => {
+      const p = i.value?.template;
+      return p ? y.title("message", p) : "";
+    }), ae = P(() => !!i.value?.template && !!y.find("message", i.value.template)), le = P(() => {
+      const p = i.value;
+      if (!p) return [];
+      const f = [{ label: "Accepted for delivery", at: p.created_at }];
+      return p.status === "queued" && p.next_attempt_at && f.push({ label: p.attempts ? `Attempt ${p.attempts} did not go through; trying again` : "Next delivery attempt", at: p.next_attempt_at }), p.sent_at ? f.push({ label: p.attempts > 1 ? `Sent after ${p.attempts} attempts` : "Sent", at: p.sent_at }) : p.status === "failed" && p.finished_at && f.push({ label: p.attempts > 1 ? `Failed after ${p.attempts} attempts` : "Failed", at: p.finished_at }), f;
+    }), q = P(() => (i.value?.attachments ?? []).map((p) => p.filename || "Attachment")), g = P(() => {
+      const p = i.value;
+      return p ? [
+        { label: "Message ID", value: p.message_id },
+        { label: "Delivery service", value: k.value?.administer_delivery ? p.driver_id : void 0 },
+        { label: "Service message ID", value: p.provider_message_id },
+        { label: "Error code", value: p.last_error?.code },
+        { label: "Service response", value: p.last_error?.provider_detail }
+      ].filter((f) => !!f.value) : [];
     });
-    return (R, h) => (l(), B(a(Ta), {
+    return (p, f) => (l(), O(a(Fa), {
       visible: !!e.messageId,
       position: "right",
       modal: !0,
-      dismissable: !m.value,
-      "close-on-escape": !m.value,
+      dismissable: !d.value,
+      "close-on-escape": !d.value,
       "show-close-icon": !1,
       class: "mail-drawer",
       pt: { root: { style: "width: min(560px, 92vw)" } },
       "aria-label": "Message details",
-      "onUpdate:visible": h[5] || (h[5] = (U) => {
-        U || f("close");
+      "onUpdate:visible": f[6] || (f[6] = (w) => {
+        w || c("close");
       })
     }, {
-      default: T(() => [
-        t("div", To, [
-          t("header", Uo, [
-            t("div", Ao, [
-              n.value ? (l(), B(a(Ue), {
+      default: j(() => [
+        t("div", {
+          ref_key: "drawer",
+          ref: b,
+          class: "mail-drawer-body",
+          tabindex: "-1"
+        }, [
+          t("header", qo, [
+            t("div", Ho, [
+              i.value ? (l(), O(a(Ee), {
                 key: 0,
-                severity: a(Ra)[n.value.status],
-                value: a(Sa)[n.value.status],
+                severity: a(Ha)[i.value.status],
+                value: a(qa)[i.value.status],
                 class: "kx-tag-sm"
-              }, null, 8, ["severity", "value"])) : V("", !0),
-              t("h2", null, u(n.value?.subject ?? "Message"), 1)
+              }, null, 8, ["severity", "value"])) : T("", !0),
+              t("h2", null, h(i.value?.subject ?? "Message"), 1)
             ]),
-            s(a(F), {
+            s(a(D), {
               text: "",
               severity: "secondary",
-              disabled: !n.value,
-              "aria-label": o.value ? "Link copied" : "Copy link",
-              title: o.value ? "Link copied" : "Copy link",
-              onClick: A
+              disabled: !i.value,
+              "aria-label": $.value ? "Link copied" : "Copy link",
+              title: $.value ? "Link copied" : "Copy link",
+              onClick: L
             }, {
-              icon: T(() => [
-                s(a(L), {
-                  icon: o.value ? "tabler:check" : "tabler:link",
+              icon: j(() => [
+                s(a(N), {
+                  icon: $.value ? "tabler:check" : "tabler:link",
                   "aria-hidden": "true"
                 }, null, 8, ["icon"])
               ]),
               _: 1
             }, 8, ["disabled", "aria-label", "title"]),
-            s(a(F), {
+            s(a(D), {
               text: "",
               severity: "secondary",
               "aria-label": "Close",
               title: "Close",
-              disabled: m.value,
-              onClick: h[0] || (h[0] = (U) => f("close"))
+              disabled: d.value,
+              onClick: f[0] || (f[0] = (w) => c("close"))
             }, {
-              icon: T(() => [
-                s(a(L), {
+              icon: j(() => [
+                s(a(N), {
                   icon: "tabler:x",
                   "aria-hidden": "true"
                 })
@@ -4005,305 +4553,354 @@ const ss = ["src", "alt"], is = {
               _: 1
             }, 8, ["disabled"])
           ]),
-          w.value && !n.value ? (l(), i("p", Lo, [
-            s(a(L), {
+          U.value && !i.value ? (l(), n("p", Fo, [
+            s(a(N), {
               icon: "tabler:loader-2",
               class: "spin",
               "aria-hidden": "true"
             }),
-            h[6] || (h[6] = K("Loading message…", -1))
-          ])) : k.value ? (l(), i("p", jo, [
-            s(a(L), {
+            f[7] || (f[7] = G("Loading message…", -1))
+          ])) : S.value ? (l(), n("p", Jo, [
+            s(a(N), {
               icon: "tabler:mail-off",
               "aria-hidden": "true"
             }),
-            h[7] || (h[7] = K("This message is no longer in Activity.", -1))
-          ])) : y.value ? (l(), i("p", Io, [
-            s(a(L), {
+            f[8] || (f[8] = G("This message is no longer in Activity.", -1))
+          ])) : R.value ? (l(), n("p", Wo, [
+            s(a(N), {
               icon: "tabler:lock",
               "aria-hidden": "true"
             }),
-            h[8] || (h[8] = K("Ask an administrator to grant you access to mail delivery.", -1))
-          ])) : g.value ? (l(), i("div", Do, [
-            t("span", null, u(g.value), 1),
-            s(a(F), {
+            f[9] || (f[9] = G("Ask an administrator to grant you access to mail delivery.", -1))
+          ])) : C.value ? (l(), n("div", Ko, [
+            t("span", null, h(C.value), 1),
+            s(a(D), {
               label: "Retry",
               severity: "secondary",
               outlined: "",
               size: "small",
-              onClick: h[1] || (h[1] = (U) => b())
+              onClick: f[1] || (f[1] = (w) => I())
             })
-          ])) : V("", !0),
-          n.value ? (l(), i(H, { key: 4 }, [
-            n.value.status === "failed" ? (l(), i("div", No, [
-              s(a(L), {
+          ])) : T("", !0),
+          i.value ? (l(), n(Y, { key: 4 }, [
+            i.value.status === "failed" ? (l(), n("div", Yo, [
+              s(a(N), {
                 icon: "tabler:alert-triangle",
                 "aria-hidden": "true"
               }),
-              t("div", Po, [
-                h[10] || (h[10] = t("strong", null, "This message was not delivered.", -1)),
-                n.value.last_error ? (l(), i("span", Eo, u(n.value.last_error.message), 1)) : V("", !0),
-                _.value ? (l(), i("p", zo, [
-                  h[9] || (h[9] = K(" Sent again as a new message. ", -1)),
-                  t("button", {
-                    type: "button",
-                    class: "mail-text-link",
-                    onClick: h[2] || (h[2] = (U) => a(c)({ name: "activity", message: _.value.message_id }))
-                  }, "Open the new message")
-                ])) : n.value.can_resend ? V("", !0) : (l(), i("p", Mo, "It cannot be sent again because its content was not kept.")),
-                x.value ? (l(), i("p", Oo, u(x.value), 1)) : V("", !0),
-                n.value.can_resend && !_.value ? (l(), i("div", Bo, [
-                  s(a(F), {
+              t("div", Go, [
+                f[12] || (f[12] = t("strong", null, "This message was not delivered.", -1)),
+                i.value.last_error ? (l(), n("span", Zo, h(i.value.last_error.message), 1)) : T("", !0),
+                m.value ? (l(), n("p", Qo, [
+                  f[10] || (f[10] = G(" Sent again as a new message. ", -1)),
+                  s(a(D), {
+                    link: "",
+                    size: "small",
+                    class: "mail-inline-link",
+                    label: "Open the new message",
+                    onClick: f[2] || (f[2] = (w) => a(o)({ name: "activity", message: m.value.message_id }))
+                  })
+                ])) : V.value ? (l(), n("p", Xo, [
+                  f[11] || (f[11] = G("Sending it again fails the same way until the delivery settings are corrected. ", -1)),
+                  a(k)?.administer_delivery ? (l(), O(a(D), {
+                    key: 0,
+                    link: "",
+                    size: "small",
+                    class: "mail-inline-link",
+                    label: "Open delivery settings",
+                    onClick: f[3] || (f[3] = (w) => a(Re).navigate("/system/settings/mail"))
+                  })) : T("", !0)
+                ])) : i.value.can_resend ? T("", !0) : (l(), n("p", er, "It cannot be sent again because its content was not kept.")),
+                u.value ? (l(), n("p", ar, h(u.value), 1)) : T("", !0),
+                i.value.can_resend && !m.value && !V.value ? (l(), n("div", lr, [
+                  s(a(D), {
                     label: "Send again",
-                    loading: m.value,
-                    onClick: O
+                    loading: d.value,
+                    onClick: M
                   }, {
-                    icon: T(() => [
-                      s(a(L), {
+                    icon: j(() => [
+                      s(a(N), {
                         icon: "tabler:send",
                         "aria-hidden": "true"
                       })
                     ]),
                     _: 1
                   }, 8, ["loading"])
-                ])) : V("", !0)
+                ])) : T("", !0)
               ])
-            ])) : n.value.status === "queued" ? (l(), i("p", qo, [
-              s(a(L), {
+            ])) : i.value.status === "queued" ? (l(), n("p", tr, [
+              s(a(N), {
                 icon: "tabler:clock",
                 "aria-hidden": "true"
               }),
-              h[11] || (h[11] = K("Waiting to be delivered. ", -1))
-            ])) : V("", !0),
-            t("dl", Ho, [
-              h[17] || (h[17] = t("dt", null, "To", -1)),
-              t("dd", null, u(n.value.to.join(", ")), 1),
-              n.value.cc?.length ? (l(), i(H, { key: 0 }, [
-                h[12] || (h[12] = t("dt", null, "Cc", -1)),
-                t("dd", null, u(n.value.cc.join(", ")), 1)
-              ], 64)) : V("", !0),
-              n.value.bcc?.length ? (l(), i(H, { key: 1 }, [
-                h[13] || (h[13] = t("dt", null, "Bcc", -1)),
-                t("dd", null, u(n.value.bcc.join(", ")), 1)
-              ], 64)) : V("", !0),
-              n.value.reply_to ? (l(), i(H, { key: 2 }, [
-                h[14] || (h[14] = t("dt", null, "Reply-to", -1)),
-                t("dd", null, u(n.value.reply_to), 1)
-              ], 64)) : V("", !0),
-              h[18] || (h[18] = t("dt", null, "Template", -1)),
+              f[13] || (f[13] = G("Waiting to be delivered. ", -1))
+            ])) : T("", !0),
+            t("dl", sr, [
+              f[19] || (f[19] = t("dt", null, "To", -1)),
+              t("dd", null, h(i.value.to.join(", ")), 1),
+              i.value.cc?.length ? (l(), n(Y, { key: 0 }, [
+                f[14] || (f[14] = t("dt", null, "Cc", -1)),
+                t("dd", null, h(i.value.cc.join(", ")), 1)
+              ], 64)) : T("", !0),
+              i.value.bcc?.length ? (l(), n(Y, { key: 1 }, [
+                f[15] || (f[15] = t("dt", null, "Bcc", -1)),
+                t("dd", null, h(i.value.bcc.join(", ")), 1)
+              ], 64)) : T("", !0),
+              i.value.reply_to ? (l(), n(Y, { key: 2 }, [
+                f[16] || (f[16] = t("dt", null, "Reply-to", -1)),
+                t("dd", null, h(i.value.reply_to), 1)
+              ], 64)) : T("", !0),
+              f[20] || (f[20] = t("dt", null, "Template", -1)),
               t("dd", null, [
-                S.value ? (l(), i("button", {
+                E.value === void 0 ? (l(), O(a(Ce), {
                   key: 0,
-                  type: "button",
-                  class: "mail-text-link",
-                  onClick: h[3] || (h[3] = (U) => a(c)({ name: "resource", kind: "message", resource: n.value.template, section: "content" }))
-                }, u(j.value), 1)) : (l(), i("span", Fo, u(j.value || "Written directly"), 1))
+                  width: "8rem",
+                  height: "1rem"
+                })) : ae.value ? (l(), O(a(D), {
+                  key: 1,
+                  link: "",
+                  size: "small",
+                  class: "mail-inline-link",
+                  label: E.value,
+                  onClick: f[4] || (f[4] = (w) => a(o)({ name: "resource", kind: "message", resource: i.value.template, section: "content" }))
+                }, null, 8, ["label"])) : (l(), n("span", ir, h(E.value || "Written directly"), 1))
               ]),
-              h[19] || (h[19] = t("dt", null, "Sent by", -1)),
+              f[21] || (f[21] = t("dt", null, "Sent by", -1)),
               t("dd", null, [
-                K(u(a(ye)(n.value.sender_label, n.value.sender)), 1),
-                n.value.origin ? (l(), i("span", Ko, u(a(We)(n.value.origin)), 1)) : V("", !0)
+                G(h(a(ke)(i.value.sender_label, i.value.sender)), 1),
+                i.value.origin ? (l(), n("span", nr, h(a(sa)(i.value.origin)), 1)) : T("", !0)
               ]),
-              te.value.length ? (l(), i(H, { key: 3 }, [
-                h[15] || (h[15] = t("dt", null, "Attachments", -1)),
-                t("dd", null, u(te.value.join(", ")), 1)
-              ], 64)) : V("", !0),
-              n.value.resend_of ? (l(), i(H, { key: 4 }, [
-                h[16] || (h[16] = t("dt", null, "Sent again from", -1)),
+              q.value.length ? (l(), n(Y, { key: 3 }, [
+                f[17] || (f[17] = t("dt", null, "Attachments", -1)),
+                t("dd", null, h(q.value.join(", ")), 1)
+              ], 64)) : T("", !0),
+              i.value.resend_of ? (l(), n(Y, { key: 4 }, [
+                f[18] || (f[18] = t("dt", null, "Sent again from", -1)),
                 t("dd", null, [
-                  t("button", {
-                    type: "button",
-                    class: "mail-text-link",
-                    onClick: h[4] || (h[4] = (U) => a(c)({ name: "activity", message: n.value.resend_of }))
-                  }, "The original message")
+                  s(a(D), {
+                    link: "",
+                    size: "small",
+                    class: "mail-inline-link",
+                    label: "The original message",
+                    onClick: f[5] || (f[5] = (w) => a(o)({ name: "activity", message: i.value.resend_of }))
+                  })
                 ])
-              ], 64)) : V("", !0)
+              ], 64)) : T("", !0)
             ]),
-            t("section", Jo, [
-              h[20] || (h[20] = t("h3", {
+            t("section", or, [
+              f[22] || (f[22] = t("h3", {
                 id: "message-history",
                 class: "mail-label"
               }, "History", -1)),
-              t("ol", Wo, [
-                (l(!0), i(H, null, re(N.value, (U) => (l(), i("li", {
-                  key: U.label
+              t("ol", rr, [
+                (l(!0), n(Y, null, me(le.value, (w) => (l(), n("li", {
+                  key: w.label
                 }, [
-                  t("span", null, u(U.label), 1),
-                  t("span", Yo, u(a(Pe)(U.at)), 1)
+                  t("span", null, h(w.label), 1),
+                  t("span", ur, h(a(Je)(w.at)), 1)
                 ]))), 128))
               ])
             ]),
-            W.value.length ? (l(), B(Ia, {
+            g.value.length ? (l(), O(Ga, {
               key: 2,
               label: "Technical details"
             }, {
-              default: T(() => [
-                t("dl", Go, [
-                  (l(!0), i(H, null, re(W.value, (U) => (l(), i(H, {
-                    key: U.label
+              default: j(() => [
+                t("dl", dr, [
+                  (l(!0), n(Y, null, me(g.value, (w) => (l(), n(Y, {
+                    key: w.label
                   }, [
-                    t("dt", null, u(U.label), 1),
-                    t("dd", Zo, u(U.value), 1)
+                    t("dt", null, h(w.label), 1),
+                    t("dd", cr, h(w.value), 1)
                   ], 64))), 128))
                 ])
               ]),
               _: 1
-            })) : V("", !0)
-          ], 64)) : V("", !0)
-        ])
+            })) : T("", !0)
+          ], 64)) : T("", !0)
+        ], 512)
       ]),
       _: 1
     }, 8, ["visible", "dismissable", "close-on-escape"]));
   }
-}), Xo = {
+}), mr = {
   key: 0,
   class: "kx-notice warn mail-block",
   role: "alert"
-}, er = {
+}, fr = {
   key: 0,
   class: "kx-notice error mail-block",
   role: "status"
-}, ar = { class: "mail-health-text" }, lr = { class: "mail-toolbar" }, tr = {
+}, br = { class: "mail-health-text" }, yr = { class: "mail-toolbar" }, pr = {
   key: 0,
   class: "mail-count",
   role: "status"
-}, sr = {
+}, gr = {
   key: 1,
   class: "kx-err mail-error",
   role: "alert"
-}, ir = {
+}, hr = {
   key: 2,
+  class: "kx-err mail-error",
+  role: "alert"
+}, kr = {
+  key: 3,
   class: "kx-loading",
   role: "status"
-}, nr = {
+}, $r = {
   key: 0,
   class: "mail-muted mail-nomatch",
   role: "status"
-}, or = ["onClick"], rr = { class: "mail-sub" }, ur = {
+}, wr = { class: "mail-sub" }, _r = {
   key: 0,
   class: "mail-sub"
-}, dr = { class: "mail-muted" }, cr = {
+}, xr = { class: "mail-muted" }, Cr = {
   key: 2,
   class: "mail-more"
-}, vr = /* @__PURE__ */ ae({
+}, Vr = {
+  key: 0,
+  class: "kx-err inline",
+  role: "alert"
+}, Sr = /* @__PURE__ */ te({
   __name: "ActivityPage",
   props: {
     message: {},
     template: {}
   },
   setup(e) {
-    const d = e, { library: r, go: f, capabilities: $ } = ve(), c = p("all"), n = p(d.template ?? null), w = p(30), k = p(""), y = p("");
-    let g;
-    Q(k, (X) => {
-      clearTimeout(g), g = setTimeout(() => {
-        y.value = X.trim();
+    const v = e, { library: r, go: c, capabilities: y } = fe();
+    r.use("message");
+    const o = _("all"), k = _(v.template ?? null), b = _(30), x = _(""), V = _("");
+    let i;
+    X(x, (ee) => {
+      clearTimeout(i), i = setTimeout(() => {
+        V.value = ee.trim();
       }, 250);
-    }), Q(() => d.template, (X) => {
-      X !== void 0 && (n.value = X);
+    }), X(() => v.template, (ee) => {
+      ee !== void 0 && (k.value = ee);
     });
-    const x = [
+    const U = [
       { label: "All", value: "all" },
       { label: "Pending", value: "queued" },
       { label: "Sent", value: "sent" },
       { label: "Failed", value: "failed" }
-    ], m = [{ label: "Last 24 hours", value: 1 }, { label: "Last 7 days", value: 7 }, { label: "Last 30 days", value: 30 }], _ = z(() => r.resources.value.filter((X) => X.kind === "message").sort((X, Y) => X.title.localeCompare(Y.title)).map((X) => ({ label: X.title, value: X.name }))), o = fe([]), v = p(), b = p(!0), O = p(!1), A = p(!1), j = p(!1), S = p(""), N = ge();
-    function te(X) {
+    ], S = [{ label: "Last 24 hours", value: 1 }, { label: "Last 7 days", value: 7 }, { label: "Last 30 days", value: 30 }], R = P(() => r.ofKind("message").map((ee) => ({ label: ee.title, value: ee.name }))), C = ge([]), u = _(), d = _(!0), m = _(!1), $ = _(!1), A = _(!1), I = _(""), M = _(""), L = _(""), E = xe();
+    function ae(ee) {
       return {
-        status: c.value === "all" ? void 0 : c.value,
-        message: n.value || void 0,
-        since: Date.now() - w.value * 24 * 60 * 60 * 1e3,
-        q: y.value || void 0,
-        cursor: X
+        status: o.value === "all" ? void 0 : o.value,
+        message: k.value || void 0,
+        since: Date.now() - b.value * 24 * 60 * 60 * 1e3,
+        q: V.value || void 0,
+        cursor: ee
       };
     }
-    async function W() {
-      const X = N();
-      b.value = !0;
+    async function le(ee = !1) {
+      const K = E();
+      d.value = !0;
       try {
-        const Y = await Fe.list(te());
-        if (!X()) return;
-        o.value = Y.items, v.value = Y.next_cursor, h.value = Y.total, U.value = Y.failed_today ?? 0, S.value = "", j.value = !1, O.value = !0;
-      } catch (Y) {
-        if (!X()) return;
-        j.value = Le(Y), S.value = j.value ? "" : ne(Y, "Activity could not be loaded.");
+        const J = await De.list(ae());
+        if (!K()) return;
+        C.value = J.items, u.value = J.next_cursor, g.value = J.total, p.value = J.failed_today ?? 0, I.value = M.value = L.value = "", A.value = !1, m.value = !0;
+      } catch (J) {
+        if (!K()) return;
+        A.value = Fe(J);
+        const he = A.value ? "" : ie(J, "Activity could not be loaded.");
+        ee && m.value && !A.value ? L.value = he : I.value = he;
       } finally {
-        X() && (b.value = !1);
+        K() && (d.value = !1);
       }
     }
-    async function R() {
-      if (!v.value || A.value) return;
-      const X = N();
-      A.value = !0;
+    async function q() {
+      if (!u.value || $.value) return;
+      const ee = E();
+      $.value = !0, M.value = "";
       try {
-        const Y = await Fe.list(te(v.value));
-        if (!X()) return;
-        o.value = [...o.value, ...Y.items], v.value = Y.next_cursor;
-      } catch (Y) {
-        X() && (S.value = ne(Y, "More activity could not be loaded."));
+        const K = await De.list(ae(u.value));
+        if (!ee()) return;
+        const J = new Set(C.value.map((he) => he.message_id));
+        C.value = [...C.value, ...K.items.filter((he) => !J.has(he.message_id))], u.value = K.next_cursor;
+      } catch (K) {
+        ee() && (M.value = ie(K, "More activity could not be loaded."));
       } finally {
-        A.value = !1;
+        $.value = !1;
       }
     }
-    const h = p(), U = p(0);
-    Q([c, n, w, y], () => {
-      W();
-    }), De(W), Va(() => {
-      W();
+    const g = _(), p = _(0);
+    X([o, k, b, V], () => {
+      le();
+    }), la(() => le(m.value));
+    function f(ee) {
+      const K = ae();
+      return K.q ? !1 : (!K.status || ee.status === K.status) && (!K.message || ee.template === K.message) && ee.created_at >= K.since;
+    }
+    Ba(async (ee) => {
+      if (!m.value) return;
+      let K;
+      try {
+        K = await De.get(ee.message_id);
+      } catch {
+        return;
+      }
+      const J = C.value.findIndex((Ie) => Ie.message_id === K.message_id);
+      if ((J >= 0 ? C.value[J] : void 0)?.status !== "failed" && K.status === "failed" && K.created_at >= $l() && p.value++, J >= 0) {
+        const Ie = [...C.value];
+        Ie[J] = K, C.value = Ie;
+      } else f(K) && (C.value = [K, ...C.value], g.value !== void 0 && g.value++);
     });
-    const D = z(() => pe(h.value ?? o.value.length, "message")), I = z(() => U.value ? `${pe(U.value, "message")} failed today.` : ""), G = z(() => !!$.value?.administer_delivery), C = z(() => G.value ? "Every email sent from this workspace in the last 30 days." : "Email you sent in the last 30 days.");
-    function P(X) {
-      return X ? r.find("message", X)?.title ?? X : "—";
+    const w = P(() => pe(g.value ?? C.value.length, "message")), z = P(() => p.value ? `${pe(p.value, "message")} failed today.` : ""), Z = P(() => !!y.value?.administer_delivery), F = P(() => Z.value ? "Every email sent from this workspace in the last 30 days." : "Email you sent in the last 30 days.");
+    function W(ee) {
+      return ee ? r.title("message", ee) : "—";
     }
-    function q(X) {
-      f({ name: "activity", message: X.message_id });
+    function oe(ee) {
+      c({ name: "activity", message: ee.message_id });
     }
-    function Z() {
-      f({ name: "activity", template: n.value || void 0 });
+    function Ve() {
+      c({ name: "activity", template: k.value || void 0 });
     }
-    return (X, Y) => (l(), i(H, null, [
-      s(Je, {
+    return (ee, K) => (l(), n(Y, null, [
+      s(ta, {
         title: "Activity",
-        description: C.value
+        description: F.value
       }, null, 8, ["description"]),
-      j.value ? (l(), i("p", Xo, [
-        s(a(L), {
+      A.value ? (l(), n("p", mr, [
+        s(a(N), {
           icon: "tabler:lock",
           "aria-hidden": "true"
         }),
-        Y[7] || (Y[7] = K("Ask an administrator to grant you access to mail delivery. ", -1))
-      ])) : (l(), i(H, { key: 1 }, [
-        I.value ? (l(), i("p", er, [
-          s(a(L), {
+        K[8] || (K[8] = G("Ask an administrator to grant you access to mail delivery. ", -1))
+      ])) : (l(), n(Y, { key: 1 }, [
+        z.value ? (l(), n("p", fr, [
+          s(a(N), {
             icon: "tabler:alert-triangle",
             "aria-hidden": "true"
           }),
-          t("span", ar, [
-            t("strong", null, u(I.value), 1),
-            K(" " + u(c.value === "failed" ? "" : "Open one to see why, then send it again."), 1)
+          t("span", br, [
+            t("strong", null, h(z.value), 1),
+            G(" " + h(o.value === "failed" ? "" : "Open one to see why, then send it again."), 1)
           ]),
-          c.value !== "failed" ? (l(), B(a(F), {
+          o.value !== "failed" ? (l(), O(a(D), {
             key: 0,
             label: "Show failed",
             severity: "secondary",
             outlined: "",
             size: "small",
-            onClick: Y[0] || (Y[0] = (ee) => c.value = "failed")
-          })) : V("", !0)
-        ])) : V("", !0),
-        t("div", lr, [
-          s(a(he), {
-            modelValue: c.value,
-            "onUpdate:modelValue": Y[1] || (Y[1] = (ee) => c.value = ee),
-            options: x,
+            onClick: K[0] || (K[0] = (J) => o.value = "failed")
+          })) : T("", !0)
+        ])) : T("", !0),
+        t("div", yr, [
+          s(a($e), {
+            modelValue: o.value,
+            "onUpdate:modelValue": K[1] || (K[1] = (J) => o.value = J),
+            options: U,
             "option-label": "label",
             "option-value": "value",
             "allow-empty": !1,
             "aria-label": "Status"
           }, null, 8, ["modelValue"]),
-          s(a(Ae), {
-            modelValue: n.value,
-            "onUpdate:modelValue": Y[2] || (Y[2] = (ee) => n.value = ee),
-            options: _.value,
+          s(a(Oe), {
+            modelValue: k.value,
+            "onUpdate:modelValue": K[2] || (K[2] = (J) => k.value = J),
+            options: R.value,
             "option-label": "label",
             "option-value": "value",
             "append-to": "self",
@@ -4312,21 +4909,21 @@ const ss = ["src", "alt"], is = {
             placeholder: "All messages",
             "show-clear": ""
           }, null, 8, ["modelValue", "options"]),
-          s(a(Ae), {
-            modelValue: w.value,
-            "onUpdate:modelValue": Y[3] || (Y[3] = (ee) => w.value = ee),
-            options: m,
+          s(a(Oe), {
+            modelValue: b.value,
+            "onUpdate:modelValue": K[3] || (K[3] = (J) => b.value = J),
+            options: S,
             "option-label": "label",
             "option-value": "value",
             "append-to": "self",
             "aria-label": "Period",
             class: "mail-filter"
           }, null, 8, ["modelValue"]),
-          s(a(ia), { class: "mail-search" }, {
-            default: T(() => [
-              s(a(na), null, {
-                default: T(() => [
-                  s(a(L), {
+          s(a(ga), { class: "mail-search" }, {
+            default: j(() => [
+              s(a(ha), null, {
+                default: j(() => [
+                  s(a(N), {
                     icon: "tabler:search",
                     "aria-hidden": "true"
                   })
@@ -4334,8 +4931,8 @@ const ss = ["src", "alt"], is = {
                 _: 1
               }),
               s(a(ce), {
-                modelValue: k.value,
-                "onUpdate:modelValue": Y[4] || (Y[4] = (ee) => k.value = ee),
+                modelValue: x.value,
+                "onUpdate:modelValue": K[4] || (K[4] = (J) => x.value = J),
                 type: "search",
                 "aria-label": "Search subject or recipient",
                 placeholder: "Search subject or recipient…"
@@ -4343,118 +4940,135 @@ const ss = ["src", "alt"], is = {
             ]),
             _: 1
           }),
-          O.value ? (l(), i("span", tr, u(D.value), 1)) : V("", !0)
+          m.value ? (l(), n("span", pr, h(w.value), 1)) : T("", !0)
         ]),
-        S.value ? (l(), i("div", sr, [
-          t("span", null, u(S.value), 1),
-          s(a(F), {
+        I.value ? (l(), n("div", gr, [
+          t("span", null, h(I.value), 1),
+          s(a(D), {
             label: "Retry",
             severity: "secondary",
             outlined: "",
             size: "small",
-            onClick: Y[5] || (Y[5] = (ee) => W())
+            onClick: K[5] || (K[5] = (J) => le())
           })
-        ])) : b.value && !O.value ? (l(), i("p", ir, [
-          s(a(L), {
+        ])) : T("", !0),
+        L.value ? (l(), n("div", hr, [
+          t("span", null, h(L.value) + " The list shows what was loaded before.", 1),
+          s(a(D), {
+            label: "Retry",
+            severity: "secondary",
+            outlined: "",
+            size: "small",
+            onClick: K[6] || (K[6] = (J) => le(!0))
+          })
+        ])) : d.value && !m.value ? (l(), n("p", kr, [
+          s(a(N), {
             icon: "tabler:loader-2",
             class: "spin",
             "aria-hidden": "true"
           }),
-          Y[8] || (Y[8] = K("Loading activity…", -1))
-        ])) : O.value ? (l(), i(H, { key: 3 }, [
-          o.value.length ? (l(), B(a(sa), {
+          K[9] || (K[9] = G("Loading activity…", -1))
+        ])) : m.value ? (l(), n(Y, { key: 4 }, [
+          C.value.length ? (l(), O(a(pa), {
             key: 1,
-            value: o.value,
+            value: C.value,
             "data-key": "message_id",
             class: "mail-table",
             "row-hover": "",
             pt: { table: { "aria-label": "Sent messages" } },
-            onRowClick: Y[6] || (Y[6] = (ee) => q(ee.data))
+            onRowClick: K[7] || (K[7] = (J) => oe(J.data))
           }, {
-            default: T(() => [
-              s(a(ue), {
+            default: j(() => [
+              s(a(de), {
                 header: "Status",
                 "header-class": "mail-col-status",
                 "body-class": "mail-col-status"
               }, {
-                body: T(({ data: ee }) => [
-                  s(a(Ue), {
-                    severity: a(Ra)[ee.status],
-                    value: a(Sa)[ee.status],
+                body: j(({ data: J }) => [
+                  s(a(Ee), {
+                    severity: a(Ha)[J.status],
+                    value: a(qa)[J.status],
                     class: "kx-tag-sm"
                   }, null, 8, ["severity", "value"])
                 ]),
                 _: 1
               }),
-              s(a(ue), { header: "Message" }, {
-                body: T(({ data: ee }) => [
-                  t("button", {
-                    type: "button",
+              s(a(de), { header: "Message" }, {
+                body: j(({ data: J }) => [
+                  s(a(D), {
+                    link: "",
                     class: "mail-name",
-                    onClick: xe((je) => q(ee), ["stop"])
-                  }, u(ee.subject), 9, or),
-                  t("span", rr, u(a(ol)(ee.to)), 1)
+                    label: J.subject,
+                    onClick: je((he) => oe(J), ["stop"])
+                  }, null, 8, ["label", "onClick"]),
+                  t("span", wr, h(a(wl)(J.to)), 1)
                 ]),
                 _: 1
               }),
-              s(a(ue), { header: "Template" }, {
-                body: T(({ data: ee }) => [
-                  K(u(P(ee.template)), 1)
+              s(a(de), { header: "Template" }, {
+                body: j(({ data: J }) => [
+                  W(J.template) === void 0 ? (l(), O(a(Ce), {
+                    key: 0,
+                    width: "8rem",
+                    height: "1rem"
+                  })) : (l(), n(Y, { key: 1 }, [
+                    G(h(W(J.template)), 1)
+                  ], 64))
                 ]),
                 _: 1
               }),
-              s(a(ue), { header: "Sent by" }, {
-                body: T(({ data: ee }) => [
-                  t("span", null, u(a(ye)(ee.sender_label, ee.sender)), 1),
-                  ee.origin ? (l(), i("span", ur, u(a(We)(ee.origin)), 1)) : V("", !0)
+              s(a(de), { header: "Sent by" }, {
+                body: j(({ data: J }) => [
+                  t("span", null, h(a(ke)(J.sender_label, J.sender)), 1),
+                  J.origin ? (l(), n("span", _r, h(a(sa)(J.origin)), 1)) : T("", !0)
                 ]),
                 _: 1
               }),
-              s(a(ue), {
+              s(a(de), {
                 header: "When",
                 "header-class": "mail-col-when",
                 "body-class": "mail-col-when"
               }, {
-                body: T(({ data: ee }) => [
-                  t("span", dr, u(a(rl)(ee.created_at)), 1)
+                body: j(({ data: J }) => [
+                  t("span", xr, h(a(_l)(J.created_at)), 1)
                 ]),
                 _: 1
               })
             ]),
             _: 1
-          }, 8, ["value"])) : (l(), i("p", nr, u(y.value ? "Nothing matches. Try another subject or recipient." : "No email was sent in this period."), 1)),
-          v.value ? (l(), i("div", cr, [
-            s(a(F), {
-              label: "Show more",
+          }, 8, ["value"])) : (l(), n("p", $r, h(V.value ? "Nothing matches. Try another subject or recipient." : "No email was sent in this period."), 1)),
+          u.value ? (l(), n("div", Cr, [
+            M.value ? (l(), n("span", Vr, h(M.value), 1)) : T("", !0),
+            s(a(D), {
+              label: M.value ? "Retry" : "Show more",
               severity: "secondary",
               outlined: "",
-              loading: A.value,
-              onClick: R
-            }, null, 8, ["loading"])
-          ])) : V("", !0)
-        ], 64)) : V("", !0)
+              loading: $.value,
+              onClick: q
+            }, null, 8, ["label", "loading"])
+          ])) : T("", !0)
+        ], 64)) : T("", !0)
       ], 64)),
-      s(Qo, {
+      s(vr, {
         "message-id": e.message,
-        onClose: Z,
-        onChanged: W
+        onClose: Ve
       }, null, 8, ["message-id"])
     ], 64));
   }
-}), mr = { class: "kx-shell kx-settings-shell mail-admin" }, br = { class: "kx-main" }, fr = /* @__PURE__ */ ae({
+}), Tr = { class: "kx-shell kx-settings-shell mail-admin" }, Rr = { class: "kx-main" }, Ur = /* @__PURE__ */ te({
   __name: "MailAdmin",
   props: {
     route: {}
   },
   emits: ["navigate", "dirty-change"],
-  setup(e, { emit: d }) {
-    const r = e, f = d, $ = p($a("")), c = z(() => r.route === void 0 ? $.value : $a(r.route)), n = p(!1);
-    Q(n, (C) => f("dirty-change", C), { flush: "sync" });
-    let w = !1;
-    async function k() {
-      if (!n.value) return !0;
-      if (w) return !1;
-      w = !0;
+  setup(e, { emit: v }) {
+    const r = e, c = v, y = ge(Ia(r.route ?? "")), o = P(() => y.value), k = _(!1);
+    X(k, (w) => c("dirty-change", w), { flush: "sync" });
+    let b = !1;
+    async function x() {
+      if (!k.value) return !0;
+      if (b) return !1;
+      b = !0;
       try {
         return await Re.confirm({
           header: "Discard unsaved changes?",
@@ -4464,168 +5078,173 @@ const ss = ["src", "alt"], is = {
           acceptClass: "p-button-danger"
         });
       } finally {
-        w = !1;
+        b = !1;
       }
     }
-    function y(C, P) {
-      return C.name === "resource" && P.name === "resource" && C.kind === P.kind && C.resource === P.resource;
+    function V(w, z) {
+      return w.name === "resource" && z.name === "resource" && w.kind === z.kind && w.resource === z.resource;
     }
-    async function g(C) {
-      const P = ka(C);
-      !y(c.value, C) && !await k() || (y(c.value, C) || (n.value = !1), r.route === void 0 ? $.value = C : P !== r.route && f("navigate", P));
+    async function i(w) {
+      const z = Ne(w);
+      !V(o.value, w) && !await x() || (V(o.value, w) || (k.value = !1), y.value = w, r.route !== void 0 && z !== r.route && c("navigate", z));
     }
-    const x = Il(), m = p(), _ = p();
-    async function o() {
+    X(() => r.route, async (w, z) => {
+      if (w === void 0) return;
+      const Z = Ia(w);
+      if (Ne(Z) !== Ne(y.value)) {
+        if (!V(y.value, Z) && k.value) {
+          if (!await x()) {
+            z !== void 0 && r.route === w && c("navigate", Ne(y.value));
+            return;
+          }
+          k.value = !1;
+        }
+        r.route === w && (y.value = Z);
+      }
+    });
+    const U = Zl(), S = bl();
+    X(S, (w, z) => {
+      z === !1 && w === !0 && U.refresh();
+    });
+    const R = _(), C = _();
+    async function u() {
       try {
-        m.value = await ul.capabilities();
+        R.value = await xl.capabilities();
       } catch {
-        m.value = void 0;
+        R.value = void 0;
       }
-      if (m.value?.administer_delivery)
+      if (R.value?.administer_delivery)
         try {
-          _.value = await dl.status();
+          C.value = await Cl.status();
         } catch {
-          _.value = void 0;
+          C.value = void 0;
         }
     }
-    o();
-    const v = p(!1), b = p(!1), O = p({});
-    function A(C) {
-      O.value = C, v.value = !0;
+    u();
+    const d = _(!1), m = _(!1), $ = _({});
+    function A(w) {
+      $.value = w, d.value = !0;
     }
-    Xa(Ua, {
-      library: x,
-      capabilities: m,
-      delivery: _,
-      go: (C) => {
-        g(C);
+    fl(Ja, {
+      library: U,
+      capabilities: R,
+      delivery: C,
+      go: (w) => {
+        i(w);
       },
       create: A,
       upload: () => {
-        b.value = !0;
+        m.value = !0;
       },
-      setDirty: (C) => {
-        n.value = C;
+      setDirty: (w) => {
+        k.value = w;
+      },
+      setTitle: (w) => {
+        le.value = w;
       }
     });
-    const j = {
-      content: (C) => C === "message" ? "Message" : C === "base" ? "Layout" : "Content",
-      variables: (C) => C === "message" ? "Variables" : "Inputs",
+    const I = {
+      content: (w) => w === "message" ? "Message" : w === "base" ? "Layout" : "Content",
+      variables: (w) => w === "message" ? "Variables" : "Inputs",
       "used-by": () => "Used by",
       history: () => "History"
-    }, S = {
-      content: (C) => be[C],
+    }, M = {
+      content: (w) => ye[w],
       variables: () => "tabler:variable",
       "used-by": () => "tabler:link",
       history: () => "tabler:history"
-    }, N = z(() => !!m.value && (m.value.administer_delivery || m.value.send)), te = z(() => [
+    }, L = P(() => !!R.value && (R.value.administer_delivery || R.value.send)), E = P(() => [
       { heading: "Library", items: [
-        { value: "messages", label: "Messages", icon: be.message },
-        { value: "bases", label: "Base templates", icon: be.base },
-        { value: "parts", label: "Parts", icon: be.part },
-        { value: "assets", label: "Assets", icon: be.asset }
+        { value: "messages", label: "Messages", icon: ye.message },
+        { value: "bases", label: "Base templates", icon: ye.base },
+        { value: "parts", label: "Parts", icon: ye.part },
+        { value: "assets", label: "Images", icon: ye.asset }
       ] },
-      ...N.value ? [{ heading: "Delivery", items: [{ value: "activity", label: "Activity", icon: "tabler:activity" }] }] : []
-    ]), W = { value: "all", label: "All resources", icon: "tabler:table" }, R = z(() => {
-      const C = c.value;
-      return C.name !== "resource" ? "" : x.find(C.kind, C.resource)?.title ?? C.resource;
-    }), h = z(() => {
-      const C = c.value;
-      if (C.name === "resource")
+      ...L.value ? [{ heading: "Delivery", items: [{ value: "activity", label: "Activity", icon: "tabler:activity" }] }] : []
+    ]), ae = { value: "all", label: "All resources", icon: "tabler:table" }, le = _("");
+    X(() => Ne(o.value), () => {
+      le.value = "";
+    });
+    const q = P(() => {
+      const w = o.value;
+      if (w.name === "resource")
         return {
-          leading: { value: "all", label: "All " + la[C.kind].toLowerCase(), icon: "tabler:table" },
-          groups: [{ heading: R.value, items: La(C.kind).map((P) => ({
-            value: P,
-            label: j[P](C.kind),
-            icon: S[P](C.kind)
+          leading: { value: "all", label: "All " + ba[w.kind].toLowerCase(), icon: "tabler:table" },
+          groups: [{ heading: le.value || " ", items: Ka(w.kind).map((z) => ({
+            value: z,
+            label: I[z](w.kind),
+            icon: M[z](w.kind)
           })) }]
         };
-    }), U = z(() => {
-      const C = c.value;
-      return C.name === "resource" ? C.section : C.name === "activity" ? "activity" : C.section;
+    }), g = P(() => {
+      const w = o.value;
+      return w.name === "resource" ? w.section : w.name === "activity" ? "activity" : w.section;
     });
-    function D(C) {
-      const P = c.value;
-      if (P.name === "resource") {
-        g(C === "all" ? { name: "library", section: ea(P.kind) } : { ...P, section: C });
+    function p(w) {
+      const z = o.value;
+      if (z.name === "resource") {
+        i(w === "all" ? { name: "library", section: va(z.kind) } : { ...z, section: w });
         return;
       }
-      g(C === "activity" ? { name: "activity" } : { name: "library", section: C });
+      i(w === "activity" ? { name: "activity" } : { name: "library", section: w });
     }
-    function I() {
-      const C = c.value;
-      if (C.name === "library" && C.section === "assets") {
-        b.value = !0;
-        return;
-      }
-      C.name === "resource" ? A({ kind: C.kind }) : C.name === "library" ? A({ kind: C.section === "bases" ? "base" : C.section === "parts" ? "part" : "message" }) : A({});
-    }
-    const G = p();
-    return Q(() => ka(c.value), () => {
-      G.value?.scrollTo({ top: 0 });
-    }), (C, P) => (l(), i("main", mr, [
-      s(Ll, {
+    const f = _();
+    return X(() => Ne(o.value), () => {
+      f.value?.scrollTo({ top: 0 });
+    }), (w, z) => (l(), n("main", Tr, [
+      s(Gl, {
         label: "Mail sections",
         title: "Mail",
-        value: U.value,
-        groups: h.value ? h.value.groups : te.value,
-        "leading-item": h.value ? h.value.leading : W,
-        "onUpdate:value": D
-      }, {
-        actions: T(() => [
-          s(jl, {
-            "create-label": "New resource",
-            onCreate: I,
-            onDefaults: P[0] || (P[0] = (q) => a(Re).navigate("/system/settings/mail"))
-          })
-        ]),
-        _: 1
-      }, 8, ["value", "groups", "leading-item"]),
-      t("div", br, [
+        value: g.value,
+        groups: q.value ? q.value.groups : E.value,
+        "leading-item": q.value ? q.value.leading : ae,
+        "onUpdate:value": p
+      }, null, 8, ["value", "groups", "leading-item"]),
+      t("div", Rr, [
         t("div", {
           ref_key: "main",
-          ref: G,
-          class: oe(["kx-main-scroll mail-main", { "mail-main-wide": c.value.name === "resource" && c.value.section === "content" }])
+          ref: f,
+          class: ne(["kx-main-scroll mail-main", { "mail-main-wide": o.value.name === "resource" && o.value.section === "content" }])
         }, [
-          c.value.name === "resource" ? (l(), B(cn, {
-            key: c.value.kind + "/" + c.value.resource,
-            kind: c.value.kind,
-            name: c.value.resource,
-            section: c.value.section
-          }, null, 8, ["kind", "name", "section"])) : c.value.name === "activity" ? (l(), B(vr, {
+          o.value.name === "resource" ? (l(), O(yn, {
+            key: o.value.kind + "/" + o.value.resource,
+            kind: o.value.kind,
+            name: o.value.resource,
+            section: o.value.section
+          }, null, 8, ["kind", "name", "section"])) : o.value.name === "activity" ? (l(), O(Sr, {
             key: 1,
-            message: c.value.message,
-            template: c.value.template
-          }, null, 8, ["message", "template"])) : c.value.section === "assets" ? (l(), B(co, {
+            message: o.value.message,
+            template: o.value.template
+          }, null, 8, ["message", "template"])) : o.value.section === "assets" ? (l(), O(Co, {
             key: 2,
-            asset: c.value.asset
-          }, null, 8, ["asset"])) : (l(), B(gt, {
+            asset: o.value.asset
+          }, null, 8, ["asset"])) : (l(), O(qt, {
             key: 3,
-            section: c.value.section
+            section: o.value.section
           }, null, 8, ["section"]))
         ], 2)
       ]),
-      s(Ro, {
-        visible: v.value,
-        intent: O.value,
-        onClose: P[1] || (P[1] = (q) => v.value = !1)
+      s(Bo, {
+        visible: d.value,
+        intent: $.value,
+        onClose: z[0] || (z[0] = (Z) => d.value = !1)
       }, null, 8, ["visible", "intent"]),
-      s(Na, {
-        visible: b.value,
-        onClose: P[2] || (P[2] = (q) => b.value = !1)
+      s(Xa, {
+        visible: m.value,
+        onClose: z[1] || (z[1] = (Z) => m.value = !1)
       }, null, 8, ["visible"])
     ]));
   }
-}), pr = /* @__PURE__ */ ae({
+}), jr = /* @__PURE__ */ te({
   __name: "MailAdminRoot",
   setup(e) {
-    const d = el(), r = al();
-    return (f, $) => (l(), B(fr, {
-      route: a(d).route,
-      onNavigate: $[0] || ($[0] = (c) => a(r)("navigate", { route: c })),
-      onDirtyChange: $[1] || ($[1] = (c) => a(r)("dirty-change", { dirty: c }))
+    const v = yl(), r = pl();
+    return (c, y) => (l(), O(Ur, {
+      route: a(v).route,
+      onNavigate: y[0] || (y[0] = (o) => a(r)("navigate", { route: o })),
+      onDirtyChange: y[1] || (y[1] = (o) => a(r)("dirty-change", { dirty: o }))
     }, null, 8, ["route"]));
   }
-}), yr = cl(pr, { type: "object", properties: { route: { type: "string", default: "" } } });
-ml(import.meta.url, yr);
+}), Ar = Vl(jr, { type: "object", properties: { route: { type: "string", default: "" } } });
+Rl(import.meta.url, Ar);
 //# sourceMappingURL=admin.js.map

@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import { host } from '@wippy-fe/proxy'
-import { computed, provide, ref, watch } from 'vue'
+import { useHostVisibility } from '@wippy-fe/webcomponent-vue'
+import { computed, provide, ref, shallowRef, watch } from 'vue'
 import SettingsRail, { type SettingsRailGroup, type SettingsRailItem } from '@kickside/ui-kit/SettingsRail.vue'
-import SettingsDirectoryActions from '@kickside/ui-kit/SettingsDirectoryActions.vue'
 import { access, delivery as deliveryApi } from '../api'
 import { mailContextKey, type CreateIntent } from '../context'
 import { kindIcons, kindPlurals } from '../copy'
@@ -20,8 +20,9 @@ import type { Capabilities, DeliveryStatus } from '../types'
 const props = defineProps<{ route?: string }>()
 const emit = defineEmits<{ navigate: [route: string]; 'dirty-change': [dirty: boolean] }>()
 
-const local = ref<Route>(parse(''))
-const current = computed<Route>(() => props.route === undefined ? local.value : parse(props.route))
+// The route shown. A route prop that leaves a resource with unsaved changes waits for the person to discard them.
+const shown = shallowRef<Route>(parse(props.route ?? ''))
+const current = computed<Route>(() => shown.value)
 
 const dirty = ref(false)
 watch(dirty, value => emit('dirty-change', value), { flush: 'sync' })
@@ -48,11 +49,29 @@ async function go(route: Route) {
   const path = pathOf(route)
   if (!sameResource(current.value, route) && !await mayLeave()) return
   if (!sameResource(current.value, route)) dirty.value = false
-  if (props.route === undefined) local.value = route
-  else if (path !== props.route) emit('navigate', path)
+  shown.value = route
+  if (props.route !== undefined && path !== props.route) emit('navigate', path)
 }
 
+// The host moves between paths inside this tab without asking (Back, Forward, a link): the draft stays on screen
+// until the person decides, and keeping it puts the address back.
+watch(() => props.route, async (path, previous) => {
+  if (path === undefined) return
+  const target = parse(path)
+  if (pathOf(target) === pathOf(shown.value)) return
+  if (!sameResource(shown.value, target) && dirty.value) {
+    if (!await mayLeave()) {
+      if (previous !== undefined && props.route === path) emit('navigate', pathOf(shown.value))
+      return
+    }
+    dirty.value = false
+  }
+  if (props.route === path) shown.value = target
+})
+
 const library = useLibrary()
+const visible = useHostVisibility()
+watch(visible, (now, before) => { if (before === false && now === true) library.refresh() })
 const capabilities = ref<Capabilities>()
 const delivery = ref<DeliveryStatus>()
 async function loadAccess() {
@@ -77,6 +96,7 @@ provide(mailContextKey, {
   library, capabilities, delivery, go: route => { void go(route) }, create,
   upload: () => { uploading.value = true },
   setDirty: value => { dirty.value = value },
+  setTitle: value => { openTitle.value = value },
 })
 
 const sectionTitles: Record<ResourceSection, (kind: string) => string> = {
@@ -99,23 +119,21 @@ const libraryGroups = computed<SettingsRailGroup[]>(() => [
     { value: 'messages', label: 'Messages', icon: kindIcons.message },
     { value: 'bases', label: 'Base templates', icon: kindIcons.base },
     { value: 'parts', label: 'Parts', icon: kindIcons.part },
-    { value: 'assets', label: 'Assets', icon: kindIcons.asset },
+    { value: 'assets', label: 'Images', icon: kindIcons.asset },
   ] },
   ...(showActivity.value ? [{ heading: 'Delivery', items: [{ value: 'activity', label: 'Activity', icon: 'tabler:activity' }] }] : []),
 ])
 const allResources: SettingsRailItem = { value: 'all', label: 'All resources', icon: 'tabler:table' }
 
-const openTitle = computed(() => {
-  const route = current.value
-  if (route.name !== 'resource') return ''
-  return library.find(route.kind, route.resource)?.title ?? route.resource
-})
+// The open resource's title, as its page read it; the rail shows a placeholder until then.
+const openTitle = ref('')
+watch(() => pathOf(current.value), () => { openTitle.value = '' })
 const resourceRail = computed(() => {
   const route = current.value
   if (route.name !== 'resource') return undefined
   return {
     leading: { value: 'all', label: 'All ' + kindPlurals[route.kind].toLowerCase(), icon: 'tabler:table' },
-    groups: [{ heading: openTitle.value, items: sectionsFor(route.kind).map(section => ({
+    groups: [{ heading: openTitle.value || ' ', items: sectionsFor(route.kind).map(section => ({
       value: section, label: sectionTitles[section](route.kind), icon: sectionIcons[section](route.kind),
     })) }],
   }
@@ -138,14 +156,6 @@ function selectRail(value: string) {
   else void go({ name: 'library', section: value as LibrarySection })
 }
 
-function createFromRail() {
-  const route = current.value
-  if (route.name === 'library' && route.section === 'assets') { uploading.value = true; return }
-  if (route.name === 'resource') create({ kind: route.kind })
-  else if (route.name === 'library') create({ kind: route.section === 'bases' ? 'base' : route.section === 'parts' ? 'part' : 'message' })
-  else create({})
-}
-
 const main = ref<HTMLElement>()
 watch(() => pathOf(current.value), () => { main.value?.scrollTo({ top: 0 }) })
 </script>
@@ -155,9 +165,6 @@ watch(() => pathOf(current.value), () => { main.value?.scrollTo({ top: 0 }) })
     <SettingsRail label="Mail sections" title="Mail" :value="railValue"
       :groups="resourceRail ? resourceRail.groups : libraryGroups"
       :leading-item="resourceRail ? resourceRail.leading : allResources" @update:value="selectRail">
-      <template #actions>
-        <SettingsDirectoryActions create-label="New resource" @create="createFromRail" @defaults="host.navigate('/system/settings/mail')" />
-      </template>
     </SettingsRail>
     <div class="kx-main">
       <div ref="main" class="kx-main-scroll mail-main" :class="{ 'mail-main-wide': current.name === 'resource' && current.section === 'content' }">

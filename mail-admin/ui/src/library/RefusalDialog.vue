@@ -3,10 +3,12 @@
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import { useReturnFocus } from '../focus'
 
 export interface Refusal { header: string; message: string; links: { label: string; open: () => void }[] }
 
-defineProps<{ refusal?: Refusal }>()
+const props = defineProps<{ refusal?: Refusal }>()
+useReturnFocus(() => !!props.refusal)
 const emit = defineEmits<{ close: [] }>()
 const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'mail-dialog-content' }, footer: { class: 'mail-dialog-footer' } }
 function follow(open: () => void) {
@@ -25,7 +27,7 @@ function follow(open: () => void) {
     <p class="mail-dialog-text">{{ refusal?.message }}</p>
     <ul v-if="refusal?.links.length" class="mail-list">
       <li v-for="link in refusal.links" :key="link.label">
-        <button type="button" class="mail-row-link" @click="follow(link.open)"><Icon icon="tabler:mail" aria-hidden="true" /><span>{{ link.label }}</span></button>
+        <Button text severity="secondary" class="mail-row-link" @click="follow(link.open)"><Icon icon="tabler:mail" aria-hidden="true" /><span>{{ link.label }}</span></Button>
       </li>
     </ul>
     <template #footer>

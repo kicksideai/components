@@ -33,16 +33,6 @@ export function editable(content: ResourceContent): ResourceContent {
 export const library = {
   page: (filter: LibraryFilter = {}) =>
     request<LibraryPage>(() => api.get(`${BASE}/library`, { params: params({ view: 'summary', limit: 100, ...filter }) }), 'Mail library'),
-  async all(filter: Omit<LibraryFilter, 'cursor'> = {}): Promise<LibraryRow[]> {
-    const rows: LibraryRow[] = []
-    let cursor: string | undefined
-    do {
-      const page = await library.page({ ...filter, cursor })
-      rows.push(...page.items)
-      cursor = page.next_cursor
-    } while (cursor)
-    return rows
-  },
   // Images carry no template source, so their full rows are small enough to list whole.
   assets: (q?: string) =>
     request<Items<Resource>>(() => api.get(`${BASE}/library`, { params: params({ kind: 'asset', q }) }), 'Assets').then(r => r.items),
@@ -68,8 +58,11 @@ export const library = {
     request<Resource>(() => api.put(`${BASE}/library/asset/${encodeURIComponent(body.name)}`, { ...body, expected_revision: expected }), 'Replace image'),
 }
 
+export interface UploadState { component_id: string; status: string; error?: string }
+
 export const uploads = {
-  // The platform upload flow: the file becomes the caller's upload, which Mail adopts as an asset.
+  // The platform upload flow: the file becomes the caller's upload, which Mail adopts as an asset once the platform
+  // reports it completed.
   async add(file: File): Promise<string> {
     const form = new FormData()
     form.append('file', file)
@@ -79,6 +72,16 @@ export const uploads = {
       const body = response.data as { success?: boolean; uuid?: string; error?: string }
       return { data: body?.success && body.uuid ? { success: true as const, data: { uuid: body.uuid } } : { success: false as const, error: body?.error } }
     }, 'Upload').then(result => result.uuid)
+  },
+  // The upload's processing status and the component whose public meta changes at each upload milestone.
+  async state(id: string): Promise<UploadState> {
+    return request<UploadState>(async () => {
+      const response = await api.get(`/api/v1/uploads/${encodeURIComponent(id)}`)
+      const body = response.data as { success?: boolean; component_id?: string; upload?: { status?: string; error?: string }; error?: string }
+      return body?.success && body.upload && body.component_id
+        ? { data: { success: true as const, data: { component_id: body.component_id, status: String(body.upload.status ?? ''), error: body.upload.error } } }
+        : { data: { success: false as const, error: body?.error } }
+    }, 'Upload')
   },
 }
 
@@ -109,10 +112,4 @@ export function isDenied(error: unknown): boolean {
 
 export function isMissing(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 404 || error.kind === 'NOT_FOUND')
-}
-
-// Mail renders drafts in one shared workspace. A render cut off mid-way leaves it occupied, and Mail answers
-// 409 naming the occupied entry for every later preview and save until the service restarts.
-export function isDraftWorkspaceBlocked(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 409 && typeof error.details?.entry_id === 'string'
 }

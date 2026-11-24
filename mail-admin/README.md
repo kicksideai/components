@@ -7,34 +7,45 @@
 The tab holds the mail template library and delivery Activity:
 
 - **All resources** lists every message, base template, part and image with its
-  kind, source, usage and last change. Filters show customized, created and
-  original resources; search covers names and template content.
-  **Preview all messages** renders every message with its sample values through
-  the current library.
+  kind, source, usage and last change, a page at a time in Mail's order.
+  Filters show customized, created and original resources; search covers names
+  and template content. **Preview all messages** lists messages a page at a
+  time and renders each one with its sample values when its tile scrolls into
+  view, three at a time; closing it stops every render.
 - **Messages**, **Base templates** and **Parts** open into an editor: the HTML
   and plain-text sources with syntax highlighting and line numbers, the subject
   and base template of a message, an Insert dialog for variables, parts (with
   their inputs filled in), images and the message body slot, and a live preview
   of the unsaved draft beside it (email or plain text, desktop or phone width,
   inline images shown from the preview's data URIs). Variables and part inputs
-  are edited with their types, required flags, defaults and sample values.
+  are edited with their labels, types, required flags, defaults and sample
+  values; lists and records of text have their own controls.
   A draft is reviewed and saved with an optional note; engine errors appear
   under the face they belong to and block saving, and a save that would break
-  other messages names them. History shows each version read-only, compares it
-  with the current one, and restores it. Resources start from blank or from an
+  other messages names them. History shows each version read-only and compares
+  it with the current one; Restore loads a version into the draft, which takes
+  effect through the same review and save. Resources start from blank or from an
   existing one, and a customized shipped resource resets to the original.
-- **Assets** lists the images templates show inline. Images are uploaded
-  through the platform upload flow, replaced, reset, restored from History and
-  deleted when no message shows them.
+- **Images** lists the images templates show inline, with the messages that
+  show them. An image is uploaded through the platform upload flow; the page
+  waits for the platform to finish processing it before Mail adopts it. Images
+  are replaced, reset, restored from History and deleted when no message shows
+  them.
 - **Activity** lists recent email with its status, template, sender and origin,
   searchable by subject and recipient. Delivery administrators see every
   message; a sender sees their own, with the neutral failure text. Opening a
   message shows its reason, history and technical details, and a failed message
   can be sent again.
 
-The page refetches when Mail announces `mail.library.changed` or
-`mail.message.changed`, and when the host tab becomes visible again. Leaving an
-unsaved draft asks first, and the host receives `dirty-change`.
+Each screen reads what it shows. When Mail announces `mail.library.changed`
+or `mail.message.changed`, the page reads the one resource or message named and
+updates its row in place; when the host tab becomes visible again, the screen
+shown reads its first page again. Leaving an unsaved draft through the page or
+the browser asks first, and the host receives `dirty-change`.
+
+Previews render in a sandboxed frame under a Content-Security-Policy that
+allows inline styles and inline images only, so template HTML makes no outside
+requests.
 
 The source editor is CodeMirror 6 (MIT), bundled into the module and loaded only
 when an editor opens. Jet template tags share Liquid's `{{ … }}` delimiters, so
@@ -62,6 +73,7 @@ The driver panel contract:
 | attribute | `values` | JSON object: the saved values of the driver's namespace, without secrets |
 | attribute | `secrets` | JSON object: `{ <key>: true \| false }`, whether each secret is saved. Secret values never reach the panel |
 | attribute | `errors` | JSON object: `{ <key>: <message> }` from the server's validation of the last Save |
+| attribute | `draft` | JSON object: the changes the block still holds for this namespace; the panel starts from `values` with these applied |
 | attribute | `disabled` | `"true"` while the block saves |
 | event | `change` | `detail: { values }`: every key the panel changed from the saved values; a secret appears only when the person enters a new one; `null` clears a value |
 | event | `validity` | `detail: { valid }`: the panel's own check of its current values |
@@ -72,8 +84,17 @@ reports `valid: false`, and writes the panel's changes under the driver's
 `settings_ns` before switching the service, so a refused value never leaves
 mail on a half-configured service. The server validates every value again
 through the settings definitions' `validate_func`; a refusal returns to the
-panel in `errors`. After Save or Discard the panel is mounted again from the
-saved values.
+panel in `errors`.
+
+The Settings API writes the values one by one and stops at the first refusal,
+keeping the ones before it. After every Save the block reads the settings back
+and lists what was saved, the value that was refused with the reason, and the
+changes that stay in the draft; the panel is mounted again from the saved
+values with the remaining changes in `draft`. After Discard it is mounted again
+from the saved values alone.
+
+The block reports unsaved changes as `dirty-change` (`{ dirty }`), the event
+the System shell guards on, and asks before leaving through its own links.
 
 ## Installation and access
 

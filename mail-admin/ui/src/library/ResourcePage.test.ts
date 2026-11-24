@@ -95,21 +95,16 @@ describe('Library resource editor', () => {
     wrapper.unmount()
   })
 
-  it('says previews wait for a restart when the draft workspace is held, and keeps the draft', async () => {
+  it('refuses a subject with a line break in place and blocks the review', async () => {
     routes(welcome)
     const wrapper = await open('messages/welcome/content')
     await body(wrapper)
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    vi.mocked(api.post).mockImplementation(((path: string) => path === '/api/v1/mail/library/preview'
-      ? refuse(409, { error: 'registry overlay entry is already owned', kind: 'CONFLICT', details: { entry_id: 'kickside.mail.library:message.welcome' } })
-      : refuse(404, {})) as never)
-    await (await body(wrapper)).setValue('{{ block body() }}<p>Kept</p>{{ end }}')
-    vi.advanceTimersByTime(500)
+    const subject = wrapper.find('textarea[aria-label="Subject"]')
+    await subject.setValue('Hello\nthere')
     await flushPromises()
-    expect(wrapper.find('.mail-preview-problem').text()).toBe('Previews and saves are unavailable until the mail service restarts. Ask an administrator to restart it; your draft stays here.')
-    expect(wrapper.find('.mail-source-column .mail-problem').exists()).toBe(false)
-    expect(((await body(wrapper)).element as HTMLTextAreaElement).value).toBe('{{ block body() }}<p>Kept</p>{{ end }}')
-    vi.useRealTimers()
+    expect(wrapper.text()).toContain('A subject is one line. Remove the line break.')
+    expect(control(wrapper, 'Review changes')!.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Put the subject on one line first.')
     wrapper.unmount()
   })
 
@@ -127,6 +122,25 @@ describe('Library resource editor', () => {
     expect(document.body.textContent).toContain('2 messages would break.')
     expect(document.body.textContent).toContain('there is no field or method badge')
     expect(document.body.textContent).toContain('Customer welcome')
+    const saveButton = [...document.body.querySelectorAll<HTMLButtonElement>('.mail-dialog button')].find(node => node.textContent?.trim() === 'Save')!
+    expect(saveButton.disabled).toBe(true)
+    expect(save).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('holds Send test while delivery is not set up and says why in the page', async () => {
+    serve([
+      get('/api/v1/mail/library', () => ok({ items: library })),
+      get('/api/v1/mail/delivery', () => ok({ configured: false, reason: 'Choose a delivery service for Mail.' })),
+      get('/api/v1/mail/library/message/notice', () => ok(notice)),
+      get('/api/v1/mail/library/message/notice/history', () => ok({ items: [] })),
+      post('/api/v1/mail/library/preview', () => ok({ subject: 'Hello', html: '<p>x</p>', text: 'x' })),
+    ])
+    const wrapper = await open('messages/notice/content')
+    await flushPromises()
+    expect(control(wrapper, 'Send test to me')!.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Mail delivery is not set up yet, so a test cannot be sent.')
+    expect(control(wrapper, 'Open delivery settings')).toBeDefined()
     wrapper.unmount()
   })
 
@@ -177,19 +191,48 @@ describe('Library resource editor', () => {
     wrapper.unmount()
   })
 
-  it('lists History with versions and actions and restores one', async () => {
+  it('lists History and restores a version through the draft, review and save', async () => {
+    const save = vi.fn((_path: string, sent?: unknown) => ok({ ...newsletter, ...(sent as object), revision: 6 }))
     const restore = vi.fn(() => ok({ ...newsletter, revision: 6 }))
-    routes({ ...newsletter, used_by: { messages: [] } }, [post('/api/v1/mail/library/base/newsletter/restore', restore)])
+    const older = revision({ ...newsletter, html: '<p>The older frame</p>' }, 4, { version: 4, note: 'Brand refresh' })
+    routes({ ...newsletter, used_by: { messages: [] } }, [put('/api/v1/mail/library/base/newsletter', save), post('/api/v1/mail/library/base/newsletter/restore', restore),
+      get('/api/v1/mail/library/base/newsletter/history', () => ok({ items: [revision(newsletter, 5), older] }))])
     const wrapper = await open('bases/newsletter/history')
     const rows = wrapper.findAll('.mail-history-row')
     expect(rows[0].text()).toContain('Version 5 · Edited')
     expect(rows[0].text()).toContain('Current')
     expect(rows[1].text()).toContain('Brand refresh')
-    vi.mocked(host.confirm).mockResolvedValueOnce(true)
     await rows[1].findAll('button').find(node => node.text() === 'Restore')!.trigger('click')
     await flushPromises()
-    expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ header: 'Restore version 4 of Newsletter?' }))
-    expect(restore).toHaveBeenCalledWith('/api/v1/mail/library/base/newsletter/restore', { revision: 4, expected_revision: 5 })
+    // Nothing is saved yet: the version is the draft, on the content section.
+    expect(host.confirm).not.toHaveBeenCalled()
+    expect(restore).not.toHaveBeenCalled()
+    expect(save).not.toHaveBeenCalled()
+    expect(wrapper.emitted('navigate')?.at(-1)).toEqual(['bases/newsletter/content'])
+    expect(wrapper.text()).toContain('Version 4 is loaded as your draft. Review and save to restore it.')
+    await control(wrapper, 'Review changes')!.trigger('click')
+    await flushPromises()
+    const note = document.body.querySelector<HTMLInputElement>('.mail-dialog input')!
+    expect(note.value).toBe('Restore version 4')
+    ;[...document.body.querySelectorAll('button')].find(node => node.textContent?.trim() === 'Save')!.click()
+    await flushPromises()
+    expect(save).toHaveBeenCalledWith('/api/v1/mail/library/base/newsletter', expect.objectContaining({ expected_revision: 5, note: 'Restore version 4', html: '<p>The older frame</p>' }))
+    wrapper.unmount()
+  })
+
+  it('asks before Restore replaces an unsaved draft, and keeps the draft when told to', async () => {
+    routes(welcome)
+    const wrapper = await open('messages/welcome/content')
+    await (await body(wrapper)).setValue('my unsaved text')
+    await wrapper.setProps({ route: 'messages/welcome/history' })
+    await flushPromises()
+    vi.mocked(host.confirm).mockResolvedValueOnce(false)
+    await wrapper.findAll('.mail-history-row')[1].findAll('button').find(node => node.text() === 'Restore')!.trigger('click')
+    await flushPromises()
+    expect(host.confirm).toHaveBeenCalledWith(expect.objectContaining({ header: 'Replace your unsaved changes with version 2?' }))
+    await wrapper.setProps({ route: 'messages/welcome/content' })
+    await flushPromises()
+    expect(((await body(wrapper)).element as HTMLTextAreaElement).value).toBe('my unsaved text')
     wrapper.unmount()
   })
 
@@ -217,15 +260,15 @@ describe('Library resource editor', () => {
     routes(button)
     const wrapper = await open('parts/button/variables')
     expect(wrapper.find('h1').text()).toBe('Inputs')
-    const cells = wrapper.findAll('.mail-variable-row')[1].findAll('input')
-    expect((cells[0].element as HTMLInputElement).value).toBe('action_url')
+    const first = wrapper.findAll('.mail-variable-card')[0]
+    expect((first.find('input').element as HTMLInputElement).value).toBe('action_url')
     await control(wrapper, 'Add input')!.trigger('click')
-    const added = wrapper.findAll('.mail-variable-row').at(-1)!.findAll('input')
-    await added[0].setValue('badge')
-    await added.at(-1)!.setValue('New')
+    const added = wrapper.findAll('.mail-variable-card').at(-1)!
+    await added.find('input').setValue('badge')
+    await added.find('input[aria-label="Sample value of badge"]').setValue('New')
     await flushPromises()
     expect(wrapper.text()).toContain('Unsaved changes')
-    await added[0].setValue('bad name')
+    await added.find('input').setValue('bad name')
     await flushPromises()
     expect(wrapper.text()).toContain('Use letters, digits and underscores')
     expect(control(wrapper, 'Review changes')!.attributes('disabled')).toBeDefined()

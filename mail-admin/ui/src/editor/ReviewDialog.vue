@@ -6,22 +6,24 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import { useMail } from '../context'
+import { useReturnFocus } from '../focus'
 import { kindLabels } from '../copy'
 import type { ResourceContent } from '../types'
 
 // The draft bar's review step: what changed, an optional note for History, then Save.
-const props = defineProps<{ visible: boolean; saved: ResourceContent; draft: ResourceContent; busy?: boolean; error?: string; dependents?: { names: string[]; reason: string } }>()
+const props = defineProps<{ visible: boolean; saved: ResourceContent; draft: ResourceContent; busy?: boolean; error?: string; dependents?: { names: string[]; reason: string }; suggestedNote?: string }>()
 const emit = defineEmits<{ close: []; save: [note: string] }>()
 const { library, go } = useMail()
 const note = ref('')
 const noteId = useId()
-watch(() => props.visible, open => { if (open) note.value = '' })
+watch(() => props.visible, open => { if (open) note.value = props.suggestedNote ?? '' })
+useReturnFocus(() => props.visible)
 
 const changes = computed(() => {
   const a = props.saved, b = props.draft
   const list: string[] = []
   if (a.title !== b.title || a.description !== b.description) list.push('Name and description')
-  if (a.base !== b.base) list.push(`Base template: ${library.find('base', b.base ?? '')?.title ?? b.base}`)
+  if (a.base !== b.base) list.push(`Base template: ${library.title('base', b.base ?? '') ?? b.base}`)
   if (a.subject !== b.subject) list.push('Subject')
   if (a.html !== b.html) list.push('HTML')
   if (a.text !== b.text) list.push('Plain text')
@@ -62,8 +64,8 @@ const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'm
           <strong>{{ dependents.names.length === 1 ? '1 message would break' : dependents.names.length + ' messages would break' }}.</strong>
           <span>{{ dependents.reason }}</span>
           <span class="mail-dependents">
-            <button v-for="name in dependents.names" :key="name" type="button" class="mail-text-link"
-              @click="emit('close'); go({ name: 'resource', kind: 'message', resource: name, section: 'content' })">{{ library.find('message', name)?.title ?? name }}</button>
+            <Button v-for="name in dependents.names" :key="name" link size="small" class="mail-inline-link" :label="library.title('message', name) ?? name"
+              @click="emit('close'); go({ name: 'resource', kind: 'message', resource: name, section: 'content' })" />
           </span>
         </div>
       </div>

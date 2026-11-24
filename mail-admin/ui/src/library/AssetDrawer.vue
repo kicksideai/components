@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import { host } from '@wippy-fe/proxy'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
@@ -10,10 +10,11 @@ import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import { errorCode, isMissing, library as libraryApi } from '../api'
 import { assetReference } from '../content'
 import { useMail } from '../context'
+import { useReturnFocus } from '../focus'
+import Skeleton from 'primevue/skeleton'
 import { actionLabels, bytes, describe, fullDate, kindIcons, personLabel, plural } from '../copy'
 import { emailDocument } from '../editor/render'
 import { problemOf } from '../editor/problems'
-import { useLibraryChanges } from '../realtime'
 import type { DraftRender, Resource, Revision } from '../types'
 import RefusalDialog, { type Refusal } from './RefusalDialog.vue'
 import AssetTile from './AssetTile.vue'
@@ -23,6 +24,9 @@ import UploadAsset from './UploadAsset.vue'
 const props = defineProps<{ name?: string }>()
 const emit = defineEmits<{ close: [] }>()
 const { library, go } = useMail()
+useReturnFocus(() => !!props.name)
+const drawer = ref<HTMLElement>()
+watch(() => !!props.name, open => { if (open) { library.ensure('message'); void nextTick(() => drawer.value?.focus()) } }, { immediate: true })
 
 const asset = shallowRef<Resource>()
 const revisions = shallowRef<Revision[]>([])
@@ -31,7 +35,7 @@ const shownIn = ref('')
 const loading = ref(false), missing = ref(false)
 const error = ref(''), actionError = ref(''), notice = ref('')
 const busy = ref<string | number>()
-const copied = ref(false)
+const copied = ref(false), linkCopied = ref(false)
 const replacing = ref(false)
 const refusal = ref<Refusal>()
 const begin = latestRequest()
@@ -59,10 +63,20 @@ async function load() {
     if (current()) loading.value = false
   }
 }
-watch(() => props.name, () => { copied.value = false; notice.value = actionError.value = ''; void load() }, { immediate: true })
-useLibraryChanges(change => { if (change.kind === 'asset' && change.name === props.name) void load() })
+watch(() => props.name, () => { copied.value = linkCopied.value = false; notice.value = actionError.value = ''; void load() }, { immediate: true })
+library.onRow(change => { if (change.kind === 'asset' && change.name === props.name) void load() })
 
-const messages = computed(() => (asset.value?.used_by?.messages ?? []).map(name => ({ name, title: library.find('message', name)?.title ?? name })))
+const messages = computed(() => (asset.value?.used_by?.messages ?? []).map(name => ({ name, title: library.title('message', name) })))
+async function copyLink() {
+  const item = asset.value
+  if (!item) return
+  try {
+    await navigator.clipboard.writeText(`${window.location.origin}/system/mail/assets/${encodeURIComponent(item.name)}`)
+    linkCopied.value = true
+  } catch {
+    linkCopied.value = false
+  }
+}
 const reference = computed(() => asset.value ? assetReference(asset.value.name) : '')
 async function copy() {
   try { await navigator.clipboard.writeText(reference.value); copied.value = true } catch { copied.value = false }
@@ -74,8 +88,8 @@ async function act(kind: 'reset' | 'delete' | 'restore', revision?: Revision) {
   if (kind === 'delete' && messages.value.length) {
     refusal.value = {
       header: `${item.title} is in use`,
-      message: `${plural(messages.value.length, 'message')} ${messages.value.length === 1 ? 'shows' : 'show'} it: ${messages.value.map(m => m.title).join(', ')}. Remove it from ${messages.value.length === 1 ? 'that message' : 'them'} first.`,
-      links: messages.value.map(m => ({ label: m.title, open: () => go({ name: 'resource', kind: 'message', resource: m.name, section: 'content' }) })),
+      message: `${plural(messages.value.length, 'message')} ${messages.value.length === 1 ? 'shows' : 'show'} it: ${messages.value.map(m => m.title ?? m.name).join(', ')}. Remove it from ${messages.value.length === 1 ? 'that message' : 'them'} first.`,
+      links: messages.value.map(m => ({ label: m.title ?? m.name, open: () => go({ name: 'resource', kind: 'message', resource: m.name, section: 'content' }) })),
     }
     return
   }
@@ -100,7 +114,7 @@ async function act(kind: 'reset' | 'delete' | 'restore', revision?: Revision) {
   } catch (failure) {
     const found = problemOf(failure)
     if (found?.dependents?.length) {
-      refusal.value = { header: `${item.title} is in use`, message: found.message, links: found.dependents.map(name => ({ label: library.find('message', name)?.title ?? name, open: () => go({ name: 'resource', kind: 'message', resource: name, section: 'content' }) })) }
+      refusal.value = { header: `${item.title} is in use`, message: found.message, links: found.dependents.map(name => ({ label: library.title('message', name) ?? name, open: () => go({ name: 'resource', kind: 'message', resource: name, section: 'content' }) })) }
     } else {
       actionError.value = errorCode(failure) === 'mail_revision_conflict'
         ? 'Someone changed this image while you were looking at it. The latest version is shown now; try again.' : describe(failure, 'The image could not be changed.')
@@ -116,12 +130,15 @@ const preview = computed(() => shown.value?.html ? emailDocument(shown.value.htm
 <template>
   <Drawer :visible="!!name" position="right" :modal="true" :dismissable="busy === undefined" :show-close-icon="false" class="mail-drawer"
     :pt="{ root: { style: 'width: min(560px, 92vw)' } }" aria-label="Image details" @update:visible="value => { if (!value) emit('close') }">
-    <div class="mail-drawer-body">
+    <div ref="drawer" class="mail-drawer-body" tabindex="-1">
       <header class="mail-drawer-head">
         <div class="mail-drawer-title">
           <Tag v-if="asset?.state === 'customized'" severity="info" value="Replaced" class="kx-tag-sm" />
           <h2>{{ asset?.title ?? 'Image' }}</h2>
         </div>
+        <Button text severity="secondary" :disabled="!asset" :aria-label="linkCopied ? 'Link copied' : 'Copy link'" :title="linkCopied ? 'Link copied' : 'Copy link'" @click="copyLink">
+          <template #icon><Icon :icon="linkCopied ? 'tabler:check' : 'tabler:link'" aria-hidden="true" /></template>
+        </Button>
         <Button text severity="secondary" aria-label="Close" title="Close" :disabled="busy !== undefined" @click="emit('close')">
           <template #icon><Icon icon="tabler:x" aria-hidden="true" /></template>
         </Button>
@@ -161,13 +178,14 @@ const preview = computed(() => shown.value?.html ? emailDocument(shown.value.htm
           <template v-else>
             <ul class="mail-list">
               <li v-for="message in messages" :key="message.name">
-                <button type="button" class="mail-row-link" @click="go({ name: 'resource', kind: 'message', resource: message.name, section: 'content' })">
-                  <Icon :icon="kindIcons.message" aria-hidden="true" /><span>{{ message.title }}</span>
-                </button>
+                <Button text severity="secondary" class="mail-row-link" @click="go({ name: 'resource', kind: 'message', resource: message.name, section: 'content' })">
+                  <Icon :icon="kindIcons.message" aria-hidden="true" />
+                  <Skeleton v-if="message.title === undefined" width="8rem" height="1rem" /><span v-else>{{ message.title }}</span>
+                </Button>
               </li>
             </ul>
             <div v-if="preview" class="mail-asset-context">
-              <iframe sandbox="" :srcdoc="preview" :title="'How ' + asset.title + ' looks in ' + (library.find('message', shownIn)?.title ?? shownIn)" />
+              <iframe sandbox="" :srcdoc="preview" :title="'How ' + asset.title + ' looks in ' + (library.title('message', shownIn) ?? '')" />
             </div>
           </template>
         </section>

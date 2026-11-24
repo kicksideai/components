@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { host } from '@wippy-fe/proxy'
 import { describe, expect, it, vi } from 'vitest'
 import MailAdmin from './MailAdmin.vue'
-import { notify } from '../test/setup'
+import { hostVisible, notify, subscriptions } from '../test/setup'
 import { calls, get, ok, refuse, resource, row, serve } from '../test/fixtures'
 import type { LibraryRow } from '../types'
 
@@ -40,14 +40,15 @@ describe('Mail administration shell', () => {
   it('lists every resource with its kind, source and usage from the summary rows', async () => {
     serveLibrary()
     const wrapper = await open()
-    expect(railLabels(wrapper)).toEqual(['All resources', 'Messages', 'Base templates', 'Parts', 'Assets', 'Activity'])
+    expect(railLabels(wrapper)).toEqual(['All resources', 'Messages', 'Base templates', 'Parts', 'Images', 'Activity'])
     expect(libraryParams().every(params => params.view === 'summary')).toBe(true)
-    expect(rowNames(wrapper)).toEqual(['Newsletter', 'Standard', 'Footer', 'Notice', 'Weekly report', 'Mail logo'])
+    // The server's order, as it pages.
+    expect(rowNames(wrapper)).toEqual(['Standard', 'Newsletter', 'Footer', 'Notice', 'Weekly report', 'Mail logo'])
     const text = wrapper.findAll('tbody tr').map(node => node.text())
-    expect(text[1]).toContain('Included with Mail')
-    expect(text[1]).toContain('2 messages')
+    expect(text[0]).toContain('Included with Mail')
+    expect(text[0]).toContain('2 messages')
     expect(text[2]).toContain('Customized')
-    expect(text[0]).toContain('Created by Dana Lee')
+    expect(text[1]).toContain('Created by Dana Lee')
     expect(text[3]).toContain('1 recent sender')
     expect(text[5]).toContain('Image')
     wrapper.unmount()
@@ -87,11 +88,48 @@ describe('Mail administration shell', () => {
     wrapper.unmount()
   })
 
-  it('opens Delivery settings from the rail gear', async () => {
-    serveLibrary()
+  it('reads one page of the library on mount and on return to the page, and shows more on request', async () => {
+    serve([
+      get('/api/v1/mail/library', (_path, options) => {
+        const cursor = (options as { params: Record<string, string> }).params.cursor
+        return ok(cursor ? { items: rows.slice(3) } : { items: rows.slice(0, 3), next_cursor: 'c1' })
+      }),
+      get('/api/v1/mail/delivery', () => ok({ configured: true })),
+    ])
     const wrapper = await open()
-    await wrapper.find('.kx-railhead-acts button[aria-label="Application defaults"]').trigger('click')
-    expect(host.navigate).toHaveBeenCalledWith('/system/settings/mail')
+    expect(libraryParams()).toHaveLength(1)
+    expect(wrapper.find('.mail-count').text()).toBe('First 3 resources')
+    hostVisible.value = false
+    await flushPromises()
+    hostVisible.value = true
+    await flushPromises()
+    expect(libraryParams().filter(params => !params.cursor)).toHaveLength(1)
+    await wrapper.findAll('.mail-more button').at(-1)!.trigger('click')
+    await flushPromises()
+    expect(libraryParams().at(-1)?.cursor).toBe('c1')
+    expect(rowNames(wrapper)).toHaveLength(6)
+    wrapper.unmount()
+  })
+
+  it('keeps the rows when Show more fails and offers Retry beside them', async () => {
+    serve([
+      get('/api/v1/mail/library', (_path, options) => (options as { params: Record<string, string> }).params.cursor
+        ? refuse(500, { error: 'down', kind: 'INTERNAL' }) : ok({ items: rows.slice(0, 3), next_cursor: 'c1' })),
+      get('/api/v1/mail/delivery', () => ok({ configured: true })),
+    ])
+    const wrapper = await open()
+    await wrapper.findAll('.mail-more button').at(-1)!.trigger('click')
+    await flushPromises()
+    expect(rowNames(wrapper)).toHaveLength(3)
+    expect(wrapper.find('.mail-more .kx-err').text()).toContain('More resources could not be loaded.')
+    expect(wrapper.findAll('.mail-more button').at(-1)!.text()).toBe('Retry')
+    wrapper.unmount()
+  })
+
+  it('shows no directory gear: the shared actions cannot take Mail’s label or be hidden from people without delivery administration', async () => {
+    serveLibrary({ send: true, edit_library: true, administer_delivery: false })
+    const wrapper = await open()
+    expect(wrapper.find('button[aria-label="Application defaults"]').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -111,17 +149,33 @@ describe('Mail administration shell', () => {
     wrapper.unmount()
   })
 
-  it('refetches the library on a library change without polling', async () => {
+  it('updates and adds rows from a library change by reading that one resource, without listing again or polling', async () => {
     serveLibrary()
     const interval = vi.spyOn(globalThis, 'setInterval')
     const wrapper = await open()
     const before = libraryParams().length
-    serveLibrary(undefined, [...rows, row(resource('part', 'signature', { title: 'Signature', state: 'created', author: 'user-1', revision: 9 }))])
+    const signature = resource('part', 'signature', { title: 'Signature', state: 'created', author: 'user-1', revision: 9 })
+    serve([
+      get('/api/v1/mail/library', () => ok({ items: rows })),
+      get('/api/v1/mail/delivery', () => ok({ configured: true })),
+      get('/api/v1/mail/library/part/signature', () => ok(signature)),
+      get('/api/v1/mail/library/part/footer', () => ok(resource('part', 'footer', { title: 'Footer renamed', state: 'customized', revision: 4 }))),
+    ])
     notify('mail.library.changed', { topic: 'mail.library.changed', data: { kind: 'part', name: 'signature', revision: 9 } })
+    notify('mail.library.changed', { topic: 'mail.library.changed', data: { kind: 'part', name: 'footer', revision: 4 } })
     await flushPromises()
-    expect(libraryParams().length).toBeGreaterThan(before)
-    expect(rowNames(wrapper)).toContain('Signature')
+    expect(libraryParams().length).toBe(before)
+    expect(rowNames(wrapper)).toEqual(['Standard', 'Newsletter', 'Footer renamed', 'Notice', 'Weekly report', 'Mail logo', 'Signature'])
     expect(interval).not.toHaveBeenCalled()
     wrapper.unmount()
+  })
+
+  it('stops listening to changes once it is gone', async () => {
+    serveLibrary()
+    const wrapper = await open()
+    expect(subscriptions.get('mail.library.changed')?.size).toBeGreaterThan(0)
+    wrapper.unmount()
+    expect(subscriptions.has('mail.library.changed')).toBe(false)
+    expect(subscriptions.has('mail.message.changed')).toBe(false)
   })
 })

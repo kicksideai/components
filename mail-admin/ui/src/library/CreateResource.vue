@@ -11,8 +11,10 @@ import Textarea from 'primevue/textarea'
 import { errorCode, library as libraryApi } from '../api'
 import { blank } from '../content'
 import { useMail, type CreateIntent } from '../context'
+import { useReturnFocus } from '../focus'
 import { describe, kindIcons, kindLabels, namePattern, slug } from '../copy'
 import type { TemplateKind } from '../types'
+import { rowOf } from './useLibrary'
 
 const props = defineProps<{ visible: boolean; intent: CreateIntent }>()
 const emit = defineEmits<{ close: [] }>()
@@ -47,20 +49,29 @@ function startFrom(name: string) {
   }
 }
 
-watch(() => props.visible, open => {
+// The resources to start from are read when the dialog opens, for the chosen kind only.
+watch(() => props.visible, async open => {
   if (!open) return
   kind.value = (props.intent.from?.kind as TemplateKind | undefined) ?? props.intent.kind ?? 'message'
   title.value = reference.value = description.value = source.value = ''
   error.value = referenceError.value = ''
   referenceEdited.value = false
-  if (props.intent.from) startFrom(props.intent.from.name)
-  else source.value = BLANK
+  if (props.intent.from) {
+    source.value = props.intent.from.name
+    if (!library.ready(kind.value)) await library.load(kind.value)
+    if (props.visible) startFrom(props.intent.from.name)
+  } else {
+    source.value = BLANK
+    library.ensure(kind.value)
+  }
 }, { immediate: true })
-watch(kind, () => {
+watch(kind, value => {
   if (props.intent.from) return
   source.value = BLANK
   description.value = ''
+  if (props.visible) library.ensure(value)
 })
+useReturnFocus(() => props.visible)
 watch(title, value => { if (!referenceEdited.value) reference.value = slug(value) })
 
 const referenceHint = computed(() => kind.value === 'message'
@@ -86,7 +97,7 @@ async function submit() {
         kind: kind.value, name: reference.value, title: title.value.trim(), description: description.value.trim(),
         from: { kind: kind.value, name: source.value },
       })
-    await library.load()
+    library.patch(created.kind, created.name, rowOf(created))
     emit('close')
     go({ name: 'resource', kind: created.kind as TemplateKind, resource: created.name, section: 'content' })
   } catch (failure) {
@@ -98,7 +109,7 @@ async function submit() {
 }
 
 const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'mail-dialog-content' }, footer: { class: 'mail-dialog-footer' } }
-const heading = computed(() => props.intent.from ? `Duplicate ${library.find(props.intent.from.kind, props.intent.from.name)?.title ?? ''}` : `New ${kindLabels[kind.value].toLowerCase()}`)
+const heading = computed(() => props.intent.from ? `Duplicate ${library.title(props.intent.from.kind, props.intent.from.name) ?? ''}`.trim() : `New ${kindLabels[kind.value].toLowerCase()}`)
 </script>
 
 <template>
@@ -120,7 +131,7 @@ const heading = computed(() => props.intent.from ? `Duplicate ${library.find(pro
         <div v-if="!fixedKind" class="mail-field">
           <label class="mail-field-label" :for="ids.source">Start from</label>
           <Select :model-value="source" :input-id="ids.source" :options="sources" option-label="label" option-value="value" append-to="self"
-            placeholder="Choose a resource…" @update:model-value="startFrom" />
+            placeholder="Choose a resource…" filter :loading="!library.ready(kind)" @update:model-value="startFrom" />
         </div>
         <div class="mail-field">
           <label class="mail-field-label" :for="ids.title">Name</label>

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { computed, ref, useId, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
@@ -8,23 +8,24 @@ import Password from 'primevue/password'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import ToggleSwitch from 'primevue/toggleswitch'
+import SettingsItem from '@kickside/ui-kit/SettingsItem.vue'
 import type { Setting } from './api'
 
 // Rows for a driver that ships no settings view, generated from its setting definitions. Like a driver's own
 // view, the rows report changes and validity; the block keeps the draft and saves.
-const props = defineProps<{ settings: Setting[]; errors: Record<string, string>; disabled?: boolean }>()
+const props = defineProps<{ settings: Setting[]; errors: Record<string, string>; draft?: Record<string, unknown>; disabled?: boolean }>()
 const emit = defineEmits<{ change: [values: Record<string, unknown>]; validity: [valid: boolean] }>()
-const base = useId()
 
+const secret = (item: Setting) => !!item.is_secret || item.value_type === 'secret'
 const visible = computed(() => props.settings.filter(item => item.editable !== false).sort((a, b) => (a.order ?? 100) - (b.order ?? 100)))
-const values = ref<Record<string, unknown>>({})
-const replacing = ref<Record<string, boolean>>({})
-watch(() => props.settings, list => {
-  values.value = Object.fromEntries(list.map(item => [item.key, item.is_secret || item.value_type === 'secret' ? '' : item.value ?? item.default ?? '']))
-  replacing.value = {}
-}, { immediate: true })
+const stored = (item: Setting) => secret(item) ? '' : item.value ?? item.default ?? ''
+const values = ref<Record<string, unknown>>(Object.fromEntries(props.settings.map(item => [item.key, props.draft?.[item.key] ?? stored(item)])))
+const replacing = ref<Record<string, boolean>>(Object.fromEntries(props.settings.filter(secret).map(item => [item.key, props.draft?.[item.key] !== undefined])))
 
-const secret = (item: Setting) => item.is_secret || item.value_type === 'secret'
+function cancelReplace(item: Setting) {
+  replacing.value[item.key] = false
+  values.value[item.key] = ''
+}
 function formProblem(item: Setting): string {
   const value = values.value[item.key]
   const pattern = item.schema?.pattern
@@ -36,7 +37,7 @@ watch(values, current => {
   for (const item of props.settings) {
     const value = current[item.key]
     if (secret(item)) { if (value) changes[item.key] = value; continue }
-    if (value !== (item.value ?? item.default ?? '')) changes[item.key] = value
+    if (value !== stored(item)) changes[item.key] = value
   }
   emit('change', changes)
   emit('validity', props.settings.every(item => !formProblem(item)))
@@ -45,28 +46,28 @@ const options = (item: Setting) => (item.schema?.enum ?? []).map(value => ({ lab
 </script>
 
 <template>
-  <fieldset class="mail-delivery-rows" :disabled="disabled">
-    <p v-if="!visible.length" class="mail-setting-row mail-setting-help">This service needs no settings of its own.</p>
-    <div v-for="item in visible" :key="item.key" class="mail-setting-row" :class="{ 'mail-setting-invalid': problem(item) }">
-      <div class="mail-setting-text">
-        <label class="mail-setting-title" :for="base + item.key">{{ item.title || item.key }}</label>
-        <p v-if="item.description" class="mail-setting-help">{{ item.description }}</p>
-      </div>
-      <div class="mail-setting-control">
+  <SettingsItem v-if="!visible.length" title="No settings of its own" description="This service is ready once it is chosen." />
+  <SettingsItem v-for="item in visible" :key="item.key" :title="item.title || item.key" :description="item.description || undefined"
+    :class="{ 'mail-setting-invalid': problem(item) }">
+    <template #actions>
+      <span class="mail-setting-control">
         <template v-if="secret(item)">
-          <div v-if="item.has_value && !replacing[item.key]" class="mail-secret">
-            <Tag severity="success" value="Set" />
-            <Button label="Replace" severity="secondary" outlined size="small" @click="replacing[item.key] = true" />
-          </div>
-          <Password v-else v-model="values[item.key] as string" :input-id="base + item.key" :feedback="false" toggle-mask fluid />
+          <span v-if="item.has_value && !replacing[item.key]" class="mail-secret">
+            <Tag severity="success" value="Set" class="kx-tag-sm" />
+            <Button label="Replace" severity="secondary" outlined size="small" :disabled="disabled" @click="replacing[item.key] = true" />
+          </span>
+          <span v-else class="mail-secret">
+            <Password v-model="values[item.key] as string" :aria-label="item.title || item.key" :feedback="false" toggle-mask fluid :disabled="disabled" />
+            <Button v-if="item.has_value" label="Cancel" severity="secondary" text size="small" :disabled="disabled" @click="cancelReplace(item)" />
+          </span>
         </template>
-        <Select v-else-if="options(item).length" v-model="values[item.key]" :input-id="base + item.key" :options="options(item)"
-          option-label="label" option-value="value" append-to="self" fluid />
-        <ToggleSwitch v-else-if="item.value_type === 'bool'" v-model="values[item.key] as boolean" :input-id="base + item.key" />
-        <InputNumber v-else-if="item.value_type === 'int'" v-model="values[item.key] as number" :input-id="base + item.key" fluid />
-        <InputText v-else v-model="values[item.key] as string" :id="base + item.key" fluid :invalid="!!problem(item)" />
+        <Select v-else-if="options(item).length" v-model="values[item.key]" :aria-label="item.title || item.key" :options="options(item)"
+          option-label="label" option-value="value" append-to="self" fluid :disabled="disabled" />
+        <ToggleSwitch v-else-if="item.value_type === 'bool'" v-model="values[item.key] as boolean" :aria-label="item.title || item.key" :disabled="disabled" />
+        <InputNumber v-else-if="item.value_type === 'int'" v-model="values[item.key] as number" :aria-label="item.title || item.key" fluid :disabled="disabled" />
+        <InputText v-else v-model="values[item.key] as string" :aria-label="item.title || item.key" fluid :invalid="!!problem(item)" :disabled="disabled" />
         <small v-if="problem(item)" class="mail-field-error" role="alert">{{ problem(item) }}</small>
-      </div>
-    </div>
-  </fieldset>
+      </span>
+    </template>
+  </SettingsItem>
 </template>

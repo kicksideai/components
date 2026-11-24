@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue'
+import Skeleton from 'primevue/skeleton'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
@@ -16,17 +17,18 @@ import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { isDenied, library as libraryApi } from '../api'
 import { useMail } from '../context'
 import { describe, kindIcons, kindLabels, kindPlurals, plural, shortDate } from '../copy'
-import { useLibraryChanges } from '../realtime'
 import { kindOf, type LibrarySection } from '../route'
 import type { LibraryRow, ResourceKind } from '../types'
 import PreviewGallery from './PreviewGallery.vue'
 import ResourceSource from './ResourceSource.vue'
-import type { StateFilter } from './useLibrary'
+type StateFilter = 'all' | 'original' | 'customized' | 'created'
 
 const props = defineProps<{ section: Exclude<LibrarySection, 'assets'> }>()
 const { library, go, create } = useMail()
 
 const kind = computed(() => kindOf(props.section))
+// Messages show their base template's title.
+watch(kind, value => { if (value === 'message') library.ensure('base') }, { immediate: true })
 const state = ref<StateFilter>('all')
 const query = ref(''), search = ref('')
 let searchTimer: ReturnType<typeof setTimeout> | undefined
@@ -39,11 +41,12 @@ watch(() => props.section, () => { query.value = search.value = ''; state.value 
 const rows = shallowRef<LibraryRow[]>([])
 const cursor = ref<string>()
 const loading = ref(true), loaded = ref(false), more = ref(false), denied = ref(false)
-const error = ref('')
+const error = ref(''), moreError = ref(''), refreshError = ref('')
 const begin = latestRequest()
 const filter = () => ({ kind: kind.value, state: state.value === 'all' ? undefined : state.value, q: search.value || undefined })
 
-async function load() {
+// A new filter starts over; a refresh of the same filter keeps the rows shown until the new page arrives.
+async function load(refresh = false) {
   const current = begin()
   loading.value = true
   try {
@@ -51,13 +54,15 @@ async function load() {
     if (!current()) return
     rows.value = page.items
     cursor.value = page.next_cursor
-    error.value = ''
+    error.value = moreError.value = refreshError.value = ''
     denied.value = false
     loaded.value = true
   } catch (failure) {
     if (!current()) return
     denied.value = isDenied(failure)
-    error.value = denied.value ? '' : describe(failure, 'The mail library could not be loaded.')
+    const message = denied.value ? '' : describe(failure, 'The mail library could not be loaded.')
+    if (refresh && loaded.value && !denied.value) refreshError.value = message
+    else error.value = message
   } finally {
     if (current()) loading.value = false
   }
@@ -66,20 +71,44 @@ async function loadMore() {
   if (!cursor.value || more.value) return
   const current = begin()
   more.value = true
+  moreError.value = ''
   try {
     const page = await libraryApi.page({ ...filter(), cursor: cursor.value })
     if (!current()) return
     rows.value = [...rows.value, ...page.items]
     cursor.value = page.next_cursor
   } catch (failure) {
-    if (current()) error.value = describe(failure, 'More resources could not be loaded.')
+    if (current()) moreError.value = describe(failure, 'More resources could not be loaded.')
   } finally {
     more.value = false
   }
 }
 watch([kind, state, search], () => { void load() })
-useHostVisibilityRefresh(load)
-useLibraryChanges(() => { void load() })
+// Reads on mount, and again when the page is shown after being hidden.
+useHostVisibilityRefresh(() => load(loaded.value))
+
+// Rows come in the server's order, by reference. A change updates its row in place, or adds a new resource where
+// that order puts it among the rows already shown; the search and state filters are the server's, so a row the
+// filters may no longer match is kept until the next read.
+const keyOf = (row: { kind: string; name: string }) => row.kind + '/' + row.name
+library.onRow((change, row) => {
+  const key = keyOf(change)
+  const index = rows.value.findIndex(item => keyOf(item) === key)
+  if (index >= 0) {
+    const next = [...rows.value]
+    if (row) next[index] = row
+    else next.splice(index, 1)
+    rows.value = next
+    return
+  }
+  if (!row || (kind.value && row.kind !== kind.value) || state.value !== 'all' || search.value) return
+  const last = rows.value[rows.value.length - 1]
+  if (cursor.value && last && key > keyOf(last)) return
+  const at = rows.value.findIndex(item => keyOf(item) > key)
+  const next = [...rows.value]
+  next.splice(at < 0 ? next.length : at, 0, row)
+  rows.value = next
+})
 
 const head = computed(() => {
   switch (kind.value) {
@@ -93,11 +122,9 @@ const states: { label: string; value: StateFilter }[] = [
   { label: 'All', value: 'all' }, { label: 'Customized', value: 'customized' },
   { label: 'Created here', value: 'created' }, { label: 'Original', value: 'original' },
 ]
-const order: Record<ResourceKind, number> = { base: 0, part: 1, message: 2, asset: 3 }
-const sorted = computed(() => [...rows.value].sort((a, b) => order[a.kind] - order[b.kind] || a.title.localeCompare(b.title)))
 const countLabel = computed(() => {
   const noun = kind.value ? kindLabels[kind.value].toLowerCase() : 'resource'
-  return plural(rows.value.length, noun) + (cursor.value ? ' so far' : '')
+  return cursor.value ? `First ${plural(rows.value.length, noun)}` : plural(rows.value.length, noun)
 })
 
 function usedBy(item: LibraryRow): string {
@@ -106,8 +133,8 @@ function usedBy(item: LibraryRow): string {
   if (item.kind === 'message') return usage?.recent_sources ? plural(usage.recent_sources, 'recent sender') : '—'
   return ''
 }
-function baseTitle(item: LibraryRow): string {
-  return item.base ? library.find('base', item.base)?.title ?? item.base : ''
+function baseTitle(item: LibraryRow): string | undefined {
+  return item.base ? library.title('base', item.base) : ''
 }
 function open(item: LibraryRow) {
   if (item.kind === 'asset') go({ name: 'library', section: 'assets', asset: item.name })
@@ -136,6 +163,10 @@ const gallery = ref(false)
     <span>{{ error }}</span>
     <Button label="Retry" severity="secondary" outlined size="small" @click="load()" />
   </div>
+  <div v-if="refreshError" class="kx-err mail-error" role="alert">
+    <span>{{ refreshError }} The list shows what was loaded before.</span>
+    <Button label="Retry" severity="secondary" outlined size="small" @click="load(true)" />
+  </div>
   <p v-else-if="loading && !loaded" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading mail library…</p>
 
   <EmptyState v-else-if="emptyKind && kind" :icon="kindIcons[kind]" :title="'No ' + kindPlurals[kind].toLowerCase() + ' yet'"
@@ -153,11 +184,11 @@ const gallery = ref(false)
     </div>
 
     <p v-if="!rows.length" class="mail-muted mail-nomatch" role="status">Nothing matches. Try another name or a word from the template.</p>
-    <DataTable v-else :value="sorted" :data-key="(row: LibraryRow) => row.kind + '/' + row.name" class="mail-table" row-hover
+    <DataTable v-else :value="rows" :data-key="(row: LibraryRow) => row.kind + '/' + row.name" class="mail-table" row-hover
       :pt="{ table: { 'aria-label': head.title } }" @row-click="event => open(event.data)">
       <Column header="Name" header-class="mail-col-name" body-class="mail-col-name">
         <template #body="{ data }">
-          <button type="button" class="mail-name" @click.stop="open(data)">{{ data.title }}</button>
+          <Button link class="mail-name" :label="data.title" @click.stop="open(data)" />
           <span v-if="data.description" class="mail-sub">{{ data.description }}</span>
         </template>
       </Column>
@@ -167,7 +198,10 @@ const gallery = ref(false)
         </template>
       </Column>
       <Column v-if="kind === 'message'" header="Base template">
-        <template #body="{ data }">{{ baseTitle(data) }}</template>
+        <template #body="{ data }">
+          <Skeleton v-if="baseTitle(data) === undefined" width="8rem" height="1rem" />
+          <template v-else>{{ baseTitle(data) }}</template>
+        </template>
       </Column>
       <Column header="Source" header-class="mail-col-source" body-class="mail-col-source">
         <template #body="{ data }"><ResourceSource :resource="data" /></template>
@@ -180,7 +214,8 @@ const gallery = ref(false)
       </Column>
     </DataTable>
     <div v-if="cursor" class="mail-more">
-      <Button label="Show more" severity="secondary" outlined :loading="more" @click="loadMore" />
+      <span v-if="moreError" class="kx-err inline" role="alert">{{ moreError }}</span>
+      <Button :label="moreError ? 'Retry' : 'Show more'" severity="secondary" outlined :loading="more" @click="loadMore" />
     </div>
   </template>
   <PreviewGallery :visible="gallery" @close="gallery = false" />
