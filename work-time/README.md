@@ -2,7 +2,7 @@
 # Work Time
 
 `kickside/work-time` adds time tracking to KickSide Work and requires Work
-0.1.47 or newer. Bind
+0.1.49 or newer. Bind
 `kickside.work.time:target_db` to the same SQLite or PostgreSQL database as
 `kickside.work:target_db`. Work Time can be enabled on a board without Planning
 or Search.
@@ -27,3 +27,8 @@ represents unallocated time. Dates in the log, daily and receipt tables use
 ISO calendar days in UTC. An idempotency receipt has a separate expiry only
 after explicit deletion of the entry. Attachment and item fences are kept
 separately from aggregates, so cleanup can drop empty aggregate buckets.
+
+`time.over_estimate` signals changes to over-estimate state observed by the
+projection on boards with board-wide item visibility, so a crossing that
+reverts between observations may emit no event and automations can query the
+over-estimate filter for the current state.
