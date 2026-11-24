@@ -1,10 +1,10 @@
-import { ref as C, createApp as sr, inject as Ne, onMounted as nr, onUnmounted as lr, watch as ie, renderSlot as ne, createCommentVNode as S, h as cr, Teleport as pr, defineComponent as Q, useId as ue, openBlock as l, createElementBlock as u, unref as o, normalizeClass as ge, createElementVNode as s, createTextVNode as W, toDisplayString as h, computed as V, createBlock as U, resolveDynamicComponent as dr, normalizeProps as ur, guardReactiveProps as mr, createSlots as et, withCtx as T, Fragment as H, renderList as ce, createVNode as m, shallowReactive as fr, onBeforeUnmount as Tt, shallowRef as be, withModifiers as tt, useModel as hr, mergeModels as vr, provide as gr } from "vue";
+import { ref as C, createApp as sr, inject as Ne, onMounted as nr, onUnmounted as lr, watch as ie, renderSlot as ne, createCommentVNode as S, h as cr, Teleport as pr, defineComponent as Q, useId as ue, openBlock as l, createElementBlock as u, unref as o, normalizeClass as ge, createElementVNode as s, createTextVNode as W, toDisplayString as h, computed as V, createBlock as U, resolveDynamicComponent as dr, normalizeProps as ur, guardReactiveProps as mr, createSlots as et, withCtx as A, Fragment as H, renderList as ce, createVNode as m, shallowReactive as fr, onBeforeUnmount as At, shallowRef as be, withModifiers as tt, useModel as hr, mergeModels as vr, provide as gr } from "vue";
 import { addCollection as br, Icon as I } from "@iconify/vue";
 import { config as dt, addIcons as yr, on as rt, applyThemeMode as Le, host as Ce, hostCss as xr, loadCss as kr, api as ee, define as wr } from "@wippy-fe/proxy";
 import { getActivePinia as _r, createPinia as Cr, setActivePinia as $r } from "pinia";
 import Sr from "primevue/config";
-import Ar from "primevue/contextmenu";
-import Tr from "primevue/menu";
+import Tr from "primevue/contextmenu";
+import Ar from "primevue/menu";
 import Lr from "primevue/portal";
 import G from "primevue/button";
 import X from "primevue/column";
@@ -808,7 +808,7 @@ let wt = !1;
 function wa() {
   if (wt)
     return;
-  const e = Tr;
+  const e = Ar;
   !e.methods || typeof e.methods.bindOutsideClickListener != "function" || (e.methods.bindOutsideClickListener = function() {
     this.outsideClickListener || (this.outsideClickListener = (t) => {
       const r = t.composedPath(), i = this.container && !r.includes(this.container), n = !(this.target && r.includes(this.target));
@@ -820,7 +820,7 @@ let _t = !1;
 function _a() {
   if (_t)
     return;
-  const e = Ar;
+  const e = Tr;
   !e.methods || typeof e.methods.bindOutsideClickListener != "function" || (e.methods.bindOutsideClickListener = function() {
     this.outsideClickListener || (this.outsideClickListener = (t) => {
       const r = t.composedPath(), i = this.container && !r.includes(this.container), n = this.visible ? !(this.target && r.includes(this.target)) : !0;
@@ -857,7 +857,7 @@ const $a = {
     wa(), _a(), Ca(), e.use(Sr, { theme: "none" });
   }
 }, Sa = '.kx-settings-shell.kx-shell{grid-template-columns:232px minmax(0,1fr)}.kx-rail.kx-settings-list-rail{flex:0 0 232px;min-width:0;background:var(--p-content-background)}.kx-settings-list-rail .kx-railhead{min-height:53px}.kx-settings-list-rail .kx-rail-body{padding:8px 12px 12px}.kx-settings-rail-standalone{display:contents}.kx-settings-rail{flex:0 0 232px;min-width:0;overflow-y:auto;overflow-x:hidden;padding:16px 12px;display:flex;flex-direction:column;gap:14px;border-right:1px solid var(--p-content-border-color)}.kx-settings-rail-section{display:flex;flex-direction:column;gap:2px}.kx-settings-rail-group{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--p-text-muted-color);margin:2px 0 4px 10px}.kx-settings-rail-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border:none;border-radius:8px;cursor:pointer;font:inherit;font-size:13px;font-weight:500;color:var(--p-text-color);background:transparent;transition:background .15s,color .15s}.kx-settings-rail-item:hover:where(:not([aria-current=true])){background:color-mix(in srgb,var(--p-text-color) 7%,transparent)}.kx-settings-rail-item[aria-current=true]{background:color-mix(in srgb,var(--p-primary-color) 14%,transparent);color:var(--p-primary-color)}.kx-settings-rail-icon{flex:0 0 auto;width:18px;height:18px}.kx-settings-rail-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kx-settings-rail-leading{display:contents}@media(max-width:640px){.kx-settings-rail{flex:0 0 auto;max-height:40%;flex-direction:row;flex-wrap:wrap;gap:6px;border-right:none;border-bottom:1px solid var(--p-content-border-color)}.kx-settings-rail-section{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px}.kx-settings-rail-group{margin:0 6px 0 2px}.kx-settings-rail:not(.kx-settings-rail-framed) .kx-settings-rail-section{display:flex;flex:0 0 100%}}.kx-settings-list-rail .kx-settings-rail-framed{padding:0;border:0;overflow:visible}@media(max-width:760px){.kx-settings-shell.kx-shell{grid-template-columns:minmax(0,1fr)}.kx-rail.kx-settings-list-rail{flex:0 0 auto}.kx-settings-rail-framed{gap:8px}.kx-settings-rail-framed .kx-settings-rail-section{flex-flow:row wrap;gap:4px}.kx-settings-rail-framed .kx-settings-rail-group{flex-basis:100%}.kx-settings-rail-framed .kx-settings-rail-item{width:auto}}.kx-settings-list-rail .picker-search{flex:none;padding:8px 10px}.kx-settings-list-rail .picker-search-input{width:100%}.kx-settings-list-rail .picker-search-input::-webkit-search-cancel-button{display:none}.kx-settings-list-rail .picker-search-clear{position:absolute;right:0;top:0;height:100%}.kx-settings-list-rail .picker-search:has(.picker-search-clear) .picker-search-input{padding-inline-end:34px}.kx-settings-list-rail .picker-group{margin:0;padding:10px 6px 4px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--p-text-muted-color)}.kx-settings-list-rail .picker-list{margin:0;padding:0;list-style:none}.kx-settings-list-rail .picker-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:none;border-radius:var(--kx-radius-8);background:transparent;color:var(--p-text-color);cursor:pointer;text-align:left;transition:background .12s;font:inherit}.kx-settings-list-rail .picker-row:hover:where(:not(:disabled,[aria-current=true])){background:color-mix(in srgb,var(--p-text-color) 7%,transparent)}.kx-settings-list-rail .picker-row[aria-current=true]{background:color-mix(in srgb,var(--p-primary-color) 14%,transparent);color:var(--p-primary-color)}.kx-settings-list-rail .picker-row:disabled{color:var(--p-text-muted-color);cursor:default}.kx-settings-list-rail .picker-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kx-settings-list-rail .picker-message{color:var(--p-text-muted-color);font-size:11.5px;line-height:1.3;padding:7px 10px}:is(.kx-settings-rail-item,.kx-settings-list-rail .picker-row):focus:not(:focus-visible){outline:none;box-shadow:none}:is(.kx-settings-rail-item,.kx-settings-list-rail .picker-row):focus-visible{outline:var(--p-focus-ring-width, 2px) var(--p-focus-ring-style, solid) var(--p-focus-ring-color, currentColor);outline-offset:calc(-1 * var(--p-focus-ring-width, 2px));box-shadow:none}.system-section-head{display:flex;flex:none;flex-wrap:wrap;align-items:center;gap:12px;margin:0}.system-section-head-text{flex:1 1 180px;min-width:0}.system-section-head-text h1{margin:0;font-size:17px;font-weight:700;letter-spacing:-.2px;color:var(--p-text-color)}.system-section-head-text p{margin:2px 0 0;font-size:13px;color:var(--p-text-muted-color)}.system-section-head .kx-head-actions{justify-content:flex-end}.kx-disclosure-panel:has(>.kx-disclosure-toggle[aria-expanded=false]){border-bottom-width:0}.kx-disclosure .kx-disclosure-motion-enter-active,.kx-disclosure .kx-disclosure-motion-leave-active{display:grid;grid-template-rows:1fr;overflow:hidden;transition:grid-template-rows var(--p-form-field-transition-duration, .2s) ease-in-out}.kx-disclosure .kx-disclosure-motion-enter-from,.kx-disclosure .kx-disclosure-motion-leave-to{grid-template-rows:0fr}.kx-disclosure .kx-disclosure-content{min-height:0;overflow:hidden}@media(prefers-reduced-motion:reduce){.kx-disclosure .kx-disclosure-motion-enter-active,.kx-disclosure .kx-disclosure-motion-leave-active,.kx-disclosure .kx-disclosure-toggle{transition:none}}:root{--p-form-field-padding-x: .75rem;--p-form-field-padding-y: .5rem;--p-form-field-sm-padding-x: .625rem;--p-form-field-sm-padding-y: .375rem;--p-form-field-lg-padding-x: .875rem;--p-form-field-lg-padding-y: .625rem;--p-form-field-border-radius: .375rem;--p-form-field-transition-duration: .2s;--p-form-field-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), 0 1px 2px 0 rgba(18, 18, 23, .05);--p-focus-ring-width: 1px;--p-focus-ring-style: solid;--p-focus-ring-color: color-mix(in srgb, var(--p-primary-color) 100%, transparent);--p-focus-ring-offset: 2px;--p-toggleswitch-width: 2.5rem;--p-toggleswitch-height: 1.5rem;--p-toggleswitch-border-radius: 30px;--p-toggleswitch-gap: .25rem;--p-toggleswitch-border-width: 1px;--p-toggleswitch-transition-duration: .2s;--p-toggleswitch-slide-duration: .2s;--p-toggleswitch-handle-size: 1rem;--p-toggleswitch-handle-border-radius: 9999px}:root{color-scheme:light dark;--p-primary: rgb(0, 95, 178);--p-primary-50: color-mix(in srgb, var(--p-primary) 5%, white);--p-primary-100: color-mix(in srgb, var(--p-primary) 10%, white);--p-primary-200: color-mix(in srgb, var(--p-primary) 20%, white);--p-primary-300: color-mix(in srgb, var(--p-primary) 30%, white);--p-primary-400: color-mix(in srgb, var(--p-primary) 40%, white);--p-primary-500: var(--p-primary);--p-primary-600: color-mix(in srgb, var(--p-primary) 80%, black);--p-primary-700: color-mix(in srgb, var(--p-primary) 70%, black);--p-primary-800: color-mix(in srgb, var(--p-primary) 60%, black);--p-primary-900: color-mix(in srgb, var(--p-primary) 50%, black);--p-primary-950: color-mix(in srgb, var(--p-primary) 40%, black);--p-secondary: #6f7385;--p-secondary-50: color-mix(in srgb, var(--p-secondary) 5%, white);--p-secondary-100: color-mix(in srgb, var(--p-secondary) 10%, white);--p-secondary-200: color-mix(in srgb, var(--p-secondary) 20%, white);--p-secondary-300: color-mix(in srgb, var(--p-secondary) 35%, white);--p-secondary-400: color-mix(in srgb, var(--p-secondary) 65%, white);--p-secondary-500: var(--p-secondary);--p-secondary-600: color-mix(in srgb, var(--p-secondary) 80%, black);--p-secondary-700: color-mix(in srgb, var(--p-secondary) 65%, black);--p-secondary-800: color-mix(in srgb, var(--p-secondary) 55%, black);--p-secondary-900: color-mix(in srgb, var(--p-secondary) 50%, black);--p-secondary-950: color-mix(in srgb, var(--p-secondary) 30%, black);--p-danger: rgb(239, 68, 68);--p-danger-50: color-mix(in srgb, var(--p-danger) 5%, white);--p-danger-100: color-mix(in srgb, var(--p-danger) 10%, white);--p-danger-200: color-mix(in srgb, var(--p-danger) 20%, white);--p-danger-300: color-mix(in srgb, var(--p-danger) 30%, white);--p-danger-400: color-mix(in srgb, var(--p-danger) 40%, white);--p-danger-500: var(--p-danger);--p-danger-600: color-mix(in srgb, var(--p-danger) 80%, black);--p-danger-700: color-mix(in srgb, var(--p-danger) 70%, black);--p-danger-800: color-mix(in srgb, var(--p-danger) 60%, black);--p-danger-900: color-mix(in srgb, var(--p-danger) 50%, black);--p-danger-950: color-mix(in srgb, var(--p-danger) 40%, black);--p-success: rgb(34, 197, 94);--p-success-50: color-mix(in srgb, var(--p-success) 5%, white);--p-success-100: color-mix(in srgb, var(--p-success) 10%, white);--p-success-200: color-mix(in srgb, var(--p-success) 20%, white);--p-success-300: color-mix(in srgb, var(--p-success) 30%, white);--p-success-400: color-mix(in srgb, var(--p-success) 40%, white);--p-success-500: var(--p-success);--p-success-600: color-mix(in srgb, var(--p-success) 80%, black);--p-success-700: color-mix(in srgb, var(--p-success) 70%, black);--p-success-800: color-mix(in srgb, var(--p-success) 60%, black);--p-success-900: color-mix(in srgb, var(--p-success) 50%, black);--p-success-950: color-mix(in srgb, var(--p-success) 40%, black);--p-warn: rgb(249, 115, 22);--p-warn-50: color-mix(in srgb, var(--p-warn) 5%, white);--p-warn-100: color-mix(in srgb, var(--p-warn) 10%, white);--p-warn-200: color-mix(in srgb, var(--p-warn) 20%, white);--p-warn-300: color-mix(in srgb, var(--p-warn) 30%, white);--p-warn-400: color-mix(in srgb, var(--p-warn) 40%, white);--p-warn-500: var(--p-warn);--p-warn-600: color-mix(in srgb, var(--p-warn) 80%, black);--p-warn-700: color-mix(in srgb, var(--p-warn) 70%, black);--p-warn-800: color-mix(in srgb, var(--p-warn) 60%, black);--p-warn-900: color-mix(in srgb, var(--p-warn) 50%, black);--p-warn-950: color-mix(in srgb, var(--p-warn) 40%, black);--p-info: rgb(14, 165, 233);--p-info-50: color-mix(in srgb, var(--p-info) 5%, white);--p-info-100: color-mix(in srgb, var(--p-info) 10%, white);--p-info-200: color-mix(in srgb, var(--p-info) 20%, white);--p-info-300: color-mix(in srgb, var(--p-info) 30%, white);--p-info-400: color-mix(in srgb, var(--p-info) 40%, white);--p-info-500: var(--p-info);--p-info-600: color-mix(in srgb, var(--p-info) 80%, black);--p-info-700: color-mix(in srgb, var(--p-info) 70%, black);--p-info-800: color-mix(in srgb, var(--p-info) 60%, black);--p-info-900: color-mix(in srgb, var(--p-info) 50%, black);--p-info-950: color-mix(in srgb, var(--p-info) 40%, black);--p-help: rgb(168, 85, 247);--p-help-50: color-mix(in srgb, var(--p-help) 5%, white);--p-help-100: color-mix(in srgb, var(--p-help) 10%, white);--p-help-200: color-mix(in srgb, var(--p-help) 20%, white);--p-help-300: color-mix(in srgb, var(--p-help) 30%, white);--p-help-400: color-mix(in srgb, var(--p-help) 40%, white);--p-help-500: var(--p-help);--p-help-600: color-mix(in srgb, var(--p-help) 80%, black);--p-help-700: color-mix(in srgb, var(--p-help) 70%, black);--p-help-800: color-mix(in srgb, var(--p-help) 60%, black);--p-help-900: color-mix(in srgb, var(--p-help) 50%, black);--p-help-950: color-mix(in srgb, var(--p-help) 40%, black);--p-accent: rgb(20, 184, 166);--p-accent-50: color-mix(in srgb, var(--p-accent) 5%, white);--p-accent-100: color-mix(in srgb, var(--p-accent) 10%, white);--p-accent-200: color-mix(in srgb, var(--p-accent) 20%, white);--p-accent-300: color-mix(in srgb, var(--p-accent) 30%, white);--p-accent-400: color-mix(in srgb, var(--p-accent) 40%, white);--p-accent-500: var(--p-accent);--p-accent-600: color-mix(in srgb, var(--p-accent) 80%, black);--p-accent-700: color-mix(in srgb, var(--p-accent) 70%, black);--p-accent-800: color-mix(in srgb, var(--p-accent) 60%, black);--p-accent-900: color-mix(in srgb, var(--p-accent) 50%, black);--p-accent-950: color-mix(in srgb, var(--p-accent) 40%, black);--p-surface-0: #ffffff;--p-surface-50: #fafafa;--p-surface-100: #f5f5f5;--p-surface-200: #e5e5e5;--p-surface-300: #d4d4d4;--p-surface-400: #a3a3a3;--p-surface-500: #737373;--p-surface-600: #525252;--p-surface-700: #404040;--p-surface-800: #262626;--p-surface-850: color-mix(in srgb, var(--p-surface-800) 50%, var(--p-surface-900));--p-surface-900: #171717;--p-surface-950: #0a0a0a;--p-content-border-radius: 6px;--p-font-heading-family: var(--v-font-family-head, Arial);--p-font-heading-scale: 1;--p-font-heading-line-height: 1.5;--p-font-heading-letter-spacing: normal;--p-font-heading-stretch: normal;--p-font-heading-variation-settings: normal;--p-font-body-scale: 1;--p-font-body-line-height: 1.5;--p-font-body-letter-spacing: normal;--p-font-body-stretch: normal;--p-font-body-variation-settings: normal;--p-font-mono-family: ui-monospace}:root{--p-primary-color: var(--p-primary-500);--p-primary-contrast-color: var(--p-surface-0);--p-primary-hover-color: var(--p-primary-600);--p-primary-active-color: var(--p-primary-700);--p-secondary-color: var(--p-secondary-500);--p-secondary-contrast-color: var(--p-surface-0);--p-secondary-hover-color: var(--p-secondary-600);--p-secondary-active-color: var(--p-secondary-700);--p-danger-color: var(--p-danger-500);--p-danger-contrast-color: var(--p-surface-0);--p-danger-hover-color: var(--p-danger-600);--p-danger-active-color: var(--p-danger-700);--p-success-color: var(--p-success-500);--p-success-contrast-color: var(--p-surface-0);--p-success-hover-color: var(--p-success-600);--p-success-active-color: var(--p-success-700);--p-warn-color: var(--p-warn-500);--p-warn-contrast-color: var(--p-surface-0);--p-warn-hover-color: var(--p-warn-600);--p-warn-active-color: var(--p-warn-700);--p-info-color: var(--p-info-500);--p-info-contrast-color: var(--p-surface-0);--p-info-hover-color: var(--p-info-600);--p-info-active-color: var(--p-info-700);--p-help-color: var(--p-help-500);--p-help-contrast-color: var(--p-surface-0);--p-help-hover-color: var(--p-help-600);--p-help-active-color: var(--p-help-700);--p-accent-color: var(--p-accent-500);--p-accent-contrast-color: var(--p-surface-0);--p-accent-hover-color: var(--p-accent-600);--p-accent-active-color: var(--p-accent-700);--p-content-border-color: var(--p-surface-200);--p-content-hover-background: var(--p-surface-100);--p-content-hover-color: var(--p-surface-800);--p-highlight-background: var(--p-primary-50);--p-highlight-color: var(--p-primary-700);--p-highlight-focus-background: var(--p-primary-100);--p-highlight-focus-color: var(--p-primary-800);--p-content-background: var(--p-surface-0);--p-text-color: var(--p-surface-700);--p-text-hover-color: var(--p-surface-800);--p-text-muted-color: var(--p-surface-500);--p-text-hover-muted-color: var(--p-surface-600)}@media(prefers-color-scheme:dark){:root:not(.w-theme-light){--p-surface-D: #fff;--p-surface-0: #fff;--p-surface-50: #fafafa;--p-surface-100: #f4f4f5;--p-surface-200: #e4e4e7;--p-surface-300: #d4d4d8;--p-surface-400: #a1a1aa;--p-surface-500: #71717a;--p-surface-600: #545250;--p-surface-700: #403e3c;--p-surface-800: #2b2927;--p-surface-850: color-mix(in srgb, var(--p-surface-800) 50%, var(--p-surface-900));--p-surface-900: #1c1a19;--p-surface-950: #0f0e0d;--p-primary: rgb(0, 125, 178);--p-primary-50: color-mix(in srgb, var(--p-primary) 5%, white);--p-primary-100: color-mix(in srgb, var(--p-primary) 10%, white);--p-primary-200: color-mix(in srgb, var(--p-primary) 20%, white);--p-primary-300: color-mix(in srgb, var(--p-primary) 30%, white);--p-primary-400: color-mix(in srgb, var(--p-primary) 40%, white);--p-primary-500: var(--p-primary);--p-primary-600: color-mix(in srgb, var(--p-primary) 80%, black);--p-primary-700: color-mix(in srgb, var(--p-primary) 70%, black);--p-primary-800: color-mix(in srgb, var(--p-primary) 60%, black);--p-primary-900: color-mix(in srgb, var(--p-primary) 50%, black);--p-primary-950: color-mix(in srgb, var(--p-primary) 40%, black);--p-primary-color: var(--p-primary-400);--p-primary-contrast-color: var(--p-surface-900);--p-primary-hover-color: var(--p-primary-300);--p-primary-active-color: var(--p-primary-200);--p-secondary-color: var(--p-secondary-400);--p-secondary-contrast-color: var(--p-surface-900);--p-secondary-hover-color: var(--p-secondary-300);--p-secondary-active-color: var(--p-secondary-200);--p-danger-color: var(--p-danger-400);--p-danger-contrast-color: var(--p-surface-900);--p-danger-hover-color: var(--p-danger-300);--p-danger-active-color: var(--p-danger-200);--p-success-color: var(--p-success-400);--p-success-contrast-color: var(--p-surface-900);--p-success-hover-color: var(--p-success-300);--p-success-active-color: var(--p-success-200);--p-warn-color: var(--p-warn-400);--p-warn-contrast-color: var(--p-surface-900);--p-warn-hover-color: var(--p-warn-300);--p-warn-active-color: var(--p-warn-200);--p-info-color: var(--p-info-400);--p-info-contrast-color: var(--p-surface-900);--p-info-hover-color: var(--p-info-300);--p-info-active-color: var(--p-info-200);--p-help-color: var(--p-help-400);--p-help-contrast-color: var(--p-surface-900);--p-help-hover-color: var(--p-help-300);--p-help-active-color: var(--p-help-200);--p-accent-color: var(--p-accent-400);--p-accent-contrast-color: var(--p-surface-900);--p-accent-hover-color: var(--p-accent-300);--p-accent-active-color: var(--p-accent-200);--p-content-border-color: var(--p-surface-700);--p-content-hover-background: var(--p-surface-800);--p-content-hover-color: var(--p-surface-0);--p-highlight-background: color-mix(in srgb, var(--p-primary-400), transparent 84%);--p-highlight-color: rgba(255, 255, 255, 87%);--p-highlight-focus-background: color-mix(in srgb, var(--p-primary-400), transparent 76%);--p-highlight-focus-color: rgba(255, 255, 255, 87%);--p-content-background: var(--p-surface-900);--p-text-color: var(--p-surface-0);--p-text-hover-color: var(--p-surface-0);--p-text-muted-color: var(--p-surface-400);--p-text-hover-muted-color: var(--p-surface-300)}}:root.w-theme-dark,.w-theme-dark{color-scheme:dark;--p-surface-D: #fff;--p-surface-0: #fff;--p-surface-50: #fafafa;--p-surface-100: #f4f4f5;--p-surface-200: #e4e4e7;--p-surface-300: #d4d4d8;--p-surface-400: #a1a1aa;--p-surface-500: #71717a;--p-surface-600: #545250;--p-surface-700: #403e3c;--p-surface-800: #2b2927;--p-surface-850: color-mix(in srgb, var(--p-surface-800) 50%, var(--p-surface-900));--p-surface-900: #1c1a19;--p-surface-950: #0f0e0d;--p-primary: rgb(0, 125, 178);--p-primary-50: color-mix(in srgb, var(--p-primary) 5%, white);--p-primary-100: color-mix(in srgb, var(--p-primary) 10%, white);--p-primary-200: color-mix(in srgb, var(--p-primary) 20%, white);--p-primary-300: color-mix(in srgb, var(--p-primary) 30%, white);--p-primary-400: color-mix(in srgb, var(--p-primary) 40%, white);--p-primary-500: var(--p-primary);--p-primary-600: color-mix(in srgb, var(--p-primary) 80%, black);--p-primary-700: color-mix(in srgb, var(--p-primary) 70%, black);--p-primary-800: color-mix(in srgb, var(--p-primary) 60%, black);--p-primary-900: color-mix(in srgb, var(--p-primary) 50%, black);--p-primary-950: color-mix(in srgb, var(--p-primary) 40%, black);--p-primary-color: var(--p-primary-400);--p-primary-contrast-color: var(--p-surface-900);--p-primary-hover-color: var(--p-primary-300);--p-primary-active-color: var(--p-primary-200);--p-secondary-color: var(--p-secondary-400);--p-secondary-contrast-color: var(--p-surface-900);--p-secondary-hover-color: var(--p-secondary-300);--p-secondary-active-color: var(--p-secondary-200);--p-danger-color: var(--p-danger-400);--p-danger-contrast-color: var(--p-surface-900);--p-danger-hover-color: var(--p-danger-300);--p-danger-active-color: var(--p-danger-200);--p-success-color: var(--p-success-400);--p-success-contrast-color: var(--p-surface-900);--p-success-hover-color: var(--p-success-300);--p-success-active-color: var(--p-success-200);--p-warn-color: var(--p-warn-400);--p-warn-contrast-color: var(--p-surface-900);--p-warn-hover-color: var(--p-warn-300);--p-warn-active-color: var(--p-warn-200);--p-info-color: var(--p-info-400);--p-info-contrast-color: var(--p-surface-900);--p-info-hover-color: var(--p-info-300);--p-info-active-color: var(--p-info-200);--p-help-color: var(--p-help-400);--p-help-contrast-color: var(--p-surface-900);--p-help-hover-color: var(--p-help-300);--p-help-active-color: var(--p-help-200);--p-accent-color: var(--p-accent-400);--p-accent-contrast-color: var(--p-surface-900);--p-accent-hover-color: var(--p-accent-300);--p-accent-active-color: var(--p-accent-200);--p-content-border-color: var(--p-surface-700);--p-content-hover-background: var(--p-surface-800);--p-content-hover-color: var(--p-surface-0);--p-highlight-background: color-mix(in srgb, var(--p-primary-400), transparent 84%);--p-highlight-color: rgba(255, 255, 255, 87%);--p-highlight-focus-background: color-mix(in srgb, var(--p-primary-400), transparent 76%);--p-highlight-focus-color: rgba(255, 255, 255, 87%);--p-content-background: var(--p-surface-900);--p-text-color: var(--p-surface-0);--p-text-hover-color: var(--p-surface-0);--p-text-muted-color: var(--p-surface-400);--p-text-hover-muted-color: var(--p-surface-300)}:root.w-theme-light,.w-theme-light{color-scheme:light;--p-surface-0: #ffffff;--p-surface-50: #fafafa;--p-surface-100: #f5f5f5;--p-surface-200: #e5e5e5;--p-surface-300: #d4d4d4;--p-surface-400: #a3a3a3;--p-surface-500: #737373;--p-surface-600: #525252;--p-surface-700: #404040;--p-surface-800: #262626;--p-surface-850: color-mix(in srgb, var(--p-surface-800) 50%, var(--p-surface-900));--p-surface-900: #171717;--p-surface-950: #0a0a0a;--p-primary: rgb(0, 95, 178);--p-primary-50: color-mix(in srgb, var(--p-primary) 5%, white);--p-primary-100: color-mix(in srgb, var(--p-primary) 10%, white);--p-primary-200: color-mix(in srgb, var(--p-primary) 20%, white);--p-primary-300: color-mix(in srgb, var(--p-primary) 30%, white);--p-primary-400: color-mix(in srgb, var(--p-primary) 40%, white);--p-primary-500: var(--p-primary);--p-primary-600: color-mix(in srgb, var(--p-primary) 80%, black);--p-primary-700: color-mix(in srgb, var(--p-primary) 70%, black);--p-primary-800: color-mix(in srgb, var(--p-primary) 60%, black);--p-primary-900: color-mix(in srgb, var(--p-primary) 50%, black);--p-primary-950: color-mix(in srgb, var(--p-primary) 40%, black);--p-primary-color: var(--p-primary-500);--p-primary-contrast-color: var(--p-surface-0);--p-primary-hover-color: var(--p-primary-600);--p-primary-active-color: var(--p-primary-700);--p-secondary-color: var(--p-secondary-500);--p-secondary-contrast-color: var(--p-surface-0);--p-secondary-hover-color: var(--p-secondary-600);--p-secondary-active-color: var(--p-secondary-700);--p-danger-color: var(--p-danger-500);--p-danger-contrast-color: var(--p-surface-0);--p-danger-hover-color: var(--p-danger-600);--p-danger-active-color: var(--p-danger-700);--p-success-color: var(--p-success-500);--p-success-contrast-color: var(--p-surface-0);--p-success-hover-color: var(--p-success-600);--p-success-active-color: var(--p-success-700);--p-warn-color: var(--p-warn-500);--p-warn-contrast-color: var(--p-surface-0);--p-warn-hover-color: var(--p-warn-600);--p-warn-active-color: var(--p-warn-700);--p-info-color: var(--p-info-500);--p-info-contrast-color: var(--p-surface-0);--p-info-hover-color: var(--p-info-600);--p-info-active-color: var(--p-info-700);--p-help-color: var(--p-help-500);--p-help-contrast-color: var(--p-surface-0);--p-help-hover-color: var(--p-help-600);--p-help-active-color: var(--p-help-700);--p-accent-color: var(--p-accent-500);--p-accent-contrast-color: var(--p-surface-0);--p-accent-hover-color: var(--p-accent-600);--p-accent-active-color: var(--p-accent-700);--p-content-border-color: var(--p-surface-200);--p-content-hover-background: var(--p-surface-100);--p-content-hover-color: var(--p-surface-800);--p-highlight-background: var(--p-primary-50);--p-highlight-color: var(--p-primary-700);--p-highlight-focus-background: var(--p-primary-100);--p-highlight-focus-color: var(--p-primary-800);--p-content-background: var(--p-surface-0);--p-text-color: var(--p-surface-700);--p-text-hover-color: var(--p-surface-800);--p-text-muted-color: var(--p-surface-500);--p-text-hover-muted-color: var(--p-surface-600)}:host,:root{--kx-surface-1: color-mix(in srgb, var(--p-content-background) 96%, var(--p-text-color) 4%);--kx-surface-2: color-mix(in srgb, var(--p-content-background) 92%, var(--p-text-color) 8%);--kx-surface-3: color-mix(in srgb, var(--p-content-background) 86%, var(--p-text-color) 14%);--kx-surface-4: color-mix(in srgb, var(--p-content-background) 78%, var(--p-text-color) 22%);--kx-border-strong: color-mix(in srgb, var(--p-content-border-color) 60%, var(--p-text-color) 40%);--kx-border-stronger: color-mix(in srgb, var(--p-content-border-color) 30%, var(--p-text-color) 70%);--kx-text-faint: color-mix(in srgb, var(--p-text-muted-color) 70%, var(--p-content-background) 30%);--kx-text-fainter: color-mix(in srgb, var(--p-text-muted-color) 45%, var(--p-content-background) 55%);--kx-wash-primary: color-mix(in srgb, var(--p-primary-color) 12%, var(--p-content-background) 88%);--kx-wash-success: color-mix(in srgb, var(--p-success-500) 12%, var(--p-content-background) 88%);--kx-wash-info: color-mix(in srgb, var(--p-info-500) 12%, var(--p-content-background) 88%);--kx-wash-warn: color-mix(in srgb, var(--p-warn-500) 12%, var(--p-content-background) 88%);--kx-wash-danger: color-mix(in srgb, var(--p-danger-500) 12%, var(--p-content-background) 88%);--kx-wash-help: color-mix(in srgb, var(--p-help-500) 12%, var(--p-content-background) 88%);--kx-font-heading: "Outfit", system-ui, sans-serif;--kx-font-body: "Inter", system-ui, sans-serif;--kx-radius-4: 4px;--kx-radius-6: 6px;--kx-radius-8: 8px;--kx-radius-10: 10px;--kx-radius-14: 14px;--kx-radius-16: 16px;--kx-radius-tag: var(--p-content-border-radius, 6px);--kx-control-height: 34px;--kx-control-height-sm: 30px;--kx-rail-width: 264px;--kx-reading-measure: 880px;--kx-row-height: 32px;--kx-shadow-sm: 0 1px 2px rgba(0, 0, 0, .08);--kx-shadow-md: 0 4px 24px rgba(0, 0, 0, .12);--kx-shadow-lg: 0 16px 60px rgba(0, 0, 0, .18);--kx-overlay-hover: color-mix(in srgb, var(--p-text-color) 7%, transparent);--kx-overlay-subtle: color-mix(in srgb, var(--p-text-color) 4%, transparent)}@media(prefers-color-scheme:dark){:host(:not(.w-theme-light)),:root:not(.w-theme-light){--kx-shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);--kx-shadow-md: 0 4px 24px rgba(0, 0, 0, .45);--kx-shadow-lg: 0 16px 60px rgba(0, 0, 0, .6)}}:host(.w-theme-dark),:root.w-theme-dark{--kx-shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);--kx-shadow-md: 0 4px 24px rgba(0, 0, 0, .45);--kx-shadow-lg: 0 16px 60px rgba(0, 0, 0, .6)}.kx-shell{flex:1;min-height:0;display:grid;grid-template-columns:var(--kx-rail-width) minmax(0,1fr);background:var(--p-content-background)}.kx-rail{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--p-content-border-color);background:color-mix(in srgb,var(--p-text-color) 2.5%,var(--p-content-background))}.kx-rail-body{flex:1;min-height:0;overflow-y:auto;padding:4px 8px 12px}.kx-main{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}.kx-main-scroll{flex:1;min-height:0;overflow-y:auto;padding:18px 28px 80px 24px;display:flex;flex-direction:column;gap:16px}@media(max-width:760px){.kx-shell{grid-template-columns:minmax(0,1fr);grid-auto-rows:auto minmax(0,1fr)}.kx-rail{max-height:40vh;border-right:none;border-bottom:1px solid var(--p-content-border-color)}.kx-main-scroll{padding:20px 22px 64px}}.kx-railhead{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 10px;border-bottom:1px solid var(--p-content-border-color)}.kx-railhead-title{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--p-text-muted-color)}.kx-railhead-title b{color:var(--p-text-muted-color);margin-left:4px;font-variant-numeric:tabular-nums}.kx-railhead-acts{display:flex;align-items:center;gap:2px}.kx-railsec+.kx-railsec{border-top:1px solid var(--p-content-border-color)}.kx-railsec-h{display:flex;align-items:center;gap:6px;width:100%;padding:9px 12px 7px;background:none;border:none;cursor:pointer;font:inherit;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--p-text-muted-color)}.kx-railsec-h:hover{color:var(--p-text-muted-color)}.kx-railsec-chev{width:13px;height:13px;flex:none;transition:transform .15s ease}.kx-railsec:not(.closed) .kx-railsec-chev{transform:rotate(90deg)}.kx-railsec-ic{width:14px;height:14px;flex:none}.kx-railsec-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kx-railsec-h .count{margin-left:auto;color:var(--p-text-muted-color);font-variant-numeric:tabular-nums}.kx-railsec-b{padding:2px 0 8px}.kx-system-tabs.p-tabs{margin-bottom:0;flex:none;min-width:0;border-bottom:1px solid var(--p-content-border-color)}.kx-system-tabs .p-tablist-tab-list{padding-inline:var(--kickside-system-surface-gutter, 24px)}.kx-system-tab-count{padding-inline:6px;border-radius:999px;font-size:inherit;line-height:inherit;background:color-mix(in srgb,currentColor 10%,transparent);font-variant-numeric:tabular-nums}.kx-system-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;min-height:58px;padding:12px var(--kickside-system-surface-gutter, 24px);color:var(--p-text-muted-color);font-size:12.5px}.kx-system-pane{flex:1;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);overflow:auto}.kx-system-tools{grid-row:1;min-width:0}.kx-system-body{grid-row:2;min-width:0;min-height:0;overflow:auto}.kx-system-pane:has(>.kx-system-body>.kx-empty){grid-template-rows:minmax(120px,auto) minmax(0,1fr)}.kx-empty{text-align:center;padding:44px 24px;display:flex;flex-direction:column;align-items:center;gap:8px}.kx-empty-ico{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--p-primary-color) 12%,transparent);color:var(--p-primary-color);margin-bottom:4px}.kx-empty-ico svg{width:28px;height:28px}.kx-empty-title{font-size:15px;font-weight:700;color:var(--p-text-color);margin:0}.kx-empty-sub{font-size:13px;color:var(--p-text-muted-color);max-width:380px;margin:0}.kx-empty>.p-button{margin-top:6px}.kx-empty-actions{display:flex;gap:8px;margin-top:6px}.kx-loading{display:flex;align-items:center;gap:8px;color:var(--p-text-muted-color);font-size:13px;padding:24px}.kx-err{margin:0 20px 8px;padding:9px 12px;border-radius:10px;font-size:13px;background:color-mix(in srgb,var(--p-danger-500) 12%,transparent);color:var(--p-text-color)}.kx-err.inline{margin:12px 0 0}.kx-empty.kx-empty-spacious{padding:60px 24px;gap:9px}.kx-empty-spacious .kx-empty-ico{width:58px;height:58px;margin-bottom:5px}.kx-empty-spacious .kx-empty-ico svg{width:27px;height:27px}.kx-empty-spacious .kx-empty-title{font-size:14.5px}.kx-empty-spacious .kx-empty-sub{font-size:12.5px;max-width:360px;line-height:1.55}.kx-empty-ico.primary{background:color-mix(in srgb,var(--p-primary-color) 14%,transparent);border:1px solid color-mix(in srgb,var(--p-primary-color) 28%,transparent)}.kx-empty-ico.muted{background:var(--kx-surface-2);color:color-mix(in srgb,var(--p-text-color) 45%,transparent);border:1px solid var(--p-content-border-color)}.kx-empty>.kx-empty-cta{margin-top:8px;padding-inline:16px}.kx-loading.kx-loading-centered{flex:1;display:grid;place-items:center;padding:64px 20px}.kx-loading-inner{display:flex;flex-direction:column;align-items:center;gap:12px;font-size:13px}.kx-loading-inner svg{width:24px;height:24px}.kx-notice{display:flex;align-items:flex-start;gap:9px;padding:11px 14px;border-radius:var(--kx-radius-14);font-size:13px;line-height:1.5;background:var(--kx-surface-2);color:var(--p-text-muted-color)}.kx-notice svg{width:16px;height:16px;flex:none;margin-top:1px}.kx-notice.info svg{color:var(--p-primary-color)}.kx-notice.warn{background:color-mix(in srgb,var(--p-warn-500) 12%,transparent);color:var(--p-text-color);border:1px solid color-mix(in srgb,var(--p-warn-500) 30%,transparent)}.kx-notice.error{background:color-mix(in srgb,var(--p-danger-500) 12%,transparent);color:var(--p-text-color);border:1px solid color-mix(in srgb,var(--p-danger-500) 30%,transparent)}.kx-notice.help{background:color-mix(in srgb,var(--p-help-500) 12%,transparent);color:var(--p-text-color);border:1px solid color-mix(in srgb,var(--p-help-500) 30%,transparent)}.kx-notice.warn svg{color:var(--p-warn-500)}.kx-notice.error svg{color:var(--p-danger-500)}.kx-notice.help svg{color:var(--p-help-500)}.kx-notice-action{margin-left:8px;padding:2px 10px;border-radius:var(--kx-radius-8);font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:inherit;border:1px solid currentColor}.kx-notice-action:hover:not(:disabled){background:color-mix(in srgb,currentColor 10%,transparent)}.kx-notice-action:disabled{opacity:.6;cursor:default}.kx-drawer-mask{position:fixed;inset:0;z-index:1000;display:flex;justify-content:flex-end;overflow:clip;background:color-mix(in srgb,var(--p-text-color) 32%,transparent);backdrop-filter:blur(2px)}.kx-drawer{width:min(560px,100%);min-width:0;box-sizing:border-box;height:100%;display:flex;flex-direction:column;background:var(--p-content-background);border-left:1px solid var(--p-content-border-color);box-shadow:-16px 0 50px -12px color-mix(in srgb,var(--p-text-color) 40%,transparent)}.kx-drawer-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--p-content-border-color);flex:none}.kx-drawer-title{display:inline-flex;align-items:center;gap:9px;font-size:15px;font-weight:700;color:var(--p-text-color)}.kx-drawer-title svg{width:18px;height:18px;color:var(--p-primary-color)}.kx-drawer-b{flex:1;min-height:0;overflow-y:auto;padding:20px 20px 36px}.kx-drawer-enter-active,.kx-drawer-leave-active{transition:opacity .22s ease}.kx-drawer-enter-active .kx-drawer,.kx-drawer-leave-active .kx-drawer{transition:transform .26s cubic-bezier(.4,0,.2,1)}.kx-drawer-enter-from,.kx-drawer-leave-to{opacity:0}.kx-drawer-enter-from .kx-drawer,.kx-drawer-leave-to .kx-drawer{transform:translate(100%)}.kx-modal-mask{position:fixed;inset:0;z-index:1100;display:grid;place-items:center;padding:20px;background:color-mix(in srgb,var(--p-text-color) 45%,transparent)}.kx-modal{width:min(460px,100%);background:var(--p-content-background);border:1px solid var(--p-content-border-color);border-radius:var(--kx-radius-14);overflow:hidden;box-shadow:0 20px 60px color-mix(in srgb,var(--p-text-color) 28%,transparent)}.kx-modal-h{display:flex;align-items:center;gap:11px;padding:14px 16px 4px}.kx-modal-h-ico{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:var(--kx-radius-14);background:var(--kx-surface-2);color:var(--p-text-muted-color)}.kx-modal.danger .kx-modal-h-ico{background:color-mix(in srgb,var(--p-danger-500) 14%,transparent);color:var(--p-danger-500)}.kx-modal-h-ico svg{width:17px;height:17px}.kx-modal-h-text{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}.kx-modal-h-title{font-size:14px;font-weight:700;color:var(--p-text-color)}.kx-modal-h-sub{font-size:12px;color:var(--p-text-muted-color);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kx-modal-body{padding:8px 16px 14px;font-size:13px;line-height:1.55;color:var(--p-text-muted-color)}.kx-modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--p-content-border-color);background:var(--kx-surface-1)}.kx-modal-enter-active,.kx-modal-leave-active{transition:opacity .18s ease}.kx-modal-enter-from,.kx-modal-leave-to{opacity:0}.kx-modal-head-icon{width:38px;height:38px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--p-primary-color) 14%,transparent);color:var(--p-primary-color)}.kx-modal-head-icon svg{width:20px;height:20px}.kx-modal-head-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.kx-modal-head-title{font-size:15.5px;font-weight:700;color:var(--p-text-color);line-height:1.2}.kx-modal-head-sub{font-size:12.5px;font-weight:400;color:var(--p-text-muted-color);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kx-tag-sm,.kx-tag-sm.kx-tag-sm{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:var(--kx-radius-tag, 6px);font-size:10.5px;font-weight:600;line-height:1.5;white-space:nowrap}.kx-tag-sm svg,.kx-tag-sm.kx-tag-sm svg{width:12px;height:12px}.kx-tag-caps,.kx-tag-caps.kx-tag-caps{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:var(--kx-radius-tag, 6px);font-size:9px;font-weight:700;line-height:1.5;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}.kx-tag-caps svg,.kx-tag-caps.kx-tag-caps svg{width:11px;height:11px}.spin{animation:kx-spin 1s linear infinite}@keyframes kx-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spin{animation:none}}*,:before,:after{--tw-border-spacing-x: 0;--tw-border-spacing-y: 0;--tw-translate-x: 0;--tw-translate-y: 0;--tw-rotate: 0;--tw-skew-x: 0;--tw-skew-y: 0;--tw-scale-x: 1;--tw-scale-y: 1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness: proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width: 0px;--tw-ring-offset-color: #fff;--tw-ring-color: rgb(59 130 246 / .5);--tw-ring-offset-shadow: 0 0 #0000;--tw-ring-shadow: 0 0 #0000;--tw-shadow: 0 0 #0000;--tw-shadow-colored: 0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x: 0;--tw-border-spacing-y: 0;--tw-translate-x: 0;--tw-translate-y: 0;--tw-rotate: 0;--tw-skew-x: 0;--tw-skew-y: 0;--tw-scale-x: 1;--tw-scale-y: 1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness: proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width: 0px;--tw-ring-offset-color: #fff;--tw-ring-color: rgb(59 130 246 / .5);--tw-ring-offset-shadow: 0 0 #0000;--tw-ring-shadow: 0 0 #0000;--tw-shadow: 0 0 #0000;--tw-shadow-colored: 0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }*,:before,:after{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}:before,:after{--tw-content: ""}html,:host{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji",Segoe UI Symbol,"Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dl,dd,h1,h2,h3,h4,h5,h6,hr,figure,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}ol,ul,menu{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}button,[role=button]{cursor:pointer}:disabled{cursor:default}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}@supports (-moz-appearance:none){*{scrollbar-color:initial;scrollbar-width:initial}}:host{display:block;height:100%;min-height:0;color:var(--p-text-color);background:var(--p-content-background);font-family:var(--kx-font-body);font-size:13px;line-height:1.5}:host>div{height:100%;min-height:0}*,*:before,*:after{box-sizing:border-box}h1,h2,h3,p,dl,dd,ol,ul{margin:0}.mail-admin{height:100%}.mail-main>*{max-width:1120px}.mail-muted{color:var(--p-text-muted-color)}.mail-sub{display:block;margin-top:2px;font-size:12px;color:var(--p-text-muted-color)}.mail-sub.mail-inline{display:inline;margin:0}.mail-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--p-text-muted-color)}.mail-block{margin:0}.mail-error{margin:0;display:flex;align-items:center;justify-content:space-between;gap:12px}.mail-stack{display:flex;flex-direction:column;gap:20px}.mail-mono,.mail-mono-block,.mail-mono-input{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.mail-mono{font-size:12px;padding:1px 6px;border-radius:6px;background:color-mix(in srgb,var(--p-text-color) 7%,transparent)}.mail-mono-block,.mail-value{font-size:12px;overflow-wrap:anywhere}.mail-name,.mail-text-link,.mail-row-link{padding:0;border:0;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left}.mail-name{font-weight:600;color:var(--p-text-color)}.mail-name:hover,.mail-text-link:hover{text-decoration:underline}.mail-text-link{color:var(--p-primary-color);font-weight:600}.mail-name:focus-visible,.mail-text-link:focus-visible,.mail-row-link:focus-visible{outline:var(--p-focus-ring-width, 2px) var(--p-focus-ring-style, solid) var(--p-focus-ring-color, currentColor);outline-offset:2px;border-radius:4px}.mail-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.mail-search{flex:0 1 260px;min-width:180px}.mail-search .p-inputtext{width:100%}.mail-filter{width:150px}.mail-count{margin-left:auto;font-size:12.5px;color:var(--p-text-muted-color);white-space:nowrap}.mail-nomatch{padding:8px 0}.mail-more{display:flex;justify-content:center}.mail-table .p-datatable-tbody>tr{cursor:pointer}.mail-table .p-datatable-tbody>tr>td{vertical-align:middle}.mail-col-name{min-width:260px}.mail-col-kind,.mail-col-status,.mail-col-when,.mail-col-updated,.mail-col-used{white-space:nowrap}.mail-col-source{min-width:170px}.mail-kind{display:inline-flex;align-items:center;gap:6px}.mail-kind svg{width:16px;height:16px;color:var(--p-text-muted-color)}.mail-source{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px}.mail-required{margin-left:6px}.mail-card{padding:16px;border:1px solid var(--p-content-border-color);border-radius:var(--kx-radius-14)}.mail-facts{display:grid;grid-template-columns:minmax(120px,max-content) minmax(0,1fr);gap:8px 20px}.mail-facts dt{color:var(--p-text-muted-color)}.mail-facts dd{min-width:0;overflow-wrap:anywhere}.mail-customized{align-items:center}.mail-customized-text{flex:1;min-width:0}.mail-source-faces{display:flex;flex-direction:column;gap:8px}.mail-face-bar{display:flex;align-items:center;justify-content:space-between;gap:12px}.mail-code{margin:0;padding:12px 0;max-height:560px;overflow:auto;border:1px solid var(--p-content-border-color);border-radius:var(--kx-radius-8);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.6;color:var(--p-text-color);background:var(--p-content-background)}.mail-code code{display:block;min-width:max-content}.mail-code-line{display:flex}.mail-code-number{flex:none;width:44px;padding-right:12px;text-align:right;color:var(--p-text-muted-color);user-select:none}.mail-code-text{white-space:pre;padding-right:16px}.mail-group{display:flex;flex-direction:column;gap:8px}.mail-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.mail-list{list-style:none;padding:0;border:1px solid var(--p-content-border-color);border-radius:var(--kx-radius-14)}.mail-list>li{border-bottom:1px solid var(--p-content-border-color)}.mail-list>li:last-child{border-bottom:0}.mail-row-link,.mail-list-row{display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px}.mail-row-link:hover{background:color-mix(in srgb,var(--p-text-color) 7%,transparent)}.mail-row-link svg,.mail-list-row svg{width:18px;height:18px;flex:none;color:var(--p-text-muted-color)}.mail-list-main{flex:1;min-width:0}.mail-history{list-style:none;padding:0;border:1px solid var(--p-content-border-color);border-radius:var(--kx-radius-14)}.mail-history-row{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-bottom:1px solid var(--p-content-border-color)}.mail-history-row:last-child{border-bottom:0}.mail-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.mail-history-main{display:flex;flex-direction:column;min-width:0}.mail-history-title{display:inline-flex;align-items:center;gap:8px;font-weight:600}.mail-history-note{margin-top:4px}.mail-history-row .mail-facts{margin-bottom:12px}.mail-dialog{width:min(520px,calc(100vw - 32px))}.mail-dialog .mail-dialog-header{display:flex;align-items:center;gap:12px}.mail-dialog .mail-dialog-footer{display:flex;justify-content:flex-end;gap:8px}.mail-head-warn{background:color-mix(in srgb,var(--p-warn-500) 14%,transparent);color:var(--p-warn-500)}.mail-dialog-text{margin-bottom:12px}.mail-form,.mail-fieldset{display:flex;flex-direction:column;gap:14px}.mail-fieldset{border:0;padding:0;margin:0;min-width:0}.mail-field{display:flex;flex-direction:column;gap:6px}.mail-field>.p-inputtext,.mail-field>.p-select,.mail-field>.p-textarea{width:100%}.mail-field-label{font-size:12px;font-weight:600;color:var(--p-text-color)}.mail-field-hint{font-size:12px;color:var(--p-text-muted-color)}.mail-field-error{font-size:12px;color:var(--p-danger-500)}.mail-field-invalid{margin-inline:-8px;padding:6px 8px;border-radius:var(--kx-radius-8);background:color-mix(in srgb,var(--p-danger-500) 5%,transparent)}.mail-drawer-body{display:flex;flex-direction:column;gap:16px}.mail-drawer-head{display:flex;align-items:flex-start;gap:4px}.mail-drawer-title{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px}.mail-drawer-title h2{font-size:16px;font-weight:700;overflow-wrap:anywhere}.mail-failure-body{display:flex;flex-direction:column;gap:8px;min-width:0}.mail-failure-done{display:flex;flex-wrap:wrap;gap:6px}.mail-timeline{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px}.mail-timeline li{display:flex;justify-content:space-between;gap:12px}';
-function Aa(e, t) {
+function Ta(e, t) {
   return class extends da {
     static get wippyConfig() {
       return { propsSchema: t, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl", "iframeCssUrl"], inlineCss: Sa };
@@ -867,7 +867,7 @@ function Aa(e, t) {
     }
   };
 }
-const Ta = ["aria-labelledby"], La = { class: "kx-railhead" }, Ea = ["id"], Ra = { key: 0 }, za = { class: "kx-railhead-acts" }, Va = { class: "kx-rail-body" }, Pa = /* @__PURE__ */ Q({
+const Aa = ["aria-labelledby"], La = { class: "kx-railhead" }, Ea = ["id"], Ra = { key: 0 }, za = { class: "kx-railhead-acts" }, Va = { class: "kx-rail-body" }, Pa = /* @__PURE__ */ Q({
   __name: "ListRail",
   props: {
     title: {},
@@ -896,7 +896,7 @@ const Ta = ["aria-labelledby"], La = { class: "kx-railhead" }, Ea = ["id"], Ra =
       s("div", Va, [
         ne(r.$slots, "default")
       ])
-    ], 10, Ta));
+    ], 10, Aa));
   }
 }), Ia = ["aria-label"], Ma = {
   key: 0,
@@ -939,7 +939,7 @@ const Ta = ["aria-labelledby"], La = { class: "kx-railhead" }, Ea = ["id"], Ra =
       n.preventDefault(), p[c]?.focus();
     }
     return (n, p) => (l(), U(dr(e.title ? Pa : "div"), ur(mr(e.title ? { title: e.title, count: e.count, settings: !0 } : { class: "kx-settings-rail-standalone" })), et({
-      default: T(() => [
+      default: A(() => [
         s("nav", {
           class: ge(["kx-settings-rail", { "kx-settings-rail-framed": e.title }]),
           "aria-label": e.label,
@@ -972,7 +972,7 @@ const Ta = ["aria-labelledby"], La = { class: "kx-railhead" }, Ea = ["id"], Ra =
     }, [
       e.title && n.$slots.actions ? {
         name: "actions",
-        fn: T(() => [
+        fn: A(() => [
           ne(n.$slots, "actions")
         ]),
         key: "0"
@@ -994,7 +994,7 @@ const Ta = ["aria-labelledby"], La = { class: "kx-railhead" }, Ea = ["id"], Ra =
         title: e.createLabel,
         onClick: r[0] || (r[0] = (i) => t.$emit("create"))
       }, {
-        icon: T(() => [
+        icon: A(() => [
           m(o(I), {
             icon: "tabler:plus",
             "aria-hidden": "true"
@@ -1009,7 +1009,7 @@ const Ta = ["aria-labelledby"], La = { class: "kx-railhead" }, Ea = ["id"], Ra =
         title: "Application defaults",
         onClick: r[1] || (r[1] = (i) => t.$emit("defaults"))
       }, {
-        icon: T(() => [
+        icon: A(() => [
           m(o(I), {
             icon: "tabler:settings",
             "aria-hidden": "true"
@@ -1020,7 +1020,7 @@ const Ta = ["aria-labelledby"], La = { class: "kx-railhead" }, Ea = ["id"], Ra =
     ], 64));
   }
 });
-class pe extends Error {
+class de extends Error {
   constructor(t, r, i) {
     super(t.message ?? t.error ?? `${r} failed`), this.name = "ApiError", this.kind = t.kind, this.details = t.details, this.retryable = t.retryable, this.status = i;
   }
@@ -1029,7 +1029,7 @@ function Ve(e) {
   return typeof e == "object" && e !== null && !Array.isArray(e);
 }
 function Ht(e, t, r) {
-  return new pe({
+  return new de({
     message: typeof e.message == "string" ? e.message : void 0,
     error: typeof e.error == "string" ? e.error : void 0,
     kind: typeof e.kind == "string" ? e.kind : void 0,
@@ -1038,12 +1038,12 @@ function Ht(e, t, r) {
   }, t, r);
 }
 function Ua(e, t) {
-  if (e instanceof pe) return e;
+  if (e instanceof de) return e;
   if (Ve(e) && Ve(e.response) && Ve(e.response.data)) {
     const { data: r, status: i } = e.response;
     return Ht(r, t, typeof i == "number" ? i : void 0);
   }
-  return e instanceof Error ? e : new pe({ kind: "UNAVAILABLE" }, t);
+  return e instanceof Error ? e : new de({ kind: "UNAVAILABLE" }, t);
 }
 async function re(e, t) {
   let r;
@@ -1053,7 +1053,7 @@ async function re(e, t) {
     throw Ua(i, t);
   }
   if (r?.success === !0 && r.data !== void 0) return r.data;
-  throw r?.success === !1 ? Ht(r, t) : new pe({ kind: "INTERNAL", message: `${t}: invalid response envelope`, details: { code: "response_envelope_invalid" } }, t);
+  throw r?.success === !1 ? Ht(r, t) : new de({ kind: "INTERNAL", message: `${t}: invalid response envelope`, details: { code: "response_envelope_invalid" } }, t);
 }
 const fe = "/api/v1/mail", _e = (e) => `${fe}/library/${e.kind}/${encodeURIComponent(e.name)}`;
 function Ft(e) {
@@ -1077,15 +1077,15 @@ const me = {
   status: () => re(() => ee.get(`${fe}/delivery`), "Delivery status")
 };
 function Oe(e) {
-  if (!(e instanceof pe)) return;
+  if (!(e instanceof de)) return;
   const t = e.details?.code;
   return typeof t == "string" ? t : void 0;
 }
-function Ae(e) {
-  return e instanceof pe && (e.status === 403 || e.kind === "PERMISSION_DENIED");
+function Te(e) {
+  return e instanceof de && (e.status === 403 || e.kind === "PERMISSION_DENIED");
 }
 function Xe(e) {
-  return e instanceof pe && (e.status === 404 || e.kind === "NOT_FOUND");
+  return e instanceof de && (e.status === 404 || e.kind === "NOT_FOUND");
 }
 const Bt = Symbol("mail-admin");
 function xe() {
@@ -1093,7 +1093,7 @@ function xe() {
   if (!e) throw new Error("Mail administration context is missing");
   return e;
 }
-const ae = { message: "Message", base: "Base template", part: "Part" }, nt = { message: "Messages", base: "Base templates", part: "Parts" }, de = { message: "tabler:mail", base: "tabler:layout", part: "tabler:puzzle" }, Wt = { queued: "Pending", sent: "Sent", failed: "Failed" }, qt = { queued: "secondary", sent: "success", failed: "danger" }, Fa = {
+const ae = { message: "Message", base: "Base template", part: "Part" }, nt = { message: "Messages", base: "Base templates", part: "Parts" }, pe = { message: "tabler:mail", base: "tabler:layout", part: "tabler:puzzle" }, Wt = { queued: "Pending", sent: "Sent", failed: "Failed" }, qt = { queued: "secondary", sent: "success", failed: "danger" }, Fa = {
   workflow: "Workflow",
   automation: "Automation",
   agent: "Agent",
@@ -1150,8 +1150,9 @@ const We = {
   mail_resource_collision: "An installed module now includes a resource with this name. Rename yours to keep both."
 };
 function le(e, t) {
+  if (!(e instanceof de) || e.status === void 0) return `${t} Check your connection and try again.`;
   const r = Oe(e);
-  return r && We[r] ? We[r] : e instanceof pe && e.status === 403 ? We.mail_library_denied : e instanceof pe && (e.kind === "UNAVAILABLE" || e.status === void 0) ? `${t} Check your connection and try again.` : e instanceof Error && e.message ? e.message : t;
+  return r && We[r] ? We[r] : e.status === 403 ? We.mail_library_denied : e.status >= 500 ? `${t} Try again in a moment.` : e.message || t;
 }
 function Ga(e) {
   return e.trim().toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
@@ -1202,7 +1203,7 @@ function Zt(e) {
     const i = Xa(r);
     i && e(i);
   });
-  Tt(() => {
+  At(() => {
     typeof t == "function" && t();
   });
 }
@@ -1211,7 +1212,7 @@ function er(e) {
     const i = Za(r);
     i && e(i);
   });
-  Tt(() => {
+  At(() => {
     typeof t == "function" && t();
   });
 }
@@ -1226,7 +1227,7 @@ function ei() {
       e.value = b, n.value = "", i.value = !1, r.value = !0, ve(b.map((_) => _.author));
     } catch (b) {
       if (!$()) return;
-      i.value = Ae(b), n.value = i.value ? "" : le(b, "The mail library could not be loaded.");
+      i.value = Te(b), n.value = i.value ? "" : le(b, "The mail library could not be loaded.");
     } finally {
       $() && (t.value = !1);
     }
@@ -1283,7 +1284,7 @@ const ri = { class: "kx-empty" }, ai = { class: "kx-empty-ico" }, ii = { class: 
       }, et({ _: 2 }, [
         e.ctaIcon ? {
           name: "icon",
-          fn: T(({ class: i }) => [
+          fn: A(({ class: i }) => [
             m(o(I), {
               icon: e.ctaIcon,
               class: ge(i),
@@ -1332,7 +1333,7 @@ function rr(e) {
 function St(e) {
   return e.name === "activity" ? e.message ? `activity/${encodeURIComponent(e.message)}` : e.template ? `activity/template/${encodeURIComponent(e.template)}` : "activity" : e.name === "library" ? e.section === "all" ? "" : e.section : `${pt[e.kind]}/${encodeURIComponent(e.resource)}/${e.section}`;
 }
-function At(e) {
+function Tt(e) {
   const t = (e ?? "").replace(/^\/+|\/+$/g, "").split("/").filter(Boolean), [r, i, n] = t;
   if (!r) return { name: "library", section: "all" };
   try {
@@ -1412,37 +1413,37 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       { label: "Customized", value: "customized" },
       { label: "Created here", value: "created" },
       { label: "Original", value: "original" }
-    ], Y = { base: 0, part: 1, message: 2 }, D = V(() => p.value.filter((A) => !y.value || A.kind === y.value)), O = V(() => D.value.filter((A) => R.value === "all" || A.state === R.value).filter((A) => ti(A, P.value)).sort((A, L) => Y[A.kind] - Y[L.kind] || A.title.localeCompare(L.title))), N = V(() => {
-      const A = y.value ? ae[y.value].toLowerCase() : "resource";
-      return he(O.value.length, A);
+    ], Y = { base: 0, part: 1, message: 2 }, D = V(() => p.value.filter((T) => !y.value || T.kind === y.value)), O = V(() => D.value.filter((T) => R.value === "all" || T.state === R.value).filter((T) => ti(T, P.value)).sort((T, L) => Y[T.kind] - Y[L.kind] || T.title.localeCompare(L.title))), N = V(() => {
+      const T = y.value ? ae[y.value].toLowerCase() : "resource";
+      return he(O.value.length, T);
     });
-    function q(A) {
-      if (A.kind !== "base") return "";
-      const L = _.value.get(A.name)?.length ?? 0;
+    function q(T) {
+      if (T.kind !== "base") return "";
+      const L = _.value.get(T.name)?.length ?? 0;
       return L ? he(L, "message") : "—";
     }
-    function J(A) {
-      return A.base ? b("base", A.base)?.title ?? A.base : "";
+    function J(T) {
+      return T.base ? b("base", T.base)?.title ?? T.base : "";
     }
-    function f(A) {
-      const L = Object.keys(A.schema.properties);
+    function f(T) {
+      const L = Object.keys(T.schema.properties);
       return L.length ? L.join(", ") : "—";
     }
-    function v(A) {
-      i({ name: "resource", kind: A.kind, resource: A.name, section: "content" });
+    function v(T) {
+      i({ name: "resource", kind: T.kind, resource: T.name, section: "content" });
     }
     const w = V(() => c.value && !g.value && y.value && !D.value.length);
-    return (A, L) => (l(), u(H, null, [
+    return (T, L) => (l(), u(H, null, [
       m(He, {
         title: F.value.title,
         description: F.value.description
       }, {
-        actions: T(() => [
+        actions: A(() => [
           m(o(G), {
             label: y.value ? "New " + o(ae)[y.value].toLowerCase() : "New",
             onClick: L[0] || (L[0] = (M) => o(n)({ kind: y.value }))
           }, {
-            icon: T(() => [
+            icon: A(() => [
               m(o(I), {
                 icon: "tabler:plus",
                 "aria-hidden": "true"
@@ -1477,7 +1478,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
         L[7] || (L[7] = W("Loading mail library…", -1))
       ])) : w.value && y.value ? (l(), U(ct, {
         key: 3,
-        icon: o(de)[y.value],
+        icon: o(pe)[y.value],
         title: "No " + o(nt)[y.value].toLowerCase() + " yet",
         hint: "Create a " + o(ae)[y.value].toLowerCase() + " from an existing one, then change it to suit.",
         cta: "New " + o(ae)[y.value].toLowerCase(),
@@ -1495,9 +1496,9 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
             "aria-label": "Show resources"
           }, null, 8, ["modelValue"]),
           m(o(Lt), { class: "mail-search" }, {
-            default: T(() => [
+            default: A(() => [
               m(o(Et), null, {
-                default: T(() => [
+                default: A(() => [
                   m(o(I), {
                     icon: "tabler:search",
                     "aria-hidden": "true"
@@ -1526,13 +1527,13 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
           pt: { table: { "aria-label": F.value.title } },
           onRowClick: L[5] || (L[5] = (M) => v(M.data))
         }, {
-          default: T(() => [
+          default: A(() => [
             m(o(X), {
               header: "Name",
               "header-class": "mail-col-name",
               "body-class": "mail-col-name"
             }, {
-              body: T(({ data: M }) => [
+              body: A(({ data: M }) => [
                 s("button", {
                   type: "button",
                   class: "mail-name",
@@ -1548,10 +1549,10 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               "header-class": "mail-col-kind",
               "body-class": "mail-col-kind"
             }, {
-              body: T(({ data: M }) => [
+              body: A(({ data: M }) => [
                 s("span", ki, [
                   m(o(I), {
-                    icon: o(de)[M.kind],
+                    icon: o(pe)[M.kind],
                     "aria-hidden": "true"
                   }, null, 8, ["icon"]),
                   W(h(o(ae)[M.kind]), 1)
@@ -1563,7 +1564,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               key: 1,
               header: "Base template"
             }, {
-              body: T(({ data: M }) => [
+              body: A(({ data: M }) => [
                 W(h(J(M)), 1)
               ]),
               _: 1
@@ -1572,7 +1573,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               key: 2,
               header: "Inputs"
             }, {
-              body: T(({ data: M }) => [
+              body: A(({ data: M }) => [
                 s("span", wi, h(f(M)), 1)
               ]),
               _: 1
@@ -1582,7 +1583,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               "header-class": "mail-col-source",
               "body-class": "mail-col-source"
             }, {
-              body: T(({ data: M }) => [
+              body: A(({ data: M }) => [
                 m(ui, { resource: M }, null, 8, ["resource"])
               ]),
               _: 1
@@ -1593,7 +1594,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               "header-class": "mail-col-used",
               "body-class": "mail-col-used"
             }, {
-              body: T(({ data: M }) => [
+              body: A(({ data: M }) => [
                 W(h(q(M)), 1)
               ]),
               _: 1
@@ -1603,7 +1604,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               "header-class": "mail-col-updated",
               "body-class": "mail-col-updated"
             }, {
-              body: T(({ data: M }) => [
+              body: A(({ data: M }) => [
                 s("span", _i, h(M.state === "original" ? "—" : o(Gt)(M.updated_at)), 1)
               ]),
               _: 1
@@ -1630,14 +1631,14 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       value: t.value ? "content" : void 0,
       "onUpdate:value": i[0] || (i[0] = (n) => t.value = n === "content")
     }, {
-      default: T(() => [
+      default: A(() => [
         m(o(Vr), {
           class: "kx-disclosure-panel",
           value: "content"
         }, {
-          default: T(() => [
+          default: A(() => [
             m(o(zr), { class: "kx-disclosure-toggle" }, {
-              default: T(() => [
+              default: A(() => [
                 W(h(e.label), 1)
               ]),
               _: 1
@@ -1646,7 +1647,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               transition: { name: "kx-disclosure-motion" },
               contentWrapper: { class: "kx-disclosure-content" }
             } }, {
-              default: T(() => [
+              default: A(() => [
                 ne(r.$slots, "default")
               ]),
               _: 3
@@ -1658,7 +1659,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       _: 3
     }, 8, ["value"]));
   }
-}), $i = ["aria-labelledby"], Si = { class: "mail-face-bar" }, Ai = ["id"], Ti = ["aria-label"], Li = {
+}), $i = ["aria-labelledby"], Si = { class: "mail-face-bar" }, Ti = ["id"], Ai = ["aria-label"], Li = {
   class: "mail-code-number",
   "aria-hidden": "true"
 }, Ei = { class: "mail-code-text" }, ir = /* @__PURE__ */ Q({
@@ -1679,7 +1680,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
         s("h2", {
           id: o(a),
           class: "mail-label"
-        }, h(e.label), 9, Ai),
+        }, h(e.label), 9, Ti),
         m(o(je), {
           modelValue: r.value,
           "onUpdate:modelValue": d[0] || (d[0] = (g) => r.value = g),
@@ -1706,7 +1707,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
 `, -1))
           ]))), 128))
         ])
-      ], 8, Ti)
+      ], 8, Ai)
     ], 8, $i));
   }
 }), Ri = {
@@ -1779,7 +1780,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
             disabled: e.busy !== void 0,
             onClick: (n) => t.$emit("restore", i)
           }, {
-            icon: T(() => [
+            icon: A(() => [
               m(o(I), {
                 icon: "tabler:restore",
                 "aria-hidden": "true"
@@ -1789,7 +1790,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
           }, 8, ["loading", "disabled", "onClick"])) : S("", !0)
         ]),
         m(ar, { label: "Show this version" }, {
-          default: T(() => [
+          default: A(() => [
             s("dl", Ni, [
               i.content.subject !== void 0 ? (l(), u(H, { key: 0 }, [
                 r[2] || (r[2] = s("dt", null, "Subject", -1)),
@@ -1837,7 +1838,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
         c || r("close");
       })
     }, {
-      header: T(() => [
+      header: A(() => [
         s("span", Hi, [
           m(o(I), {
             icon: "tabler:alert-triangle",
@@ -1848,14 +1849,14 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
           s("span", Bi, h(e.refusal?.header), 1)
         ])
       ]),
-      footer: T(() => [
+      footer: A(() => [
         m(o(G), {
           label: "Close",
           autofocus: "",
           onClick: a[0] || (a[0] = (c) => r("close"))
         })
       ]),
-      default: T(() => [
+      default: A(() => [
         s("p", Wi, h(e.refusal?.message), 1),
         e.refusal?.links.length ? (l(), u("ul", qi, [
           (l(!0), u(H, null, ce(e.refusal.links, (c) => (l(), u("li", {
@@ -1932,7 +1933,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               onClick: ($) => o(i)({ name: "resource", kind: "message", resource: g.name, section: "content" })
             }, [
               m(o(I), {
-                icon: o(de).message,
+                icon: o(pe).message,
                 "aria-hidden": "true"
               }, null, 8, ["icon"]),
               s("span", null, h(g.title), 1)
@@ -2030,9 +2031,9 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       class: "mail-table",
       pt: { table: { "aria-label": e.label } }
     }, {
-      default: T(() => [
+      default: A(() => [
         m(o(X), { header: "Name" }, {
-          body: T(({ data: d }) => [
+          body: A(({ data: d }) => [
             s("span", uo, h(d.name), 1),
             d.required ? (l(), U(o(Se), {
               key: 0,
@@ -2048,7 +2049,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
           field: "type"
         }),
         m(o(X), { header: "Description" }, {
-          body: T(({ data: d }) => [
+          body: A(({ data: d }) => [
             s("span", mo, h(d.description || "—"), 1)
           ]),
           _: 1
@@ -2057,13 +2058,13 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
           key: 0,
           header: "Default"
         }, {
-          body: T(({ data: d }) => [
+          body: A(({ data: d }) => [
             s("span", fo, h(d.fallback), 1)
           ]),
           _: 1
         })) : S("", !0),
         m(o(X), { header: "Sample value" }, {
-          body: T(({ data: d }) => [
+          body: A(({ data: d }) => [
             s("span", ho, h(d.sample), 1)
           ]),
           _: 1
@@ -2099,7 +2100,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
 }, _o = {
   key: 3,
   class: "kx-notice mail-customized"
-}, Co = { class: "mail-customized-text" }, $o = { class: "mail-facts mail-card" }, So = { class: "mail-mono" }, Ao = { class: "mail-mono-block" }, To = /* @__PURE__ */ Q({
+}, Co = { class: "mail-customized-text" }, $o = { class: "mail-facts mail-card" }, So = { class: "mail-mono" }, To = { class: "mail-mono-block" }, Ao = /* @__PURE__ */ Q({
   __name: "ResourcePage",
   props: {
     kind: {},
@@ -2116,7 +2117,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
         a.value = k, d.value = g.value = !1, $.value = "", ve([k.author]);
       } catch (k) {
         if (!x()) return;
-        d.value = Xe(k), g.value = Ae(k), $.value = d.value || g.value ? "" : le(k, "This resource could not be loaded."), d.value && (a.value = void 0);
+        d.value = Xe(k), g.value = Te(k), $.value = d.value || g.value ? "" : le(k, "This resource could not be loaded."), d.value && (a.value = void 0);
       } finally {
         x() && (c.value = !1);
       }
@@ -2164,7 +2165,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
     }), w = V(() => {
       const x = a.value;
       return x?.state !== "customized" ? "" : `Customized by ${ke(x.author)} ${qa(x.updated_at)} from the included version.`;
-    }), A = V(() => {
+    }), T = V(() => {
       const x = a.value?.base;
       return x ? r.find("base", x)?.title ?? x : "";
     }), L = C(!1);
@@ -2212,7 +2213,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       J.value = {
         header: `${x.title} is in use`,
         message: `${he(k.length, "message")} ${k.length === 1 ? te + "s" : te} it: ${Z.join(", ")}. Remove it from ${k.length === 1 ? "that message" : "them"} first.`,
-        links: k.map((oe, Te) => ({ label: Z[Te], open: () => i({ name: "resource", kind: "message", resource: oe, section: "content" }) }))
+        links: k.map((oe, Ae) => ({ label: Z[Ae], open: () => i({ name: "resource", kind: "message", resource: oe, section: "content" }) }))
       };
     }
     async function E() {
@@ -2235,7 +2236,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
           await me.remove(p.value, x.revision), i({ name: "library", section: Ze(x.kind) });
         } catch (te) {
           const oe = Oe(te) === "mail_resource_in_use" ? te.details?.messages : void 0;
-          Array.isArray(oe) && oe.every((Te) => typeof Te == "string") ? z(x, oe) : M(te, `${x.title} could not be deleted.`);
+          Array.isArray(oe) && oe.every((Ae) => typeof Ae == "string") ? z(x, oe) : M(te, `${x.title} could not be deleted.`);
         } finally {
           O.value = void 0;
         }
@@ -2267,7 +2268,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
         }, et({ _: 2 }, [
           a.value ? {
             name: "actions",
-            fn: T(() => [
+            fn: A(() => [
               m(o(G), {
                 label: "Duplicate",
                 severity: "secondary",
@@ -2275,7 +2276,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
                 disabled: O.value !== void 0,
                 onClick: j
               }, {
-                icon: T(() => [
+                icon: A(() => [
                   m(o(I), {
                     icon: "tabler:copy",
                     "aria-hidden": "true"
@@ -2292,7 +2293,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
                 disabled: O.value !== void 0,
                 onClick: E
               }, {
-                icon: T(() => [
+                icon: A(() => [
                   m(o(I), {
                     icon: "tabler:trash",
                     "aria-hidden": "true"
@@ -2353,7 +2354,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               disabled: O.value !== void 0,
               onClick: we
             }, {
-              icon: T(() => [
+              icon: A(() => [
                 m(o(I), {
                   icon: "tabler:arrow-back-up",
                   "aria-hidden": "true"
@@ -2380,11 +2381,11 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
                     type: "button",
                     class: "mail-text-link",
                     onClick: k[2] || (k[2] = (Z) => o(i)({ name: "resource", kind: "base", resource: a.value.base, section: "content" }))
-                  }, h(A.value), 1)) : S("", !0)
+                  }, h(T.value), 1)) : S("", !0)
                 ]),
                 k[6] || (k[6] = s("dt", null, "Subject", -1)),
                 s("dd", null, [
-                  s("span", Ao, h(a.value.subject), 1)
+                  s("span", To, h(a.value.subject), 1)
                 ])
               ], 64)) : S("", !0)
             ]),
@@ -2451,11 +2452,11 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
   },
   emits: ["close"],
   setup(e, { emit: t }) {
-    const r = e, i = t, { library: n, go: p } = xe(), a = C("message"), c = C(""), d = C(""), g = C(""), $ = C(""), b = C(!1), _ = C(!1), y = C(""), R = C(""), P = { title: ue(), reference: ue(), description: ue(), source: ue(), hint: ue() }, F = ["message", "base", "part"].map((w) => ({ value: w, label: ae[w] })), B = V(() => !!r.intent.from), Y = V(() => n.resources.value.filter((w) => w.kind === a.value).sort((w, A) => w.title.localeCompare(A.title)).map((w) => ({ value: w.name, label: w.title }))), D = V(() => n.find(a.value, c.value));
+    const r = e, i = t, { library: n, go: p } = xe(), a = C("message"), c = C(""), d = C(""), g = C(""), $ = C(""), b = C(!1), _ = C(!1), y = C(""), R = C(""), P = { title: ue(), reference: ue(), description: ue(), source: ue(), hint: ue() }, F = ["message", "base", "part"].map((w) => ({ value: w, label: ae[w] })), B = V(() => !!r.intent.from), Y = V(() => n.resources.value.filter((w) => w.kind === a.value).sort((w, T) => w.title.localeCompare(T.title)).map((w) => ({ value: w.name, label: w.title }))), D = V(() => n.find(a.value, c.value));
     function O(w) {
       c.value = w;
-      const A = n.find(a.value, w);
-      A && ($.value = A.description, r.intent.from && (d.value = `${A.title} copy`, b.value = !1));
+      const T = n.find(a.value, w);
+      T && ($.value = T.description, r.intent.from && (d.value = `${T.title} copy`, b.value = !1));
     }
     ie(() => r.visible, (w) => {
       w && (a.value = r.intent.from?.kind ?? r.intent.kind ?? "message", d.value = g.value = $.value = c.value = "", y.value = R.value = "", b.value = !1, r.intent.from && O(r.intent.from.name));
@@ -2488,7 +2489,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       }
     }
     const f = { header: { class: "mail-dialog-header" }, content: { class: "mail-dialog-content" }, footer: { class: "mail-dialog-footer" } }, v = V(() => r.intent.from ? `Duplicate ${n.find(r.intent.from.kind, r.intent.from.name)?.title ?? ""}` : `New ${ae[a.value].toLowerCase()}`);
-    return (w, A) => (l(), U(o(Rt), {
+    return (w, T) => (l(), U(o(Rt), {
       visible: e.visible,
       modal: "",
       draggable: !1,
@@ -2497,29 +2498,29 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       class: "mail-dialog",
       pt: f,
       "aria-label": v.value,
-      "onUpdate:visible": A[6] || (A[6] = (L) => {
+      "onUpdate:visible": T[6] || (T[6] = (L) => {
         L || i("close");
       })
     }, {
-      header: T(() => [
+      header: A(() => [
         s("span", Eo, [
           m(o(I), {
-            icon: o(de)[a.value],
+            icon: o(pe)[a.value],
             "aria-hidden": "true"
           }, null, 8, ["icon"])
         ]),
         s("span", Ro, [
           s("span", zo, h(v.value), 1),
-          A[7] || (A[7] = s("span", { class: "kx-modal-head-sub" }, "It starts as a copy and is yours to change.", -1))
+          T[7] || (T[7] = s("span", { class: "kx-modal-head-sub" }, "It starts as a copy and is yours to change.", -1))
         ])
       ]),
-      footer: T(() => [
+      footer: A(() => [
         m(o(G), {
           label: "Cancel",
           severity: "secondary",
           outlined: "",
           disabled: _.value,
-          onClick: A[5] || (A[5] = (L) => i("close"))
+          onClick: T[5] || (T[5] = (L) => i("close"))
         }, null, 8, ["disabled"]),
         m(o(G), {
           label: "Create " + o(ae)[a.value].toLowerCase(),
@@ -2529,7 +2530,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
           disabled: !d.value.trim() || !D.value
         }, null, 8, ["label", "form", "loading", "disabled"])
       ]),
-      default: T(() => [
+      default: A(() => [
         s("form", {
           id: P.hint,
           class: "mail-form",
@@ -2541,10 +2542,10 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
             inert: _.value || void 0
           }, [
             B.value ? S("", !0) : (l(), u("div", Io, [
-              A[8] || (A[8] = s("span", { class: "mail-field-label" }, "Kind", -1)),
+              T[8] || (T[8] = s("span", { class: "mail-field-label" }, "Kind", -1)),
               m(o(je), {
                 modelValue: a.value,
-                "onUpdate:modelValue": A[0] || (A[0] = (L) => a.value = L),
+                "onUpdate:modelValue": T[0] || (T[0] = (L) => a.value = L),
                 options: o(F),
                 "option-label": "label",
                 "option-value": "value",
@@ -2576,7 +2577,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               m(o(Pe), {
                 id: P.title,
                 modelValue: d.value,
-                "onUpdate:modelValue": A[1] || (A[1] = (L) => d.value = L),
+                "onUpdate:modelValue": T[1] || (T[1] = (L) => d.value = L),
                 autofocus: "",
                 required: ""
               }, null, 8, ["id", "modelValue"])
@@ -2591,11 +2592,11 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               m(o(Pe), {
                 id: P.reference,
                 modelValue: g.value,
-                "onUpdate:modelValue": A[2] || (A[2] = (L) => g.value = L),
+                "onUpdate:modelValue": T[2] || (T[2] = (L) => g.value = L),
                 class: "mail-mono-input",
                 invalid: !!R.value,
                 "aria-describedby": P.reference + "-hint",
-                onInput: A[3] || (A[3] = (L) => b.value = !0)
+                onInput: T[3] || (T[3] = (L) => b.value = !0)
               }, null, 8, ["id", "modelValue", "invalid", "aria-describedby"]),
               s("small", {
                 id: P.reference + "-hint",
@@ -2610,7 +2611,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               m(o(Pr), {
                 id: P.description,
                 modelValue: $.value,
-                "onUpdate:modelValue": A[4] || (A[4] = (L) => $.value = L),
+                "onUpdate:modelValue": T[4] || (T[4] = (L) => $.value = L),
                 rows: "2",
                 "auto-resize": ""
               }, null, 8, ["id", "modelValue"])
@@ -2683,7 +2684,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
         a.value = w, $.value = "", d.value = g.value = !1, ve([w.sender]);
       } catch (w) {
         if (!v()) return;
-        a.value = void 0, d.value = Xe(w), g.value = Ae(w), $.value = d.value || g.value ? "" : le(w, "This message could not be loaded.");
+        a.value = void 0, d.value = Xe(w), g.value = Te(w), $.value = d.value || g.value ? "" : le(w, "This message could not be loaded.");
       } finally {
         v() && (c.value = !1);
       }
@@ -2747,7 +2748,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
         w || i("close");
       })
     }, {
-      default: T(() => [
+      default: A(() => [
         s("div", qo, [
           s("header", Ko, [
             s("div", Yo, [
@@ -2767,7 +2768,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               title: R.value ? "Link copied" : "Copy link",
               onClick: Y
             }, {
-              icon: T(() => [
+              icon: A(() => [
                 m(o(I), {
                   icon: R.value ? "tabler:check" : "tabler:link",
                   "aria-hidden": "true"
@@ -2783,7 +2784,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               disabled: _.value,
               onClick: v[0] || (v[0] = (w) => i("close"))
             }, {
-              icon: T(() => [
+              icon: A(() => [
                 m(o(I), {
                   icon: "tabler:x",
                   "aria-hidden": "true"
@@ -2845,7 +2846,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
                     loading: _.value,
                     onClick: B
                   }, {
-                    icon: T(() => [
+                    icon: A(() => [
                       m(o(I), {
                         icon: "tabler:send",
                         "aria-hidden": "true"
@@ -2924,7 +2925,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
               key: 2,
               label: "Technical details"
             }, {
-              default: T(() => [
+              default: A(() => [
                 s("dl", ms, [
                   (l(!0), u(H, null, ce(J.value, (w) => (l(), u(H, {
                     key: w.label
@@ -2969,10 +2970,10 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
 }, _s = ["onClick"], Cs = { class: "mail-sub" }, $s = {
   key: 0,
   class: "mail-sub"
-}, Ss = { class: "mail-muted" }, As = {
+}, Ss = { class: "mail-muted" }, Ts = {
   key: 2,
   class: "mail-more"
-}, Ts = /* @__PURE__ */ Q({
+}, As = /* @__PURE__ */ Q({
   __name: "ActivityPage",
   props: {
     message: {},
@@ -3006,7 +3007,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
         b.value = E.items, _.value = E.next_cursor, B.value = "", F.value = !1, R.value = !0, ve(E.items.map((j) => j.sender));
       } catch (E) {
         if (!z()) return;
-        F.value = Ae(E), B.value = F.value ? "" : le(E, "Activity could not be loaded.");
+        F.value = Te(E), B.value = F.value ? "" : le(E, "Activity could not be loaded.");
       } finally {
         z() && (y.value = !1);
       }
@@ -3046,7 +3047,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
     const w = V(() => {
       const z = c.value.trim().toLowerCase();
       return z ? b.value.filter((E) => [E.subject, ...E.to, ...E.cc ?? [], ...E.bcc ?? []].some((j) => j.toLowerCase().includes(z))) : b.value;
-    }), A = V(() => he(w.value.length, "message") + (_.value && !c.value ? " so far" : "")), L = V(() => {
+    }), T = V(() => he(w.value.length, "message") + (_.value && !c.value ? " so far" : "")), L = V(() => {
       const z = q.value;
       return z.count ? { title: `${z.capped ? `${z.count}+ messages` : he(z.count, "message")} failed today.`, reason: z.latest?.last_error?.message ?? "" } : void 0;
     });
@@ -3114,9 +3115,9 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
             class: "mail-filter"
           }, null, 8, ["modelValue"]),
           m(o(Lt), { class: "mail-search" }, {
-            default: T(() => [
+            default: A(() => [
               m(o(Et), null, {
-                default: T(() => [
+                default: A(() => [
                   m(o(I), {
                     icon: "tabler:search",
                     "aria-hidden": "true"
@@ -3134,7 +3135,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
             ]),
             _: 1
           }),
-          R.value ? (l(), u("span", ys, h(A.value), 1)) : S("", !0)
+          R.value ? (l(), u("span", ys, h(T.value), 1)) : S("", !0)
         ]),
         B.value ? (l(), u("div", xs, [
           s("span", null, h(B.value), 1),
@@ -3162,13 +3163,13 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
             pt: { table: { "aria-label": "Sent messages" } },
             onRowClick: E[5] || (E[5] = (j) => we(j.data))
           }, {
-            default: T(() => [
+            default: A(() => [
               m(o(X), {
                 header: "Status",
                 "header-class": "mail-col-status",
                 "body-class": "mail-col-status"
               }, {
-                body: T(({ data: j }) => [
+                body: A(({ data: j }) => [
                   m(o(Se), {
                     severity: o(qt)[j.status],
                     value: o(Wt)[j.status],
@@ -3178,7 +3179,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
                 _: 1
               }),
               m(o(X), { header: "Message" }, {
-                body: T(({ data: j }) => [
+                body: A(({ data: j }) => [
                   s("button", {
                     type: "button",
                     class: "mail-name",
@@ -3189,13 +3190,13 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
                 _: 1
               }),
               m(o(X), { header: "Template" }, {
-                body: T(({ data: j }) => [
+                body: A(({ data: j }) => [
                   W(h(M(j.template)), 1)
                 ]),
                 _: 1
               }),
               m(o(X), { header: "Sent by" }, {
-                body: T(({ data: j }) => [
+                body: A(({ data: j }) => [
                   s("span", null, h(o(ke)(j.sender)), 1),
                   j.origin ? (l(), u("span", $s, h(o(Ue)(j.origin)), 1)) : S("", !0)
                 ]),
@@ -3206,7 +3207,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
                 "header-class": "mail-col-when",
                 "body-class": "mail-col-when"
               }, {
-                body: T(({ data: j }) => [
+                body: A(({ data: j }) => [
                   s("span", Ss, h(o(Ka)(j.created_at)), 1)
                 ]),
                 _: 1
@@ -3214,7 +3215,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
             ]),
             _: 1
           }, 8, ["value"])) : (l(), u("p", ws, h(b.value.length || c.value ? "Nothing matches. Try another subject or recipient." : "No email was sent in this period."), 1)),
-          _.value ? (l(), u("div", As, [
+          _.value ? (l(), u("div", Ts, [
             m(o(G), {
               label: "Show more",
               severity: "secondary",
@@ -3239,7 +3240,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
   },
   emits: ["navigate"],
   setup(e, { emit: t }) {
-    const r = e, i = t, n = C(At("")), p = V(() => r.route === void 0 ? n.value : At(r.route));
+    const r = e, i = t, n = C(Tt("")), p = V(() => r.route === void 0 ? n.value : Tt(r.route));
     function a(f) {
       const v = St(f);
       r.route === void 0 ? n.value = f : v !== r.route && i("navigate", v);
@@ -3249,7 +3250,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       try {
         d.value = await Ha.status(), g.value = !0;
       } catch (f) {
-        d.value = void 0, g.value = !Ae(f);
+        d.value = void 0, g.value = !Te(f);
       }
     }
     $();
@@ -3264,15 +3265,15 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       "used-by": () => "Used by",
       history: () => "History"
     }, P = {
-      content: (f) => de[f],
+      content: (f) => pe[f],
       variables: () => "tabler:variable",
       "used-by": () => "tabler:link",
       history: () => "tabler:history"
     }, F = V(() => [
       { heading: "Library", items: [
-        { value: "messages", label: "Messages", icon: de.message },
-        { value: "bases", label: "Base templates", icon: de.base },
-        { value: "parts", label: "Parts", icon: de.part },
+        { value: "messages", label: "Messages", icon: pe.message },
+        { value: "bases", label: "Base templates", icon: pe.base },
+        { value: "parts", label: "Parts", icon: pe.part },
         { value: "assets", label: "Assets", icon: "tabler:photo" }
       ] },
       ...g.value ? [{ heading: "Delivery", items: [{ value: "activity", label: "Activity", icon: "tabler:activity" }] }] : []
@@ -3318,7 +3319,7 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
         "leading-item": D.value ? D.value.leading : B,
         "onUpdate:value": N
       }, {
-        actions: T(() => [
+        actions: A(() => [
           m(ja, {
             "create-label": "New resource",
             onCreate: q,
@@ -3333,12 +3334,12 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
           ref: J,
           class: "kx-main-scroll mail-main"
         }, [
-          p.value.name === "resource" ? (l(), U(To, {
+          p.value.name === "resource" ? (l(), U(Ao, {
             key: p.value.kind + "/" + p.value.resource,
             kind: p.value.kind,
             name: p.value.resource,
             section: p.value.section
-          }, null, 8, ["kind", "name", "section"])) : p.value.name === "activity" ? (l(), U(Ts, {
+          }, null, 8, ["kind", "name", "section"])) : p.value.name === "activity" ? (l(), U(As, {
             key: 1,
             message: p.value.message,
             template: p.value.template
@@ -3364,6 +3365,6 @@ const di = { class: "mail-source" }, ui = /* @__PURE__ */ Q({
       onNavigate: n[0] || (n[0] = (p) => o(r)("navigate", { route: p }))
     }, null, 8, ["route"]));
   }
-}), Vs = Aa(zs, { type: "object", properties: { route: { type: "string", default: "" } } });
+}), Vs = Ta(zs, { type: "object", properties: { route: { type: "string", default: "" } } });
 wr(import.meta.url, Vs);
 //# sourceMappingURL=admin.js.map

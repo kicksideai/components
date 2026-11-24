@@ -121,7 +121,7 @@ describe('Mail administration shell', () => {
     serve([get('/api/v1/mail/library', () => refuse(500, { error: 'database unavailable', kind: 'INTERNAL' })),
       get('/api/v1/mail/delivery', () => ok({ configured: true }))])
     wrapper = await open()
-    expect(wrapper.find('.kx-err').text()).toContain('database unavailable')
+    expect(wrapper.find('.kx-err').text()).toContain('The mail library could not be loaded. Try again in a moment.')
     serveLibrary()
     await wrapper.find('.kx-err button').trigger('click')
     await flushPromises()
