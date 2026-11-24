@@ -16,6 +16,8 @@ entries:
       test: wippy.test:test
       library_fixtures: app.mail_library:fixtures
       fixtures: app.mail_api:fixtures
+      normalize: kickside.mail.library:resources
+      preview_id: kickside.mail.library:preview_id
   - name: sender
     kind: security.scope
   - name: sender_composition

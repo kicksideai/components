@@ -1064,6 +1064,59 @@ return {
                 test.eq("Reminder: A & B", preview.subject)
             end)
 
+            test.it("returns a typed direct-body refusal when a live layout depends on a template cycle", function()
+                capture_with(admin)
+                local views = "kickside.mail.views:"
+                local layout = views .. "layout"
+                local targets = {
+                    {name = "/base/standard"},
+                    {name = "/base/plain", id = views .. "plain"},
+                    {name = "/part/header", id = views .. "header"},
+                    {name = "/message/notice", id = views .. "notice"},
+                }
+                local function apply(entries)
+                    local changes = assert(registry.snapshot()):changes()
+                    for _, entry in ipairs(entries) do assert(changes:update(entry)) end
+                    assert(changes:apply())
+                end
+                local function directive(word, destination)
+                    return '{{ ' .. word .. ' "' .. destination .. '" }}'
+                end
+
+                for _, word in ipairs({"extends", "import"}) do
+                    for _, target in ipairs(targets) do
+                        local originals, changed = {assert(registry.get(layout))}, {assert(registry.get(layout))}
+                        changed[1].data.source = directive(word, target.name)
+                        if target.id then
+                            originals[2] = assert(registry.get(target.id))
+                            changed[2] = assert(registry.get(target.id))
+                            changed[2].data.source = directive(word, "/base/standard")
+                        end
+                        apply(changed)
+                        local returned, sent, err = pcall(invoke, sender, "send", body())
+                        apply(originals)
+                        assert(returned, tostring(sent))
+                        refusal(sent, err, errors.INTERNAL, "template_render_failed")
+                        local details = err:details()
+                        test.eq("html", details.face)
+                        test.eq("standard", details.resource.name)
+                        local diagnostic = details.engine_message
+                        assert(type(diagnostic) == "string", tostring(diagnostic))
+                        test.not_nil(diagnostic:find("template dependency cycle", 1, true), diagnostic)
+                        test.eq(0, #query("SELECT id FROM mail_message WHERE sender=$1", {sender_id}))
+                    end
+                end
+
+                local input = body()
+                input.html = '<p>{{ extends "/base/standard" }}{{ import "/part/header" }}{{ import "/message/notice" }}</p>'
+                local queued = assert(invoke(sender, "send", input))
+                local delivered = terminal(log_admin, queued)
+                test.eq("sent", delivered.status)
+                local captured = assert(json.decode(delivered.provider_message_id))
+                test.not_nil(captured.html:find("{{ extends", 1, true))
+                test.not_nil(captured.html:find("{{ import", 1, true))
+            end)
+
             test.it("refuses a Jet name with no declaration on send and preview", function()
                 capture_with(admin)
                 local input = template_request()

@@ -10,6 +10,8 @@ local uuid = require("uuid")
 local test = require("test")
 local library_fixtures = require("library_fixtures")
 local fixtures = require("fixtures")
+local normalize = require("normalize")
+local receipt = require("preview_id")
 local session = fixtures.session
 local settings = fixtures.settings
 
@@ -639,45 +641,159 @@ return {run = test.run_cases(function()
             test.eq(part.name, candidates[3].name)
         end)
 
-        test.it("refuses templates that refer to themselves and keeps rendering", function()
-            local editor = session("editor")
-            local part = own(fixture("part", "cycle-part", "Static"))
-            local saved_part = data(editor, "POST", "/library", part, 201)
-            local base = own(fixture("base", "cycle-base",
-                '{{ include "/part/cycle-part" }}{{ block body() }}{{ end }}'))
-            local saved_base = data(editor, "POST", "/library", base, 201)
-            local message = own(fixture("message", "cycle-message", "{{ block body() }}Content{{ end }}"))
-            message.base, message.subject = base.name, "Cycle"
-            data(editor, "POST", "/library", message, 201)
+        local function directive(word, kind, name)
+            return '{{ ' .. word .. ' "/' .. kind .. '/' .. name .. '" }}'
+        end
 
-            local cases = {
-                {resource = part, revision = saved_part.revision, html = '{{ import "/part/cycle-part" }}Static',
-                    detail = "template dependency cycle"},
-                {resource = base, revision = saved_base.revision,
-                    html = '{{ extends "/base/cycle-base" }}{{ block body() }}{{ end }}',
-                    detail = "template dependency cycle"},
-                {resource = part, revision = saved_part.revision, html = '{{ include "/part/cycle-part" }}',
-                    detail = "maximum 'include' depth"},
-            }
-            for _, case in ipairs(cases) do
-                local healthy = case.resource.html
-                case.resource.html = case.html
-                local status, body = request(editor, "POST", "/library/preview",
-                    {message = message.name, resource = case.resource})
-                test.eq(400, status)
-                test.eq("Mail could not render this template.", body.error)
-                test.not_nil(body.details.engine_message:find(case.detail, 1, true), body.details.engine_message)
+        local function cycle_failure(reason, details, label, diagnostic)
+            test.eq("Mail could not render this template.", reason, label)
+            test.eq("html", details.face, label)
+            test.not_nil(details.engine_message:find(diagnostic or "template dependency cycle", 1, true), details.engine_message)
+        end
 
-                case.resource.expected_revision = case.revision
-                local save_status = request(editor, "PUT",
-                    "/library/" .. case.resource.kind .. "/" .. case.resource.name, case.resource)
-                test.eq(400, save_status)
-                case.resource.html, case.resource.expected_revision = healthy, nil
+        local function http_cycle(editor, method, path, payload, diagnostic)
+            local status, body, raw = request(editor, method, path, payload)
+            test.eq(400, status, method .. " " .. path .. ": " .. raw)
+            test.eq(errors.INVALID, body.kind, raw)
+            test.eq("template_render_failed", body.code, raw)
+            cycle_failure(body.error, body.details, path, diagnostic)
+        end
 
-                local preview = data(editor, "POST", "/library/preview", {message = message.name})
-                test.not_nil(preview.html:find("Content", 1, true))
+        local function tool_cycle(editor, tool, payload, diagnostic)
+            local result, err = editor:call("kickside.mail.traits:" .. tool, payload)
+            assert(not err, tostring(err))
+            test.eq(false, result.success, tool)
+            test.eq("template_render_failed", result.code, tool)
+            cycle_failure(result.error, tool == "library_preview" and result.errors[1] or result, tool, diagnostic)
+            test.is_nil(result.preview_id, tool)
+        end
+
+        local function seed_source(table_name, item, html)
+            local db = assert(sql.get("app:db"))
+            if table_name == "mail_library_revision" then
+                assert(db:execute([[UPDATE mail_library_revision SET html=$1 WHERE kind=$2 AND name=$3 AND revision=$4]],
+                    {html, item.kind, item.name, item.revision}))
+            else
+                assert(db:execute("UPDATE mail_library SET html=$1 WHERE kind=$2 AND name=$3",
+                    {html, item.kind, item.name}))
             end
-        end)
+            assert(db:release())
+        end
+
+        local graphs = {
+            {kind = "base", word = "extends"},
+            {kind = "base", word = "extends", peer = "base"},
+            {kind = "base", word = "import"},
+            {kind = "base", word = "import", peer = "base"},
+            {kind = "part", word = "extends"},
+            {kind = "part", word = "extends", peer = "part"},
+            {kind = "part", word = "import"},
+            {kind = "part", word = "import", peer = "part"},
+            {kind = "message", word = "import"},
+            {kind = "message", word = "import", peer = "part"},
+            {kind = "message", word = "extends", diagnostic = "Unexpected extends clause"},
+            {kind = "message", word = "extends", peer = "base"},
+            {kind = "part", word = "include", diagnostic = "maximum 'include' depth"},
+            {kind = "part", word = "include", peer = "part", diagnostic = "maximum 'include' depth"},
+        }
+        for _, graph in ipairs(graphs) do
+            local shape = graph.peer and ("mutual with " .. graph.peer) or "self"
+            test.it("reports " .. graph.kind .. " " .. graph.word .. " cycles (" .. shape .. ") without publishing", function()
+                local editor = session("editor")
+                local agent = assert(funcs.new():with_actor(editor.actor):with_scope(editor.scope))
+                local target = own(fixture(graph.kind, "cycle-target", "Cycle content"))
+                if graph.kind == "base" then
+                    target.html, target.text = "Before {{ block body() }}{{ end }}", "Before {{ block body() }}{{ end }}"
+                elseif graph.kind == "message" then
+                    target.html, target.text = "{{ block body() }}Cycle content{{ end }}", "{{ block body() }}Cycle content{{ end }}"
+                    target.subject, target.base = "Cycle", "standard"
+                end
+
+                local peer
+                if graph.peer then
+                    local source = graph.peer == "base" and "Peer {{ block body() }}{{ end }}" or "Peer"
+                    peer = own(fixture(graph.peer, "cycle-peer", source))
+                    data(editor, "POST", "/library", peer, 201)
+                end
+                if graph.kind == "message" and graph.word == "extends" and peer then target.base = peer.name end
+                local good_html = target.html
+                local destination = peer or target
+                local bad_html = directive(graph.word, destination.kind, destination.name) .. good_html
+                if graph.kind == "message" and graph.word == "extends" and peer then
+                    -- The message's declared base supplies its extends directive.
+                    bad_html = good_html
+                end
+                local route = "/library/" .. target.kind .. "/" .. target.name
+                local function arm_peer(active)
+                    if peer then
+                        local source = active and directive(graph.word, target.kind, target.name) .. peer.html or peer.html
+                        seed_source("mail_library", peer, source)
+                    end
+                end
+                local function sign(operation)
+                    return assert(receipt.issue({assert(normalize.normalize(target))}, editor.id, operation, time.now():unix()))
+                end
+                local function alive()
+                    local preview = data(editor, "POST", "/library/preview", {message = "notice"})
+                    test.not_nil(preview.html)
+                end
+
+                -- A pre-existing source may name a resource that has yet to be created.
+                arm_peer(true)
+                target.html = bad_html
+                http_cycle(editor, "POST", "/library", target, graph.diagnostic)
+                target.preview_id = sign("create")
+                tool_cycle(agent, "library_create", target, graph.diagnostic)
+                target.preview_id = nil
+                test.eq(404, (request(editor, "GET", route)))
+                alive()
+                arm_peer(false)
+
+                target.html = good_html
+                local first = data(editor, "POST", "/library", target, 201)
+                local message = target.name
+                if target.kind ~= "message" then
+                    local body = "Cycle content"
+                    if target.kind == "part" then body = directive("include", target.kind, target.name) end
+                    local dependent = own(fixture("message", "cycle-dependent", "{{ block body() }}" .. body .. "{{ end }}"))
+                    dependent.base, dependent.subject = target.kind == "base" and target.name or "standard", "Cycle"
+                    data(editor, "POST", "/library", dependent, 201)
+                    message = dependent.name
+                end
+                local second = data(editor, "PUT", route, {
+                    kind = target.kind, name = target.name, html = good_html, text = target.text,
+                    title = "Healthy current revision", description = target.description,
+                    subject = target.subject, base = target.base, schema = target.schema, samples = target.samples,
+                    expected_revision = first.revision,
+                })
+                target.expected_revision = second.revision
+                target.title = second.title
+                arm_peer(true)
+                target.html = bad_html
+                local preview = {message = message, resources = {target}}
+                http_cycle(editor, "POST", "/library/preview", preview, graph.diagnostic)
+                tool_cycle(agent, "library_preview", preview, graph.diagnostic)
+                alive()
+                http_cycle(editor, "PUT", route, target, graph.diagnostic)
+                http_cycle(editor, "POST", "/library/save", {resources = {target}}, graph.diagnostic)
+                tool_cycle(agent, "library_save", {resources = {target}, preview_id = sign("update")}, graph.diagnostic)
+                alive()
+
+                -- A revision imported from an earlier installation may contain invalid source.
+                seed_source("mail_library_revision", first, bad_html)
+                local restore = {kind = target.kind, name = target.name,
+                    revision = first.revision, expected_revision = second.revision}
+                http_cycle(editor, "POST", route .. "/restore", restore, graph.diagnostic)
+                tool_cycle(agent, "library_restore", restore, graph.diagnostic)
+                arm_peer(false)
+                local stored = data(editor, "GET", route)
+                test.eq(second.revision, stored.revision)
+                test.eq(good_html, stored.html)
+                test.eq(2, #data(editor, "GET", route .. "/history").items)
+                local healthy = data(editor, "POST", "/library/preview", {message = message})
+                test.not_nil(healthy.html:find("Cycle content", 1, true))
+            end)
+        end
 
         test.it("serves library edits and candidate previews through the router", function()
             local editor = session("editor")
