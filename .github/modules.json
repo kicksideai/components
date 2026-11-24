@@ -400,6 +400,48 @@
           "check"
         ]
       ]
+    },
+    "mail-admin": {
+      "path": "mail-admin",
+      "organization": "kickside",
+      "module": "mail-admin",
+      "type": "plugin",
+      "visibility": "private",
+      "embed": [
+        "kickside.mail.admin:ui_fs"
+      ],
+      "targets": [
+        "setup",
+        "build",
+        "typecheck",
+        "ui-test",
+        "lint",
+        "strict",
+        "check",
+        "test",
+        "test-pg",
+        "pack",
+        "verify"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_mail_admin",
+      "extra_tests": [
+        [
+          "make",
+          "ui-test"
+        ],
+        [
+          "make",
+          "typecheck"
+        ],
+        [
+          "make",
+          "check"
+        ]
+      ]
     }
   }
 }
