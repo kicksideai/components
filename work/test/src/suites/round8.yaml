@@ -37,6 +37,7 @@ entries:
   modules:
   - json
   imports:
+    append: kickside.work.persist:append
     limits: app:round8_limits
     local_types: kickside.work.extensions:types
     threads: app:round8_threads

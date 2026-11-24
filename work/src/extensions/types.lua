@@ -8,4 +8,10 @@ type Body = { worker_config: Config, token: string?, meta: { worker_ref: string 
 type FeedToken = { projection_id: string, start_seq: integer, cursor: reads.ChangesCursor?, bootstrapping: boolean }
 type Definition = { id: string, kind: string, projection_key: string, body: unknown }
 type Page = { projections: { Definition }, projections_has_more: boolean, projections_cursor: string? }
-return { FeedToken = FeedToken, Config = Config, Body = Body, Definition = Definition, Page = Page, Pair = Pair }
+type Rebuild = { plugin: string, schema_version: integer, trace_context: domain.TraceContext? }
+type BatchResult = { done: boolean?, inspected: integer?, seq: integer? }
+type Manifest = { meta: unknown, data: unknown, owner: string, version: string? }
+type Catalog = { [string]: Manifest }
+type Migrations = { [string]: { [string]: { string } } }
+return { FeedToken = FeedToken, Config = Config, Body = Body, Definition = Definition, Page = Page, Pair = Pair,
+    Rebuild = Rebuild, BatchResult = BatchResult, Catalog = Catalog, Migrations = Migrations }

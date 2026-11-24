@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Plugin configuration is validated at the attachment and recorded on the board thread.
 local manifests = require("manifests")
+local funcs = require("funcs")
 local plugins = require("plugins")
 local schema_commands = require("schema_commands")
 local plugin_rows = require("plugin_rows")
@@ -46,12 +47,20 @@ function M.configure_plugin(request: types.ConfigureRequest): (types.ConfigureRe
     local deadline, deadline_err = limits.deadline("command_deadline_ms")
     if deadline_err or not deadline then return nil, deadline_err end
     local selected = snapshot.plugin
-    local client, oerr = threads.open()
-    if oerr or not client then return nil, oerr end
-    local event: domain.Event = { trace_context = trace_context, type = request.config ~= nil and consts.EVENTS.PLUGIN_CONFIGURED or consts.EVENTS.PLUGIN_REBUILD, subject = "plugin:" .. request.plugin,
-        body = { plugin = request.plugin, config = request.config, attachment = selected.attachment_id,
-            actor = guard.actor_id(), at = guard.stamp_now(), source = "api" } }
-    local seq, err = append.writes(client, request.board_id, { { group = event.subject, events = { event }, ops = {}, expect_subject = "schema", expect_version = snapshot.schema_version, caller_expect = true } })
+    local seq, err
+    if config == nil then
+        local result, rerr = funcs.call("kickside.work.extensions:plugin_batch", { board_id = request.board_id,
+            rebuild = { plugin = request.plugin, schema_version = snapshot.schema_version, trace_context = trace_context } })
+        if rerr then return nil, rerr end
+        seq = (result :: { seq: integer }).seq
+    else
+        local client, oerr = threads.open()
+        if oerr or not client then return nil, oerr end
+        local event: domain.Event = { trace_context = trace_context, type = consts.EVENTS.PLUGIN_CONFIGURED, subject = "plugin:" .. request.plugin,
+            body = { plugin = request.plugin, config = config, attachment = selected.attachment_id,
+                actor = guard.actor_id(), at = guard.stamp_now(), source = "api" } }
+        seq, err = append.writes(client, request.board_id, { { group = event.subject, events = { event }, ops = {}, expect_subject = "schema", expect_version = snapshot.schema_version, caller_expect = true } })
+    end
     if err then return nil, err end
     local as_of, perr = receipts.covered(request.board_id, deadline, seq)
     if perr then return nil, perr end

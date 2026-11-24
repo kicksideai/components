@@ -17,6 +17,7 @@ entries:
   method: run
   modules: [json]
   imports:
+    append: kickside.work.persist:append
     limits: kickside.work.settings:limits
     local_types: kickside.work.extensions:types
     threads: kickside.work.persist:threads
@@ -47,6 +48,7 @@ entries:
   method: batch
   modules: [json]
   imports:
+    append: kickside.work.persist:append
     limits: kickside.work.settings:limits
     local_types: kickside.work.extensions:types
     threads: kickside.work.persist:threads
@@ -60,6 +62,44 @@ entries:
     types: kickside.work:types
     component: kickside.component:component
     values: kickside.work.domain:values
+- name: plugin_updates
+  kind: process.lua
+  meta: { private: true }
+  source: file://plugin_updates.lua
+  method: run
+  modules: [channel, events, json, process, registry, time, uuid]
+  imports:
+    jobs: kickside.core.jobs:jobs
+    lifecycle: kickside.work.persist:lifecycle
+    limits: kickside.work.settings:limits
+    manifests: kickside.work.domain:manifests
+    migration_runner: wippy.migration:runner
+    plugin_rows: kickside.work.persist:plugin_rows
+    store: kickside.work.persist:store
+    types: kickside.work.extensions:types
+    values: kickside.work.domain:values
+- name: plugin_updates_host
+  kind: process.host
+  meta: { private: true }
+  lifecycle:
+    auto_start: true
+- name: plugin_updates.service
+  kind: process.service
+  process: kickside.work.extensions:plugin_updates
+  host: kickside.work.extensions:plugin_updates_host
+  lifecycle:
+    depends_on: [wippy.bootloader:bootloader.service, kickside.work.extensions:plugin_updates_host]
+    auto_start: true
+    security:
+      groups: [wippy.security:process, kickside.work.extensions:plugin_updates_group]
+- name: plugin_update_resolution
+  kind: security.policy
+  meta: { private: true }
+  groups: [kickside.work.extensions:plugin_updates_group]
+  policy:
+    resources: '*'
+    actions: [registry.resolution.get]
+    effect: allow
 - name: plugin_feed
   kind: library.lua
   source: file://plugin_feed.lua

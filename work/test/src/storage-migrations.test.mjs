@@ -76,8 +76,9 @@ print(json.dumps([row, indexes]))
 })
 
 test('Work rollback removes every fixed table including board metadata', async () => {
-  const up = [...await statements('01_work', 'up'), ...await statements('02_board_ui_app', 'up'), ...await statements('03_move_alias_indexes', 'up')]
-  const down = [...await statements('03_move_alias_indexes', 'down'), ...await statements('02_board_ui_app', 'down'), ...await statements('01_work', 'down')]
+  const names = ['01_work', '02_board_ui_app', '03_move_alias_indexes', '04_plugin_attachments']
+  const up = (await Promise.all(names.map(name => statements(name, 'up')))).flat()
+  const down = (await Promise.all(names.toReversed().map(name => statements(name, 'down')))).flat()
   const result = await run('python3', ['-c', `
 import json, sqlite3, sys
 up, down = json.load(sys.stdin)
