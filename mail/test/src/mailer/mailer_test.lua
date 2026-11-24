@@ -829,7 +829,30 @@ return {
                 test.eq(2, #logged.items)
                 test.not_nil(port.data.operations.upsert)
                 test.not_nil(port.data.operations.delete)
-                test.is_nil(port.data.operations.create)
+                test.not_nil(port.data.operations.create)
+            end)
+
+            test.it("requires Send mail on delete and accepts a delete without a payload or key", function()
+                local request = {
+                    config = {}, sink_op = "delete", origin = "automation",
+                    automation_ref = {kind = "automation", id = "automation", revision = 1},
+                }
+                local before = query("SELECT COUNT(*) AS count FROM mail_message")[1].count
+                request.input, request.idempotency_key = {}, "delete-key"
+                local forbidden = assert(invoke(denied, "write_request", request))
+                test.is_false(forbidden.success)
+                test.eq("permission_denied", forbidden.error.code)
+
+                request.input, request.idempotency_key = nil, nil
+                local deleted = assert(invoke(sender, "write_request", request))
+                test.is_true(deleted.success, tostring(deleted.error and deleted.error.message))
+                test.eq("noop", deleted.result)
+                test.is_nil(deleted.dest_ref)
+                request.sink_op = "replace"
+                local unsupported = assert(invoke(sender, "write_request", request))
+                test.is_false(unsupported.success)
+                test.eq("unsupported_operation", unsupported.error.code)
+                test.eq(before, query("SELECT COUNT(*) AS count FROM mail_message")[1].count)
             end)
 
             test.it("records display origin from module and workflow send surfaces", function()
