@@ -40,7 +40,7 @@ entries:
         or user IDs you have permission to resolve. Attachments reference uploaded files by upload ID.
       input_schema: file://../schemas/send.input.json
       output_schema: file://../schemas/send.output.json
-    modules: &tool_modules [ctx, funcs]
+    modules: &tool_modules [ctx, funcs, logger]
     source: &tool_source file://tools.lua
     method: send
     imports: &tool_imports

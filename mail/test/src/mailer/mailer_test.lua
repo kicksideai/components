@@ -871,6 +871,31 @@ return {
                 test.eq("", without_title.origin.label)
             end)
 
+            test.it("queues workflow mail when the title catalog fails", function()
+                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "from_address", "mail@example.org").success)
+                local executor = assert(sender:with_context({
+                    mail_test_catalog_error = true,
+                    run_context = {run_id = "catalog-failure", flow_ref = {kind = "flow", id = "example-flow", version = 1}},
+                }))
+                local _, catalog_err = executor:call("kickside.workflows.agent:flows_read",
+                    {action = "catalog", catalog_id = "flows:example-flow"})
+                test.eq(errors.UNAVAILABLE, assert(catalog_err):kind())
+                local queued, err = executor:call(TOOL_NS .. "mail_send", body())
+                test.is_nil(err, tostring(err))
+                local delivered = terminal(sender, assert(queued))
+                test.eq("sent", delivered.status)
+                test.eq("catalog-failure", delivered.origin.id)
+                test.eq("", delivered.origin.label)
+            end)
+
+            test.it("shares malformed preview refusals between Mailer and the library", function()
+                local native, native_err = invoke(editor, "preview", 5)
+                local library, library_err = editor:call("kickside.mail.library:render", 5)
+                refusal(native, native_err, errors.INVALID, "invalid_template")
+                refusal(library, library_err, errors.INVALID, "invalid_template")
+            end)
+
             test.it("finds recent senders and filters activity by the message name", function()
                 assert(change(admin, "driver", "first").success)
                 assert(change(admin, "from_address", "mail@example.org").success)

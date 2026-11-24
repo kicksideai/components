@@ -13,6 +13,7 @@ type Asset = {source: string, filename: string?, content_type: string?, size: in
     filesystem: string?, path: string?, upload_id: string?}
 type AssetPart = {filename: string, content_type: string, size: integer, content: string?}
 type AssetRef = {name: string, content_id: string, original: string?, upload_id: string?}
+type AssetReadRequest = {ref: AssetRef, bytes: boolean}
 type InlineAssets = {[string]: string}
 type Attachment = {filename: string, content_type: string, content: string, disposition: string, content_id: string?}
 type Origin = {kind: string, id: string, label: string}
@@ -63,7 +64,9 @@ type Job = {id: string, lease_token: string, execution_seq: integer}
 type JobInput = {job: Job, payload: {message_id: string}}
 type Lease = {token: string, execution_seq: integer}
 type ActorRow = {actor_id: string, actor_context: string}
-type OwnerInput = {change: {kind: string?, job_id: string?, owner_locator: {kind: string, id: string}?}?}
+type OwnerLocator = {kind: string, id: string}
+type JobCompletion = {owner_locator: OwnerLocator?}
+type OwnerInput = {change: {kind: string?, job_id: string?, owner_locator: OwnerLocator?}?}
 type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, needs_continue: boolean?, error: error?}
 type AssetContent = {revision: integer, content_type: string, bytes: string}
 type ResourceKey = {kind: string, name: string}
@@ -191,7 +194,7 @@ return {
     Executor = Executor, TransactionWork = TransactionWork, TransportResult = TransportResult,
     MessageRef = MessageRef, ListRequest = ListRequest, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, Admission = Admission, AdmissionResult = AdmissionResult,
-    Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, OwnerResult = OwnerResult,
+    Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion, OwnerResult = OwnerResult,
     ResourceKey = ResourceKey, ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
@@ -199,7 +202,7 @@ return {
     ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, AssetUsageFilter = AssetUsageFilter, UsedBy = UsedBy,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
-    Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
+    Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetReadRequest = AssetReadRequest, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
     TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
     PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, PreviewWarning = PreviewWarning, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,
