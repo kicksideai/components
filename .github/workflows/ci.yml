@@ -233,7 +233,6 @@ jobs:
             wippy publish --config sso --version "$version" --dry-run --create --module-visibility public --module-type plugin --embed kickside.sso:ui_fs
         - module: work
           engine: sqlite
-          wippy_version: 0.3.69a
           timeout_minutes: 45
           commands: |
             set -euo pipefail
@@ -255,7 +254,6 @@ jobs:
             wippy publish --config work-planning --version "$planning_version" --dry-run --create --module-visibility public --module-type plugin
         - module: work
           engine: postgres
-          wippy_version: 0.3.69a
           timeout_minutes: 45
           commands: |
             set -euo pipefail
@@ -293,7 +291,6 @@ jobs:
             make -C work-kanban test WIPPY_ARGS="--profile postgres --set vars.pg_database=$database --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
         - module: work-time
           engine: sqlite
-          wippy_version: 0.3.69a
           commands: |
             set -euo pipefail
             export TMPDIR="$PWD/work-time/.wippy/tmp"
@@ -301,11 +298,11 @@ jobs:
             make -C work-time setup lint test
             make -C work-time test TEST_ARGS="--profile combined work_time_combined"
             make -C work-time test TEST_ARGS="--profile combined --profile failing-estimates work_time_estimate_failure"
+            make -C work-time test TEST_ARGS="--profile combined --profile malformed-estimates work_time_estimate_malformed"
             version=$(jq -r '."work-time" // "0.1.0"' .release-please-manifest.json)
             wippy publish --config work-time --version "$version" --dry-run --create --module-visibility public --module-type plugin
         - module: work-time
           engine: postgres
-          wippy_version: 0.3.69a
           commands: |
             set -euo pipefail
             export TMPDIR="$PWD/work-time/.wippy/tmp"
@@ -314,13 +311,16 @@ jobs:
             database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_work_time"
             combined="${database}_combined"
             failing="${database}_failing"
+            malformed="${database}_malformed"
             createdb "$database"
-            trap 'dropdb --if-exists "$failing"; dropdb --if-exists "$combined"; dropdb "$database"' EXIT
+            trap 'dropdb --if-exists "$malformed"; dropdb --if-exists "$failing"; dropdb --if-exists "$combined"; dropdb "$database"' EXIT
             createdb "$combined"
             createdb "$failing"
+            createdb "$malformed"
             make -C work-time test TEST_ARGS="--profile postgres --set vars.pg_database=$database --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
             make -C work-time test TEST_ARGS="--profile combined --profile postgres --set vars.pg_database=$combined --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT work_time_combined"
             make -C work-time test TEST_ARGS="--profile combined --profile failing-estimates --profile postgres --set vars.pg_database=$failing --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT work_time_estimate_failure"
+            make -C work-time test TEST_ARGS="--profile combined --profile malformed-estimates --profile postgres --set vars.pg_database=$malformed --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT work_time_estimate_malformed"
         - module: work-search
           engine: sqlite
           commands: |
@@ -499,7 +499,7 @@ jobs:
         node-version: '22'
     - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
       with:
-        version: ${{ matrix.wippy_version || '0.3.66a' }}
+        version: 0.3.66a
         hub-url: https://hub.wippy.ai
     - name: Check out converters module sources
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

@@ -54,12 +54,19 @@ local function estimates(board_id: string, schema: work_reads.SchemaView): (type
         if plugin.plugin == TIME_PLUGIN and plugin.active then active = true end
     end
     if not active then return nil, nil end
-    local definition, err = contract.get(TIME_FIELDS, types.EstimateFieldsClient)
+    local definition, err = contract.get(TIME_FIELDS)
     if errors.is(err, errors.NOT_FOUND) then return nil, nil end
-    if not definition then return nil, err end
+    if err then return nil, err end
+    if not definition then return nil, nil end
     local client, open_err = definition:open()
-    if not client then return nil, open_err end
-    return client:fields({ board_id = board_id })
+    if open_err then return nil, open_err end
+    if not client then return nil, problem(errors.UNAVAILABLE, "time_estimates_unavailable", "Work Time estimates cannot open.") end
+    local result, field_err = client:fields({ board_id = board_id })
+    if field_err then return nil, field_err :: error end
+    if type(result) ~= "table" or type(result.original) ~= "string" or type(result.remaining) ~= "string" then
+        return nil, problem(errors.INTERNAL, "time_estimates_invalid", "Work Time returned invalid estimate fields.")
+    end
+    return { original = result.original, remaining = result.remaining }, nil
 end
 
 local function bucket(): Bucket
