@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.46](https://github.com/kicksideai/components/compare/work-v0.1.45...work-v0.1.46) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** require review before removing populated fields ([#414](https://github.com/kicksideai/components/issues/414)) ([1b3c70d](https://github.com/kicksideai/components/commit/1b3c70d4481be97950fbca93494268e2a34d008b))
+
 ## [0.1.45](https://github.com/kicksideai/components/compare/work-v0.1.44...work-v0.1.45) (2026-11-23)
 
 
