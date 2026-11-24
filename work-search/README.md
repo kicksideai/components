@@ -2,9 +2,11 @@
 # Work Search
 
 Work Search adds lexical issue search to Work on SQLite and PostgreSQL. It requires
-`kickside/work` 0.1.17 or newer and `kickside/search-index` 0.1.4 or newer. Install
+`kickside/work` 0.1.49 or newer and `kickside/search-index` 0.1.4 or newer. Install
 `kickside/work-search` and bind `kickside.work_search:target_db` to a SQL database
-with SQLite FTS5 or PostgreSQL full-text search support.
+with SQLite FTS5 or PostgreSQL full-text search support. To search boards that
+restrict item visibility, bind Search and Work to the same database so their join
+can apply Work’s visibility predicate before counting candidates.
 
 The `kickside.work_search:issue_board` pack activates `kickside.work_search:plugin`
 and adopts `kickside.work_search:text`. On an existing board, use Work's schema
@@ -30,9 +32,10 @@ Search returns `search_indexing` while the current schema's index is being built
 `board.plugin_context` reports the projection's lifecycle and cursor. A parked
 worker returns `search_unavailable`. If Work changes during verification or too
 many candidates require verification, the query returns a retryable error.
-The state feed indexes items visible to the registered projection actor. On a
-board with item visibility and administrator bypass, an administrator's projection
-can cover all live items.
+The attachment’s state feed indexes live items across the board. On restricted
+boards, Search applies Work’s caller visibility to lexical candidates before the
+overflow check. Work verifies the current item revisions and applies the same
+visibility when returning results.
 Search stores live lexical rows and feeds' continuation positions. It keeps a
 serving generation and space for one replacement, drains old rows in bounded
 pages, and does not store search queries or hit history.
