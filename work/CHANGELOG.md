@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.50](https://github.com/kicksideai/components/compare/work-v0.1.49...work-v0.1.50) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** probe plugin scopes by item key ([#433](https://github.com/kicksideai/components/issues/433)) ([f65a935](https://github.com/kicksideai/components/commit/f65a935c69dfc0e515a051be7d9d98400e162321))
+
 ## [0.1.49](https://github.com/kicksideai/components/compare/work-v0.1.48...work-v0.1.49) (2026-11-24)
 
 
