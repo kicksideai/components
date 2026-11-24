@@ -665,6 +665,34 @@ return {
                 test.eq("example-flow", entry.origin.label)
             end)
 
+            test.it("finds recent senders and filters activity by the message name", function()
+                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "from_address", "mail@example.org").success)
+                local input = template_request()
+                input.origin = {kind = "module", id = "app:recent-senders", label = "Recent senders"}
+                local since = policy.now()
+                local first = assert(invoke(sender, "send", input))
+                test.eq("sent", terminal(sender, first).status)
+                local second = assert(invoke(sender, "send", input))
+                test.eq("sent", terminal(sender, second).status)
+                test.eq("sent", terminal(sender, assert(invoke(sender, "send", body()))).status)
+                local page = assert(invoke(sender, "list_messages", {template = input.template, status = "sent", since = since, limit = 1}))
+                test.eq(second.message_id, page.items[1].message_id)
+                test.not_nil(page.next_cursor)
+                local last = assert(invoke(sender, "list_messages", {template = input.template, since = since, cursor = page.next_cursor, limit = 1}))
+                test.eq(first.message_id, last.items[1].message_id)
+                test.is_false(last.has_more)
+                local editor = caller({"kickside.mail.security:library_access", "kickside.mail.security:library_calls"})
+                local entry = assert(editor:call("kickside.mail.library:get", {kind = "message", name = input.template}))
+                local matching
+                for _, used in ipairs(entry.used_by.recent_senders) do
+                    if used.origin and used.origin.id == input.origin.id then matching = used end
+                end
+                test.not_nil(matching)
+                test.eq(2, matching.count)
+                test.eq(last.items[1].sender, matching.sender)
+            end)
+
             test.it("rejects malformed configured addresses before writing settings", function()
                 for _, key in ipairs({"from_address", "reply_to"}) do
                     test.is_true(change(admin, key, "mail@example.org").success)

@@ -10,6 +10,9 @@ local projection = require("projection")
 local draft = require("draft")
 local renderer = require("render")
 local globals = require("globals")
+local outbox = require("outbox")
+local settings = require("settings")
+local policy = require("policy")
 
 local M = {}
 
@@ -44,6 +47,12 @@ local function dependants(items: types.ResourceMap, keys: {types.ResourceKey}, c
     end
     table.sort(selected, function(a, b) return a.name < b.name end)
     return selected
+end
+
+local function message_names(items: {types.Resource}): {string}
+    local names = {}
+    for i, item in ipairs(items) do names[i] = item.name end
+    return names
 end
 
 local function prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: string,
@@ -137,7 +146,8 @@ local function change(edits: {types.LibraryEdit}, operation: string): ({types.Re
         local dependent = dependants(items :: types.ResourceMap, keys, changed)
         local key = keys[1]
         if operation == "delete" and key.kind == "base" and #dependent ~= 0 then
-            return nil, resources.error(errors.CONFLICT, "mail_resource_in_use", "Messages use this base template", key)
+            return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = "Messages use this base template",
+                details = {code = "mail_resource_in_use", resource = key, messages = message_names(dependent)}})
         end
         local validation_err = draft.validate(items :: types.ResourceMap, key, candidates, dependent, values :: types.RenderGlobals)
         if validation_err then return nil, validation_err end
@@ -202,7 +212,22 @@ end
 function M.get(input: types.ResourceKey): (types.Resource?, error?)
     local denied = client.require_library()
     if denied then return nil, denied end
-    return resources.get(input)
+    local item, err = resources.get(input)
+    if err then return nil, err end
+    if item.kind == "base" then
+        local messages, read_err = resources.list({kind = "message", base = item.name})
+        if read_err then return nil, read_err end
+        item.used_by = {messages = message_names(messages)}
+    elseif item.kind == "message" then
+        local config, config_err = settings.read("kickside.mail")
+        if config_err then return nil, config_err end
+        local days = policy.retention_days(config.log_retention_days)
+        if not days then return nil, settings.missing("Mail delivery log retention days are invalid") end
+        local senders, read_err = outbox.recent_senders(item.name, policy.now() - days * policy.DAY_MS)
+        if read_err then return nil, read_err end
+        item.used_by = {recent_senders = senders}
+    end
+    return item, nil
 end
 
 function M.list(input: types.ResourceFilter?): ({types.Resource}?, error?)

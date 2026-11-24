@@ -40,7 +40,7 @@ local function message(row: types.MessageRow, admin: boolean): (types.LogMessage
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, attachments = refs,
         driver_id = admin and row.driver_id or nil, provider_message_id = admin and row.provider_message_id or nil,
         last_error = last_error,
-        origin = row.origin_kind and {kind = row.origin_kind, id = row.origin_id :: string, label = row.origin_label :: string} or nil,
+        origin = store.origin(row),
     }, nil
 end
 
@@ -72,6 +72,9 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
     if input.status ~= nil and input.status ~= "queued" and input.status ~= "sent" and input.status ~= "failed" then
         return nil, invalid("Status must be queued, sent or failed")
     end
+    if input.template ~= nil and (type(input.template) ~= "string" or not input.template:find("%S")) then
+        return nil, invalid("A message name must be nonempty")
+    end
     if input.since ~= nil and (type(input.since) ~= "number" or input.since % 1 ~= 0
         or input.since < 0 or input.since > 9007199254740991) then
         return nil, invalid("Since must be a nonnegative Unix timestamp in milliseconds")
@@ -94,6 +97,7 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
         return "$" .. tostring(#args)
     end
     if sender then filters[#filters + 1] = "sender=" .. bind(sender) end
+    if input.template then filters[#filters + 1] = "template=" .. bind(input.template) end
     if input.status then filters[#filters + 1] = "status=" .. bind(input.status) end
     if input.since then filters[#filters + 1] = "created_at>=" .. bind(input.since) end
     if cursor_time then

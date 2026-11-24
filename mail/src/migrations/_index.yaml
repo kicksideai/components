@@ -34,3 +34,11 @@ entries:
     imports:
       migration: wippy.migration:migration
       types: kickside.mail:types
+  - name: 05_message_template_index
+    kind: function.lua
+    meta: { type: migration, timestamp: '2026-11-23T00:04:00Z' }
+    source: file://05_message_template_index.lua
+    method: migrate
+    imports:
+      migration: wippy.migration:migration
+      types: kickside.mail:types

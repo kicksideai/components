@@ -102,13 +102,19 @@ function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidates
             local candidate_err = validate_faces(candidate, values, html, text)
             if candidate_err then return nil, candidate_err end
         end
+        local failed: {string} = {}
+        local first: error?
         for _, item in ipairs(dependants) do
             local dependent_err = validate_faces(item, values, html, text)
             if dependent_err then
                 if #candidates > 0 then return nil, dependent_err end
-                return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = dependent_err:message(),
-                    details = {code = "mail_resource_in_use", resource = key, dependent = dependent_err:details()}})
+                failed[#failed + 1] = item.name
+                first = first or dependent_err
             end
+        end
+        if first then
+            return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = first:message(),
+                details = {code = "mail_resource_in_use", resource = key, dependent = first:details(), messages = failed}})
         end
         return true, nil
     end)

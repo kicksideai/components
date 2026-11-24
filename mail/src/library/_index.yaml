@@ -81,6 +81,9 @@ entries:
       draft: kickside.mail.library:draft
       render: kickside.mail.views:render
       globals: kickside.mail.views:globals
+      outbox: kickside.mail.outbox:store
+      settings: kickside.mail:settings
+      policy: kickside.mail.outbox:policy
     security: &read_security
       policies:
         - kickside.mail.security:outbox_db
@@ -94,7 +97,14 @@ entries:
     source: *service_source
     modules: *service_modules
     imports: *service_imports
-    security: *read_security
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:settings_admin_read
   - name: render
     kind: function.lua
     method: render

@@ -24,7 +24,7 @@ type TransportRequest = Addresses & {
 type TransportResult = {provider_message_id: string?}
 type SendResult = {message_id: string, status: string}
 type MessageRef = {message_id: string}
-type ListRequest = {status: string?, since: integer?, limit: integer, cursor: string?}
+type ListRequest = {status: string?, template: string?, since: integer?, limit: integer, cursor: string?}
 type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean}
 type MessageError = {kind: string, code: string, message: string, provider_detail: string?}
 type LogMessage = Addresses & {
@@ -63,9 +63,11 @@ type ResourceContent = {
 type Resource = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema: VariableSchema, samples: JsonObject,
-    state: string, origin: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?,
+    state: string, origin: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?, used_by: UsedBy?,
 }
-type ResourceFilter = {kind: string?, state: string?, base: string?}
+type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
+type RecentSender = {sender: string, origin: Origin?, count: integer}
+type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}
 type Original = {resource: Resource, entries: {[string]: string}}
 type ResourceMap = {[string]: Resource}
 type OriginalMap = {[string]: Original}
@@ -149,7 +151,7 @@ return {
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
-    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit,
+    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, UsedBy = UsedBy,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,

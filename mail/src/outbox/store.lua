@@ -102,6 +102,26 @@ function M.rearm(tx: sql.Transaction, row: types.MessageRow, next_at: integer, c
     return result.rows_affected == 1, nil
 end
 
+function M.origin(row: types.MessageRow): types.Origin?
+    if not row.origin_kind then return nil end
+    return {kind = row.origin_kind, id = row.origin_id :: string, label = row.origin_label :: string}
+end
+
+function M.recent_senders(template: string, since: integer): ({types.RecentSender}?, error?)
+    return database.read(function(db: sql.DB): ({types.RecentSender}?, error?)
+        local rows, err = db:query([[SELECT sender,origin_kind,origin_id,origin_label,COUNT(*) AS count
+            FROM mail_message WHERE template=$1 AND created_at>=$2 AND status='sent'
+            GROUP BY sender,origin_kind,origin_id,origin_label
+            ORDER BY count DESC,sender,origin_kind,origin_id,origin_label]], {template, since})
+        if err then return nil, err end
+        local senders: {types.RecentSender} = {}
+        for i, row in ipairs(rows) do
+            senders[i] = {sender = row.sender :: string, origin = M.origin(row :: types.MessageRow), count = row.count :: integer}
+        end
+        return senders, nil
+    end)
+end
+
 function M.content(row: types.MessageRow): (types.Addresses?, {types.AttachmentRef}?, error?)
     local addresses, addr_err = json.decode(row.recipients)
     if addr_err then return nil, nil, addr_err end

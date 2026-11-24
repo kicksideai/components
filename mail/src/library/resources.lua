@@ -156,6 +156,12 @@ function M.get(key: types.ResourceKey): (types.Resource?, error?)
     return nil, M.error(errors.NOT_FOUND, "mail_resource_not_found", "Mail library resource was not found", key)
 end
 
+local function matches_name(item: types.Resource, query: string?): boolean
+    if not query or query == "" then return true end
+    local q = query:lower()
+    return item.name:lower():find(q, 1, true) ~= nil or item.title:lower():find(q, 1, true) ~= nil
+end
+
 function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
     return database.read(function(db: sql.DB): ({types.Resource}?, error?)
         local originals, err = M.originals()
@@ -164,18 +170,20 @@ function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
         local rows, read_err = store.find(db, stored_only and filter or {kind = filter.kind})
         if read_err then return nil, read_err end
         if stored_only then
+            local selected: {types.Resource} = {}
             for _, row in ipairs(rows) do
                 local origin_err = M.match_origin(row, originals[M.key(row)])
                 if origin_err then return nil, origin_err end
+                if matches_name(row, filter.q) then selected[#selected + 1] = row end
             end
-            return rows, nil
+            return selected, nil
         end
         local items, merge_err = merge(db, originals :: types.OriginalMap, rows :: {types.Resource})
         if merge_err then return nil, merge_err end
         local selected = {}
         for _, item in pairs(items) do
             if (not filter.kind or item.kind == filter.kind) and (not filter.state or item.state == filter.state)
-                and (not filter.base or item.base == filter.base) then
+                and (not filter.base or item.base == filter.base) and matches_name(item, filter.q) then
                 selected[#selected + 1] = item
             end
         end

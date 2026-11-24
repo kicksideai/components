@@ -103,9 +103,16 @@ return {run = test.run_cases(function()
             test.not_nil(preview.html:find("Draft from base", 1, true))
             test.eq(rendered.html, assert(executor:call(NS .. "render", {template = message.name, vars = message.samples})).html)
 
+            local second = candidate("message", "library-second", message.html, message.text)
+            second.base, second.subject, second.schema, second.samples = message.base, message.subject, message.schema, message.samples
+            local saved_second = assert(call("create", second))
             local used, use_err = call("delete", {kind = "part", name = part.name, expected_revision = saved_part.revision})
             test.is_nil(used)
             test.eq("mail_resource_in_use", use_err:details().code)
+            test.eq({message.name, second.name}, use_err:details().messages)
+            test.is_nil(assert(call("get", part)).used_by)
+            test.eq({message.name, second.name}, assert(call("get", base)).used_by.messages)
+            assert(call("delete", {kind = "message", name = second.name, expected_revision = saved_second.revision}))
 
             part.html = '{{ if .label == "from base" }}{{ missing_value }}{{ else }}{{ .label }}{{ end }}'
             part.expected_revision = saved_part.revision
@@ -129,6 +136,7 @@ return {run = test.run_cases(function()
             local removed, in_use = call("delete", {kind = "base", name = base.name, expected_revision = saved_base.revision})
             test.is_nil(removed)
             test.eq("mail_resource_in_use", in_use:details().code)
+            test.eq({message.name}, in_use:details().messages)
             local switched = assert(call("set_base", {name = message.name, base = "plain", expected_revision = saved_message.revision}))
             local switched_render = assert(executor:call(NS .. "render", {template = message.name, vars = message.samples}))
             test.is_nil(switched_render.html:find("Frame", 1, true))
