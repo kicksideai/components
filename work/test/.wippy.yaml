@@ -38,6 +38,8 @@ override:
   kickside.work.persist:predicate_rows:imports.component: app:authorization_probe
   kickside.work.read:query:imports.component: app:authorization_probe
   kickside.work.retention:owner:imports.append: app:retention_append
+  kickside.work.retention:owner:imports.clock: app:retention_clock
+  kickside.work.retention:rows:imports.clock: app:retention_clock
   kickside.work.binding:delete_func:imports.lifecycle: app:cleanup_observer
   kickside.users.directory:directory_groups:imports.directory: app:directory_probe
   kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false

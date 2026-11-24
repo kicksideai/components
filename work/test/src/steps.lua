@@ -42,8 +42,10 @@ function M.archive_fields(h: fixture.Handle, declaration: unknown): Map
     return M.call(h, "apply_schema", { declaration = declaration, expected_generation = (plan.generation :: integer) - 1, resolutions = choices })
 end
 
-function M.retention_run(): Map
-    local out, err = funcs.call("kickside.work.retention:owner", {})
+function M.retention_run(now_ms: integer?): Map
+    local executor = funcs.new()
+    if now_ms then executor = executor:with_context({ work_retention_now_ms = now_ms }) end
+    local out, err = executor:call("kickside.work.retention:owner", {})
     assert(not err, M.detail(err))
     local result = out :: Map
     assert(result.success == true, M.detail(result.error))
