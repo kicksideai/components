@@ -29,9 +29,6 @@ vars:
   pg_username: kickside
   pg_password: kickside
 profiles:
-  demo:
-    override:
-      kickside.core.jobs:policy:meta.proc.max_execution: 10m
   postgres:
     override:
       app:db:kind: db.sql.postgres
