@@ -8,6 +8,7 @@ import { computed, nextTick, onMounted, onScopeDispose, ref, shallowRef, useId, 
 import type { WorkExtension } from '../work/types'
 import { workFailure } from '../work/errors'
 import type { PresentationContext } from '../presentation/context'
+import type { Issue } from '../issue/types'
 import type { ItemSummary } from '../presentation/query'
 import type { BoardColumn } from '../presentation/usePages'
 import IssueCard from './IssueCard.vue'
@@ -20,6 +21,7 @@ const props = defineProps<{
   placements: readonly WorkExtension[]
   writable: boolean
   compact?: boolean
+  openIssueState?: Issue['state']
   move: (intent: MoveIntent) => Promise<MoveResult>
   pendingIds: ReadonlySet<string>
   paging: ReadonlyMap<string, unknown>
@@ -40,13 +42,22 @@ const focusItem = ref<string>()
 const y = shallowRef(new Map<string, number>())
 const instructions = useId()
 const gap = 10
+const minimumColumnWidth = 260
 const rowGap = 6
 const rowStride = computed(() => props.compact ? 66 : 86)
 const mobile = computed(() => width.value <= 520)
-const stride = computed(() => mobile.value
-  ? Math.max(204, Math.round(width.value * .64)) + gap
-  : Math.max(196, (width.value + gap) / Math.min(5, props.columns.length || 1)))
+const stride = computed(() => Math.max(minimumColumnWidth + gap,
+  (width.value + gap) / Math.min(5, props.columns.length || 1)))
 const contentWidth = computed(() => Math.max(width.value, stride.value * props.columns.length - gap))
+const issueColumn = computed(() => {
+  const state = props.openIssueState
+  if (!state) return -1
+  const states = typeof state === 'string' ? [state] : Object.values(state)
+  return props.columns.findIndex(column => states.includes(column.state))
+})
+watch([issueColumn, width, stride], ([index]) => {
+  if (index >= 0 && width.value) void revealColumn(index)
+}, { flush: 'post' })
 const motion = useBoardMove({
   viewport, columns: () => props.columns, columnElement,
   columnStride: () => stride.value, rowStride: () => rowStride.value,
@@ -217,21 +228,27 @@ const vColumnScroll = {
     element.scrollTop = y.value.get(value) ?? 0
   },
 }
-async function jump(id: string) {
-  const index = props.columns.findIndex(column => column.id === id)
+async function jumpToColumn(index: number) {
   const element = viewport.value
   if (index < 0 || !element) return
   x.value = Math.min(index * stride.value, element.scrollWidth - element.clientWidth)
   await nextTick()
   element.scrollLeft = rtl() ? -x.value : x.value
 }
+function jump(id: string) {
+  return jumpToColumn(props.columns.findIndex(column => column.id === id))
+}
 function columnElement(index: number) {
   return viewport.value?.querySelector<HTMLElement>('[data-column-index="' + index + '"]')
 }
+function revealColumn(index: number) {
+  const start = index * stride.value
+  const offset = Math.abs(viewport.value?.scrollLeft ?? 0)
+  if (start < offset || start + stride.value - gap > offset + width.value) return jumpToColumn(index)
+}
 async function reveal(id: string, row: number) {
   const index = props.columns.findIndex(column => column.id === id)
-  const start = index * stride.value
-  if (start < x.value || start + stride.value - gap > x.value + width.value) await jump(id)
+  await revealColumn(index)
   await nextTick()
   const body = columnElement(index)?.querySelector<HTMLElement>('.kanban-column-body')
   if (!body || row < 0) return

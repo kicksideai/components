@@ -191,9 +191,9 @@
   min-inline-size: 0;
 }
 .kanban-card-meta { color: var(--p-text-muted-color); font-size: 12px; line-height: 16px; gap: 4px; }
-.kanban-card-identity { gap: 4px; }
+.kanban-card-identity { flex: none; gap: 4px; }
 .kanban-card-identity > svg { inline-size: 13px; block-size: 13px; flex: none; }
-.kanban-card-key { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kanban-card-key { white-space: nowrap; }
 .kanban-card-priority.kx-tag-sm {
   padding: 1px 6px;
   border-radius: 999px;

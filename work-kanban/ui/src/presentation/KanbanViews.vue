@@ -11,6 +11,7 @@ import { planMove, type MovePlan } from '../board/move'
 import type { MoveResult } from '../board/useBoardMove'
 import type { MoveIntent } from '../board/window'
 import { checkPlacements } from '../extensions/placements'
+import type { Issue } from '../issue/types'
 import { createCoordinator } from '../live/coordinator'
 import { subscribeBoard } from '../live/subscribe'
 import type { KanbanRoute } from '../route'
@@ -33,6 +34,7 @@ const props = defineProps<{
   work: WorkClient
   compact?: boolean
   filterHost?: HTMLElement
+  openIssueState?: Issue['state']
   revalidate?: () => Promise<void>
   invalidate?: ReturnType<typeof createCoordinator>['invalidate']
   firstView?: FirstViewRead
@@ -277,6 +279,7 @@ function apply(operations: WorkOperation[]) {
         aria-label="Swimlane" size="small" @update:model-value="laneId = $event" />
       <BoardViewport ref="boardViewport" :key="lane.id" :columns="lane.columns" :context="context" :placements="placements"
         :writable="writable" :compact="compact" :pending-ids="pending" :paging="paging" :destinations="destinations" :person="person" :move="move"
+        :open-issue-state="openIssueState"
         @visible="visibleColumns" @hold="holdColumns" @window="visibleRow"
         @open="showItem" @more="pages.more" />
     </template>

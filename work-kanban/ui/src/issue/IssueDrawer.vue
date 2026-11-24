@@ -145,6 +145,7 @@ async function load(minSeq?: number) {
 }
 
 defineExpose({
+  openedItem: item,
   refresh: (minSeq?: number) => {
     if (props.issue && !isAccessLoss(readError.value)) return load(minSeq)
   },
@@ -344,16 +345,17 @@ function saveMove() {
         </div>
         <span v-if="kind" class="kanban-issue-kind">{{ kind.title }}</span>
         <div class="kanban-issue-header-actions">
-          <Button v-if="item" type="button" severity="secondary" text size="small"
-            :label="fullPage ? 'Open side panel' : 'Open full page'" :disabled="busy"
+          <Button v-if="item" type="button" severity="secondary" text rounded class="kanban-icon-action"
+            :aria-label="fullPage ? 'Open side panel' : 'Open full page'"
+            :title="fullPage ? 'Open side panel' : 'Open full page'" :disabled="busy"
             @click="emit('fullPage', !fullPage)">
             <template #icon><Icon :icon="fullPage ? 'tabler:layout-sidebar-right' : 'tabler:maximize'" aria-hidden="true" /></template>
           </Button>
-          <Button v-if="item" type="button" severity="secondary" text size="small" class="kanban-issue-icon"
+          <Button v-if="item" type="button" severity="secondary" text rounded class="kanban-icon-action"
             aria-label="Copy link" :title="copyStatus || 'Copy link'" @click="emit('copy')">
             <template #icon><Icon :icon="copyStatus === 'Issue link copied.' ? 'tabler:check' : 'tabler:link'" aria-hidden="true" /></template>
           </Button>
-          <Button type="button" severity="secondary" text size="small" class="kanban-issue-icon"
+          <Button type="button" severity="secondary" text rounded class="kanban-icon-action"
             aria-label="Close issue details" title="Close issue details" :disabled="busy" @click="close">
             <template #icon><Icon icon="tabler:x" aria-hidden="true" /></template>
           </Button>

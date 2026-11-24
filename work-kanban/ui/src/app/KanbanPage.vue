@@ -37,6 +37,10 @@ const main = ref<HTMLElement>()
 const filterHost = ref<HTMLElement>()
 const views = ref<InstanceType<typeof KanbanViews>>()
 const drawer = ref<InstanceType<typeof IssueDrawer>>()
+const openIssueState = computed(() => {
+  const item = drawer.value?.openedItem
+  return item?.id === route.value?.issue ? item?.state : undefined
+})
 const plugin = ref<InstanceType<typeof BoardPluginPanel>>()
 const sequence = ref<number>()
 const move = shallowRef<{ item: string; plan: MovePlan }>()
@@ -154,7 +158,7 @@ async function copy(kind: 'board' | 'issue') {
 </script>
 
 <template>
-  <section class="kanban-page" aria-label="Kanban" :data-issue-full="fullIssue">
+  <section class="kanban-page" aria-label="Kanban" :data-issue-full="fullIssue" :data-issue-open="!!(drawer && route?.issue)">
     <div ref="main" class="kanban-main" :inert="fullIssue || undefined">
       <BoardShell
         :boards="boards" :active="board" :tab="route?.tab" :tabs="allowedTabs"
@@ -167,9 +171,10 @@ async function copy(kind: 'board' | 'issue') {
           <div ref="filterHost" />
         </template>
         <template v-if="ready && board && schema && board.access.write" #create-issue>
-          <Button type="button" class="kanban-toolbar-action" label="Create issue"
-            :pt="{ label: { class: 'kanban-toolbar-label' } }" @click="openCreate">
-            <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
+          <Button type="button" class="kanban-toolbar-action kanban-create-action" label="Create issue" @click="openCreate">
+            <Icon icon="tabler:plus" aria-hidden="true" />
+            <span class="kanban-toolbar-label">Create issue</span>
+            <span class="kanban-create-short">Create</span>
           </Button>
           <CreateIssue v-if="createBoardId === board.board_id" v-model:visible="creatingIssue" :key="board.board_id"
             :board="board" :schema="schema" :work="work" @created="createdIssue" @denied="denied" />
@@ -197,7 +202,7 @@ async function copy(kind: 'board' | 'issue') {
       <template v-else-if="ready && route && board && schema">
         <KanbanViews ref="views" :key="board.board_id" :board="board" :schema="schema" :route="route" :work="work"
           :first-view="firstView" :field-control="FieldControl" :use-principal-names="usePrincipalNames" :invalidate="invalidate"
-          :compact="compact" :filter-host="filterHost"
+          :compact="compact" :filter-host="filterHost" :open-issue-state="openIssueState"
           @open-issue="page.openIssue" @move-form="openMove" />
         <div v-if="unavailableTab" class="kanban-notice" role="status">
           {{ unavailableTab === 'sprints' ? 'Sprints' : 'Search' }} is not enabled for this board.
