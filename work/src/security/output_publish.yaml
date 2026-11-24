@@ -10,6 +10,7 @@ entries:
     producers:
     - kickside.work.service:create
     - kickside.work.service:apply_schema
+    - kickside.work.service:configure_plugin
     - kickside.work.service:apply_transition_adoption
     - kickside.work.jobs:operation_batch
   policy:

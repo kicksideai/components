@@ -293,6 +293,7 @@ entries:
   security:
     policies:
     - kickside.work.security:sync_call
+    - kickside.work.security:schema_output_publish
     - kickside.work.security:plugin_output_publish
 - name: types
   kind: library.lua
