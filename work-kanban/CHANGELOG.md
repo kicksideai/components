@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/kicksideai/components/compare/work-kanban-v0.1.3...work-kanban-v0.1.4) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-kanban:** native page anatomy, spacing rhythm and faster views ([#416](https://github.com/kicksideai/components/issues/416)) ([6ab6dfd](https://github.com/kicksideai/components/commit/6ab6dfd14c0f69478d9d3c51fac269197b551e79))
+
 ## [0.1.3](https://github.com/kicksideai/components/compare/work-kanban-v0.1.2...work-kanban-v0.1.3) (2026-11-24)
 
 
