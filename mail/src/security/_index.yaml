@@ -11,7 +11,7 @@ entries:
       includes: [kickside.mail.security:module_runtime]
     groups: []
     policy:
-      resources: [kickside.mail.ports:send_email, kickside.mail.traits:mail, kickside.mail.traits:mail_readonly]
+      resources: [kickside.mail.ports:send_email, kickside.mail.traits:mail, kickside.mail.traits:mail_readonly, kickside.mail.traits:email_design]
       actions: [registry.get, registry.find]
       effect: allow
   - name: module_runtime
@@ -42,6 +42,15 @@ entries:
         - kickside.mail.traits:mail_list_templates
         - kickside.mail.traits:mail_get_template
         - kickside.mail.traits:mail_preview
+        - kickside.mail.traits:library_list
+        - kickside.mail.traits:library_read
+        - kickside.mail.traits:library_preview
+        - kickside.mail.traits:library_save
+        - kickside.mail.traits:library_create
+        - kickside.mail.traits:library_reset
+        - kickside.mail.traits:library_history
+        - kickside.mail.traits:library_restore
+        - kickside.mail.traits:send_test
         - kickside.mail.sink:writable
         - kickside.mail.sink:write
       actions: [registry.get, registry.find, contract.get, contract.open, contract.call, contract.implementations, contract.security, funcs.call, funcs.security]
@@ -216,6 +225,22 @@ entries:
         - kickside.mail.library:delete
         - kickside.mail.library:render
         - kickside.mail.library:render_draft
+        - kickside.mail.service:library_send_test
+      actions: [funcs.call, registry.get]
+      effect: allow
+  - name: library_design_calls
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources:
+        - kickside.mail.library:list_page
+        - kickside.mail.library:get
+        - kickside.mail.library:preview_edits
+        - kickside.mail.library:save
+        - kickside.mail.library:create
+        - kickside.mail.library:reset
+        - kickside.mail.library:history
+        - kickside.mail.library:restore
         - kickside.mail.service:library_send_test
       actions: [funcs.call, registry.get]
       effect: allow

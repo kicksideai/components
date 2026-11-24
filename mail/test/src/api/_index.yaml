@@ -2,15 +2,20 @@
 version: "1.0"
 namespace: app.mail_api
 entries:
+  - name: fixtures
+    kind: library.lua
+    source: file://fixtures.lua
+    modules: [contract, funcs, security, sql, uuid]
   - name: api_test
     kind: function.lua
     meta: { type: test, suite: mail_api }
     source: file://api_test.lua
     method: run
-    modules: [contract, funcs, http_client, json, registry, security, sql, system, uuid, time]
+    modules: [funcs, http_client, json, registry, sql, system, time]
     imports:
       test: wippy.test:test
       library_fixtures: app.mail_library:fixtures
+      fixtures: app.mail_api:fixtures
   - name: sender
     kind: security.scope
   - name: sender_composition

@@ -74,14 +74,21 @@ type ResourceMap = {[string]: Resource}
 type OriginalMap = {[string]: Original}
 type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?}
 type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?}
-type ResourceCreate = ResourceKey & {note: string?, from: ResourceKey?, title: string?, description: string?,
+type ResourceCreate = ResourceKey & {note: string?, preview_id: string?, from: ResourceKey?, title: string?, description: string?,
     html: string?, text: string?, base: string?, subject: string?, schema: VariableSchema?, samples: JsonObject?}
 type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?}
 type ResourceRestore = ResourceRevision & {revision: integer}
 type Revision = {kind: string, name: string, revision: integer, content: ResourceContent, author: string, note: string?, created_at: integer}
 type OriginalRevisions = {[string]: {[string]: integer}}
 type DraftRequest = {resource: ResourceContent?, resources: {ResourceContent}?, message: string, vars: JsonObject?}
-type ResourceSave = {resources: {ResourceEdit}, note: string?}
+type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
+type EditPreview = DraftRequest & {create: ResourceCreate?}
+type DraftIssue = {code: string, message: string, resource: ResourceKey, face: string}
+type DraftPreview = {subject: string?, html: string?, text: string?, errors: {DraftIssue},
+    dependent_messages: {string}, preview_id: string?}
+type LibraryPageRequest = ResourceFilter & {limit: integer?, cursor: string?}
+type LibraryRowSummary = ResourceKey & {state: string, revision: integer, used_by: {messages: integer?, recent_sources: integer?}?}
+type LibraryPage = {items: {LibraryRowSummary}, next_cursor: string?}
 type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?, note: string?, from: ResourceKey?}
 type LibraryRow = {
     kind: string, name: string, title: string, description: string, html: string, text: string,

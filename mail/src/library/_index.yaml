@@ -66,6 +66,15 @@ entries:
       globals: kickside.mail.views:globals
       catalog: kickside.mail.views:catalog
       error_envelope: kickside.contract:error_envelope
+  - name: preview_id
+    kind: library.lua
+    source: file://preview_id.lua
+    modules: [crypto, env]
+    imports:
+      types: kickside.mail:types
+      canonical_json: kickside.contract:canonical_json
+      secret_cipher: kickside.contract:secret_cipher
+      resources: kickside.mail.library:resources
   - name: list
     kind: function.lua
     method: list
@@ -85,6 +94,8 @@ entries:
       settings: kickside.mail:settings
       policy: kickside.mail.outbox:policy
       realtime: kickside.mail:realtime
+      keyset: kickside.contract:keyset
+      preview_id: kickside.mail.library:preview_id
     security: &read_security
       policies:
         - kickside.mail.security:outbox_db
@@ -98,7 +109,7 @@ entries:
     source: *service_source
     modules: *service_modules
     imports: *service_imports
-    security:
+    security: &usage_security
       policies:
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
@@ -106,6 +117,13 @@ entries:
         - kickside.mail.security:site_url
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
+  - name: list_page
+    kind: function.lua
+    method: list_page
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *usage_security
   - name: render
     kind: function.lua
     method: render
@@ -119,19 +137,20 @@ entries:
     source: *service_source
     modules: *service_modules
     imports: *service_imports
-    security: &write_security
+    security: &bound_write_security
       policies:
-        - kickside.mail.security:realtime_calls
-        - kickside.mail.security:realtime_topics
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
-        - kickside.mail.security:template_access
-        - kickside.mail.security:site_url
-        - kickside.mail.security:settings_read
-        - kickside.mail.security:overlay_owner
-        - kickside.mail.security:overlay_projection
-        - kickside.mail.security:overlay_originals
-        - kickside.mail.security:overlay_drafts
+        - &realtime_calls kickside.mail.security:realtime_calls
+        - &realtime_topics kickside.mail.security:realtime_topics
+        - &outbox_db kickside.mail.security:outbox_db
+        - &outbox_config kickside.mail.security:outbox_config
+        - &template_access kickside.mail.security:template_access
+        - &site_url kickside.mail.security:site_url
+        - &settings_read kickside.mail.security:settings_read
+        - &overlay_owner kickside.mail.security:overlay_owner
+        - &overlay_projection kickside.mail.security:overlay_projection
+        - &overlay_originals kickside.mail.security:overlay_originals
+        - &overlay_drafts kickside.mail.security:overlay_drafts
+        - kickside.settings:reader_secrets
   - name: history
     kind: function.lua
     method: history
@@ -145,14 +164,26 @@ entries:
     source: *service_source
     modules: *service_modules
     imports: *service_imports
-    security: *write_security
+    security: &write_security
+      policies:
+        - *realtime_calls
+        - *realtime_topics
+        - *outbox_db
+        - *outbox_config
+        - *template_access
+        - *site_url
+        - *settings_read
+        - *overlay_owner
+        - *overlay_projection
+        - *overlay_originals
+        - *overlay_drafts
   - name: save
     kind: function.lua
     method: save
     source: *service_source
     modules: *service_modules
     imports: *service_imports
-    security: *write_security
+    security: *bound_write_security
   - name: update
     kind: function.lua
     method: update
@@ -196,3 +227,19 @@ entries:
         - kickside.mail.security:settings_read
         - kickside.mail.security:overlay_owner
         - kickside.mail.security:overlay_drafts
+  - name: preview_edits
+    kind: function.lua
+    method: preview_edits
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:overlay_drafts
+        - kickside.settings:reader_secrets

@@ -14,6 +14,8 @@ local outbox = require("outbox")
 local settings = require("settings")
 local policy = require("policy")
 local realtime = require("realtime")
+local keyset = require("keyset")
+local preview_id = require("preview_id")
 
 local M = {}
 
@@ -112,7 +114,7 @@ local function prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: 
     return resources.normalize(content :: types.ResourceContent)
 end
 
-local function change(edits: {types.LibraryEdit}, operation: string): ({types.Resource}?, error?)
+local function change(edits: {types.LibraryEdit}, operation: string, receipt: string?): ({types.Resource}?, error?)
     local denied = client.require_library()
     if denied then return nil, denied end
     local changed: {[string]: boolean} = {}
@@ -155,6 +157,13 @@ local function change(edits: {types.LibraryEdit}, operation: string): ({types.Re
         for _, candidate in ipairs(candidates) do
             local base_err = base_exists(items :: types.ResourceMap, candidate)
             if base_err then return nil, base_err end
+        end
+        if receipt ~= nil then
+            if type(receipt) ~= "string" then
+                return nil, resources.error(errors.INVALID, "invalid_mail_preview", "preview_id must be text")
+            end
+            local unbound = preview_id.verify(receipt, candidates, author, operation, time.now():unix())
+            if unbound then return nil, unbound end
         end
         local dependent = dependants(items :: types.ResourceMap, keys, changed)
         local key = keys[1]
@@ -205,8 +214,8 @@ local function change(edits: {types.LibraryEdit}, operation: string): ({types.Re
     return saved, nil
 end
 
-local function change_one(edit: types.LibraryEdit, operation: string): (types.Resource?, error?)
-    local saved, err = change({edit}, operation)
+local function change_one(edit: types.LibraryEdit, operation: string, receipt: string?): (types.Resource?, error?)
+    local saved, err = change({edit}, operation, receipt)
     if err then return nil, err end
     return saved[1], nil
 end
@@ -223,15 +232,11 @@ local function count(input: unknown): integer
     return size
 end
 
-function M.get(input: types.ResourceKey): (types.Resource?, error?)
-    local denied = client.require_library()
-    if denied then return nil, denied end
-    local item, err = resources.get(input)
-    if err then return nil, err end
+local function used_by(item: types.Resource): (types.UsedBy?, error?)
     if item.kind == "base" then
         local messages, read_err = resources.list({kind = "message", base = item.name})
         if read_err then return nil, read_err end
-        item.used_by = {messages = message_names(messages)}
+        return {messages = message_names(messages)}, nil
     elseif item.kind == "message" then
         local config, config_err = settings.read("kickside.mail")
         if config_err then return nil, config_err end
@@ -239,8 +244,20 @@ function M.get(input: types.ResourceKey): (types.Resource?, error?)
         if not days then return nil, settings.missing("Mail delivery log retention days are invalid") end
         local senders, read_err = outbox.recent_senders(item.name, policy.now() - days * policy.DAY_MS)
         if read_err then return nil, read_err end
-        item.used_by = {recent_senders = senders}
+        return {recent_senders = senders}, nil
     end
+    return nil, nil
+end
+
+function M.get(input: types.ResourceKey): (types.Resource?, error?)
+    local denied = client.require_library()
+    if denied then return nil, denied end
+    local found, err = resources.get(input)
+    if err then return nil, err end
+    local item = found :: types.Resource
+    local usage, usage_err = used_by(item)
+    if usage_err then return nil, usage_err end
+    item.used_by = usage
     return item, nil
 end
 
@@ -250,9 +267,41 @@ function M.list(input: types.ResourceFilter?): ({types.Resource}?, error?)
     return resources.list(input or {})
 end
 
+function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, error?)
+    local denied = client.require_library()
+    if denied then return nil, denied end
+    if type(input) ~= "table" or (input.q ~= nil and type(input.q) ~= "string")
+        or (input.kind and input.kind ~= "base" and input.kind ~= "message" and input.kind ~= "part")
+        or (input.state and input.state ~= "original" and input.state ~= "customized" and input.state ~= "created") then
+        return nil, resources.error(errors.INVALID, "invalid_mail_filter", "Provide a valid resource kind, state and name query")
+    end
+    local limit, cursor, page_err = keyset.args(input)
+    if page_err then return nil, page_err end
+    local items, read_err = M.list(input)
+    if read_err then return nil, read_err end
+    local page, next_cursor = keyset.page(items, function(row: unknown): string
+        return resources.key(row :: types.ResourceKey)
+    end, limit :: integer, cursor)
+    local rows: {types.LibraryRowSummary} = {}
+    for i, value in ipairs(page) do
+        local item = value :: types.Resource
+        local usage, usage_err = used_by(item)
+        if usage_err then return nil, usage_err end
+        rows[i] = {kind = item.kind, name = item.name, state = item.state, revision = item.revision,
+            used_by = usage and {messages = usage.messages and #usage.messages or nil,
+                recent_sources = usage.recent_senders and #usage.recent_senders or nil} or nil}
+    end
+    return {items = rows, next_cursor = next_cursor}, nil
+end
+
+local function create_edit(input: types.ResourceCreate): types.LibraryEdit
+    local fields = type(input) == "table" and input or {} :: types.ResourceCreate
+    return {key = input, content = input :: types.ResourceContent, note = fields.note, from = fields.from}
+end
+
 function M.create(input: types.ResourceCreate): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceCreate
-    return change_one({key = input, content = input :: types.ResourceContent, note = fields.note, from = fields.from}, "create")
+    return change_one(create_edit(input), "create", fields.preview_id)
 end
 
 function M.update(input: types.ResourceEdit): (types.Resource?, error?)
@@ -273,7 +322,7 @@ function M.save(input: types.ResourceSave): ({types.Resource}?, error?)
         if note == nil then note = input.note end
         edits[i] = {key = item, content = item, expected = item.expected_revision, note = note}
     end
-    return change(edits, "update")
+    return change(edits, "update", input.preview_id)
 end
 
 function M.set_base(input: types.ResourceBaseEdit): (types.Resource?, error?)
@@ -321,35 +370,50 @@ function M.render(input: types.PreviewRequest): (types.Rendered?, error?)
     return renderer.render(input.template, input.vars)
 end
 
-function M.render_draft(input: types.DraftRequest): (types.Rendered?, error?)
+local function preview(input: types.EditPreview, bind: boolean): (types.Rendered | types.DraftPreview | nil, error?)
     local denied = client.require_library()
     if denied then return nil, denied end
-    if type(input) ~= "table" or type(input.message) ~= "string" or (input.resource and input.resources) then
-        return nil, resources.error(errors.INVALID, "invalid_mail_draft", "Provide a message and draft resources")
+    if type(input) ~= "table" or type(input.message) ~= "string"
+        or (input.resource and (input.resources or input.create))
+        or (input.create and (not bind or input.resources)) then
+        return nil, resources.error(errors.INVALID, "invalid_mail_draft", "Provide a message and either edited resources or one new resource")
+    end
+    if (input.resources and count(input.resources) == 0) or (bind and not (input.resources or input.create)) then
+        return nil, resources.error(errors.INVALID, "invalid_mail_resources", "Provide draft resources or a new resource to preview")
     end
     local edits: {types.ResourceContent} = input.resource and {input.resource} or input.resources or {}
-    if input.resources and count(input.resources) == 0 then
-        return nil, resources.error(errors.INVALID, "invalid_mail_resources", "Provide an array of draft resources")
-    end
-    local candidates: types.ResourceMap = {}
-    for _, edit in ipairs(edits) do
+    local candidates: {types.ResourceContent} = {}
+    local keys: {types.ResourceKey} = {}
+    local changed: {[string]: boolean} = {}
+    for i, edit in ipairs(edits) do
         local candidate, invalid = resources.normalize(edit)
         if invalid then return nil, invalid end
         local id = resources.key(candidate)
-        if candidates[id] then
+        if changed[id] then
             return nil, resources.error(errors.INVALID, "duplicate_mail_resource", "A resource can appear only once per draft", candidate)
         end
-        candidates[id] = candidate :: types.Resource
+        changed[id], candidates[i], keys[i] = true, candidate, candidate
     end
     local values, globals_err = globals.read()
     if globals_err then return nil, globals_err end
-    return database.transaction(function(tx: sql.Transaction, dialect: string): (types.Rendered?, error?)
+    return database.transaction(function(tx: sql.Transaction, dialect: string): (types.Rendered | types.DraftPreview | nil, error?)
         local lock_err = store.lock(tx, dialect)
         if lock_err then return nil, lock_err end
-        local items, err = resources.load(tx)
+        local items, err, originals = resources.load(tx)
         if err then return nil, err end
-        for id, candidate in pairs(candidates) do items[id] = candidate end
-        for _, candidate in pairs(candidates) do
+        if input.create then
+            local key_err = resources.check_key(input.create)
+            if key_err then return nil, key_err end
+            local candidate, create_err = prepare(tx, create_edit(input.create), "create",
+                items :: types.ResourceMap, originals :: types.OriginalMap)
+            if create_err then return nil, create_err end
+            changed[resources.key(candidate)] = true
+            candidates[1], keys[1] = candidate, candidate
+        end
+        for _, candidate in ipairs(candidates) do
+            items[resources.key(candidate)] = candidate :: types.Resource
+        end
+        for _, candidate in ipairs(candidates) do
             local base_err = base_exists(items :: types.ResourceMap, candidate)
             if base_err then return nil, base_err end
         end
@@ -358,8 +422,35 @@ function M.render_draft(input: types.DraftRequest): (types.Rendered?, error?)
         if not item then return nil, missing(key) end
         local vars = input.vars
         if vars == nil then vars = item.samples end
-        return draft.render(items :: types.ResourceMap, item, vars, values :: types.RenderGlobals)
+        if not bind then
+            return draft.render(items :: types.ResourceMap, item, vars, values :: types.RenderGlobals)
+        end
+        local dependent = dependants(items :: types.ResourceMap, keys, changed)
+        local result, draft_err = draft.preview(items :: types.ResourceMap, item, vars, candidates, dependent,
+            values :: types.RenderGlobals)
+        if draft_err then return nil, draft_err end
+        if #result.errors == 0 then
+            local actor, actor_err = security.actor()
+            if actor_err then return nil, actor_err end
+            if not actor then
+                return nil, resources.error(errors.PERMISSION_DENIED, "mail_library_denied", "A principal must edit the mail library")
+            end
+            local receipt, sign_err = preview_id.issue(candidates, actor:id(), input.create and "create" or "update", time.now():unix())
+            if sign_err then return nil, sign_err end
+            result.preview_id = receipt
+        end
+        return result, nil
     end)
+end
+
+function M.render_draft(input: types.DraftRequest): (types.Rendered?, error?)
+    local result, err = preview(input, false)
+    return result :: types.Rendered?, err
+end
+
+function M.preview_edits(input: types.EditPreview): (types.DraftPreview?, error?)
+    local result, err = preview(input, true)
+    return result :: types.DraftPreview?, err
 end
 
 return M
