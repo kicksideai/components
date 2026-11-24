@@ -216,7 +216,9 @@ end
 local function read_page(tx: types.Executor, board: domain.Board, plan: types.Plan, allowance: types.ReadAllowance,
     order: { domain.Sort }, request: types.QueryRequest, listing: boolean?): (types.QueryPage?, error?)
     local limit = request.limit or 50
-    if budget.check(allowance) then return { items = {}, cursors = {}, reindexing = false, incomplete = true }, nil end
+    if budget.check(allowance) then
+        return { snapshot_seq = board.snapshot_seq, items = {}, cursors = {}, reindexing = false, incomplete = true }, nil
+    end
     local position, cursor_err = groups.position(board, request)
     if cursor_err then return nil, cursor_err end
     local selected, qerr = select.rows(tx, plan)
@@ -279,7 +281,7 @@ local function read_page(tx: types.Executor, board: domain.Board, plan: types.Pl
     local following = rows[#flat + 1] and window.cursor(rows[#flat + 1], order)
     local after = following and cursors[#flat] or stopped
     return { items = views(flat), groups = rendered, group_after = grouped.after, cursors = cursors, after = after, following = following,
-        reindexing = false, scanned = scanned, group_limited = grouped.limited or nil,
+        snapshot_seq = board.snapshot_seq, reindexing = false, scanned = scanned, group_limited = grouped.limited or nil,
         incomplete = grouped.limited or (stopped ~= nil and not following) or (clipped and plan.take < limit) }, nil
 end
 
@@ -335,7 +337,9 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
     local sort = nulls and {} or order
     local catalog: { [string]: domain.Field } = {}
     local result, read_err = with_query_snapshot(request, grants, function(tx: types.Executor, board: domain.Board, dialect: string, search_ids: domain.SearchResults?): (types.QueryPage?, error?)
-        if budget.expired(allowance) then return { items = {}, cursors = {}, reindexing = false, incomplete = true }, nil end
+        if budget.expired(allowance) then
+            return { snapshot_seq = board.snapshot_seq, items = {}, cursors = {}, reindexing = false, incomplete = true }, nil
+        end
         catalog = peers.catalog(board)
         if check then
             local cerr = check(board)
@@ -351,7 +355,7 @@ function M.page(request: types.QueryRequest, context: types.ReadContext?, check:
         if err or not plan then return nil, err end
         local rebuilding, perr = pending(tx, board, request, false)
         if perr then return nil, perr end
-        if rebuilding then return { items = {}, cursors = {}, reindexing = true }, nil end
+        if rebuilding then return { snapshot_seq = board.snapshot_seq, items = {}, cursors = {}, reindexing = true }, nil end
         return read_page(tx, board, plan, allowance, sort, request, listing)
     end, shared)
     if read_err or not result then return nil, read_err end
@@ -407,7 +411,7 @@ function M.select_for_edit(request: types.QueryRequest, scope: domain.Where, fie
         if rows_err or not page then return nil, rows_err end
         if page.scan_cursor then return nil, restricted() end
         local rows = page.rows
-        if #rows > plan.take then return { members = {}, over_limit = true }, nil end
+        if #rows > plan.take then return { snapshot_seq = board.snapshot_seq, members = {}, over_limit = true }, nil end
         local ids: { string } = {}
         for _, row in ipairs(rows) do ids[#ids + 1] = row.item_id :: string end
         local items, items_err = store.items(tx, board.board_id, ids)
@@ -422,7 +426,7 @@ function M.select_for_edit(request: types.QueryRequest, scope: domain.Where, fie
         end
         local members: { types.EditMember } = table.create(0, 1)
         for _, id in ipairs(ids) do members[#members + 1] = { item_id = id, version = by_id[id] } end
-        return { members = members }, nil
+        return { snapshot_seq = board.snapshot_seq, members = members }, nil
     end, nil, request.budget, request.where, mask)
 end
 

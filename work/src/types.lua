@@ -275,7 +275,7 @@ type UsageTargets = { item_types: { string }, links: { string }, states: { State
 type Board = { memberships: Memberships?, pack: string?, pack_version: string?, pack_digest: string?, pack_base: JsonObject?, caller_error: error?,
     schema_version: integer,
     dialect: string?, caller: AccessCaller?, board_id: string, key_prefix: string, generation: integer, compiled: Compiled, model: Model, digest: string,
-    applied_seq: integer, counter: integer,
+    applied_seq: integer, snapshot_seq: integer, counter: integer,
     tombstone_floor_seq: integer, layout: Layout?,
 }
 type Cell = { p: Value?, c: integer? }

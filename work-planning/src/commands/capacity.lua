@@ -29,7 +29,7 @@ local UPSERT = [[
     ) p ON p.board_id = i.board_id AND p.plugin = $6 AND p.attachment_id = $1 AND p.active = 1
     JOIN kickside_work_board b ON b.board_id = i.board_id
     WHERE i.board_id = $2 AND i.item_id = $5 AND i.type = 'sprint' AND i.life = 'live'
-      AND b.applied_seq = $7
+      AND b.snapshot_seq = $7
       AND ($8 = 0 OR EXISTS (SELECT 1 FROM kickside_work_planning_sprint
           WHERE attachment_id = $1 AND sprint_id = $5))
     ON CONFLICT (attachment_id, sprint_id) DO UPDATE SET unit = excluded.unit, version = excluded.version
@@ -55,7 +55,7 @@ function M.set_capacity(request: Request): (Result?, error?)
 
     local schema, plugin, err = board.active(request.board_id)
     if not schema or not plugin then return nil, err end
-    local sprint, read_err = board.sprint(request.board_id, request.sprint_id, schema.as_of)
+    local sprint, read_err = board.sprint(request.board_id, request.sprint_id, schema.snapshot_seq)
     if not sprint then return nil, read_err end
     if not sprint.access.write then
         return nil, board.problem(errors.PERMISSION_DENIED, "planning_write_required", "Sprint capacity requires board WRITE.")
@@ -68,7 +68,7 @@ function M.set_capacity(request: Request): (Result?, error?)
         -- holds the admitted attachment and sprint through the capacity replacement.
         local lock = dialect == sql.type.POSTGRES and " FOR SHARE" or ""
         local written, write_err = tx:query(UPSERT:format(lock, lock),
-            { attachment, request.board_id, request.unit, next_version, request.sprint_id, board.PLUGIN, schema.as_of, expected })
+            { attachment, request.board_id, request.unit, next_version, request.sprint_id, board.PLUGIN, schema.snapshot_seq, expected })
         if write_err then return nil, write_err end
         if not written or not written[1] then return nil, version_conflict() end
 

@@ -69,7 +69,7 @@ local function get_schema(request: types.SchemaGetRequest, context: types.ReadCo
         local parked, perr = store.parked_migration(tx, board.board_id)
         if perr then return nil, perr end
         return { pack = row.pack, plugins = selected, extensions = extensions, declaration = row.declaration, compiled = compiled, digest = row.digest, key_prefix = row.compiled.key_prefix,
-            migration_error = parked and parked.error or nil }, nil
+            snapshot_seq = board.snapshot_seq, migration_error = parked and parked.error or nil }, nil
     end, context)
     if err or not result then return nil, err end
     local result = result :: types.SchemaView
@@ -98,7 +98,7 @@ local function get_schema(request: types.SchemaGetRequest, context: types.ReadCo
         result.outdated = outdated
     end
     return { pack = result.pack, outdated = result.outdated, plugins = result.plugins, extensions = result.extensions, declaration = result.declaration, compiled = result.compiled, digest = result.digest,
-        key_prefix = result.key_prefix, migration_error = result.migration_error, as_of = result.as_of,
+        key_prefix = result.key_prefix, migration_error = result.migration_error, as_of = result.as_of, snapshot_seq = result.snapshot_seq,
         generation = request.generation or result.generation } :: types.SchemaView, nil
 end
 
@@ -130,7 +130,8 @@ local function get(request: types.GetRequest, board_id: string, ref: types.ItemR
         if not item then return nil, errors.new({ kind = errors.NOT_FOUND, message = "item not found", details = { code = "item_not_found" } }) end
         local view, verr = render(tx, board, item, true)
         if verr or not view then return nil, verr end
-        local out: types.GetResult = { item = view, access = grants, title = metadata.title, description = metadata.description, icon = metadata.icon }
+        local out: types.GetResult = { item = view, access = grants, title = metadata.title, description = metadata.description,
+            icon = metadata.icon, snapshot_seq = board.snapshot_seq }
         local item_type = board.model.item_types[item.type]
         if grants.write and item.life == "live" and item_type and #item_type.fields > 0 then
             local edits: { [string]: domain.FieldEdit } = {}

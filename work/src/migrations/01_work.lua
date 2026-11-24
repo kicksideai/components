@@ -36,6 +36,7 @@ local POSTGRES = {
         digest text NOT NULL,
         layout text,
         applied_seq bigint NOT NULL,
+        snapshot_seq bigint NOT NULL,
         counter bigint NOT NULL,
         tombstone_floor_seq bigint NOT NULL,
         retention_after text,

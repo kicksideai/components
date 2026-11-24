@@ -9,7 +9,7 @@ entries:
 - name: dep.work
   kind: ns.dependency
   component: kickside/work
-  version: '>=0.1.49'
+  version: '>=0.1.52'
 - name: dep.migration
   kind: ns.dependency
   component: wippy/migration

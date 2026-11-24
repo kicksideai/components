@@ -16,7 +16,7 @@ M.Row = Row
 M.Capacity = Capacity
 
 -- Call only after Work has admitted the sprint to the current reader.
-function M.read(board_id: string, attachment: string, sprint: string, as_of: integer): (Capacity?, error?)
+function M.read(board_id: string, attachment: string, sprint: string, snapshot_seq: integer): (Capacity?, error?)
     local db, err = work_store.open()
     if not db then return nil, err end
     -- Seek one candidate per key before checking identity and lifecycle.
@@ -34,9 +34,9 @@ function M.read(board_id: string, attachment: string, sprint: string, as_of: int
         JOIN planning p ON p.board_id = b.board_id AND p.plugin = $3 AND p.attachment_id = $4 AND p.active = 1
         LEFT JOIN kickside_work_planning_sprint s ON s.attachment_id = p.attachment_id AND s.sprint_id = i.item_id AND s.board_id = b.board_id
         LEFT JOIN kickside_work_planning_capacity c ON c.attachment_id = s.attachment_id AND c.sprint_id = s.sprint_id
-        WHERE i.board_id = b.board_id AND i.item_id = $2 AND i.type = 'sprint' AND i.life = 'live' AND b.applied_seq = $5
+        WHERE i.board_id = b.board_id AND i.item_id = $2 AND i.type = 'sprint' AND i.life = 'live' AND b.snapshot_seq = $5
         ORDER BY c.person LIMIT $6
-    ]], { board_id, sprint, PLUGIN, attachment, as_of, M.MAX_PEOPLE + 1 })
+    ]], { board_id, sprint, PLUGIN, attachment, snapshot_seq, M.MAX_PEOPLE + 1 })
     local _, release_err = db:release()
     if err or release_err then return nil, err or release_err end
     if #(rows or {}) == 0 then

@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 organization: kickside
 module: work
+# The local source satisfies Planning's snapshot contract before the release is available on the Hub.
+version: 0.1.52
 type: plugin
 description: Work tracking for KickSide - boards of typed items with a per-board log, per-item concurrency, change history and a projected read model.
 license: LicenseRef-KickSide-Community-1.0
