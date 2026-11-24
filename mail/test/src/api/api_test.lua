@@ -69,13 +69,13 @@ return {run = test.run_cases(function()
                     count = count + 1
                     local path = endpoint.data.path:sub(#"/mail" + 1):gsub("{kind}", "message"):gsub("{name}", "notice"):gsub("{id}", ZERO)
                     test.eq(401, (request(nil, endpoint.data.method, path, {})), endpoint.id)
-                    if path:match("^/library") or path:match("^/delivery") or not path:match("/resend$") then
+                    if path ~= "/capabilities" and not path:match("/resend$") then
                         local denied, _, raw = request(sender, endpoint.data.method, path, {})
                         assert(denied == 403, endpoint.id .. " returned " .. denied .. ": " .. raw)
                     end
                 end
             end
-            test.eq(17, count)
+            test.eq(18, count)
             local predicate = "kickside.mail.api:library_list.endpoint"
             test.eq("allow", editor.scope:evaluate(editor.actor, "access", predicate))
             test.neq("allow", sender.scope:evaluate(sender.actor, "access", predicate))
@@ -126,6 +126,25 @@ return {run = test.run_cases(function()
             test.eq("Mail", notice.origin_label)
             test.eq("KickSide", reminder.origin_label)
             test.eq(notice.origin_label, data(editor, "GET", "/library/message/notice").origin_label)
+        end)
+
+        test.it("reports the effective Mail capabilities of the authenticated caller", function()
+            test.eq(401, (request(nil, "GET", "/capabilities")))
+            local expected = {
+                member = {false, false, false},
+                log_reader = {false, false, false},
+                sender = {true, false, false},
+                editor = {false, true, false},
+                delivery = {false, false, true},
+                editor_sender = {true, true, false},
+                delivery_sender = {true, false, true},
+            }
+            for role, flags in pairs(expected) do
+                local capabilities = data(session(role ~= "member" and role or nil), "GET", "/capabilities")
+                test.eq(flags[1], capabilities.send, role)
+                test.eq(flags[2], capabilities.edit_library, role)
+                test.eq(flags[3], capabilities.administer_delivery, role)
+            end
         end)
 
         test.it("lists the packaged asset and previews its CID under the editor capability", function()

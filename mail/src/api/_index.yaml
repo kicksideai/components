@@ -9,6 +9,18 @@ entries:
     imports:
       types: kickside.mail:types
       http_errors: kickside.contract:http_errors
+  - name: capabilities
+    kind: function.lua
+    source: file://capabilities.lua
+    method: handler
+    imports:
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: capabilities.endpoint
+    kind: http.endpoint
+    method: GET
+    func: capabilities
+    path: /mail/capabilities
   - name: library_list
     kind: function.lua
     source: file://library_list.lua

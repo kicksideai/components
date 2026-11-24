@@ -192,6 +192,7 @@ entries:
       - { entry: "kickside.mail.security:module_access", path: ".groups +=" }
       - { entry: "kickside.mail.security:module_runtime", path: ".groups +=" }
       - { entry: "kickside.mail.security:member_endpoints", path: ".groups +=" }
+      - { entry: "kickside.mail.security:capabilities_endpoint", path: ".groups +=" }
   - name: asset_adoption
     kind: security.policy
     meta: {private: true, service_only: true}
@@ -367,6 +368,14 @@ entries:
     policy:
       resources: ["kickside.mail.draft:*"]
       actions: [registry.overlay.create.template.jet, registry.overlay.delete.template.jet, registry.overlay.create.template.set, registry.overlay.delete.template.set, template.get]
+      effect: allow
+  - name: capabilities_endpoint
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources: [kickside.mail.api:capabilities.endpoint]
+      actions: [access, registry.get]
       effect: allow
   - name: member_endpoints
     kind: security.policy

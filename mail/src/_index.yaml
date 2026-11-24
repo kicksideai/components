@@ -62,6 +62,7 @@ entries:
     kind: ns.requirement
     meta: { value_kind: http.router, comment: Authenticated router for the Mail administration API. }
     targets:
+      - { entry: kickside.mail.api:capabilities.endpoint, path: ".meta.router" }
       - { entry: kickside.mail.api:library_list.endpoint, path: ".meta.router" }
       - { entry: kickside.mail.api:library_get.endpoint, path: ".meta.router" }
       - { entry: kickside.mail.api:library_create.endpoint, path: ".meta.router" }
