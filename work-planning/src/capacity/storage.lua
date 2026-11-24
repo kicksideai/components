@@ -19,16 +19,24 @@ M.Capacity = Capacity
 function M.read(board_id: string, attachment: string, sprint: string, as_of: integer): (Capacity?, error?)
     local db, err = work_store.open()
     if not db then return nil, err end
+    -- Seek one candidate per key before checking identity and lifecycle.
     local rows, err = db:query([[
+        WITH sprint AS (
+            SELECT board_id, item_id, type, life FROM kickside_work_item
+            WHERE (board_id, item_id) >= ($1, $2) ORDER BY board_id, item_id LIMIT 1
+        ), planning AS (
+            SELECT board_id, plugin, attachment_id, active FROM kickside_work_plugin
+            WHERE (board_id, plugin) >= ($1, $3) ORDER BY board_id, plugin LIMIT 1
+        )
         SELECT s.unit, s.version, c.person, c.amount
-        FROM kickside_work_board b
-        JOIN kickside_work_item i ON i.board_id = b.board_id AND i.item_id = $1 AND i.type = 'sprint' AND i.life = 'live'
-        JOIN kickside_work_plugin p ON p.board_id = b.board_id AND p.plugin = $2 AND p.attachment_id = $3 AND p.active = 1
+        FROM sprint i
+        JOIN kickside_work_board b ON b.board_id = $1
+        JOIN planning p ON p.board_id = b.board_id AND p.plugin = $3 AND p.attachment_id = $4 AND p.active = 1
         LEFT JOIN kickside_work_planning_sprint s ON s.attachment_id = p.attachment_id AND s.sprint_id = i.item_id AND s.board_id = b.board_id
         LEFT JOIN kickside_work_planning_capacity c ON c.attachment_id = s.attachment_id AND c.sprint_id = s.sprint_id
-        WHERE b.board_id = $4 AND b.applied_seq = $5
+        WHERE i.board_id = b.board_id AND i.item_id = $2 AND i.type = 'sprint' AND i.life = 'live' AND b.applied_seq = $5
         ORDER BY c.person LIMIT $6
-    ]], { sprint, PLUGIN, attachment, board_id, as_of, M.MAX_PEOPLE + 1 })
+    ]], { board_id, sprint, PLUGIN, attachment, as_of, M.MAX_PEOPLE + 1 })
     local _, release_err = db:release()
     if err or release_err then return nil, err or release_err end
     if #(rows or {}) == 0 then

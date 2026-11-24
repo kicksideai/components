@@ -164,6 +164,15 @@ local function define()
             end
             assert(db:release())
             test.eq(count_capacity(id), 2)
+
+            local caller = scoped.member()
+            assert(h.call("grant", { subject_id = caller.id, mask = 1 }))
+            steps.wait_for("Planning attachment registration", function() return admin.call("get_meta", {}, id) ~= nil end)
+            local executor = funcs.new():with_actor(caller.actor):with_scope(caller.scope):with_context({ component_id = id })
+            local deleted, err = executor:call("kickside.work.planning:delete", {})
+            test.is_nil(deleted)
+            test.eq(err:kind(), errors.PERMISSION_DENIED)
+            test.eq(count_capacity(id), 2)
         end)
 
         test.it("retires a purged sprint before Work removes its tombstone", function()

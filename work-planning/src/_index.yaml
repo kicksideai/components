@@ -168,8 +168,10 @@ entries:
     methods: {delete: 'kickside.work.planning:delete'}
 - name: delete
   kind: function.lua
+  meta: {private: true}
   source: file://capacity/teardown.lua
   method: delete
   modules: [ctx]
   imports:
+    component: kickside.component:component
     storage: kickside.work.planning.capacity:storage
