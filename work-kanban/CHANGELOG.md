@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/kicksideai/components/compare/work-kanban-v0.1.1...work-kanban-v0.1.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-kanban:** align the board and issue panel layout ([#409](https://github.com/kicksideai/components/issues/409)) ([c77be95](https://github.com/kicksideai/components/commit/c77be95908538fc60efebc7b957343dad2cff982))
+
 ## [0.1.1](https://github.com/kicksideai/components/compare/work-kanban-v0.1.0...work-kanban-v0.1.1) (2026-11-23)
 
 
