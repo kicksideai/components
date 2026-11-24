@@ -36,7 +36,8 @@ local statements: {string} = {
             AND actor_context IS NOT NULL AND finished_at IS NULL)
             OR (status <> 'queued' AND next_attempt_at IS NULL AND next_check_at IS NULL
             AND actor_context IS NULL AND finished_at IS NOT NULL AND html IS NULL AND text IS NULL)),
-        CHECK ((status = 'sent') = (sent_at IS NOT NULL AND provider_message_id IS NOT NULL))
+        CHECK ((status = 'sent') = (sent_at IS NOT NULL)),
+        CHECK (status = 'sent' OR provider_message_id IS NULL)
     )]],
     [[CREATE UNIQUE INDEX mail_message_idempotency ON mail_message(sender, idempotency_key)
         WHERE idempotency_key IS NOT NULL]],

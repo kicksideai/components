@@ -131,21 +131,13 @@ function M.encode_attachment(bytes: string): (string?, error?)
     return encoded, nil
 end
 
-function M.invalid_response(cause: error, message: string, status: number): error
-    return errors.new({kind = errors.INTERNAL, message = message, retryable = false,
-        details = {code = "provider_response_invalid", status = status, cause = error_envelope.encode(cause)}})
-end
-
-function M.message_id(response: types.HttpResponse): (types.TransportResult?, error?)
+function M.message_id(response: types.HttpResponse): (types.TransportResult, nil)
     local decoded, err = json.decode(response.body)
-    if err then
-        return nil, M.invalid_response(err, "Cannot decode mail delivery response", response.status_code)
-    end
-    if type(decoded) == "table" and type(decoded.id) == "string" and decoded.id:find("%S") then
+    if not err and type(decoded) == "table" and type(decoded.id) == "string" and decoded.id:find("%S") then
         return {provider_message_id = decoded.id}, nil
     end
-    return nil, M.failure(errors.INTERNAL, "provider_response_invalid", "The mail service did not return a message ID", false,
-        response.status_code)
+    -- An accepted response can omit a usable ID.
+    return {}, nil
 end
 
 return M

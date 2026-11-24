@@ -20,7 +20,7 @@ type TransportRequest = Addresses & {
     from: Mailbox, reply_to: string?, subject: string, html: string?, text: string?,
     attachments: {Attachment}?, idempotency_key: string?,
 }
-type TransportResult = {provider_message_id: string}
+type TransportResult = {provider_message_id: string?}
 type SendResult = {message_id: string, status: string}
 type MessageRef = {message_id: string}
 type ListRequest = {status: string?, since: integer?, limit: integer, cursor: string?}

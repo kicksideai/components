@@ -213,4 +213,4 @@ entries:
             definition: file://schemas/transport.input.json
         output_schemas:
           - format: application/schema+json
-            definition: file://schemas/send.output.json
+            definition: file://schemas/transport.output.json
