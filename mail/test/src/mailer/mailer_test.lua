@@ -314,6 +314,46 @@ return {
 
             local policy = require("policy")
 
+            for _, fault in ipairs({"refused", "dns", "tls", "connect_timeout", "response_timeout", "response_reset"}) do
+                test.it("retries provider HTTP transport failure " .. fault, function()
+                    capture_with(admin)
+                    local input = body()
+                    input.subject = "Fixture http_" .. fault
+                    local started = policy.now()
+                    local queued = assert(invoke(sender, "send", input))
+                    local pending = await_message(log_admin, queued.message_id, function(row)
+                        return row.last_error ~= nil or row.status == "sent"
+                    end)
+                    test.eq("queued", pending.status)
+                    test.eq(1, pending.attempts)
+                    test.eq("provider_transport_failed", pending.last_error.code)
+                    test.eq(errors.UNAVAILABLE, pending.last_error.kind)
+                    test.is_true(pending.next_attempt_at >= started + 1000)
+                    test.is_true(pending.next_attempt_at <= policy.now() + 1000)
+
+                    local job_id = persisted(queued.message_id).job_id
+                    local woken = assert(jobs.wake_job(job_id, {control = true}))
+                    test.is_true(woken.woken)
+                    local sent = terminal(log_admin, queued)
+                    test.eq("sent", sent.status)
+                    test.eq(2, sent.attempts)
+                    test.eq("fixture-http-delivery", sent.provider_message_id)
+                    test.is_nil(sent.last_error)
+                    test.eq(job_id, persisted(queued.message_id).job_id)
+                end)
+            end
+
+            test.it("keeps an HTTP policy denial terminal", function()
+                capture_with(admin)
+                local input = body()
+                input.subject = "Fixture http_denied"
+                local failure = terminal(log_admin, assert(invoke(sender, "send", input)))
+                test.eq("failed", failure.status)
+                test.eq(1, failure.attempts)
+                test.eq("provider_request_failed", failure.last_error.code)
+                test.eq(errors.PERMISSION_DENIED, failure.last_error.kind)
+            end)
+
             test.it("uses the retry policy through an hour-long provider outage", function()
                 for _, kind in ipairs({errors.UNAVAILABLE, errors.RATE_LIMITED, errors.TIMEOUT}) do
                     local failure = errors.new({kind = kind, message = "Test outage", retryable = true})

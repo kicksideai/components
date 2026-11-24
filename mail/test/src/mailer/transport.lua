@@ -3,6 +3,7 @@ local json = require("json")
 local sql = require("sql")
 local channel = require("channel")
 local base64 = require("base64")
+local delivery = require("delivery")
 
 local function result(id, message)
     return {provider_message_id = table.concat({
@@ -17,6 +18,13 @@ local function capture(message)
         local rows = assert(db:query("SELECT attempts FROM mail_message WHERE id=$1", {message.idempotency_key}))
         assert(db:release())
         local attempts = rows[1].attempts
+        local fault = behavior:match("^http_(.+)$")
+        if fault then
+            local response, err = delivery.post("https://provider.example.org/messages",
+                assert(json.encode({fault = fault, attempts = attempts})), {})
+            if err then return nil, err end
+            return delivery.message_id(response)
+        end
         if (behavior == "ceiling" or behavior == "ceiling_lost") and attempts == 5 then
             channel.new():receive()
         end

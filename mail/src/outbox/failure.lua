@@ -20,6 +20,7 @@ local TEXT = {
     provider_rejected = REFUSED,
     provider_response_invalid = GENERIC,
     provider_request_failed = UNAVAILABLE,
+    provider_transport_failed = UNAVAILABLE,
     provider_unavailable = UNAVAILABLE,
     rate_limited = "Ask a mail administrator to check when sending can resume after the rate limit.",
     quota_exhausted = "Ask a mail administrator to check the sending quota.",

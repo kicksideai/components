@@ -114,6 +114,11 @@ function M.post(url: string, body: string, headers: {[string]: string}, auth: ty
         auth = auth, headers = headers, body = body, timeout = "20s", max_response_body = 64 * 1024,
     })
     if err then
+        if not response and err:retryable() then
+            return nil, errors.wrap(errors.new({kind = errors.UNAVAILABLE, message = err:message(), retryable = true,
+                details = {code = "provider_transport_failed", cause = error_envelope.encode(err)}}),
+                "Mail delivery request failed")
+        end
         return nil, error_envelope.wrap(err, "Mail delivery request failed", {code = "provider_request_failed"})
     end
     return response :: types.HttpResponse, nil
