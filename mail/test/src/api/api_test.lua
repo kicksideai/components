@@ -97,6 +97,23 @@ return {run = test.run_cases(function()
             test.neq("allow", sender.scope:evaluate(sender.actor, "access", endpoint))
         end)
 
+        test.it("returns editable shipped templates without license comments", function()
+            local editor = session("editor")
+            local originals = data(editor, "GET", "/library?state=original")
+            local faces = 0
+            for _, item in ipairs(originals.items) do
+                if item.kind ~= "asset" then
+                    local resource = data(editor, "GET", "/library/" .. item.kind .. "/" .. item.name)
+                    test.is_nil(resource.html:find("SPDX-License-Identifier", 1, true), item.name)
+                    test.is_nil(resource.text:find("SPDX-License-Identifier", 1, true), item.name)
+                    test.is_nil(resource.description:find("site.title", 1, true), item.name)
+                    test.is_nil(resource.description:find("text face", 1, true), item.name)
+                    faces = faces + 1
+                end
+            end
+            test.is_true(faces > 0)
+        end)
+
         test.it("lists the packaged asset and previews its CID under the editor capability", function()
             local editor = session("editor")
             local sender = session("sender")

@@ -1,2 +1,2 @@
-{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}{{ .name }}{{ if isset(.role) && .role != "" }}
+{{ .name }}{{ if isset(.role) && .role != "" }}
 {{ .role }}{{ end -}}
