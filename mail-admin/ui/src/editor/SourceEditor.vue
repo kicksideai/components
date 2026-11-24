@@ -5,12 +5,13 @@ import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import Skeleton from 'primevue/skeleton'
 import SelectButton from 'primevue/selectbutton'
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { useMail } from '../context'
 import { kindIcons } from '../copy'
 import type { ResourceContent } from '../types'
-import InsertDialog from './InsertDialog.vue'
+import InsertMenu from './InsertMenu.vue'
 import ProblemNote from './ProblemNote.vue'
 import type { Face, Problem } from './problems'
 
@@ -19,15 +20,17 @@ const CodeEditor = defineAsyncComponent(() => import('./CodeEditor.vue'))
 // The source column of the editor. The draft object belongs to the resource page and is edited in place.
 const props = defineProps<{ draft: ResourceContent; problem?: Problem; disabled?: boolean }>()
 const { library, go } = useMail()
+library.use('base')
 const ids = { base: useId(), title: useId(), description: useId(), face: useId() }
 
 const face = ref<'html' | 'text'>('html')
 const faces = [{ label: 'HTML', value: 'html' }, { label: 'Plain text', value: 'text' }]
 const bases = computed(() => library.ofKind('base').map(base => ({ value: base.name, label: base.title })))
+// A subject is one line; the server would refuse a line break.
+const subjectBreak = computed(() => props.draft.kind === 'message' && /[\r\n]/.test(props.draft.subject ?? ''))
 const editor = ref<{ insert: (text: string) => void; focus: () => void }>()
-const inserting = ref(false)
+const inserter = ref<{ toggle: (event: Event) => void }>()
 function insert(text: string) {
-  inserting.value = false
   editor.value?.insert(text)
 }
 
@@ -61,25 +64,31 @@ const faceLabel = computed(() => (props.draft.kind === 'message' ? 'Body' : 'Sou
       <div class="mail-field">
         <label class="mail-field-label" :for="ids.base">Base template</label>
         <div class="mail-base-row">
-          <Select v-model="draft.base" :input-id="ids.base" :options="bases" option-label="label" option-value="value" append-to="self" class="mail-base-select">
-            <template #value="{ value }"><span class="mail-kind"><Icon :icon="kindIcons.base" aria-hidden="true" />{{ bases.find(base => base.value === value)?.label ?? value }}</span></template>
+          <Select v-model="draft.base" :input-id="ids.base" :options="bases" option-label="label" option-value="value" append-to="self" class="mail-base-select"
+            :loading="!library.ready('base')">
+            <template #value="{ value }">
+              <span class="mail-kind"><Icon :icon="kindIcons.base" aria-hidden="true" />
+                <Skeleton v-if="value && library.title('base', value) === undefined" width="8rem" height="1rem" />
+                <template v-else>{{ library.title('base', value) }}</template></span>
+            </template>
           </Select>
           <Button v-if="draft.base" text label="Open" severity="secondary" @click="go({ name: 'resource', kind: 'base', resource: draft.base, section: 'content' })" />
         </div>
       </div>
-      <div class="mail-field" :class="{ 'mail-field-invalid': problemFace === 'subject' }">
+      <div class="mail-field" :class="{ 'mail-field-invalid': problemFace === 'subject' || subjectBreak }">
         <span :id="ids.face + '-subject'" class="mail-field-label">Subject</span>
         <div class="mail-code-frame mail-code-subject">
           <CodeEditor v-model="draft.subject as string" label="Subject" />
         </div>
-        <ProblemNote v-if="problem && problemFace === 'subject'" :problem="problem" :draft="draft" />
+        <small v-if="subjectBreak" class="mail-field-error" role="alert">A subject is one line. Remove the line break.</small>
+        <ProblemNote v-else-if="problem && problemFace === 'subject'" :problem="problem" :draft="draft" />
       </div>
     </template>
 
     <div class="mail-field" :class="{ 'mail-field-invalid': problem && problemFace !== 'subject' }">
       <div class="mail-face-bar">
         <SelectButton v-model="face" :options="faces" option-label="label" option-value="value" :allow-empty="false" :aria-label="(draft.kind === 'message' ? 'Body' : 'Source') + ' format'" />
-        <Button label="Insert" severity="secondary" outlined size="small" @click="inserting = true">
+        <Button label="Insert" severity="secondary" outlined size="small" aria-haspopup="true" @click="(event: Event) => inserter?.toggle(event)">
           <template #icon><Icon icon="tabler:plus" aria-hidden="true" /></template>
         </Button>
       </div>
@@ -89,6 +98,6 @@ const faceLabel = computed(() => (props.draft.kind === 'message' ? 'Body' : 'Sou
       </div>
       <ProblemNote v-if="problem && problemFace !== 'subject'" :problem="problem" :draft="draft" />
     </div>
-    <InsertDialog :visible="inserting" :draft="draft" :face="face" @close="inserting = false" @insert="insert" />
+    <InsertMenu ref="inserter" :draft="draft" :face="face" @insert="insert" />
   </fieldset>
 </template>

@@ -1,21 +1,32 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
+import Skeleton from 'primevue/skeleton'
 import Tag from 'primevue/tag'
+import { host } from '@wippy-fe/proxy'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { activity, isDenied, isMissing } from '../api'
 import { useMail } from '../context'
+import { useReturnFocus } from '../focus'
 import { describe, fullDate, originText, personLabel, statusLabels, statusSeverity } from '../copy'
 import { useMessageChanges } from '../realtime'
 import type { LogMessage, SendReceipt } from '../types'
 
 const props = defineProps<{ messageId?: string }>()
-const emit = defineEmits<{ close: []; changed: [] }>()
-const { library, go } = useMail()
+const emit = defineEmits<{ close: [] }>()
+const { library, go, capabilities } = useMail()
+useReturnFocus(() => !!props.messageId)
+const drawer = ref<HTMLElement>()
+watch(() => !!props.messageId, open => { if (open) void nextTick(() => drawer.value?.focus()) }, { immediate: true })
+
+// Failures that come from the delivery settings; sending again fails the same way until the settings change.
+const settingsCodes = new Set(['invalid_config', 'settings_read_failed', 'invalid_driver_descriptor', 'duplicate_driver_id',
+  'driver_availability_invalid', 'provider_endpoint_invalid', 'credentials_invalid'])
+const settingsFailure = computed(() => !!message.value?.last_error && settingsCodes.has(message.value.last_error.code))
 
 const message = shallowRef<LogMessage>()
 const loading = ref(false), missing = ref(false), denied = ref(false)
@@ -62,7 +73,6 @@ async function sendAgain() {
   sendError.value = ''
   try {
     receipt.value = await activity.resend(item.message_id)
-    emit('changed')
   } catch (failure) {
     sendError.value = describe(failure, 'The message could not be sent again.')
   } finally {
@@ -83,7 +93,7 @@ async function copyLink() {
 
 const templateTitle = computed(() => {
   const name = message.value?.template
-  return name ? library.find('message', name)?.title ?? name : ''
+  return name ? library.title('message', name) : ''
 })
 const templateExists = computed(() => !!message.value?.template && !!library.find('message', message.value.template))
 const timeline = computed(() => {
@@ -101,7 +111,7 @@ const technical = computed(() => {
   if (!item) return []
   return [
     { label: 'Message ID', value: item.message_id },
-    { label: 'Delivery service', value: item.driver_id },
+    { label: 'Delivery service', value: capabilities.value?.administer_delivery ? item.driver_id : undefined },
     { label: 'Service message ID', value: item.provider_message_id },
     { label: 'Error code', value: item.last_error?.code },
     { label: 'Service response', value: item.last_error?.provider_detail },
@@ -113,7 +123,7 @@ const technical = computed(() => {
   <Drawer :visible="!!messageId" position="right" :modal="true" :dismissable="!sending" :close-on-escape="!sending" :show-close-icon="false"
     class="mail-drawer" :pt="{ root: { style: 'width: min(560px, 92vw)' } }" aria-label="Message details"
     @update:visible="value => { if (!value) emit('close') }">
-    <div class="mail-drawer-body">
+    <div ref="drawer" class="mail-drawer-body" tabindex="-1">
       <header class="mail-drawer-head">
         <div class="mail-drawer-title">
           <Tag v-if="message" :severity="statusSeverity[message.status]" :value="statusLabels[message.status]" class="kx-tag-sm" />
@@ -143,11 +153,13 @@ const technical = computed(() => {
             <span v-if="message.last_error">{{ message.last_error.message }}</span>
             <p v-if="receipt" class="mail-failure-done" role="status">
               Sent again as a new message.
-              <button type="button" class="mail-text-link" @click="go({ name: 'activity', message: receipt.message_id })">Open the new message</button>
+              <Button link size="small" class="mail-inline-link" label="Open the new message" @click="go({ name: 'activity', message: receipt.message_id })" />
             </p>
+            <p v-else-if="settingsFailure" class="mail-sub">Sending it again fails the same way until the delivery settings are corrected.
+              <Button v-if="capabilities?.administer_delivery" link size="small" class="mail-inline-link" label="Open delivery settings" @click="host.navigate('/system/settings/mail')" /></p>
             <p v-else-if="!message.can_resend" class="mail-sub">It cannot be sent again because its content was not kept.</p>
             <p v-if="sendError" class="mail-field-error" role="alert">{{ sendError }}</p>
-            <div v-if="message.can_resend && !receipt">
+            <div v-if="message.can_resend && !receipt && !settingsFailure">
               <Button label="Send again" :loading="sending" @click="sendAgain">
                 <template #icon><Icon icon="tabler:send" aria-hidden="true" /></template>
               </Button>
@@ -165,13 +177,14 @@ const technical = computed(() => {
           <template v-if="message.reply_to"><dt>Reply-to</dt><dd>{{ message.reply_to }}</dd></template>
           <dt>Template</dt>
           <dd>
-            <button v-if="templateExists" type="button" class="mail-text-link" @click="go({ name: 'resource', kind: 'message', resource: message.template!, section: 'content' })">{{ templateTitle }}</button>
+            <Skeleton v-if="templateTitle === undefined" width="8rem" height="1rem" />
+            <Button v-else-if="templateExists" link size="small" class="mail-inline-link" :label="templateTitle" @click="go({ name: 'resource', kind: 'message', resource: message.template!, section: 'content' })" />
             <span v-else>{{ templateTitle || 'Written directly' }}</span>
           </dd>
           <dt>Sent by</dt>
           <dd>{{ personLabel(message.sender_label, message.sender) }}<span v-if="message.origin" class="mail-sub">{{ originText(message.origin) }}</span></dd>
           <template v-if="attachments.length"><dt>Attachments</dt><dd>{{ attachments.join(', ') }}</dd></template>
-          <template v-if="message.resend_of"><dt>Sent again from</dt><dd><button type="button" class="mail-text-link" @click="go({ name: 'activity', message: message.resend_of })">The original message</button></dd></template>
+          <template v-if="message.resend_of"><dt>Sent again from</dt><dd><Button link size="small" class="mail-inline-link" label="The original message" @click="go({ name: 'activity', message: message.resend_of })" /></dd></template>
         </dl>
 
         <section class="mail-group" aria-labelledby="message-history">

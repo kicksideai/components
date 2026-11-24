@@ -19,7 +19,8 @@ export function sectionOf(kind: TemplateKind): Exclude<LibrarySection, 'all' | '
 export function kindOf(section: LibrarySection): TemplateKind | undefined { return segmentKinds[section] }
 
 export function sectionsFor(kind: TemplateKind): readonly ResourceSection[] {
-  return kind === 'base' ? ['content', 'used-by', 'history'] : resourceSections
+  if (kind === 'base') return ['content', 'used-by', 'history']
+  return kind === 'part' ? ['content', 'variables', 'history'] : resourceSections
 }
 
 export function pathOf(route: Route): string {

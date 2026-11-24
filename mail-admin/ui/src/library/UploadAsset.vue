@@ -8,6 +8,9 @@ import FileUpload, { type FileUploadSelectEvent } from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import { errorCode, library as libraryApi, uploads } from '../api'
 import { useMail } from '../context'
+import { rowOf } from './useLibrary'
+import { useReturnFocus } from '../focus'
+import { UploadFailed, whenCompleted } from './uploadState'
 import { bytes, describe, namePattern, slug } from '../copy'
 import type { Resource } from '../types'
 
@@ -16,6 +19,7 @@ const props = defineProps<{ visible: boolean; replace?: Resource }>()
 const emit = defineEmits<{ close: []; done: [asset: Resource] }>()
 const { library, go } = useMail()
 const ids = { file: useId(), title: useId(), name: useId() }
+useReturnFocus(() => props.visible)
 
 const accepted = ['image/png', 'image/jpeg', 'image/gif']
 const limit = 1024 * 1024
@@ -23,10 +27,14 @@ const file = ref<File>()
 const dimensions = ref<{ width: number; height: number }>()
 const title = ref(''), name = ref(''), nameEdited = ref(false)
 const busy = ref(false)
+const phase = ref<'upload' | 'process' | 'save'>()
+let signal = { cancelled: false }
 const error = ref(''), fileError = ref(''), nameError = ref('')
 
 watch(() => props.visible, open => {
-  if (!open) return
+  if (!open) { signal.cancelled = true; return }
+  signal = { cancelled: false }
+  if (!props.replace) library.ensure('asset')
   file.value = dimensions.value = undefined
   title.value = props.replace?.title ?? ''
   name.value = props.replace?.name ?? ''
@@ -68,29 +76,38 @@ async function submit() {
   if (busy.value || !file.value || !title.value.trim() || !validate()) return
   busy.value = true
   error.value = ''
+  const run = signal
   try {
+    phase.value = 'upload'
     const upload = await uploads.add(file.value)
+    phase.value = 'process'
+    await whenCompleted(upload, run)
+    phase.value = 'save'
     const body = { name: name.value, upload_id: upload, title: title.value.trim(), ...dimensions.value }
     const saved = props.replace
       ? await libraryApi.replaceAsset(body, props.replace.revision)
       : await libraryApi.addAsset(body)
-    await library.load()
+    library.patch('asset', saved.name, rowOf(saved))
     emit('done', saved)
     emit('close')
     if (!props.replace) go({ name: 'library', section: 'assets', asset: saved.name })
   } catch (failure) {
-    if (errorCode(failure) === 'mail_revision_conflict' && !props.replace) nameError.value = `An image named ${name.value} already exists. Choose another name or replace ${name.value}.`
+    if (run.cancelled) return
+    if (failure instanceof UploadFailed) error.value = 'The image could not be processed. Try another file, or upload it again.'
+    else if (errorCode(failure) === 'mail_revision_conflict' && !props.replace) nameError.value = `An image named ${name.value} already exists. Choose another name or replace ${name.value}.`
     else error.value = describe(failure, 'The image could not be uploaded.')
   } finally {
     busy.value = false
+    phase.value = undefined
   }
 }
+const progress = computed(() => phase.value === 'upload' ? 'Uploading the image…' : phase.value === 'process' ? 'Processing the image…' : phase.value === 'save' ? 'Adding it to the library…' : '')
 const heading = computed(() => props.replace ? `Replace ${props.replace.title}` : 'Upload image')
 const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'mail-dialog-content' }, footer: { class: 'mail-dialog-footer' } }
 </script>
 
 <template>
-  <Dialog :visible="visible" modal :draggable="false" :closable="!busy" :close-on-escape="!busy" class="mail-dialog" :pt="dialogPt"
+  <Dialog :visible="visible" modal :draggable="false" :closable="!busy || phase === 'process'" :close-on-escape="!busy || phase === 'process'" class="mail-dialog" :pt="dialogPt"
     :aria-label="heading" @update:visible="value => { if (!value) emit('close') }">
     <template #header>
       <span class="kx-modal-head-icon"><Icon icon="tabler:photo-up" aria-hidden="true" /></span>
@@ -122,10 +139,11 @@ const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'm
           <small :id="ids.name + '-hint'" :class="nameError ? 'mail-field-error' : 'mail-field-hint'">{{ nameError || 'Templates show it with this name. It cannot change later.' }}</small>
         </div>
       </fieldset>
+      <p v-if="progress" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />{{ progress }}</p>
       <p v-if="error" class="kx-err inline" role="alert">{{ error }}</p>
     </form>
     <template #footer>
-      <Button label="Cancel" severity="secondary" outlined :disabled="busy" @click="emit('close')" />
+      <Button label="Cancel" severity="secondary" outlined :disabled="busy && phase !== 'process'" @click="emit('close')" />
       <Button :label="replace ? 'Replace image' : 'Upload image'" type="submit" form="mail-upload" :loading="busy" :disabled="!file || (!replace && !title.trim())" />
     </template>
   </Dialog>

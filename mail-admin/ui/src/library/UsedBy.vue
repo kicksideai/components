@@ -2,6 +2,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
+import Button from 'primevue/button'
+import Skeleton from 'primevue/skeleton'
 import { useMail } from '../context'
 import { kindIcons, originText, personLabel, plural } from '../copy'
 import type { Resource } from '../types'
@@ -10,7 +12,7 @@ const props = defineProps<{ resource: Resource }>()
 const { library, go, capabilities } = useMail()
 
 const messages = computed(() => (props.resource.used_by?.messages ?? []).map(name => ({
-  name, title: library.find('message', name)?.title ?? name,
+  name, title: library.title('message', name),
 })))
 const senders = computed(() => props.resource.used_by?.recent_senders ?? [])
 </script>
@@ -22,9 +24,10 @@ const senders = computed(() => props.resource.used_by?.recent_senders ?? [])
       <p v-if="!messages.length" class="mail-muted">No messages {{ resource.kind === 'asset' ? 'show' : 'use' }} {{ resource.title }}.</p>
       <ul v-else class="mail-list">
         <li v-for="message in messages" :key="message.name">
-          <button type="button" class="mail-row-link" @click="go({ name: 'resource', kind: 'message', resource: message.name, section: 'content' })">
-            <Icon :icon="kindIcons.message" aria-hidden="true" /><span>{{ message.title }}</span>
-          </button>
+          <Button text severity="secondary" class="mail-row-link" @click="go({ name: 'resource', kind: 'message', resource: message.name, section: 'content' })">
+            <Icon :icon="kindIcons.message" aria-hidden="true" />
+            <Skeleton v-if="message.title === undefined" width="8rem" height="1rem" /><span v-else>{{ message.title }}</span>
+          </Button>
         </li>
       </ul>
     </section>
@@ -33,7 +36,7 @@ const senders = computed(() => props.resource.used_by?.recent_senders ?? [])
       <section class="mail-group" aria-labelledby="used-by-recent">
         <div class="mail-group-head">
           <h2 id="used-by-recent" class="mail-label">Sent in the last 30 days</h2>
-          <button v-if="capabilities?.administer_delivery" type="button" class="mail-text-link" @click="go({ name: 'activity', template: resource.name })">Open in Activity</button>
+          <Button v-if="capabilities?.administer_delivery" link size="small" class="mail-inline-link" label="Open in Activity" @click="go({ name: 'activity', template: resource.name })" />
         </div>
         <p v-if="!senders.length" class="mail-muted">Nobody has sent {{ resource.title }} recently.</p>
         <ul v-else class="mail-list">
@@ -47,15 +50,7 @@ const senders = computed(() => props.resource.used_by?.recent_senders ?? [])
           </li>
         </ul>
       </section>
-      <section class="mail-group" aria-labelledby="used-by-setup">
-        <h2 id="used-by-setup" class="mail-label">Set up to send</h2>
-        <p class="mail-muted">Workflows, automations and agents that name this message are not listed here yet.</p>
-      </section>
     </template>
 
-    <section v-else class="mail-group" aria-labelledby="used-by-templates">
-      <h2 id="used-by-templates" class="mail-label">Templates</h2>
-      <p class="mail-muted">Templates that include {{ resource.title }} are not listed here yet. Deleting a part checks every message first.</p>
-    </section>
   </div>
 </template>

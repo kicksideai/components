@@ -7,6 +7,7 @@ import Dialog from 'primevue/dialog'
 import SelectButton from 'primevue/selectbutton'
 import { actionLabels, fullDate, personLabel } from '../copy'
 import type { Resource, Revision } from '../types'
+import { useReturnFocus } from '../focus'
 
 const CodeEditor = defineAsyncComponent(() => import('./CodeEditor.vue'))
 const DiffView = defineAsyncComponent(() => import('./DiffView.vue'))
@@ -16,6 +17,7 @@ const DiffView = defineAsyncComponent(() => import('./DiffView.vue'))
 const props = defineProps<{ revision?: Revision; current: Resource; compare?: boolean; busy?: boolean; included?: boolean }>()
 const emit = defineEmits<{ close: []; restore: [revision: Revision]; reset: [] }>()
 
+useReturnFocus(() => !!props.revision)
 const view = ref<'version' | 'compare'>('version')
 const face = ref<'html' | 'text'>('html')
 watch(() => props.revision, value => { if (value) { view.value = props.compare ? 'compare' : 'version'; face.value = 'html' } })

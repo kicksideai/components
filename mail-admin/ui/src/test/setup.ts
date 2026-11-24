@@ -7,6 +7,7 @@ export const hostProps = ref<Record<string, unknown>>({})
 export const hostEmit = vi.fn()
 export const subscriptions = new Map<string, Set<(message?: unknown) => void>>()
 export const visibility = new Set<() => Promise<void>>()
+export const hostVisible = ref<boolean | null>(true)
 export function notify(topic: string, message?: unknown) { for (const fn of subscriptions.get(topic) ?? []) fn(message) }
 vi.mock('@wippy-fe/proxy', () => ({
   api: { get: vi.fn(), post: vi.fn(), delete: vi.fn(), put: vi.fn() },
@@ -22,6 +23,7 @@ vi.mock('@wippy-fe/webcomponent-vue', async () => {
   return {
     useProps: () => hostProps,
     useEvents: () => hostEmit,
+    useHostVisibility: () => hostVisible,
     useHostVisibilityRefresh: (task: () => Promise<void>) => {
       visibility.add(task); onMounted(task); onUnmounted(() => visibility.delete(task))
     },

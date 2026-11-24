@@ -10,19 +10,21 @@ import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
+import Skeleton from 'primevue/skeleton'
 import Tag from 'primevue/tag'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { activity, isDenied } from '../api'
 import { useMail } from '../context'
-import { describe, originText, personLabel, plural, recipients, statusLabels, statusSeverity, when } from '../copy'
+import { describe, originText, personLabel, plural, recipients, statusLabels, statusSeverity, todayStart, when } from '../copy'
 import { useMessageChanges } from '../realtime'
 import type { LogMessage, MessageStatus } from '../types'
 import MessageDrawer from './MessageDrawer.vue'
 
 const props = defineProps<{ message?: string; template?: string }>()
 const { library, go, capabilities } = useMail()
+library.use('message')
 
 type StatusFilter = 'all' | MessageStatus
 const status = ref<StatusFilter>('all')
@@ -37,13 +39,12 @@ const statuses: { label: string; value: StatusFilter }[] = [
   { label: 'All', value: 'all' }, { label: 'Pending', value: 'queued' }, { label: 'Sent', value: 'sent' }, { label: 'Failed', value: 'failed' },
 ]
 const periods = [{ label: 'Last 24 hours', value: 1 }, { label: 'Last 7 days', value: 7 }, { label: 'Last 30 days', value: 30 }]
-const templates = computed(() => library.resources.value.filter(item => item.kind === 'message')
-  .sort((a, b) => a.title.localeCompare(b.title)).map(item => ({ label: item.title, value: item.name })))
+const templates = computed(() => library.ofKind('message').map(item => ({ label: item.title, value: item.name })))
 
 const items = shallowRef<LogMessage[]>([])
 const cursor = ref<string>()
 const loading = ref(true), loaded = ref(false), more = ref(false), denied = ref(false)
-const error = ref('')
+const error = ref(''), moreError = ref(''), refreshError = ref('')
 const beginList = latestRequest()
 
 function filter(next?: string) {
@@ -56,7 +57,8 @@ function filter(next?: string) {
   }
 }
 
-async function load() {
+// A new filter starts over; a refresh keeps the rows shown until the first page arrives again.
+async function load(refresh = false) {
   const current = beginList()
   loading.value = true
   try {
@@ -66,13 +68,15 @@ async function load() {
     cursor.value = page.next_cursor
     total.value = page.total
     failedToday.value = page.failed_today ?? 0
-    error.value = ''
+    error.value = moreError.value = refreshError.value = ''
     denied.value = false
     loaded.value = true
   } catch (failure) {
     if (!current()) return
     denied.value = isDenied(failure)
-    error.value = denied.value ? '' : describe(failure, 'Activity could not be loaded.')
+    const message = denied.value ? '' : describe(failure, 'Activity could not be loaded.')
+    if (refresh && loaded.value && !denied.value) refreshError.value = message
+    else error.value = message
   } finally {
     if (current()) loading.value = false
   }
@@ -82,13 +86,15 @@ async function loadMore() {
   if (!cursor.value || more.value) return
   const current = beginList()
   more.value = true
+  moreError.value = ''
   try {
     const page = await activity.list(filter(cursor.value))
     if (!current()) return
-    items.value = [...items.value, ...page.items]
+    const known = new Set(items.value.map(item => item.message_id))
+    items.value = [...items.value, ...page.items.filter(item => !known.has(item.message_id))]
     cursor.value = page.next_cursor
   } catch (failure) {
-    if (current()) error.value = describe(failure, 'More activity could not be loaded.')
+    if (current()) moreError.value = describe(failure, 'More activity could not be loaded.')
   } finally {
     more.value = false
   }
@@ -97,17 +103,40 @@ async function loadMore() {
 const total = ref<number>()
 const failedToday = ref(0)
 watch([status, template, period, search], () => { void load() })
-useHostVisibilityRefresh(load)
-useMessageChanges(() => { void load() })
+useHostVisibilityRefresh(() => load(loaded.value))
+
+// A change reads the one message it names: a shown row updates in place and a new message that the filters
+// cover goes on top, keeping every page already loaded.
+function covered(item: LogMessage): boolean {
+  const f = filter()
+  if (f.q) return false
+  return (!f.status || item.status === f.status) && (!f.message || item.template === f.message) && item.created_at >= f.since
+}
+useMessageChanges(async change => {
+  if (!loaded.value) return
+  let item: LogMessage
+  try { item = await activity.get(change.message_id) } catch { return }
+  const index = items.value.findIndex(row => row.message_id === item.message_id)
+  const before = index >= 0 ? items.value[index] : undefined
+  if (before?.status !== 'failed' && item.status === 'failed' && item.created_at >= todayStart()) failedToday.value++
+  if (index >= 0) {
+    const next = [...items.value]
+    next[index] = item
+    items.value = next
+  } else if (covered(item)) {
+    items.value = [item, ...items.value]
+    if (total.value !== undefined) total.value++
+  }
+})
 
 const countLabel = computed(() => plural(total.value ?? items.value.length, 'message'))
 const health = computed(() => failedToday.value ? `${plural(failedToday.value, 'message')} failed today.` : '')
 const admin = computed(() => !!capabilities.value?.administer_delivery)
 const description = computed(() => admin.value ? 'Every email sent from this workspace in the last 30 days.' : 'Email you sent in the last 30 days.')
 
-function templateTitle(name: string | undefined): string {
+function templateTitle(name: string | undefined): string | undefined {
   if (!name) return '—'
-  return library.find('message', name)?.title ?? name
+  return library.title('message', name)
 }
 function openMessage(item: LogMessage) {
   go({ name: 'activity', message: item.message_id })
@@ -146,6 +175,10 @@ function closeMessage() {
       <span>{{ error }}</span>
       <Button label="Retry" severity="secondary" outlined size="small" @click="load()" />
     </div>
+    <div v-if="refreshError" class="kx-err mail-error" role="alert">
+      <span>{{ refreshError }} The list shows what was loaded before.</span>
+      <Button label="Retry" severity="secondary" outlined size="small" @click="load(true)" />
+    </div>
     <p v-else-if="loading && !loaded" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading activity…</p>
     <template v-else-if="loaded">
       <p v-if="!items.length" class="mail-muted mail-nomatch" role="status">
@@ -158,12 +191,15 @@ function closeMessage() {
         </Column>
         <Column header="Message">
           <template #body="{ data }">
-            <button type="button" class="mail-name" @click.stop="openMessage(data)">{{ data.subject }}</button>
+            <Button link class="mail-name" :label="data.subject" @click.stop="openMessage(data)" />
             <span class="mail-sub">{{ recipients(data.to) }}</span>
           </template>
         </Column>
         <Column header="Template">
-          <template #body="{ data }">{{ templateTitle(data.template) }}</template>
+          <template #body="{ data }">
+          <Skeleton v-if="templateTitle(data.template) === undefined" width="8rem" height="1rem" />
+          <template v-else>{{ templateTitle(data.template) }}</template>
+        </template>
         </Column>
         <Column header="Sent by">
           <template #body="{ data }">
@@ -176,9 +212,10 @@ function closeMessage() {
         </Column>
       </DataTable>
       <div v-if="cursor" class="mail-more">
-        <Button label="Show more" severity="secondary" outlined :loading="more" @click="loadMore" />
+        <span v-if="moreError" class="kx-err inline" role="alert">{{ moreError }}</span>
+        <Button :label="moreError ? 'Retry' : 'Show more'" severity="secondary" outlined :loading="more" @click="loadMore" />
       </div>
     </template>
   </template>
-  <MessageDrawer :message-id="message" @close="closeMessage" @changed="load" />
+  <MessageDrawer :message-id="message" @close="closeMessage" />
 </template>

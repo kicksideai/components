@@ -5,11 +5,10 @@ import { Icon } from '@iconify/vue'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
-import { isDraftWorkspaceBlocked, library as libraryApi } from '../api'
+import { library as libraryApi } from '../api'
 import { useMail } from '../context'
 import { describe } from '../copy'
 import type { DraftRender, ResourceContent } from '../types'
-import ProblemNote from './ProblemNote.vue'
 import { problemOf, type Problem } from './problems'
 import { emailDocument } from './render'
 
@@ -17,6 +16,7 @@ import { emailDocument } from './render'
 const props = defineProps<{ draft: ResourceContent; messages?: string[] }>()
 const emit = defineEmits<{ problem: [problem: Problem | undefined] }>()
 const { library, delivery } = useMail()
+if (props.draft.kind !== 'message') library.ensure('message')
 const ids = { message: useId() }
 
 const mode = ref<'email' | 'text'>('email')
@@ -24,15 +24,19 @@ const width = ref<'desktop' | 'phone'>('desktop')
 const modes = [{ label: 'Email', value: 'email' }, { label: 'Plain text', value: 'text' }]
 const widths = [{ label: 'Desktop', value: 'desktop', icon: 'tabler:device-desktop' }, { label: 'Phone', value: 'phone', icon: 'tabler:device-mobile' }]
 
+// Messages by title. Mail does not report which message was sent last, so the preview starts with the first.
 const choices = computed(() => {
+  if (!library.ready('message')) return []
   const names = props.messages ?? library.ofKind('message').map(item => item.name)
-  return names.map(name => ({ value: name, label: library.find('message', name)?.title ?? name }))
+  return names.map(name => ({ value: name, label: library.title('message', name) ?? name })).sort((a, b) => a.label.localeCompare(b.label))
 })
 const chosen = ref('')
 watch(choices, options => {
   if (props.draft.kind === 'message') return
   if (!options.some(option => option.value === chosen.value)) chosen.value = options[0]?.value ?? ''
 }, { immediate: true })
+const chosenNote = computed(() => props.draft.kind !== 'message' && chosen.value && chosen.value === choices.value[0]?.value
+  ? 'The first message by title. Choose another to see it around different content.' : '')
 const message = computed(() => props.draft.kind === 'message' ? props.draft.name : chosen.value)
 
 const rendered = shallowRef<DraftRender>()
@@ -42,19 +46,12 @@ const failure = ref('')
 const begin = latestRequest()
 let timer: ReturnType<typeof setTimeout> | undefined
 
-// One preview request at a time: a change made while one renders is previewed when it returns.
+// One preview request at a time: a change made while one renders is previewed when it returns, and a result for an
+// older draft is dropped.
 let inFlight = false, again = false
-// A request cut off by a page unload leaves Mail's draft workspace occupied, so no preview starts while the page
-// is leaving. A preview already in flight is never cancelled: it finishes and a stale result is dropped.
-let unloading = false
-const leave = () => { unloading = true; clearTimeout(timer) }
-window.addEventListener('pagehide', leave)
-window.addEventListener('beforeunload', leave)
-onBeforeUnmount(() => { window.removeEventListener('pagehide', leave); window.removeEventListener('beforeunload', leave) })
-const blocked = ref(false)
 async function render() {
   const name = message.value
-  if (!name || unloading) return
+  if (!name) return
   if (inFlight) { again = true; return }
   inFlight = true
   const current = begin()
@@ -63,13 +60,11 @@ async function render() {
     const result = await libraryApi.preview(name, [props.draft])
     if (!current()) return
     rendered.value = result
-    blocked.value = false
     problem.value = undefined
     failure.value = ''
   } catch (error) {
     if (!current()) return
-    blocked.value = isDraftWorkspaceBlocked(error)
-    const found = blocked.value ? undefined : problemOf(error)
+    const found = problemOf(error)
     problem.value = found ? { ...found, previewOf: name } : undefined
     failure.value = problem.value ? '' : describe(error, 'The preview could not be rendered.')
   } finally {
@@ -106,8 +101,10 @@ const from = computed(() => {
     <div v-if="draft.kind !== 'message'" class="mail-preview-with">
       <label :for="ids.message">Preview with</label>
       <Select v-model="chosen" :input-id="ids.message" :options="choices" option-label="label" option-value="value" append-to="self"
-        placeholder="Choose a message…" :empty-message="'No messages yet'" />
+        placeholder="Choose a message…" :empty-message="'No messages yet'" :loading="!library.ready('message')" />
+      <small v-if="chosenNote" class="mail-field-hint">{{ chosenNote }}</small>
     </div>
+    <p v-if="loading && rendered" class="mail-preview-busy" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Updating the preview…</p>
     <dl v-if="rendered" class="mail-preview-envelope">
       <template v-if="from"><dt>From</dt><dd>{{ from }}</dd></template>
       <dt>Subject</dt><dd>{{ rendered.subject }}</dd>
@@ -120,10 +117,8 @@ const from = computed(() => {
         <pre v-else class="mail-preview-text">{{ rendered.text }}</pre>
       </template>
     </div>
-    <div v-if="problem" class="mail-preview-foot mail-preview-problem">
-      <ProblemNote :problem="problem" :draft="draft" :last-good="!!rendered" />
-    </div>
-    <p v-else-if="blocked" class="mail-preview-foot mail-preview-problem" role="alert"><Icon icon="tabler:plug-connected-x" aria-hidden="true" /><span>{{ failure }}</span></p>
+    <p v-if="problem" class="mail-preview-foot mail-preview-problem" role="status"><Icon icon="tabler:alert-triangle" aria-hidden="true" />
+      <span>{{ rendered ? 'The preview shows the last version that rendered.' : 'Nothing to show until it renders.' }} The problem is shown beside the source.</span></p>
     <p v-else-if="failure" class="mail-preview-foot mail-preview-problem" role="alert"><Icon icon="tabler:alert-triangle" aria-hidden="true" /><span>{{ failure }}</span></p>
     <p v-else class="mail-preview-foot"><Icon icon="tabler:info-circle" aria-hidden="true" />
       {{ draft.kind === 'message' ? 'Filled with the sample values from Variables.' : 'Your unsaved version around a real message, filled with its sample values.' }}</p>

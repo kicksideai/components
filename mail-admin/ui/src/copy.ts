@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { ApiError, errorCode, isDraftWorkspaceBlocked } from './api'
+import { ApiError, errorCode } from './api'
 import type { MessageStatus, Origin, PrincipalLabel, ResourceKind, RevisionAction } from './types'
 
 export const kindLabels: Record<ResourceKind, string> = { message: 'Message', base: 'Base template', part: 'Part', asset: 'Image' }
-export const kindPlurals: Record<ResourceKind, string> = { message: 'Messages', base: 'Base templates', part: 'Parts', asset: 'Assets' }
+export const kindPlurals: Record<ResourceKind, string> = { message: 'Messages', base: 'Base templates', part: 'Parts', asset: 'Images' }
 export const kindIcons: Record<ResourceKind, string> = { message: 'tabler:mail', base: 'tabler:layout', part: 'tabler:puzzle', asset: 'tabler:photo' }
 
 export const actionLabels: Record<RevisionAction, string> = {
@@ -24,13 +24,15 @@ export function bytes(size: number | undefined): string {
 export const statusLabels: Record<MessageStatus, string> = { queued: 'Pending', sent: 'Sent', failed: 'Failed' }
 export const statusSeverity: Record<MessageStatus, 'secondary' | 'success' | 'danger'> = { queued: 'secondary', sent: 'success', failed: 'danger' }
 
+// Every origin Mail records. An origin of a kind not listed here is named by its label alone.
 const originKinds: Record<string, string> = {
-  workflow: 'Workflow', automation: 'Automation', agent: 'Agent', module: 'Module', test: 'Test send',
+  workflow: 'Workflow', automation: 'Automation', test: 'Test send', resend: 'Sent again',
 }
 
 export function originText(origin: Origin | undefined): string {
   if (!origin) return ''
-  const kind = originKinds[origin.kind] ?? origin.kind
+  const kind = originKinds[origin.kind]
+  if (!kind) return origin.label
   if (origin.kind === 'test' || origin.kind === 'resend') return kind
   return origin.label ? `${kind} · ${origin.label}` : kind
 }
@@ -97,12 +99,10 @@ const errorCopy: Record<string, string> = {
   mail_resource_collision: 'An installed module now includes a resource with this name. Rename yours to keep both.',
   invalid_mail_asset: 'Use a PNG, JPEG or GIF image of 1 MB or less.',
   mail_resource_in_use: 'Messages still use this resource. Remove it from them first.',
+  invalid_config: 'Mail delivery is not set up yet. Ask an administrator to set it up.',
 }
 
-export const draftWorkspaceBlocked = 'Previews and saves are unavailable until the mail service restarts. Ask an administrator to restart it; your draft stays here.'
-
 export function describe(error: unknown, fallback: string): string {
-  if (isDraftWorkspaceBlocked(error)) return draftWorkspaceBlocked
   if (!(error instanceof ApiError) || error.status === undefined) return `${fallback} Check your connection and try again.`
   const code = errorCode(error)
   if (code && errorCopy[code]) return errorCopy[code]

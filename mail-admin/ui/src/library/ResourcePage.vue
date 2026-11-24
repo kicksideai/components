@@ -27,7 +27,7 @@ import RefusalDialog, { type Refusal } from './RefusalDialog.vue'
 import UsedBy from './UsedBy.vue'
 
 const props = defineProps<{ kind: TemplateKind; name: string; section: ResourceSection }>()
-const { library, capabilities, delivery, go, create, setDirty } = useMail()
+const { library, capabilities, delivery, go, create, setDirty, setTitle } = useMail()
 const key = computed(() => ({ kind: props.kind, name: props.name }))
 
 const resource = shallowRef<Resource>()
@@ -53,6 +53,8 @@ async function load(options: { keepDraft?: boolean } = {}) {
     }
     resource.value = item
     draft.value = draftOf(item)
+    restoring.value = undefined
+    setTitle(item.title)
     stale.value = undefined
     gone.value = denied.value = false
     error.value = ''
@@ -67,6 +69,8 @@ async function load(options: { keepDraft?: boolean } = {}) {
   }
 }
 
+// The version loaded into the draft by Restore; saving the draft restores it.
+const restoring = ref<Revision>()
 const revisions = shallowRef<Revision[]>([])
 const historyLoading = ref(false), historyError = ref('')
 const beginHistory = latestRequest()
@@ -146,9 +150,11 @@ const saveProblem = ref<Problem>()
 const variablesInvalid = ref(false)
 const problem = computed(() => saveProblem.value ?? previewProblem.value)
 watch(() => JSON.stringify(draft.value), () => { saveProblem.value = undefined })
-const blocked = computed(() => !!problem.value || variablesInvalid.value || !!stale.value)
+const subjectBreak = computed(() => props.kind === 'message' && /[\r\n]/.test(draft.value?.subject ?? ''))
+const blocked = computed(() => !!problem.value || variablesInvalid.value || !!stale.value || subjectBreak.value)
 const blockedReason = computed(() => stale.value ? 'Discard your changes to load the newer version first.'
-  : variablesInvalid.value ? 'Fix the variables first.' : problem.value ? 'Fix the error first.' : '')
+  : variablesInvalid.value ? 'Fix the variables first.' : subjectBreak.value ? 'Put the subject on one line first.'
+  : problem.value ? 'Fix the error first.' : '')
 
 function fail(failure: unknown, fallback: string) {
   conflict.value = errorCode(failure) === 'mail_revision_conflict'
@@ -162,6 +168,7 @@ function discard() {
   draft.value = draftOf(resource.value)
   stale.value = undefined
   saveProblem.value = undefined
+  restoring.value = undefined
   if (newer) void load()
 }
 
@@ -184,7 +191,10 @@ async function save(note: string) {
     resource.value = { ...item, ...saved }
     draft.value = draftOf(resource.value)
     reviewing.value = false
-    notice.value = `Saved ${saved.title}.${props.kind === 'message' ? '' : ' Every message that uses it has the change.'}`
+    notice.value = restoring.value
+      ? `Version ${restoring.value.version} from ${fullDate(restoring.value.created_at)} is now in effect.`
+      : `Saved ${saved.title}.${props.kind === 'message' ? '' : ' Every message that uses it has the change.'}`
+    restoring.value = undefined
     await refresh()
   } catch (failure) {
     const found = problemOf(failure)
@@ -222,7 +232,7 @@ async function sendTest() {
 const testDisabled = computed(() => {
   if (dirty.value) return 'Save your changes to send a test.'
   if (!capabilities.value?.send) return 'Ask an administrator for permission to send mail.'
-  if (delivery.value && !delivery.value.configured) return 'Mail delivery is not set up. Open Delivery settings.'
+  if (delivery.value && !delivery.value.configured) return 'Mail delivery is not set up yet, so a test cannot be sent.'
   return ''
 })
 
@@ -258,34 +268,29 @@ function showVersion(revision: Revision, compare = false, included = false) {
   showIncluded.value = included
   shown.value = revision
 }
+// Restore puts the version into the draft; it takes effect through the same review and save as any edit.
 async function restore(revision: Revision) {
   const item = resource.value
   if (!item || busy.value !== undefined) return
-  const confirmed = await host.confirm({
-    header: `Restore version ${revision.version} of ${item.title}?`,
-    message: 'It becomes the current version. The current version stays in History.',
-    acceptLabel: 'Restore this version', rejectLabel: 'Cancel',
-  })
-  if (!confirmed) return
-  busy.value = revision.revision
-  actionError.value = notice.value = ''
-  try {
-    resource.value = await libraryApi.restore(key.value, revision.revision, item.revision)
-    draft.value = draftOf(resource.value)
-    shown.value = undefined
-    notice.value = `Version ${revision.version} from ${fullDate(revision.created_at)} is now in effect.`
-    await refresh()
-  } catch (failure) {
-    const found = problemOf(failure)
-    if (found?.dependents?.length) inUse(item, found.dependents, `Restoring version ${revision.version} would break them: ${found.message}`)
-    else fail(failure, 'That version could not be restored.')
-  } finally {
-    busy.value = undefined
+  if (dirty.value && !await host.confirm({
+    header: `Replace your unsaved changes with version ${revision.version}?`,
+    message: 'Your unsaved changes to this resource are discarded. The saved version stays as it is until you save.',
+    acceptLabel: 'Load this version', rejectLabel: 'Keep my changes',
+  })) return
+  draft.value = { ...draftOf(revision.content), kind: item.kind, name: item.name }
+  restoring.value = revision
+  shown.value = undefined
+  actionError.value = ''
+  const message = `Version ${revision.version} is loaded as your draft. Review and save to restore it.`
+  if (props.section === 'content') notice.value = message
+  else {
+    carried = message
+    go({ name: 'resource', kind: props.kind, resource: props.name, section: 'content' })
   }
 }
 
 function inUse(item: Resource, names: readonly string[], reason?: string) {
-  const titles = names.map(name => library.find('message', name)?.title ?? name)
+  const titles = names.map(name => library.title('message', name) ?? name)
   const verb = item.kind === 'base' ? 'use' : 'include'
   refusal.value = {
     header: reason ? `${item.title} cannot change this way` : `${item.title} is in use`,
@@ -328,6 +333,9 @@ const previewMessages = computed(() => props.kind === 'base' ? resource.value?.u
 const saving = computed(() => busy.value === 'save')
 void load()
 watch(() => props.section, section => { if (section === 'history' && !revisions.value.length) void loadHistory() }, { immediate: true })
+// A notice belongs to the section where it happened, unless an action moved to another section to show its result.
+let carried = ''
+watch(() => props.section, () => { notice.value = carried; carried = ''; actionError.value = '' })
 </script>
 
 <template>
@@ -367,15 +375,18 @@ watch(() => props.section, section => { if (section === 'history' && !revisions.
       <p v-if="stale" class="kx-notice warn mail-block" role="alert">
         <Icon icon="tabler:alert-triangle" aria-hidden="true" />
         <span>{{ stale.by }} saved {{ resource.title }} while you were editing. Discard your changes to load theirs, or compare first.
-          <button type="button" class="mail-text-link" @click="discard">Discard and load</button></span>
+          <Button link size="small" class="mail-inline-link" label="Discard and load" @click="discard" /></span>
       </p>
       <p v-if="dirty && blockedReason && !stale" class="mail-muted mail-blocked" role="status">{{ blockedReason }}</p>
+      <p v-else-if="kind === 'message' && !dirty && testDisabled" class="mail-muted mail-blocked" role="status">{{ testDisabled }}
+        <Button v-if="capabilities?.administer_delivery && delivery && !delivery.configured" link size="small" class="mail-inline-link" label="Open delivery settings"
+          @click="host.navigate('/system/settings/mail')" /></p>
       <p v-if="actionError && conflict" class="kx-notice warn mail-block" role="alert"><Icon icon="tabler:alert-triangle" aria-hidden="true" />{{ actionError }}</p>
       <p v-else-if="actionError" class="kx-err mail-error" role="alert"><span>{{ actionError }}</span></p>
       <p v-if="notice" class="kx-notice info mail-block" role="status"><Icon icon="tabler:circle-check" aria-hidden="true" />{{ notice }}</p>
       <div v-if="customizedNotice && section === 'content'" class="kx-notice mail-customized">
         <Icon icon="tabler:pencil" aria-hidden="true" />
-        <span class="mail-customized-text">{{ customizedNotice }}</span>
+        <span class="mail-customized-text">{{ customizedNotice }}<template v-if="dirty"> Save or discard your changes to reset it.</template></span>
         <Button v-if="originalVersion" label="Compare with original" severity="secondary" outlined size="small" @click="showVersion(originalVersion, true, true)">
           <template #icon><Icon icon="tabler:arrows-diff" aria-hidden="true" /></template>
         </Button>
@@ -396,7 +407,7 @@ watch(() => props.section, section => { if (section === 'history' && !revisions.
     </template>
   </template>
   <ReviewDialog v-if="resource && draft" :visible="reviewing" :saved="draftOf(resource)" :draft="draft" :busy="saving" :error="reviewError"
-    :dependents="dependents" @close="reviewing = false" @save="save" />
+    :dependents="dependents" :suggested-note="restoring ? `Restore version ${restoring.version}` : undefined" @close="reviewing = false" @save="save" />
   <VersionDialog v-if="resource" :revision="shown" :current="resource" :compare="showCompare" :included="showIncluded"
     :busy="typeof busy === 'number' || busy === 'reset'" @close="shown = undefined" @restore="restore" @reset="shown = undefined; reset()" />
   <RefusalDialog :refusal="refusal" @close="refusal = undefined" />

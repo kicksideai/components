@@ -14,6 +14,7 @@ export interface MailContext {
   create: (intent: CreateIntent) => void
   upload: () => void
   setDirty: (dirty: boolean) => void
+  setTitle: (title: string) => void
 }
 
 export const mailContextKey: InjectionKey<MailContext> = Symbol('mail-admin')
