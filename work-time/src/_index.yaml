@@ -25,6 +25,7 @@ entries:
   targets:
   - {entry: 'kickside.work.time:module_access', path: '.groups +='}
   - {entry: 'kickside.work.time:provider_access', path: '.groups +='}
+  - {entry: 'kickside.work.time.worklogs:mutation_access', path: '.groups +='}
 - name: plugin
   kind: registry.entry
   meta:
@@ -64,7 +65,16 @@ entries:
   kind: contract.binding
   meta:
     title: Work Time attachment
+    class: [work_time]
     placement: {parents: [root], fixed: true}
+    thread: {class: work.time}
+    thread_class: work.time
+    events:
+      read: admin
+      input: []
+      output:
+      - {type: 'kickside.work.time.events:worklog.changed', system_only: true}
+      - {type: 'kickside.work.time.events:time.over_estimate', system_only: true}
   contracts:
   - contract: kickside.contract:component
     methods: {get_status: 'kickside.core.threads:thread_status'}
@@ -90,7 +100,14 @@ entries:
   meta: {title: Work Time, surface: kickside.work.time, intent: module_access}
   groups: []
   policy:
-    resources: [kickside.work.time:plugin, kickside.work.time:attachment, kickside.work.time:schema_provider]
+    resources:
+    - kickside.work.time:plugin
+    - kickside.work.time:attachment
+    - kickside.work.time:schema_provider
+    - kickside.work.time.events:worklog.changed
+    - kickside.work.time.events:time.over_estimate
+    - kickside.work.time.events:worklog_changed_port
+    - kickside.work.time.events:over_estimate_port
     actions: [registry.get, registry.find]
     effect: allow
 - name: provider_access

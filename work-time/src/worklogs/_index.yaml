@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.time.worklogs
+entries:
+- name: types
+  kind: library.lua
+  source: file://types.lua
+- name: rows
+  kind: library.lua
+  source: file://rows.lua
+  modules: [sql]
+  imports:
+    types: kickside.work.time.worklogs:types
+    access: kickside.work.time.access:access
+- name: input
+  kind: library.lua
+  source: file://input.lua
+  modules: [time, hash]
+  imports:
+    access: kickside.work.time.access:access
+    types: kickside.work.time.worklogs:types
+    values: kickside.work.domain:values
+- name: sprint_reference
+  kind: library.lua
+  source: file://sprint_reference.lua
+  modules: [contract, registry, sql]
+  imports:
+    plugin_rows: kickside.work.persist:plugin_rows
+- name: create
+  kind: function.lua
+  source: file://mutations.lua
+  method: create
+  modules: &modules [sql, time, uuid]
+  imports: &imports
+    types: kickside.work.time.worklogs:types
+    input: kickside.work.time.worklogs:input
+    rows: kickside.work.time.worklogs:rows
+    access: kickside.work.time.access:access
+    storage: kickside.work.time:storage
+    config: kickside.work.time:config
+    work: kickside.work:types
+    document: kickside.work.domain:document
+    writer: kickside.work.time.events:writer
+    sprint_reference: kickside.work.time.worklogs:sprint_reference
+  security: &policies
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access, kickside.work.time.worklogs:sprint_discovery]
+- name: edit
+  kind: function.lua
+  source: file://mutations.lua
+  method: edit
+  modules: *modules
+  imports: *imports
+  security: *policies
+- name: delete
+  kind: function.lua
+  source: file://mutations.lua
+  method: delete
+  modules: *modules
+  imports: *imports
+  security: *policies
+- name: mutation_access
+  kind: security.policy
+  meta: {private: true}
+  groups: []
+  policy:
+    resources: [kickside.work.time.worklogs:create, kickside.work.time.worklogs:edit, kickside.work.time.worklogs:delete]
+    actions: [funcs.call]
+    effect: allow
+- name: sprint_discovery
+  kind: security.policy
+  meta: {private: true, service_only: true}
+  groups: []
+  policy:
+    resources: [kickside.work.planning:sprint_reference]
+    actions: [registry.get]
+    effect: allow
