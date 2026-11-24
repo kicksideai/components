@@ -154,7 +154,7 @@ entries:
           - format: application/schema+json
             definition: file://schemas/send.output.json
       - name: get_message
-        description: Read one visible delivery log entry.
+        description: Read one visible delivery log entry. Provider fields require mail.log.admin.
         input_schemas:
           - format: application/schema+json
             definition: file://schemas/get_message.input.json
@@ -162,7 +162,7 @@ entries:
           - format: application/schema+json
             definition: file://schemas/get_message.output.json
       - name: list_messages
-        description: List visible delivery log entries in descending creation order.
+        description: List visible delivery log entries in descending creation order. Provider fields require mail.log.admin.
         input_schemas:
           - format: application/schema+json
             definition: file://schemas/list_messages.input.json

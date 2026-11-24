@@ -106,11 +106,13 @@
     },
     "driver_id": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "Active driver used for the last delivery attempt. Available only to delivery log administrators."
     },
     "provider_message_id": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "Message ID returned by the provider on acceptance. Available only to delivery log administrators."
     },
     "last_error": {
       "type": "object",

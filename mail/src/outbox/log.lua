@@ -25,7 +25,7 @@ local function viewer(): (string?, error?)
     return identity.actor_key(principal) :: string, nil
 end
 
-local function message(row: types.MessageRow): (types.LogMessage?, error?)
+local function message(row: types.MessageRow, admin: boolean): (types.LogMessage?, error?)
     local addresses, refs, err = store.content(row)
     if err then return nil, err end
     local last_error: types.MessageError?
@@ -37,7 +37,8 @@ local function message(row: types.MessageRow): (types.LogMessage?, error?)
         next_attempt_at = row.next_attempt_at, sent_at = row.sent_at, finished_at = row.finished_at,
         sender = row.sender, template = row.template, subject = row.subject, reply_to = row.reply_to,
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, attachments = refs,
-        driver_id = row.driver_id, provider_message_id = row.provider_message_id, last_error = last_error,
+        driver_id = admin and row.driver_id or nil, provider_message_id = admin and row.provider_message_id or nil,
+        last_error = last_error,
     }, nil
 end
 
@@ -57,7 +58,7 @@ local function get_message(message_id: string): (types.LogMessage?, error?)
             return nil, errors.new({kind = errors.NOT_FOUND, message = "Mail message not found",
                 retryable = false, details = {code = "message_not_found"}})
         end
-        return message(rows[1] :: types.MessageRow)
+        return message(rows[1] :: types.MessageRow, sender == nil)
     end)
 end
 
@@ -104,7 +105,7 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
         if read_err then return nil, read_err end
         local items: {types.LogMessage} = {}
         for index = 1, math.min(input.limit, #rows) do
-            local entry, entry_err = message(rows[index] :: types.MessageRow)
+            local entry, entry_err = message(rows[index] :: types.MessageRow, sender == nil)
             if entry_err then return nil, entry_err end
             items[index] = entry :: types.LogMessage
         end

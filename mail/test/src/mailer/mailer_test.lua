@@ -193,9 +193,10 @@ return {
     probe = probe,
     run = test.run_cases(function()
         test.describe("System-managed mailer", function()
-            local admin, sender, denied
+            local admin, sender, denied, log_admin
             test.before_each(function()
                 admin = caller({"kickside.mail.harness:admin"})
+                log_admin = caller({"kickside.mail.security:log_admin", "kickside.mail.security:module_runtime"})
                 denied = caller({"kickside.mail.security:module_runtime"})
                 sender = caller({
                     "kickside.mail.security:module_runtime",
@@ -281,7 +282,8 @@ return {
                 test.eq("sent", sent.status)
                 test.eq(2, sent.attempts)
                 test.is_nil(sent.last_error)
-                test.eq(queued.message_id, assert(json.decode(sent.provider_message_id)).idempotency_key)
+                local logged = assert(invoke(log_admin, "get_message", queued.message_id))
+                test.eq(queued.message_id, assert(json.decode(logged.provider_message_id)).idempotency_key)
                 test.eq("done", await_job(pending.job_id, "done").status)
                 test.eq(pending.job_id, persisted(queued.message_id).job_id)
                 no_body(queued.message_id)
@@ -351,12 +353,13 @@ return {
                 local input = body()
                 input.subject = "Fixture exhaust"
                 local queued = assert(invoke(sender, "send", input))
-                local retry = await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
+                local retry = await_message(log_admin, queued.message_id, function(row) return row.last_error ~= nil end)
                 test.eq("capture", retry.driver_id)
                 assert(change(admin, "driver", "second").success)
                 local sent = terminal(sender, queued)
                 test.eq("sent", sent.status)
                 test.eq(2, sent.attempts)
+                sent = assert(invoke(log_admin, "get_message", queued.message_id))
                 test.eq("second", sent.driver_id)
                 test.eq("second|mail@example.org||", sent.provider_message_id)
             end)
@@ -409,17 +412,20 @@ return {
                 capture_with(admin)
                 local other = caller({"kickside.mail.security:send_access",
                     "kickside.mail.security:module_runtime", "kickside.mail.security:template_access"})
-                local log_admin = caller({"kickside.mail.security:log_admin", "kickside.mail.security:module_runtime"})
                 local one = assert(invoke(sender, "send", body()))
                 local two = assert(invoke(sender, "send", body()))
                 local three = assert(invoke(other, "send", body()))
                 local sent = terminal(sender, one)
+                test.is_nil(sent.driver_id)
+                test.is_nil(sent.provider_message_id)
                 terminal(sender, two)
                 terminal(other, three)
                 local denied_value, denied_err = invoke(other, "get_message", one.message_id)
                 refusal(denied_value, denied_err, errors.NOT_FOUND, "message_not_found")
                 local page = assert(invoke(sender, "list_messages", {limit = 1, status = "sent"}))
                 test.eq(two.message_id, page.items[1].message_id)
+                test.is_nil(page.items[1].driver_id)
+                test.is_nil(page.items[1].provider_message_id)
                 test.is_true(page.has_more)
                 local second = assert(invoke(sender, "list_messages", {limit = 1, status = "sent", cursor = page.next_cursor}))
                 test.eq(one.message_id, second.items[1].message_id)
@@ -432,9 +438,13 @@ return {
                 test.eq(three.message_id, others.items[1].message_id)
                 local all = assert(invoke(log_admin, "list_messages", {limit = 200}))
                 local visible = {}
-                for _, row in ipairs(all.items) do visible[row.message_id] = true end
-                test.is_true(visible[one.message_id] and visible[three.message_id])
-                test.eq(one.message_id, assert(invoke(log_admin, "get_message", one.message_id)).message_id)
+                for _, row in ipairs(all.items) do visible[row.message_id] = row end
+                test.is_true(visible[one.message_id] ~= nil and visible[three.message_id] ~= nil)
+                test.eq("capture", visible[one.message_id].driver_id)
+                local admin_row = assert(invoke(log_admin, "get_message", one.message_id))
+                test.eq("capture", admin_row.driver_id)
+                test.eq(one.message_id, assert(json.decode(admin_row.provider_message_id)).idempotency_key)
+                test.eq(admin_row.provider_message_id, visible[one.message_id].provider_message_id)
             end)
 
             test.it("settles jobs that are cancelled or no longer stored", function()
@@ -576,14 +586,14 @@ return {
                 test.is_nil(rejected)
                 test.eq("from_not_allowed", err:details().code)
                 local first = assert(invoke(sender, "send", body()))
-                test.eq("first|mail@example.org|Test Mail|default@example.org", terminal(sender, first).provider_message_id)
+                test.eq("first|mail@example.org|Test Mail|default@example.org", terminal(log_admin, first).provider_message_id)
 
                 test.is_true(change(admin, "driver", "second").success)
                 local second = assert(invoke(sender, "send", {
                     template = "notice", vars = {subject = "Status", message = "Ready"},
                     to = {"reader@example.org"}, reply_to = "override@example.org",
                 }))
-                test.eq("second|mail@example.org|Test Mail|override@example.org", terminal(sender, second).provider_message_id)
+                test.eq("second|mail@example.org|Test Mail|override@example.org", terminal(log_admin, second).provider_message_id)
             end)
 
             test.it("returns the message ID as the writable destination reference", function()
@@ -593,7 +603,7 @@ return {
                 test.is_true(result.success)
                 local replay = assert(invoke(sender, "write", body()))
                 test.eq(result.dest_ref.message_id, replay.dest_ref.message_id)
-                local message = await_message(sender, result.dest_ref.message_id, function(row) return row.status ~= "queued" end)
+                local message = await_message(log_admin, result.dest_ref.message_id, function(row) return row.status ~= "queued" end)
                 test.eq("first|mail@example.org||", message.provider_message_id)
                 test.is_nil(result.dest_ref.provider_message_id)
                 test.is_nil(result.dest_ref.transport_metadata)
@@ -701,7 +711,7 @@ return {
 
                 capture_with(admin)
                 local result = assert(invoke(sender, "send", input))
-                local captured = assert(json.decode(terminal(sender, result).provider_message_id))
+                local captured = assert(json.decode(terminal(log_admin, result).provider_message_id))
                 for _, part in ipairs({"subject", "html", "text"}) do
                     test.eq(captured[part], preview[part])
                 end
@@ -831,7 +841,7 @@ return {
                 local refused, err = invoke(sender, "send", input)
                 refusal(refused, err, errors.PERMISSION_DENIED)
                 local delivered = assert(reader:call(TOOL_NS .. "mail_send", input))
-                local captured = assert(json.decode(terminal(reader, delivered).provider_message_id))
+                local captured = assert(json.decode(terminal(log_admin, delivered).provider_message_id))
                 test.eq("reader@example.org", captured.to[1])
                 test.eq("resolved@example.org", captured.to[2])
                 test.eq(2, #captured.to)
