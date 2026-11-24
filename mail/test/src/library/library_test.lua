@@ -244,6 +244,64 @@ return {run = test.run_cases(function()
             read("reset", {kind = key.kind, name = key.name, expected_revision = restored.revision})
         end)
 
+        test.it("validates the entire candidate library and writes all revisions together", function()
+            local one = candidate("part", "batch-one", "{{ .before }}", "{{ .before }}")
+            local two = candidate("part", "batch-two", "{{ .before }}", "{{ .before }}")
+            local base = candidate("base", "batch-base",
+                '{{ include "/part/batch-one" map("before", "Old one") }} {{ include "/part/batch-two" map("before", "Old two") }} {{ block body() }}{{ end }}',
+                '{{ include "/part/batch-one" map("before", "Old one") }} {{ include "/part/batch-two" map("before", "Old two") }} {{ block body() }}{{ end }}')
+            for _, part in ipairs({one, two}) do
+                part.schema.properties.before = {type = "string"}
+                part.samples.before = "Old"
+            end
+            local message = candidate("message", "batch-message", "{{ block body() }}Body{{ end }}", "{{ block body() }}Body{{ end }}")
+            message.subject, message.base = "Subject", base.name
+            for _, item in ipairs({one, two, base, message}) do
+                item.expected_revision = assert(call("create", item)).revision
+            end
+            local old = assert(call("render", {template = message.name, vars = {}}))
+            for _, part in ipairs({one, two}) do
+                part.html, part.text = "{{ .after }}", "{{ .after }}"
+                part.schema.properties = {after = {type = "string"}}
+                part.samples = {after = "New"}
+                local changed, err = call("update", part)
+                test.is_nil(changed)
+                test.eq(errors.INVALID, err:kind())
+            end
+            base.html = base.html:gsub("before", "after"):gsub("Old", "New")
+            base.text = base.html
+            local preview = assert(call("render_draft", {resources = {base, one, two}, message = message.name}))
+            test.not_nil(preview.html:find("New one New two Body", 1, true))
+            test.eq(old.html, assert(call("render", {template = message.name, vars = {}})).html)
+            local revision = two.expected_revision
+            two.expected_revision = 0
+            local saved, stale = call("save", {resources = {base, one, two}, note = "Together"})
+            test.is_nil(saved)
+            test.eq("mail_revision_conflict", stale:details().code)
+            two.expected_revision = revision
+            local valid_html = two.html
+            two.html = "{{ .undefined }}"
+            local broken, invalid = call("save", {resources = {base, one, two}})
+            test.is_nil(broken)
+            test.eq(errors.INVALID, invalid:kind())
+            for _, item in ipairs({base, one, two}) do
+                test.eq(item.expected_revision, assert(call("get", item)).revision)
+                test.eq(1, #assert(call("history", item)))
+            end
+            test.eq(old.html, assert(call("render", {template = message.name, vars = {}})).html)
+            two.html = valid_html
+            local changed = assert(call("save", {resources = {base, one, two}, note = "Together"}))
+            test.eq(3, #changed)
+            test.eq(preview.html, assert(call("render", {template = message.name, vars = {}})).html)
+            for _, item in ipairs(changed) do
+                test.eq("Together", assert(call("history", item))[1].note)
+            end
+            assert(call("delete", message))
+            for _, item in ipairs(changed) do
+                assert(call("delete", {kind = item.kind, name = item.name, expected_revision = item.revision}))
+            end
+        end)
+
         test.it("requires library access even when the caller can send", function()
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:send_access")),
                 assert(security.policy("kickside.mail.security:library_calls"))}))

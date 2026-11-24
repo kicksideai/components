@@ -74,7 +74,9 @@ type ResourceBaseEdit = {name: string, base: string, expected_revision: integer,
 type ResourceRestore = ResourceRevision & {revision: integer}
 type Revision = {kind: string, name: string, revision: integer, content: ResourceContent, author: string, note: string?, created_at: integer}
 type OriginalRevisions = {[string]: {[string]: integer}}
-type DraftRequest = {resource: ResourceContent, message: string, vars: JsonObject?}
+type DraftRequest = {resource: ResourceContent?, resources: {ResourceContent}?, message: string, vars: JsonObject?}
+type ResourceSave = {resources: {ResourceEdit}, note: string?}
+type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?, note: string?}
 type LibraryRow = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema_json: string, samples_json: string, state: string,
@@ -145,6 +147,7 @@ return {
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
+    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     AttachmentRef = AttachmentRef, Attachment = Attachment, SendRequest = SendRequest, Addresses = Addresses,

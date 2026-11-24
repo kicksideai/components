@@ -202,6 +202,7 @@ entries:
         - kickside.mail.library:get
         - kickside.mail.library:create
         - kickside.mail.library:update
+        - kickside.mail.library:save
         - kickside.mail.library:set_base
         - kickside.mail.library:reset
         - kickside.mail.library:history

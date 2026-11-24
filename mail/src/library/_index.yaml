@@ -133,6 +133,13 @@ entries:
     modules: *service_modules
     imports: *service_imports
     security: *write_security
+  - name: save
+    kind: function.lua
+    method: save
+    source: *service_source
+    modules: *service_modules
+    imports: *service_imports
+    security: *write_security
   - name: update
     kind: function.lua
     method: update
