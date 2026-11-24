@@ -639,6 +639,46 @@ return {run = test.run_cases(function()
             test.eq(part.name, candidates[3].name)
         end)
 
+        test.it("refuses templates that refer to themselves and keeps rendering", function()
+            local editor = session("editor")
+            local part = own(fixture("part", "cycle-part", "Static"))
+            local saved_part = data(editor, "POST", "/library", part, 201)
+            local base = own(fixture("base", "cycle-base",
+                '{{ include "/part/cycle-part" }}{{ block body() }}{{ end }}'))
+            local saved_base = data(editor, "POST", "/library", base, 201)
+            local message = own(fixture("message", "cycle-message", "{{ block body() }}Content{{ end }}"))
+            message.base, message.subject = base.name, "Cycle"
+            data(editor, "POST", "/library", message, 201)
+
+            local cases = {
+                {resource = part, revision = saved_part.revision, html = '{{ import "/part/cycle-part" }}Static',
+                    detail = "template dependency cycle"},
+                {resource = base, revision = saved_base.revision,
+                    html = '{{ extends "/base/cycle-base" }}{{ block body() }}{{ end }}',
+                    detail = "template dependency cycle"},
+                {resource = part, revision = saved_part.revision, html = '{{ include "/part/cycle-part" }}',
+                    detail = "maximum 'include' depth"},
+            }
+            for _, case in ipairs(cases) do
+                local healthy = case.resource.html
+                case.resource.html = case.html
+                local status, body = request(editor, "POST", "/library/preview",
+                    {message = message.name, resource = case.resource})
+                test.eq(400, status)
+                test.eq("Mail could not render this template.", body.error)
+                test.not_nil(body.details.engine_message:find(case.detail, 1, true), body.details.engine_message)
+
+                case.resource.expected_revision = case.revision
+                local save_status = request(editor, "PUT",
+                    "/library/" .. case.resource.kind .. "/" .. case.resource.name, case.resource)
+                test.eq(400, save_status)
+                case.resource.html, case.resource.expected_revision = healthy, nil
+
+                local preview = data(editor, "POST", "/library/preview", {message = message.name})
+                test.not_nil(preview.html:find("Content", 1, true))
+            end
+        end)
+
         test.it("serves library edits and candidate previews through the router", function()
             local editor = session("editor")
             local base = own(fixture("base", "http-frame", "[{{ block body() }}{{ end }}]"))
