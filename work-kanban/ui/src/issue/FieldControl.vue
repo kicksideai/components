@@ -22,11 +22,13 @@ const props = defineProps<{
   required?: boolean
   disabled?: boolean
   autofocus?: boolean
+  inline?: boolean
   board: string
   work: IssueWork
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: FieldValue] }>()
 const id = useId()
+const root = ref<HTMLElement>()
 const picker = ref(false)
 const pickerError = ref(false)
 const isLong = computed(() => ['description', 'acceptance_criteria', 'planning_goal'].includes(props.field.code))
@@ -67,6 +69,7 @@ const refOptions = computed(() => {
   return values
 })
 const pickerValue = computed(() => many.value ? '{}' : JSON.stringify(props.modelValue ?? {}))
+const appendTo = computed(() => props.inline ? 'self' : 'body')
 const rawList = ref('')
 watch(() => props.modelValue, value => {
   if (many.value && !isPrincipal.value && !options.value.length && !isItem.value) {
@@ -122,11 +125,18 @@ function dateChanged(value: string | Date | (Date | string | null)[] | null | un
 function personName(value: Scalar) {
   return principal(value)?.kind === 'group' ? 'Selected group' : 'Selected person'
 }
+
+function focus() {
+  const input = isPrincipal.value ? undefined : root.value?.querySelector<HTMLElement>('input, textarea, [role="combobox"], button')
+  const target = input ?? root.value
+  target?.focus({ preventScroll: true })
+}
+defineExpose({ focus })
 </script>
 
 <template>
-  <div class="issue-field-control">
-    <label :for="id">{{ field.title }} <span v-if="required" aria-hidden="true">*</span></label>
+  <div ref="root" class="issue-field-control" :tabindex="inline ? -1 : undefined">
+    <label :for="id" :class="{ 'kanban-visually-hidden': inline }">{{ field.title }} <span v-if="required" aria-hidden="true">*</span></label>
     <div v-if="isPrincipal" :inert="disabled || undefined" class="issue-principal-picker">
       <wc-principal-picker v-if="picker" :id="id" :aria-label="field.title" :value="pickerValue" kinds="user,group"
         :placeholder="many ? 'Add a person or group…' : 'Person or group'" @config-changed="pick" />
@@ -139,14 +149,14 @@ function personName(value: Scalar) {
       </ul>
     </div>
     <MultiSelect v-else-if="many && options.length" class="issue-field-select" :input-id="id" :aria-label="field.title" :aria-required="required"
-      :model-value="listValue" :options="options" option-label="label" option-value="id" :disabled="disabled" fluid
+      :model-value="listValue" :options="options" option-label="label" option-value="id" :disabled="disabled" :append-to="appendTo" fluid
       @update:model-value="set" />
     <Select v-else-if="options.length" class="issue-field-select" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="stringValue"
       :options="options" option-label="label" option-value="id" :placeholder="field.code === 'priority' ? 'Select priority' : 'Choose an option'"
-      :show-clear="!required" :disabled="disabled" fluid
+      :show-clear="!required" :disabled="disabled" :append-to="appendTo" fluid
       @update:model-value="set" />
     <Select v-else-if="isItem" :input-id="id" :aria-label="field.title" :aria-required="required" :model-value="refValue?.item"
-      :options="refOptions" option-label="label" option-value="id" :show-clear="!required" :disabled="disabled" fluid
+      :options="refOptions" option-label="label" option-value="id" :show-clear="!required" :disabled="disabled" :append-to="appendTo" fluid
       @show="!refs.loaded.value && refs.load()" @update:model-value="refChanged">
       <template #footer>
         <span v-if="refError" role="alert">Could not load references.</span>
@@ -159,7 +169,7 @@ function personName(value: Scalar) {
       :model-value="numericValue" :max-fraction-digits="field.form === 'int' ? 0 : 16"
       :use-grouping="false" :required="required" :disabled="disabled" fluid @update:model-value="set" />
     <DatePicker v-else-if="field.form === 'time'" :input-id="id" :aria-label="field.title" :model-value="dateValue"
-      date-format="yy-mm-dd" :show-time="field.config?.format !== 'date'" :required="required" :disabled="disabled" fluid
+      date-format="yy-mm-dd" :show-time="field.config?.format !== 'date'" :required="required" :disabled="disabled" :append-to="appendTo" fluid
       :update-model-type="field.config?.format === 'date' ? 'string' : 'date'" @update:model-value="dateChanged" />
     <Checkbox v-else-if="field.form === 'bool'" :input-id="id" :model-value="modelValue === true" binary
       :disabled="disabled" @update:model-value="set" />

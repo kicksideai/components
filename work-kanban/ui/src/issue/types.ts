@@ -31,14 +31,26 @@ export interface IssueType {
 export interface State {
   id: string
   name: string
+  kind?: string
+  run?: { on_pass?: string; on_fail?: string; on_cancel?: string; on_exhausted?: string }
   require?: string[]
   release_when?: { approvals?: { min: number } }
+}
+
+export interface DeclaredTransition extends Transition {
+  from: string[]
+  any?: boolean
+  auto?: boolean
+  command?: unknown
+  prepare_command?: unknown
+  people?: boolean
+  when?: { rel?: string; dir?: string; q?: string; where?: { field?: string; op?: string; value?: string[] } }
 }
 
 export interface Schema {
   fields: Field[]
   item_types: IssueType[]
-  processes: { id: string; initial: string; states: State[] }[]
+  processes: { id: string; initial: string; states: State[]; transitions?: DeclaredTransition[] }[]
   relation_types: { id: string; outward: string; inward: string }[]
 }
 

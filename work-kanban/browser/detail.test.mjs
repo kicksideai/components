@@ -53,10 +53,16 @@ test('creates an issue with Work’s root default, patches in the drawer, posts 
     await issue.getByRole('heading', { name: summary }).waitFor()
     await page.reload()
     await issue.getByRole('heading', { name: summary }).waitFor()
-    await button(issue, 'Edit fields').click()
+    await button(issue, 'Edit Summary').click()
     await issue.getByRole('textbox', { name: 'Summary' }).fill(summary + ' reviewed')
-    await button(issue, 'Save').click()
+    await issue.getByRole('textbox', { name: 'Summary' }).press('Enter')
     await issue.getByRole('heading', { name: summary + ' reviewed' }).waitFor()
+    await button(issue, 'Status: To Do').click()
+    const menu = issue.getByRole('dialog', { name: 'Change status' })
+    expect(await button(menu, 'Mark blocked').getAttribute('aria-disabled')).toBe('true')
+    await menu.getByText('Link an open blocker to use this transition.', { exact: true }).waitFor()
+    await button(menu, 'Start work').click()
+    await button(issue, 'Status: In Progress').waitFor()
     await issue.getByRole('textbox', { name: 'Add a comment' }).fill('Fire verifies the drawer comment.')
     await button(issue, 'Post comment').click()
     await issue.getByText('Fire verifies the drawer comment.', { exact: true }).waitFor()
@@ -131,9 +137,9 @@ test('reads parents without card pages and pages an authorized dense Relationshi
   try {
     const issue = drawer(app)
     await issue.getByRole('heading', { name: 'Check staging rollback' }).waitFor()
-    await issue.getByRole('navigation', { name: 'Parent issue' }).getByRole('button', { name: /Deployment readiness story/ }).click()
+    await issue.getByRole('navigation', { name: 'Parent issue' }).getByRole('link', { name: /Deployment readiness story/ }).click()
     await page.waitForURL(url => url.pathname.endsWith('/issue/' + story))
-    await issue.getByRole('navigation', { name: 'Parent issue' }).getByRole('button').click()
+    await issue.getByRole('navigation', { name: 'Parent issue' }).getByRole('link').click()
     await page.waitForURL(url => url.pathname.endsWith('/issue/' + epic))
     await page.goto(origin + route(board, 'search', extreme), { waitUntil: 'domcontentloaded' })
     await issue.getByRole('heading', { name: /配備/ }).waitFor()
@@ -143,7 +149,7 @@ test('reads parents without card pages and pages an authorized dense Relationshi
     await issue.getByRole('button', { name: /Show 8 more Reviewers/ }).click()
     await issue.getByText('Fixture Reviewer 12', { exact: true }).waitFor()
     await issue.getByRole('tab', { name: 'Relationships' }).click()
-    const links = issue.getByRole('button', { name: /open linked issue/ })
+    const links = issue.getByRole('link', { name: /open linked issue/ })
     await links.first().waitFor()
     expect(await links.count()).toBe(20)
     await button(issue, 'Load more links').click()
@@ -190,7 +196,7 @@ test('a reader can trace an issue while Work rejects a direct write', async () =
   try {
     const issue = drawer(app)
     await issue.getByRole('heading', { name: 'Check staging rollback' }).waitFor()
-    expect(await button(issue, 'Edit fields').count()).toBe(0)
+    expect(await button(issue, 'Edit Summary').count()).toBe(0)
     expect(await button(app, 'Create issue').count()).toBe(0)
     expect(await issue.getByRole('textbox', { name: 'Add a comment' }).count()).toBe(0)
     await issue.getByRole('tab', { name: 'Relationships' }).click()
@@ -244,7 +250,7 @@ test('keeps the board and Backlog available on an inactive Search deep link', as
   }
 }, 30_000)
 
-test('matches the shell’s System tabs and captures Knowledge and Automations for comparison', async () => {
+test('keeps the System tab treatment and aligns the Kanban tabs with the toolbar controls', async () => {
   const { app, shell, page, context, errors } = await open({ path: route(small) })
   const nav = shell.getByRole('navigation', { name: 'Main navigation' })
   const readTab = tab => tab.evaluate(node => {
@@ -253,6 +259,7 @@ test('matches the shell’s System tabs and captures Knowledge and Automations f
       background: css.backgroundColor, display: css.display, padding: css.padding,
       fontSize: css.fontSize, fontWeight: css.fontWeight,
       border: css.borderBottomWidth, borderColor: css.borderBottomColor,
+      height: node.getBoundingClientRect().height,
     }
   })
   try {
@@ -272,8 +279,101 @@ test('matches the shell’s System tabs and captures Knowledge and Automations f
       await shell.getByRole('heading', { name, exact: true }).first().waitFor()
       await page.screenshot({ path: join(artifacts, 'fire-reference-' + name.toLowerCase() + '.png') })
     }
-    expect(board).toEqual(selected)
-    expect(backlog).toEqual(unselected)
+    const toolbar = { display: 'flex', padding: '0px 8px', fontSize: '14px', fontWeight: '500', height: 34 }
+    expect(board).toEqual({ ...selected, ...toolbar })
+    expect(backlog).toEqual({ ...unselected, ...toolbar })
+    expect(errors).toEqual([])
+  } finally {
+    await context.close()
+  }
+}, 50_000)
+
+test('resizes the non-modal panel, remembers its width, and opens the same URL full-width', async () => {
+  const { app, page, context, errors } = await open({ path: route(board, 'search') })
+  try {
+    const boardView = app.getByRole('region', { name: 'Board', exact: true })
+    const search = app.getByRole('searchbox', { name: 'Search issues' })
+    await search.fill('Check staging rollback')
+    await app.getByRole('button', { name: /Check staging rollback/ }).click()
+    await page.waitForURL(url => url.pathname === route(board, '', child))
+    const issue = drawer(app)
+    await issue.getByRole('heading', { name: 'Check staging rollback' }).waitFor()
+    expect(await search.isVisible()).toBe(true)
+    expect(await issue.getAttribute('aria-modal')).not.toBe('true')
+    const handle = issue.getByRole('separator', { name: 'Issue panel width' })
+    const start = await handle.boundingBox()
+    const initial = (await issue.boundingBox()).width
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(start.x - 65, start.y + start.height / 2, { steps: 6 })
+    await page.mouse.up()
+    const resized = (await issue.boundingBox()).width
+    expect(resized - initial).toBeGreaterThan(50)
+    await page.reload()
+    await issue.getByRole('heading', { name: 'Check staging rollback' }).waitFor()
+    await expect.poll(async () => (await issue.boundingBox()).width).toBeCloseTo(resized)
+    await handle.press('Home')
+    expect((await issue.boundingBox()).width).toBe(Number(await handle.getAttribute('aria-valuemin')))
+    await handle.press('End')
+    expect((await issue.boundingBox()).width).toBe(Number(await handle.getAttribute('aria-valuemax')))
+    await button(app, 'Compact card density').click()
+    expect(await button(app, 'Compact card density').getAttribute('aria-pressed')).toBe('true')
+    const url = page.url()
+    await button(issue, 'Open full page').click()
+    const full = app.getByRole('region', { name: /^KS/ })
+    await full.waitFor()
+    expect((await full.boundingBox()).width).toBeCloseTo((await app.boundingBox()).width)
+    expect(page.url()).toBe(url)
+    expect(await boardView.isVisible()).toBe(false)
+    await page.screenshot({ path: join(artifacts, 'fire-issue-full-page.png') })
+    await button(full, 'Open side panel').click()
+    await issue.waitFor()
+    await page.goBack()
+    await issue.waitFor({ state: 'hidden' })
+    await page.waitForURL(url => url.pathname === route(board, 'search'))
+    expect(errors).toEqual([])
+  } finally {
+    await context.close()
+  }
+}, 55_000)
+
+
+test('inline fields cancel on Escape, save on blur, and keep the comment composer compact', async () => {
+  const { app, context, errors } = await open({ path: route(small) })
+  try {
+    await button(app, 'Create issue').click()
+    const create = app.getByRole('dialog', { name: 'Create issue' })
+    const original = 'Inline field ' + crypto.randomUUID().slice(0, 8)
+    await create.getByRole('textbox', { name: 'Summary' }).fill(original)
+    await button(create, 'Create issue').click()
+    const issue = drawer(app)
+    await issue.getByRole('heading', { name: original }).waitFor()
+    const trigger = button(issue, 'Edit Summary')
+    await trigger.press('Enter')
+    const editor = issue.getByRole('textbox', { name: 'Summary' })
+    await editor.fill('Discard this draft')
+    await editor.press('Escape')
+    await issue.getByRole('heading', { name: original }).waitFor()
+    await expect.poll(() => trigger.evaluate(node => node.getRootNode().activeElement === node)).toBe(true)
+    await trigger.click()
+    const updated = original + ' saved on blur'
+    await editor.fill(updated)
+    await editor.press('Tab')
+    await issue.getByRole('heading', { name: updated }).waitFor()
+    await button(issue, 'Edit Priority').click()
+    const priority = issue.getByRole('combobox', { name: 'Priority', exact: true })
+    await priority.click()
+    await issue.getByRole('option', { name: 'High', exact: true }).click()
+    await button(issue, 'Close issue details').focus()
+    await expect.poll(() => button(issue, 'Edit Priority').textContent()).toBe('High')
+    const comment = issue.getByRole('textbox', { name: 'Add a comment' })
+    await button(issue, 'Close issue details').focus()
+    const before = (await comment.boundingBox()).height
+    expect(await button(issue, 'Post comment').count()).toBe(0)
+    await comment.focus()
+    expect((await comment.boundingBox()).height).toBeGreaterThan(before)
+    await comment.fill('Draft note')
+    await button(issue, 'Post comment').waitFor()
     expect(errors).toEqual([])
   } finally {
     await context.close()

@@ -32,7 +32,7 @@ function display(value: Scalar | null | undefined): string {
 </script>
 
 <template>
-  <div v-if="Array.isArray(value) && value.length" class="issue-field-values">
+  <span v-if="Array.isArray(value) && value.length" class="issue-field-values">
     <Tag v-for="(entry, index) in shown" :key="index" class="kx-tag-sm" severity="secondary">
       <span dir="auto">{{ display(entry) }}</span>
     </Tag>
@@ -40,6 +40,6 @@ function display(value: Scalar | null | undefined): string {
       :label="expanded ? 'Show fewer' : 'Show ' + extra + ' more'"
       :aria-label="(expanded ? 'Show fewer ' : 'Show ' + extra + ' more ') + (field?.title ?? 'values')"
       :aria-expanded="expanded" @click="expanded = !expanded" />
-  </div>
+  </span>
   <span v-else class="issue-field-value" dir="auto">{{ display(Array.isArray(value) ? undefined : value) }}</span>
 </template>

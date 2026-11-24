@@ -3,7 +3,7 @@ import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import { computed, onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue'
 import { checkPlacements } from '../extensions/placements'
 import { findView, runFirstViewPage, viewType, type FirstViewRead } from '../presentation/query'
-import { boardPath, dismissIssue, kanbanRoot, switchBoard, type KanbanRoute, type KanbanTab, type Navigate } from '../route'
+import { boardPath, dismissIssue, issuePath, kanbanRoot, switchBoard, type KanbanRoute, type KanbanTab, type Navigate } from '../route'
 import { isAccessLoss, planningPlugin, searchPlugin, WorkError, type WorkClient } from '../work/client'
 import { BoardDirectory } from '../work/directory'
 import type { BoardAccess, BoardOption, BoardSchema } from '../work/types'
@@ -162,13 +162,18 @@ export function usePage(
     navigate({ path: boardPath({ board: board.value.board_id, tab: value }) })
   }
 
-  function openIssue(issue: string) {
-    if (!board.value || !route.value) return
-    navigate({ path: boardPath({ board: board.value.board_id, tab: route.value.tab, issue }) })
+  function openIssue(issue: string, targetBoard = board.value?.board_id) {
+    if (targetBoard && route.value) navigate({ path: issuePath(targetBoard, issue) })
   }
 
+  let previousRoute: KanbanRoute | undefined
+  watch(route, (_, previous) => { previousRoute = previous }, { flush: 'sync' })
   function closeIssue() {
-    if (route.value?.issue) navigate(dismissIssue(route.value))
+    const active = route.value
+    if (!active?.issue) return
+    const destination = dismissIssue(active)
+    navigate(previousRoute && !previousRoute.issue && boardPath(previousRoute) === destination.path
+      ? destination : { path: destination.path })
   }
 
   function links() {
@@ -178,7 +183,7 @@ export function usePage(
     const view = { ...active, board: selected.board_id }
     return {
       board: `${kanbanRoot}/${boardPath({ ...view, issue: undefined })}`,
-      issue: view.issue ? `${kanbanRoot}/${boardPath(view)}` : undefined,
+      issue: view.issue ? `${kanbanRoot}/${issuePath(selected.board_id, view.issue)}` : undefined,
     }
   }
 

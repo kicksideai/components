@@ -43,6 +43,18 @@ export function boardPath({ board, tab, issue }: KanbanRoute): string {
   return issue ? view + '/issue/' + encodeURIComponent(issue) : view
 }
 
+export function issuePath(board: string, issue: string): string {
+  return boardPath({ board, tab: 'board', issue })
+}
+
+export function routeInSurface(path: string, previous?: KanbanRoute): KanbanRoute | undefined {
+  const route = parseRoute(path)
+  if (route?.issue && route.tab === 'board' && previous && previous.board === route.board) {
+    return { ...route, tab: previous.tab }
+  }
+  return route
+}
+
 export function switchBoard(route: KanbanRoute, board: string, supported: readonly KanbanTab[]): KanbanRoute {
   return { board, tab: supported.includes(route.tab) ? route.tab : 'board' }
 }

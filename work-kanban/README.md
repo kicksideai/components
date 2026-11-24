@@ -2,7 +2,7 @@
 # Work Kanban
 
 Open **Kanban** in the KickSide shell or follow a Work board link to
-`/work-kanban/board/<board-id>[/<backlog|sprints|search>][/issue/<item-id>]`.
+`/work-kanban/board/<board-id>[/<backlog|sprints|search>]`.
 The switcher lists readable Work boards bound to `kickside.work.kanban:board_app`.
 It searches the loaded pages and can load the next Work directory page.
 
@@ -11,6 +11,17 @@ grip or focus it and press Space to pick up an issue. Use the arrow keys
 to choose a position, Space to drop, and Escape to cancel. Enter opens
 the move menu. If Work refuses the move, the card returns to its original
 position and the Board shows the reason.
+
+Open an issue at `/work-kanban/board/<board-id>/issue/<item-id>`. The side
+panel keeps the current view available on wider screens and uses the full
+width on smaller screens. Drag its edge or use the arrow keys on its resize
+handle. Kanban remembers the width locally for your account. **Open full page**
+expands the same issue at the same address. **Copy link** copies that address.
+Use Back to return to the preceding issue or view.
+
+Open the status control to see named transitions. Select an editable value to
+change it. Enter or leaving the field saves the change, and Escape discards
+the draft. Work supplies the available transitions and field permissions.
 
 The **New board** dialog uses Work's board creation capability, installs
 `kickside.work.kanban:pack` version 1.0.0 and opens the created board.

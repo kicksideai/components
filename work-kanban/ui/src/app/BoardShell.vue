@@ -93,15 +93,15 @@ function changeTab(value: string) {
       />
       <div class="kanban-toolbar-controls">
         <slot name="filters" />
-        <Button v-if="tab === 'board'" class="kanban-icon-action" type="button" text rounded severity="secondary" size="small"
+        <Button v-if="tab === 'board'" class="kanban-toolbar-action kanban-icon-action" type="button" text rounded severity="secondary"
           aria-label="Compact card density" :aria-pressed="compact" :title="compact ? 'Show standard cards' : 'Show compact cards'"
           @click="emit('density')">
           <template #icon><Icon :icon="compact ? 'tabler:layout-rows' : 'tabler:align-justified'" aria-hidden="true" /></template>
         </Button>
       </div>
     </div>
-    <div v-if="active" class="kanban-toolbar-primary">
-      <Button class="kanban-icon-action" type="button" text rounded severity="secondary" size="small"
+    <div v-if="active" class="kanban-toolbar-controls kanban-toolbar-actions">
+      <Button class="kanban-toolbar-action kanban-icon-action" type="button" text rounded severity="secondary"
         aria-label="Refresh issues" title="Refresh issues" :loading="refreshing" @click="emit('refresh')">
         <template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template>
       </Button>

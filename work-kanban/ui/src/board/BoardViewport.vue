@@ -45,7 +45,7 @@ const rowStride = computed(() => props.compact ? 66 : 86)
 const mobile = computed(() => width.value <= 520)
 const stride = computed(() => mobile.value
   ? Math.max(204, Math.round(width.value * .64)) + gap
-  : Math.max(196, Math.min(286, (width.value + gap) / Math.min(5, props.columns.length || 1))))
+  : Math.max(196, (width.value + gap) / Math.min(5, props.columns.length || 1)))
 const contentWidth = computed(() => Math.max(width.value, stride.value * props.columns.length - gap))
 const motion = useBoardMove({
   viewport, columns: () => props.columns, columnElement,
@@ -164,7 +164,7 @@ const rendered = computed<RenderedColumn[]>(prior => {
     const length = column.items.length - Number(remove >= 0)
     const insertion = current && target ? Math.min(current.target.row, length) : -1
     const slots = length + Number(insertion >= 0)
-    const visibleRows = rowWindow(y.value.get(column.id) ?? 0, Math.max(0, height.value - 45), rowStride.value, slots)
+    const visibleRows = rowWindow(y.value.get(column.id) ?? 0, Math.max(0, height.value - 40), rowStride.value, slots)
     const preview = source || target ? current : undefined
     const existing = prior?.find(entry => entry.index === index)
     if (existing?.column === column && existing.preview === preview

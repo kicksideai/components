@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { describe, expect, it, vi } from 'vitest'
 import { WorkError } from '../work/client'
-import { checkedWrite, KeyedWrite, transitionInputs, visibleFields, fieldChanges } from './model'
+import { checkedWrite, KeyedWrite, transitionInputs, visibleFields, fieldChanges, statusChoices } from './model'
 import type { Detail, Schema } from './types'
 
 const schema: Schema = {
@@ -34,6 +34,23 @@ describe('issue field and command mapping', () => {
   it('requires the target state inputs from a runnable edge and rejects an unlisted edge', () => {
     expect(transitionInputs(schema, detail, 'complete')?.map(field => field.code)).toEqual(['resolution'])
     expect(transitionInputs(schema, detail, 'block')).toBeUndefined()
+  })
+  it('shows runnable and blocked human transitions while explaining a review gate', () => {
+    const workflow: Schema = { ...schema, processes: [{
+      ...schema.processes[0], states: [{ id: 'todo', name: 'Review', kind: 'gate' }, schema.processes[0].states[1]],
+      transitions: [
+        { id: 'accept', name: 'Accept', from: ['todo'], to: 'done', require: [] },
+        { id: 'reject', name: 'Reject', from: ['todo'], to: 'todo', require: [] },
+        { id: 'automated', name: 'Automated', from: ['todo'], to: 'done', require: [], auto: true },
+        { id: 'reopen', name: 'Reopen', from: ['done'], to: 'todo', require: [] },
+      ],
+    }] }
+    const transitions = [{ id: 'reject', name: 'Reject', to: 'todo', require: [] }]
+    expect(statusChoices(workflow, { ...detail, transitions })).toMatchObject([
+      { edge: { id: 'reject' } },
+      { edge: { id: 'accept' }, reason: 'Finish the required review before moving this issue.' },
+    ])
+    expect(statusChoices(workflow, { ...detail, access: { ...detail.access, write: false }, transitions })).toEqual([])
   })
   it('patches only editable fields, keeps false and zero and explicitly clears a typed set', () => {
     expect(fieldChanges({ title: 'A', labels: ['old'], priority: 7, flag: true, private: 'before' },
