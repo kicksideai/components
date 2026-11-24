@@ -6,7 +6,7 @@ entries:
     kind: registry.entry
     meta: { type: kickside.automation.port, title: Send email, comment: Deliver each input record as one message. }
     binding: kickside.mail.sink:writable
-    operations: { upsert: {}, create: {}, delete: {} }
+    operations: { upsert: {}, delete: {} }
     input_schema: |
       {
         "type": "object",

@@ -221,6 +221,15 @@ entries:
       policy: kickside.mail.outbox:policy
       database: kickside.mail.outbox:database
       jobs_cancel: kickside.core.jobs.persist:lifecycle_cancel
+  - name: port_declaration_test
+    kind: function.lua
+    meta: { type: test, suite: mailer }
+    source: file://port_declaration_test.lua
+    method: run
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+      binding_validation: kickside.automation:binding_validation
   - name: owner_clock
     kind: library.lua
     source: file://owner_clock.lua

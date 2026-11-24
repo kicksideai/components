@@ -873,7 +873,6 @@ return {
                 test.eq(2, #logged.items)
                 test.not_nil(port.data.operations.upsert)
                 test.not_nil(port.data.operations.delete)
-                test.not_nil(port.data.operations.create)
             end)
 
             test.it("requires Send mail on delete and accepts a delete without a payload or key", function()
