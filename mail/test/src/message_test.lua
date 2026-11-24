@@ -3,6 +3,7 @@ local test = require("test")
 local message = require("message")
 local render = require("render")
 local templates = require("templates")
+local failure = require("failure")
 
 local function valid()
     return { to = {"to@example.org"}, subject = "Status", text = "Ready" }
@@ -33,6 +34,36 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Mail message", function()
+        test.it("projects every driver failure to neutral Activity copy", function()
+            local cases = {
+                {"provider_rejected", "Ask a mail administrator to check why the message was refused.",
+                    {"credentials_invalid", "authorization_refused", "sender_or_recipient_not_allowed",
+                        "request_rejected", "idempotency_conflict", "provider_rejected"}},
+                {"message_rejected", "Ask a mail administrator to check why the message was refused.", {"message_rejected"}},
+                {"provider_unavailable", "Ask a mail administrator to check when mail delivery is available again.",
+                    {"send_in_progress", "provider_unavailable"}},
+                {"provider_request_failed", "Ask a mail administrator to check when mail delivery is available again.",
+                    {"provider_request_failed"}},
+                {"provider_transport_failed", "Ask a mail administrator to check when mail delivery is available again.",
+                    {"provider_transport_failed"}},
+                {"rate_limited", "Ask a mail administrator to check when sending can resume after the rate limit.",
+                    {"quota_exhausted", "rate_limited"}},
+                {"provider_response_invalid", "Ask a mail administrator to check why the message could not be delivered.",
+                    {"provider_response_invalid"}},
+                {"message_encoding_failed", "Ask a mail administrator to check why the message could not be delivered.",
+                    {"message_encoding_failed"}},
+                {"attachment_encoding_failed", "Check the message attachments before sending it again.", {"attachment_encoding_failed"}},
+                {"invalid_content_id", "Check the message attachments before sending it again.", {"invalid_content_id"}},
+                {"invalid_attachment", "Check the message attachments before sending it again.", {"invalid_attachment"}},
+            }
+            for _, case in ipairs(cases) do
+                for _, code in ipairs(case[3]) do
+                    local visible = failure.public(errors.INTERNAL, code)
+                    test.eq(case[1], visible.code, code)
+                    test.eq(case[2], visible.message, code)
+                end
+            end
+        end)
         test.it("rejects caller-supplied From and invalid recipient and reply-to addresses", function()
             refuses(function(input) input.from = "sender@example.org" end, "from_not_allowed")
             refuses(function(input) input.to = {"a@example"} end, "invalid_address")

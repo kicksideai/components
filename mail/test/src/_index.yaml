@@ -146,6 +146,7 @@ entries:
       test: wippy.test:test
       message: kickside.mail:message
       render: kickside.mail.views:render
+      failure: kickside.mail.outbox:failure
   - name: dep.blocks
     kind: ns.dependency
     component: kickside/blocks
