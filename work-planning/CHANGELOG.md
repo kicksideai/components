@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/kicksideai/components/compare/work-planning-v0.1.8...work-planning-v0.1.9) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-planning:** restore typed Time estimate dispatch ([#447](https://github.com/kicksideai/components/issues/447)) ([78a7165](https://github.com/kicksideai/components/commit/78a716529e05dafb93ca999735ef8192bf091f9e))
+
 ## [0.1.8](https://github.com/kicksideai/components/compare/work-planning-v0.1.7...work-planning-v0.1.8) (2026-11-24)
 
 
