@@ -102,7 +102,8 @@ local function resolve_ids(board: string, id: string, binding: string, text: str
     if derr then return nil, derr end
     if not def then return nil, invalid("search_unavailable", "search resolver contract is unavailable") end
     local context = snapshot and {
-        work_search = { board_id = board, scope = id, generation = snapshot.generation, as_of = snapshot.applied_seq },
+        work_search = { board_id = board, scope = id, generation = snapshot.generation, as_of = snapshot.applied_seq,
+            restricted = snapshot.compiled.visibility ~= nil },
     }
     local client, cerr = def:open(binding, context)
     if cerr or not client then return nil, cerr end

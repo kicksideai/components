@@ -67,8 +67,12 @@ entries:
   imports:
     limits: kickside.work.settings:limits
     access: kickside.work.read:access
+    budget: kickside.work.read:budget
+    domain: kickside.work:types
     feeds: kickside.work.read:feeds
-    threads: kickside.work.persist:threads
+    manifests: kickside.work.domain:manifests
+    plugin_rows: kickside.work.persist:plugin_rows
+    store: kickside.work.persist:store
     types: kickside.work.read:types
     local_types: kickside.work.extensions:types
     schema: kickside.work.extensions:plugin_feed_schema

@@ -178,16 +178,13 @@ local function define()
                 { method = "list_changes", request = {} }, { method = "list_history", request = {} },
                 { method = "explain", request = {} }, { method = "run_view", request = { view_id = view } },
             }
-            local covered = { list = true, get_schema = true, plugin_context = true, plugin_feed = true, schema_options = true }
+            local covered = { list = true, get_schema = true, plugin_context = true, schema_options = true }
             for _, session in ipairs({ outside, holder, inside, admin, outsider }) do
-                for _, method in ipairs({ "plugin_context", "plugin_feed" }) do
-                    local value = { board_id = h.id, plugin = "app:work_plugin" }
-                    if method == "plugin_feed" then value.kind = "app:item_fold" end
-                    local context, err = session.call("contract_request", { contract = "kickside.work:board", method = method, value = value })
-                    test.is_nil(context)
-                    test.not_nil(err)
-                    test.eq(err:kind(), session == outsider and errors.PERMISSION_DENIED or errors.NOT_FOUND)
-                end
+                local value = { board_id = h.id, plugin = "app:work_plugin" }
+                local context, err = session.call("contract_request", { contract = "kickside.work:board", method = "plugin_context", value = value })
+                test.is_nil(context)
+                test.not_nil(err)
+                test.eq(err:kind(), session == outsider and errors.PERMISSION_DENIED or errors.NOT_FOUND)
                 local options, oerr = session.call("contract_request", { contract = "kickside.work:board", method = "schema_options", value = { board_id = h.id } })
                 if session == admin then test.is_nil(oerr); test.not_nil(options.plugins)
                 else test.is_nil(options); test.eq(oerr:kind(), errors.PERMISSION_DENIED) end

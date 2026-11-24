@@ -34,10 +34,10 @@ local function item_view(board: domain.Board, item: domain.Item): (types.ItemVie
         updated_seq = item.updated_seq }
 end
 
-local function render(tx: types.Executor, board: domain.Board, item: domain.Item, include_gate: boolean?, include_awaiting: boolean?): (types.ItemView?, error?)
+local function render(tx: types.Executor, board: domain.Board, item: domain.Item, include_gate: boolean?, include_awaiting: boolean?, projection: boolean?): (types.ItemView?, error?)
     local view, verr = item_view(board, item)
     if verr or not view then return nil, verr end
-    if item.parent_id and board.compiled.visibility then
+    if item.parent_id and board.compiled.visibility and not projection then
         local allowed, err = access_rows.permits(tx, board, item.parent_id)
         if err then return nil, err end
         if not allowed then view.parent = nil end

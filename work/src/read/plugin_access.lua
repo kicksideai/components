@@ -12,7 +12,7 @@ local types = require("types")
 local domain = require("domain")
 local M = {}
 
-function M.active(request: types.PluginContextRequest, context: types.ReadContext?): (types.PluginAdmission?, error?)
+local function active(request: types.PluginContextRequest, context: types.ReadContext?): (types.PluginAdmission?, error?)
     local selected, err = access.with_snapshot(request.board_id, nil, function(tx: types.Executor, board: domain.Board): (types.PluginSelection?, error?)
         local row, rerr = rows.active(tx, board.board_id, request.plugin)
         if rerr then return nil, rerr end
@@ -29,7 +29,7 @@ end
 
 function M.context(request: types.PluginContextRequest): (types.PluginContext?, error?)
     return budget.run(request, function(context: types.ReadContext): (types.PluginContext?, error?)
-        local selected, err = M.active(request, context)
+        local selected, err = active(request, context)
         if err or not selected then return nil, err end
         local state, manifest = selected.state, selected.manifest
         return { attachment_id = state.attachment_id, interface_version = manifest.interface_version, config = selected.config, lifecycle = state.lifecycle,

@@ -23,10 +23,14 @@ function M.reference(raw: unknown): (unknown, error?)
     return visible and raw or { unavailable = true }, nil
 end
 
-function M.redactor(catalog: { [string]: domain.Field }): types.Redactor
+function M.redactor(catalog: { [string]: domain.Field }, projection_board: string?): types.Redactor
     local cache: { [string]: boolean } = {}
     local function reference(raw: unknown): (unknown, error?)
         local target = raw :: { board: string, item: string }
+        if projection_board then
+            if target.board == projection_board then return raw, nil end
+            return { unavailable = true }, nil
+        end
         local key = target.board .. "/" .. target.item
         local visible = cache[key]
         if visible == nil then
