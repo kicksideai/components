@@ -599,6 +599,15 @@ return {
                 test.eq(admin_row.provider_message_id, visible[one.message_id].provider_message_id)
             end)
 
+            test.it("uses a character limit for valid UTF-8 Activity searches", function()
+                local at_limit = {limit = 1, q = string.rep("é", 256)}
+                test.eq(0, #assert(invoke(sender, "list_messages", at_limit)).items)
+                for _, q in ipairs({at_limit.q .. "é", "invalid" .. string.char(255), "nul" .. string.char(0)}) do
+                    local value, err = invoke(sender, "list_messages", {limit = 1, q = q})
+                    refusal(value, err, errors.INVALID, "invalid_request")
+                end
+            end)
+
             test.it("settles jobs that are cancelled or no longer stored", function()
                 local admitted_at = policy.now() + 3600000
                 local recheck_at = admitted_at + policy.RECHECK_MS
@@ -1158,20 +1167,23 @@ return {
                 })
                 local input = body()
                 input.to[2] = {user_id = id}
-                input.to[3] = "READER@example.org"
-                input.cc = {"Cc@example.org", {user_id = id}, "CC@example.org"}
-                input.bcc = {{user_id = id}, "cc@example.org", "Bcc@example.org", "BCC@example.org"}
+                input.to[3] = "reader@EXAMPLE.org"
+                input.to[4] = "READER@example.org"
+                input.cc = {"Cc@example.org", {user_id = id}, "Cc@EXAMPLE.org"}
+                input.bcc = {{user_id = id}, "Cc@Example.org", "Bcc@example.org", "BCC@example.org"}
                 local refused, err = invoke(sender, "send", input)
                 refusal(refused, err, errors.PERMISSION_DENIED)
                 local delivered = assert(reader:call(TOOL_NS .. "mail_send", input))
                 local captured = assert(json.decode(terminal(log_admin, delivered).provider_message_id))
                 test.eq("reader@example.org", captured.to[1])
                 test.eq("resolved@example.org", captured.to[2])
-                test.eq(2, #captured.to)
+                test.eq("READER@example.org", captured.to[3])
+                test.eq(3, #captured.to)
                 test.eq("Cc@example.org", captured.cc[1])
                 test.eq(1, #captured.cc)
                 test.eq("Bcc@example.org", captured.bcc[1])
-                test.eq(1, #captured.bcc)
+                test.eq("BCC@example.org", captured.bcc[2])
+                test.eq(2, #captured.bcc)
 
                 for _, recipient in ipairs({blank, "resolved@example.org"}) do
                     input.to[2] = {user_id = recipient}

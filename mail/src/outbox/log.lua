@@ -120,8 +120,11 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
         or input.since < 0 or input.since > 9007199254740991) then
         return nil, invalid("Since must be a nonnegative Unix timestamp in milliseconds")
     end
-    if input.q ~= nil and (type(input.q) ~= "string" or #input.q > 256 or input.q:find("%z")) then
-        return nil, invalid("Search must be text of up to 256 bytes")
+    if input.q ~= nil then
+        local length = type(input.q) == "string" and utf8.len(input.q)
+        if not length or length > 256 or input.q:find("%z") then
+            return nil, invalid("Search must be UTF-8 text of up to 256 characters")
+        end
     end
     local cursor_time, cursor_id
     if input.cursor ~= nil then

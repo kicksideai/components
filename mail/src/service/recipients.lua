@@ -43,7 +43,8 @@ local function recipients(input: types.SendRequest): (types.Addresses?, error?)
                 else
                     address = recipient :: string
                 end
-                local key = address:lower()
+                local at = address:find("@", 1, true) :: integer
+                local key = address:sub(1, at) .. address:sub(at + 1):lower()
                 if not seen[key] then
                     seen[key] = true
                     resolved[#resolved + 1] = address
