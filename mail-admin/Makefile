@@ -13,6 +13,7 @@ setup: ui-setup
 	cd test && $(WIPPY) install
 lockrefresh:
 	cd test && $(WIPPY) update
+	cd build-inputs && $(WIPPY) update
 ui-kit:
 	cd build-inputs && if [[ -f wippy.lock ]]; then $(WIPPY) install; else $(WIPPY) update; fi
 	@version="$$(awk '$$1 == "version:" {print $$2; exit}' build-inputs/wippy.lock)"; \
