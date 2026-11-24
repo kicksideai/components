@@ -26,3 +26,16 @@ entries:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       jet: kickside.mail.library:jet
+  - name: assets_test
+    kind: function.lua
+    meta: { type: test, suite: mail_assets }
+    source: file://assets_test.lua
+    method: run
+    modules: [fs, funcs, security, sql, uuid, base64, time, json]
+    imports:
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
+      records: kickside.uploads.persist:upload_record_repo
+      upload_types: kickside.uploads:types
+      lookup: kickside.uploads.persist:upload_query_repo
+      settings: app.mail_api:fixtures

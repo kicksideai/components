@@ -1,8 +1,26 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["subject", "html", "text"],
+  "required": [
+    "subject",
+    "html",
+    "text"
+  ],
   "properties": {
-    "subject": {"type": "string"}, "html": {"type": "string"}, "text": {"type": "string"}
+    "subject": {
+      "type": "string"
+    },
+    "html": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "inline_assets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
   }
 }

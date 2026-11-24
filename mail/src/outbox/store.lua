@@ -6,6 +6,7 @@ local policy = require("policy")
 local sql = require("sql")
 local types = require("types")
 local uuid = require("uuid")
+local asset_store = require("asset_store")
 
 local M = {OWNER_KIND = "mail-message", WORKER = "kickside.mail.outbox:deliver"}
 
@@ -58,6 +59,8 @@ function M.insert(input: types.Admission): (types.AdmissionResult?, error?)
             return {message = existing :: types.SendResult, inserted = false}, nil
         end
 
+        local reference_err = asset_store.link(tx, id, input.library_assets)
+        if reference_err then return nil, reference_err end
         local job, queue_err = jobs.enqueue_tx(tx, dialect, {
             namespace = "mail", scope = id, key = "deliver",
             owner_locator = {kind = M.OWNER_KIND, id = id}, job_type = M.WORKER,
@@ -93,6 +96,10 @@ function M.finish(tx: sql.Transaction, id: string, job_id: string, now: integer,
         cause and cause.provider_detail or sql.NULL, id, job_id,
     })
     if err then return nil, err end
+    if result.rows_affected == 1 and delivered then
+        local detach_err = asset_store.detach(tx, id)
+        if detach_err then return nil, detach_err end
+    end
     return result.rows_affected == 1, nil
 end
 
@@ -131,5 +138,7 @@ function M.content(row: types.MessageRow): (types.Addresses?, {types.AttachmentR
     if refs_err then return nil, nil, refs_err end
     return addresses :: types.Addresses, attachments :: {types.AttachmentRef}, nil
 end
+
+M.asset_refs = asset_store.refs
 
 return M

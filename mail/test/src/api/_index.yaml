@@ -2,15 +2,20 @@
 version: "1.0"
 namespace: app.mail_api
 entries:
+  - name: fixtures
+    kind: library.lua
+    source: file://fixtures.lua
+    modules: [contract, funcs, security, sql, uuid]
   - name: api_test
     kind: function.lua
     meta: { type: test, suite: mail_api }
     source: file://api_test.lua
     method: run
-    modules: [contract, funcs, http_client, json, registry, security, sql, system, uuid, time]
+    modules: [funcs, http_client, json, registry, sql, system, time, uuid]
     imports:
       test: wippy.test:test
       library_fixtures: app.mail_library:fixtures
+      fixtures: app.mail_api:fixtures
   - name: sender
     kind: security.scope
   - name: sender_composition
@@ -22,6 +27,12 @@ entries:
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints
       - kickside.mail.security:send_endpoints
+  - name: bundled_template_catalog
+    kind: security.policy
+    policy:
+      resources: [app.templates:reminder_template]
+      actions: [registry.get, registry.find]
+      effect: allow
   - name: editor
     kind: security.scope
   - name: editor_composition
@@ -29,6 +40,7 @@ entries:
     meta: { type: kickside.security.group_composition }
     group_id: app.mail_api:editor
     policies:
+      - app.mail_api:bundled_template_catalog
       - kickside.mail.security:library_access
       - kickside.mail.security:library_calls
       - kickside.mail.security:library_endpoints
@@ -47,6 +59,13 @@ entries:
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints
       - kickside.mail.security:send_access
+  - name: log_reader
+    kind: security.scope
+  - name: log_reader_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:log_reader
+    policies: [kickside.mail.security:log_admin]
   - name: delivery
     kind: security.scope
   - name: delivery_composition

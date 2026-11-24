@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.binding
+entries:
+  - name: library
+    kind: contract.binding
+    meta:
+      title: Mail library
+      class: [kickside.mail.library]
+      thread_class: kickside.mail.library
+      provision:
+        scope: system
+        grants:
+          - {subject_id: "system:kickside.mail.retention", subject_type: user, access_mask: 1}
+    contracts:
+      - contract: kickside.contract:component
+        methods:
+          get_status: kickside.core.threads:thread_status

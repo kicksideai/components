@@ -5,8 +5,20 @@ local security = require("security")
 
 local M = {}
 
+local MAILER = "kickside.mail:mailer"
+local LIBRARY = "kickside.mail.library:list"
+
+function M.capabilities(): types.Capabilities
+    return {
+        send = security.can("access", MAILER),
+        edit_library = security.can("access", LIBRARY),
+        administer_delivery = security.can("mail.log.admin", MAILER)
+            and security.can("access", "kickside.mail.api:delivery_status.endpoint"),
+    }
+end
+
 function M.require_send(): error?
-    if not security.can("access", "kickside.mail:mailer") then
+    if not security.can("access", MAILER) then
         return errors.new({kind = errors.PERMISSION_DENIED, message = "Mail send access is required",
             retryable = false, details = {code = "mail_send_denied"}})
     end
@@ -14,15 +26,19 @@ function M.require_send(): error?
 end
 
 function M.require_admin(): error?
-    if not security.can("mail.log.admin", "kickside.mail:mailer") then
+    if not security.can("mail.log.admin", MAILER) then
         return errors.new({kind = errors.PERMISSION_DENIED, message = "Administer mail delivery access is required",
             retryable = false, details = {code = "mail_delivery_denied"}})
     end
     return nil
 end
 
+function M.require_activity(): error?
+    return M.require_admin() and M.require_send()
+end
+
 function M.require_library(): error?
-    if not security.can("access", "kickside.mail.library:list") then
+    if not security.can("access", LIBRARY) then
         return errors.new({kind = errors.PERMISSION_DENIED, message = "Edit mail library access is required",
             retryable = false, details = {code = "mail_library_denied"}})
     end

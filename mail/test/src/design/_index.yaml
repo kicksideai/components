@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.mail_design
+entries:
+  - name: design_test
+    kind: function.lua
+    meta: {type: test, suite: mail_design}
+    source: file://design_test.lua
+    method: run
+    modules: [funcs, json, registry, security, time]
+    imports:
+      test: wippy.test:test
+      blocks: kickside.blocks:blocks
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      normalize: kickside.mail.library:resources
+      preview_id: kickside.mail.library:preview_id

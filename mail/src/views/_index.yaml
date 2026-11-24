@@ -2,6 +2,26 @@
 version: "1.0"
 namespace: kickside.mail.views
 entries:
+  - name: asset_files
+    kind: fs.directory
+    directory: ./assets
+  - name: logo_asset
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: asset
+      name: logo
+      title: Mail logo
+      description: Shows the logo next to your site name at the top of an email.
+      asset:
+        source: original
+        filesystem: kickside.mail.views:asset_files
+        path: logo.png
+        filename: logo.png
+        content_type: image/png
+        width: 32
+        height: 32
+        size: 435
   - name: templates
     kind: template.set
     engine: { escape: html }
@@ -121,7 +141,7 @@ entries:
       kind: message
       name: notice
       title: Notice
-      description: Send a notice with optional details, a link, and an inline image.
+      description: Share an update with optional details, a link, and an image.
       base: standard
       html: *notice_html
       text: *notice_text
@@ -142,7 +162,7 @@ entries:
             items: { type: string }
           action_url: { type: string, description: HTTP or HTTPS address for the action link. }
           action_label: { type: string, description: Text for the action link. }
-          inline_content_id: { type: string, description: Content ID of an inline attachment. }
+          inline_content_id: { type: string, description: The attached picture to display in the email. }
           image_alt: { type: string, description: Alternative text for the inline image. }
           details:
             type: array
@@ -167,8 +187,8 @@ entries:
     template:
       kind: base
       name: standard
-      title: Standard
-      description: A white message card with the installation title above and below it.
+      title: Standard layout
+      description: Places the email in a card with your site name above and below it.
       html: *standard_html
       text: *standard_text
       entries: { html: "kickside.mail.views:layout", text: "kickside.mail.views:layout.text" }
@@ -178,8 +198,8 @@ entries:
     template:
       kind: base
       name: plain
-      title: Plain
-      description: A text-first layout for account and security messages.
+      title: Plain layout
+      description: Keeps the focus on the message, such as a sign-in or security alert.
       html: *plain_html
       text: *plain_text
       entries: { html: "kickside.mail.views:plain", text: "kickside.mail.views:plain.text" }
@@ -189,8 +209,8 @@ entries:
     template:
       kind: part
       name: header
-      title: Header
-      description: Shows the installation title from site.title.
+      title: Email header
+      description: Shows your site name and logo at the top of the email.
       html: *header_html
       text: *header_text
       entries: { html: "kickside.mail.views:header", text: "kickside.mail.views:header.text" }
@@ -202,8 +222,8 @@ entries:
     template:
       kind: part
       name: footer
-      title: Footer
-      description: Closes the message with the installation title from site.title.
+      title: Email footer
+      description: Shows your site name at the end of the email.
       html: *footer_html
       text: *footer_text
       entries: { html: "kickside.mail.views:footer", text: "kickside.mail.views:footer.text" }
@@ -215,8 +235,8 @@ entries:
     template:
       kind: part
       name: preheader
-      title: Preheader
-      description: Supplies the inbox preview from message.preheader.
+      title: Inbox preview
+      description: Adds the short preview readers see beside the subject in their inbox.
       html: *preheader_html
       text: *preheader_text
       entries: { html: "kickside.mail.views:preheader", text: "kickside.mail.views:preheader.text" }
@@ -231,8 +251,8 @@ entries:
     template:
       kind: part
       name: button
-      title: Button
-      description: Links to a web address.
+      title: Link button
+      description: Adds a button readers can use to open a web page.
       html: *button_html
       text: *button_text
       entries: { html: "kickside.mail.views:button", text: "kickside.mail.views:button.text" }
@@ -249,8 +269,8 @@ entries:
     template:
       kind: part
       name: details
-      title: Details
-      description: Shows labeled values.
+      title: Details list
+      description: Shows information such as dates and locations next to their labels.
       html: *details_html
       text: *details_text
       entries: { html: "kickside.mail.views:details", text: "kickside.mail.views:details.text" }
@@ -274,7 +294,7 @@ entries:
       kind: part
       name: image
       title: Image
-      description: Shows a content image and includes its alternative text in the text face.
+      description: Adds a picture and includes its description in the plain-text email.
       html: *image_html
       text: *image_text
       entries: { html: "kickside.mail.views:image", text: "kickside.mail.views:image.text" }
@@ -282,11 +302,11 @@ entries:
         type: object
         required: [src, alt, width]
         properties:
-          src: { type: string, minLength: 1, description: Content ID URL or hosted image URL. }
+          src: { type: string, minLength: 1, description: The address of the picture to display. }
           alt: { type: string, minLength: 1, description: Text that conveys the content of the image. }
           width: { type: integer, minimum: 1, description: Display width in pixels. }
           height: { type: integer, minimum: 1, description: Display height in pixels when known. }
-          url: { type: string, description: Optional HTTP or HTTPS destination. }
+          url: { type: string, description: Optional web page to open when a reader selects the picture. }
       sample:
         src: "cid:activity-chart"
         alt: Weekly activity chart
@@ -299,8 +319,8 @@ entries:
     template:
       kind: part
       name: signature
-      title: Signature
-      description: Shows the sender name and an optional role.
+      title: Sender signature
+      description: Signs off with the sender’s name and optional role.
       html: *signature_html
       text: *signature_text
       entries: { html: "kickside.mail.views:signature", text: "kickside.mail.views:signature.text" }
@@ -332,6 +352,8 @@ entries:
       message: kickside.mail:message
       globals: kickside.mail.views:globals
       jet: kickside.mail.library:jet
+      resources: kickside.mail.library:resources
+      asset_refs: kickside.mail.library:asset_refs
   - name: globals
     kind: library.lua
     source: file://globals.lua

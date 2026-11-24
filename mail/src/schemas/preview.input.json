@@ -14,6 +14,52 @@
     "vars": {
       "type": "object",
       "description": "Variables from the schema returned by MailGetTemplate."
+    },
+    "attachments": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "upload_id"
+        ],
+        "properties": {
+          "upload_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "filename": {
+            "type": "string",
+            "description": "Attachment basename, at most 255 bytes. An empty name uses a default."
+          },
+          "disposition": {
+            "enum": [
+              "attachment",
+              "inline"
+            ]
+          },
+          "content_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "if": {
+          "required": [
+            "disposition"
+          ],
+          "properties": {
+            "disposition": {
+              "const": "inline"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "content_id"
+          ]
+        }
+      }
     }
   }
 }

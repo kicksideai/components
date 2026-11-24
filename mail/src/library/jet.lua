@@ -25,6 +25,7 @@ end
 
 function M.entries(resource: types.ResourceContent, namespace: string, html_set: string, text_set: string,
     ids: {[string]: string}?): {types.JetEntry}
+    if resource.kind == "asset" then return {} end
     local prefix = resource.base and M.prefix(resource.base) or ""
     local id = namespace .. resource.kind .. "." .. resource.name
     local name = M.name(resource)

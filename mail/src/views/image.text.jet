@@ -1,2 +1,2 @@
-{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}{{ .alt }}{{ if isset(.url) && (hasPrefix(.url, "https://") || hasPrefix(.url, "http://")) }}
+{{ .alt }}{{ if isset(.url) && (hasPrefix(.url, "https://") || hasPrefix(.url, "http://")) }}
 {{ .url }}{{ end -}}

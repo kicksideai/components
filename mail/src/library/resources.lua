@@ -22,7 +22,7 @@ local function valid_name(name: unknown): boolean
 end
 
 function M.check_key(key: types.ResourceKey): error?
-    if type(key) ~= "table" or (key.kind ~= "base" and key.kind ~= "message" and key.kind ~= "part") or not valid_name(key.name) then
+    if type(key) ~= "table" or (key.kind ~= "base" and key.kind ~= "message" and key.kind ~= "part" and key.kind ~= "asset") or not valid_name(key.name) then
         return M.error(errors.INVALID, "invalid_mail_resource", "A library resource requires a kind and a stable name")
     end
     return nil
@@ -31,6 +31,13 @@ end
 function M.normalize(key: types.ResourceContent): (types.ResourceContent?, error?)
     local invalid = M.check_key(key)
     if invalid then return nil, invalid end
+    if key.kind == "asset" then
+        if type(key.title) ~= "string" or not key.title:find("%S") or type(key.description) ~= "string" or not key.asset then
+            return nil, M.error(errors.INVALID, "invalid_mail_asset", "A library asset needs an image source", key)
+        end
+        return {kind = key.kind, name = key.name, title = key.title, description = key.description,
+            html = "", text = "", schema = {type = "object", properties = {}}, samples = {}, asset = key.asset}, nil
+    end
     if type(key.title) ~= "string" or not key.title:find("%S") or type(key.description) ~= "string"
         or type(key.html) ~= "string" or key.html == "" or type(key.text) ~= "string" or key.text == "" then
         return nil, M.error(errors.INVALID, "invalid_mail_resource", "A library resource requires its title, description, and both faces", key)
@@ -64,7 +71,10 @@ local function original(id: string, data: types.Record): (types.Original?, error
     end
     local fields = data.template :: types.Record
     local entry_ids = fields.entries :: {[string]: string}
-    if type(entry_ids) ~= "table" or type(entry_ids.html) ~= "string" or type(entry_ids.text) ~= "string"
+    if declaration.kind == "asset" then
+        entry_ids = {}
+        declaration.html, declaration.text = "", ""
+    elseif type(entry_ids) ~= "table" or type(entry_ids.html) ~= "string" or type(entry_ids.text) ~= "string"
         or (declaration.kind == "message" and type(entry_ids.subject) ~= "string") then
         return nil, M.error(errors.INVALID, "invalid_template_declaration", "Missing Jet registry IDs for " .. id)
     end
@@ -85,13 +95,33 @@ local function original(id: string, data: types.Record): (types.Original?, error
     return {resource = resource, entries = entry_ids}, nil
 end
 
+local function module_title(id: string, titles: {[string]: string}): string
+    local namespace = id:match("^([^:]+):")
+    while namespace do
+        if titles[namespace] then return titles[namespace] end
+        namespace = namespace:match("^(.*)%.[^.]+$")
+    end
+    return "Installed module"
+end
+
 function M.originals(): (types.OriginalMap?, error?)
     local entries, err = registry.find({[".kind"] = "registry.entry", ["meta.type"] = "kickside.mail:template"})
     if err then return nil, err end
+    local definitions, definitions_err = registry.find({[".kind"] = "ns.definition"})
+    if definitions_err then return nil, definitions_err end
+    local titles: {[string]: string} = {}
+    for _, definition in ipairs(definitions) do
+        local namespace = definition.id:match("^([^:]+):")
+        local title = definition.meta.title
+        if namespace and type(title) == "string" and title:find("%S") then
+            titles[namespace] = title
+        end
+    end
     local items: types.OriginalMap = {}
     for _, entry in ipairs(entries) do
         local declared, declaration_err = original(entry.id, entry.data :: types.Record)
         if declaration_err then return nil, declaration_err end
+        declared.resource.origin_label = module_title(entry.id, titles)
         local key = M.key(declared.resource)
         if items[key] then
             return nil, M.error(errors.CONFLICT, "duplicate_template_name", "Multiple modules declare " .. key, declared.resource)
@@ -108,6 +138,7 @@ function M.match_origin(item: types.Resource, declared: types.Original?): error?
     if item.state == "customized" and (not declared or declared.resource.origin ~= item.origin) then
         return M.error(errors.CONFLICT, "mail_original_changed", "The shipped resource declaration has changed identity", item)
     end
+    item.origin_label = declared and declared.resource.origin_label or nil
     return nil
 end
 
@@ -156,13 +187,18 @@ function M.get(key: types.ResourceKey): (types.Resource?, error?)
     return nil, M.error(errors.NOT_FOUND, "mail_resource_not_found", "Mail library resource was not found", key)
 end
 
-local function matches_name(item: types.Resource, query: string?): boolean
-    if not query or query == "" then return true end
-    local q = query:lower()
-    return item.name:lower():find(q, 1, true) ~= nil or item.title:lower():find(q, 1, true) ~= nil
+local function contains(value: string?, q: string): boolean
+    return value ~= nil and value:lower():find(q, 1, true) ~= nil
+end
+
+local function matches(item: types.Resource, q: string?): boolean
+    return not q or q == "" or contains(item.name, q) or contains(item.title, q)
+        or contains(item.description, q) or contains(item.subject, q)
+        or contains(item.html, q) or contains(item.text, q)
 end
 
 function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
+    local q = filter.q and filter.q:lower()
     return database.read(function(db: sql.DB): ({types.Resource}?, error?)
         local originals, err = M.originals()
         if err then return nil, err end
@@ -174,7 +210,7 @@ function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
             for _, row in ipairs(rows) do
                 local origin_err = M.match_origin(row, originals[M.key(row)])
                 if origin_err then return nil, origin_err end
-                if matches_name(row, filter.q) then selected[#selected + 1] = row end
+                if matches(row, q) then selected[#selected + 1] = row end
             end
             return selected, nil
         end
@@ -183,7 +219,7 @@ function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
         local selected = {}
         for _, item in pairs(items) do
             if (not filter.kind or item.kind == filter.kind) and (not filter.state or item.state == filter.state)
-                and (not filter.base or item.base == filter.base) and matches_name(item, filter.q) then
+                and (not filter.base or item.base == filter.base) and matches(item, q) then
                 selected[#selected + 1] = item
             end
         end

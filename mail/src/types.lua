@@ -9,6 +9,11 @@ type Record = {[string]: unknown}
 type Recipient = string | {user_id: string}
 type Mailbox = {address: string, name: string?}
 type AttachmentRef = {upload_id: string, filename: string?, disposition: string?, content_id: string?}
+type Asset = {source: string, filename: string?, content_type: string?, size: integer?, width: integer?, height: integer?,
+    filesystem: string?, path: string?, upload_id: string?}
+type AssetPart = {filename: string, content_type: string, size: integer, content: string?}
+type AssetRef = {name: string, content_id: string, original: string?, upload_id: string?}
+type InlineAssets = {[string]: string}
 type Attachment = {filename: string, content_type: string, content: string, disposition: string, content_id: string?}
 type Origin = {kind: string, id: string, label: string}
 type SendRequest = {
@@ -24,8 +29,13 @@ type TransportRequest = Addresses & {
 type TransportResult = {provider_message_id: string?}
 type SendResult = {message_id: string, status: string}
 type MessageRef = {message_id: string}
-type ListRequest = {status: string?, template: string?, since: integer?, limit: integer, cursor: string?}
-type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean}
+type PrincipalLabel = {kind: string, id: string, label: string}
+type PrincipalRef = {type: string, id: string}
+type DirectoryPrincipal = PrincipalRef & {label: string}
+type PrincipalDirectory = {resolve: (PrincipalDirectory, {refs: {PrincipalRef}}) -> ({principals: {DirectoryPrincipal}}?, error?)}
+type Capabilities = {send: boolean, edit_library: boolean, administer_delivery: boolean}
+type ListRequest = {status: string?, template: string?, since: integer?, q: string?, limit: integer, cursor: string?}
+type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean, total: integer?, failed_today: integer?}
 type MessageError = {kind: string, code: string, message: string, provider_detail: string?}
 type LogMessage = Addresses & {
     message_id: string, status: string, created_at: integer, attempts: integer,
@@ -46,7 +56,7 @@ type MessageRow = {
 type Admission = Addresses & {
     sender: string, actor_context: string, template: string?, subject: string,
     html: string?, text: string?, from: Mailbox, reply_to: string?, attachments: {AttachmentRef}?,
-    idempotency_key: string?, content_hash: string?, origin: Origin?, resend_of: string?,
+    library_assets: {AssetRef}?, idempotency_key: string?, content_hash: string?, origin: Origin?, resend_of: string?,
 }
 type AdmissionResult = {message: SendResult, inserted: boolean}
 type Job = {id: string, lease_token: string, execution_seq: integer}
@@ -59,12 +69,12 @@ type ResourceKey = {kind: string, name: string}
 type ResourceContent = {
     kind: string, name: string,
     title: string, description: string, html: string, text: string, base: string?,
-    subject: string?, schema: VariableSchema, samples: JsonObject,
+    subject: string?, schema: VariableSchema, samples: JsonObject, asset: Asset?,
 }
 type Resource = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema: VariableSchema, samples: JsonObject,
-    state: string, origin: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?, used_by: UsedBy?,
+    asset: Asset?, state: string, origin: string?, origin_label: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?, used_by: UsedBy?,
 }
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
@@ -74,26 +84,43 @@ type ResourceMap = {[string]: Resource}
 type OriginalMap = {[string]: Original}
 type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?}
 type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?}
-type ResourceCreate = ResourceKey & {note: string?, from: ResourceKey?, title: string?, description: string?,
+type ResourceCreate = ResourceKey & {note: string?, preview_id: string?, from: ResourceKey?, title: string?, description: string?,
     html: string?, text: string?, base: string?, subject: string?, schema: VariableSchema?, samples: JsonObject?}
+type AssetWrite = {name: string, upload_id: string, expected_revision: integer?, width: integer?, height: integer?, note: string?,
+    title: string?, description: string?}
 type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?}
 type ResourceRestore = ResourceRevision & {revision: integer}
-type Revision = {kind: string, name: string, revision: integer, content: ResourceContent, author: string, note: string?, created_at: integer}
+type RevisionChange = {action: string, state: string, restored_from: integer?, note: string?}
+type Revision = RevisionChange & {kind: string, name: string, revision: integer, version: integer,
+    content: ResourceContent, author: string, created_at: integer}
 type OriginalRevisions = {[string]: {[string]: integer}}
-type DraftRequest = {resource: ResourceContent?, resources: {ResourceContent}?, message: string, vars: JsonObject?}
-type ResourceSave = {resources: {ResourceEdit}, note: string?}
+type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, resources: {ResourceContent}?, message: string, vars: JsonObject?}
+type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
+type EditPreview = DraftRequest & {create: ResourceCreate?}
+type DraftIssue = {code: string, message: string, resource: ResourceKey, face: string}
+type DraftPreview = {subject: string?, html: string?, text: string?, errors: {DraftIssue},
+    dependent_messages: {string}, preview_id: string?, inline_assets: InlineAssets?, library_assets: {AssetRef}?}
+type LibraryPageRequest = ResourceFilter & {limit: integer?, cursor: string?}
+type LibraryRowSummary = ResourceKey & {state: string, revision: integer, used_by: {messages: integer?, recent_sources: integer?}?}
+type LibraryListRow = LibraryRowSummary & {
+    title: string, description: string, origin: string?, origin_label: string?,
+    base: string?, author: string?, updated_at: integer?,
+}
+type LibraryPage = {items: {LibraryListRow}, next_cursor: string?}
 type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?, note: string?, from: ResourceKey?}
 type LibraryRow = {
+    asset_upload_id: string?, filename: string?, content_type: string?, size_bytes: integer?, width: integer?, height: integer?,
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema_json: string, samples_json: string, state: string,
     origin: string?, revision: integer, author: string, created_at: integer, updated_at: integer, note: string?,
+    version: integer, action: string, restored_from: integer?,
 }
 type JetEntry = {id: string, kind: string, meta: Record, data: Record}
 type TemplateRequest = {template: string}
-type PreviewRequest = {template: string, vars: JsonObject}
-type PreviewResult = {subject: string, html: string, text: string}
-type Rendered = {subject: string, html: string?, text: string?}
-type RenderGlobals = {site: {title: string, url: string}, sender: {name: string}}
+type PreviewRequest = {template: string, vars: JsonObject, attachments: {AttachmentRef}?}
+type PreviewResult = {subject: string, html: string, text: string, inline_assets: InlineAssets?}
+type Rendered = {subject: string, html: string?, text: string?, library_assets: {AssetRef}?, inline_assets: InlineAssets?}
+type RenderGlobals = {assets: {Resource}?, site: {title: string, url: string}, sender: {name: string}}
 type TemplateParts = {subject: string, html: string, text: string}
 type VariableSchema = {type: string, properties: JsonObject, additionalProperties: boolean?}
 type TemplateSummary = {name: string, title: string, description: string}
@@ -127,8 +154,8 @@ type Mailer = {
 type Transport = {send: (self: Transport, input: TransportRequest) -> (TransportResult?, error?)}
 type UserResult = {ok: boolean, user: {user_id: string, email: string}?, error: string?}
 type Users = {get_user: (self: Users, input: {identifier: string}) -> (UserResult?, error?)}
-type AttachmentInput = {refs: {AttachmentRef}?, message_bytes: integer, max_message_bytes: integer?}
-type ContentInfo = {size: number, filename: string, content_type: string}
+type AttachmentInput = {refs: {AttachmentRef}?, library_assets: {AssetRef}?, message_bytes: integer, max_message_bytes: integer?}
+type ContentInfo = {size: number, filename: string, content_type: string, source_ref: {component_id: string?}?}
 type Content = {content: string, content_type: string, truncated: boolean?}
 type ContentFailure = {success: boolean, error: error}
 type ContentProvider = {
@@ -161,7 +188,7 @@ return {
     ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, UsedBy = UsedBy,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
-    AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
+    Asset = Asset, AssetWrite = AssetWrite, AssetPart = AssetPart, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
     TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
     PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,

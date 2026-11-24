@@ -19,7 +19,7 @@ local function fail(res: http.Response, err: error, status: integer?)
     res:write_json(body)
 end
 
-function M.handle(check: () -> error?, run: (http.Request) -> (unknown, error?), status: integer?)
+function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error?), status: integer?)
     local req, res = http.request(), http.response()
     if not req or not res then return nil, errors.new({kind = errors.UNAVAILABLE, message = "HTTP context required"}) end
     res:set_content_type(http.CONTENT.JSON)
@@ -29,7 +29,7 @@ function M.handle(check: () -> error?, run: (http.Request) -> (unknown, error?),
         return fail(res, errors.new({kind = errors.PERMISSION_DENIED, message = "Authentication required",
             details = {code = "authentication_required"}}), 401)
     end
-    local denied = check()
+    local denied = check and check()
     if denied then return fail(res, denied) end
     local result, err = run(req)
     if err then return fail(res, err) end

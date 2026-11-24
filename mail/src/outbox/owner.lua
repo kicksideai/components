@@ -7,6 +7,7 @@ local sql = require("sql")
 local store = require("store")
 local types = require("types")
 local realtime = require("realtime")
+local asset_store = require("asset_store")
 
 local INTERRUPTED = {dead = true, cancelled = true, missing = true, done = true}
 
@@ -63,17 +64,22 @@ end
 
 local function sweep(now: integer, retention_ms: integer): (types.OwnerResult?, error?)
     return database.transaction(function(tx: sql.Transaction, _dialect: string): (types.OwnerResult?, error?)
+        local unlink_err = asset_store.drop_expired_links(tx, now - retention_ms, policy.BATCH, now)
+        if unlink_err then return nil, unlink_err end
         local result, delete_err = tx:execute([[DELETE FROM mail_message WHERE id IN (
             SELECT id FROM mail_message WHERE finished_at <= $1 ORDER BY finished_at,id LIMIT $2
         )]], {now - retention_ms, policy.BATCH})
         if delete_err then return nil, delete_err end
         local rows, read_err = tx:query([[SELECT
             (SELECT next_check_at FROM mail_message WHERE status='queued' ORDER BY next_check_at,id LIMIT 1) AS check_at,
-            (SELECT finished_at FROM mail_message WHERE finished_at IS NOT NULL ORDER BY finished_at,id LIMIT 1) AS finished_at]])
+            (SELECT finished_at FROM mail_message WHERE finished_at IS NOT NULL ORDER BY finished_at,id LIMIT 1) AS finished_at,
+            (SELECT due_at FROM mail_asset_file WHERE due_at IS NOT NULL ORDER BY due_at,upload_id LIMIT 1) AS asset_due_at]])
         if read_err then return nil, read_err end
         local deadlines = rows[1]
         local next_check = deadlines.check_at :: integer?
         local earliest = deadlines.finished_at :: integer?
+        local asset_due = deadlines.asset_due_at :: integer?
+        if asset_due then next_check = next_check and math.min(next_check, asset_due) or asset_due end
         if earliest then
             local expiry = earliest + retention_ms
             next_check = next_check and math.min(next_check, expiry) or expiry
@@ -93,9 +99,13 @@ local function run(input: types.OwnerInput): types.OwnerResult
     local now = policy.now()
     local err = reconcile(now, input)
     if err then return {success = false, error = err} end
+    local collected, collect_err = asset_store.collect(now, policy.BATCH)
+    if collect_err then return {success = false, error = collect_err} end
     local result, sweep_err = sweep(now, days * policy.DAY_MS)
     if sweep_err then return {success = false, error = sweep_err} end
-    return result :: types.OwnerResult
+    local report = result :: types.OwnerResult
+    report.deleted = (report.deleted or 0) + (collected or 0)
+    return report
 end
 
 return {run = run}

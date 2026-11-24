@@ -411,6 +411,7 @@ return {
                 local request = assert(json.decode(captured.provider_message_id))
                 assert(change(admin, "driver", "first").success)
                 input.subject = "Resend fixture"
+                input.origin = {kind = "workflow", id = "fixture-workflow", label = "Fixture workflow"}
                 local failed = terminal(sender, assert(invoke(sender, "send", input)))
                 test.eq("failed", failed.status)
                 local stored = persisted(failed.message_id)
@@ -431,6 +432,13 @@ return {
                 test.eq("sent", row.status)
                 test.eq(failed.message_id, row.resend_of)
                 test.eq(failed.sender, row.sender)
+                test.eq("resend", row.origin and row.origin.kind)
+                test.eq(row.sender, row.origin.id)
+                test.eq("Resent message", row.origin.label)
+                local original = assert(invoke(log_admin, "get_message", row.resend_of))
+                test.eq("workflow", original.origin.kind)
+                test.eq(input.origin.id, original.origin.id)
+                test.eq(input.origin.label, original.origin.label)
                 local result = assert(json.decode(row.provider_message_id))
                 test.eq(stored.failed_html, result.html)
                 test.eq(stored.failed_text, result.text)
@@ -448,6 +456,7 @@ return {
                 local admin_row = terminal(admin_sender, another_send)
                 test.eq(failed.message_id, admin_row.resend_of)
                 test.is_true(failed.sender ~= admin_row.sender)
+                test.eq(admin_row.sender, admin_row.origin.id)
             end)
 
             test.it("uses the active driver at delivery even after a different driver rearmed the job", function()
@@ -883,6 +892,24 @@ return {
                     local preview, preview_err = invoke(editor, "preview", {template = input.template, vars = case.vars})
                     refusal(preview, preview_err, errors.INVALID, "invalid_template_vars", case.variable)
                 end
+            end)
+
+            test.it("delivers the packaged Header image to a sender without library access", function()
+                capture_with(admin)
+                local input = template_request()
+                local preview = assert(invoke(editor, "preview", {template = input.template, vars = input.vars}))
+                test.not_nil(preview.html:find('src="cid:mail-library-logo"', 1, true))
+                test.is_nil(preview.text:find("cid:", 1, true))
+                local uri = assert(preview.inline_assets["mail-library-logo"])
+                test.eq("data:image/png;base64,", uri:sub(1, 22))
+                local completed = terminal(log_admin, assert(invoke(sender, "send", input)))
+                test.eq("sent", completed.status, tostring(completed.last_error and completed.last_error.message))
+                local captured = assert(json.decode(completed.provider_message_id))
+                test.eq(1, #captured.attachments)
+                local logo = captured.attachments[1]
+                test.eq("mail-library-logo", logo.content_id)
+                test.eq("inline", logo.disposition)
+                test.eq(uri, "data:" .. logo.content_type .. ";base64," .. logo.base64)
             end)
 
             test.it("previews without delivery settings and matches what send renders", function()

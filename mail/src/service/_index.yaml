@@ -30,6 +30,7 @@ entries:
         - kickside.mail.security:realtime_topics
         - kickside.mail.security:site_url
         - kickside.mail.security:template_access
+        - kickside.mail.security:asset_bytes
         - kickside.mail.security:driver_dispatch
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
@@ -96,6 +97,7 @@ entries:
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
+        - kickside.mail.security:asset_bytes
   - name: delivery
     kind: library.lua
     source: file://delivery.lua
@@ -106,15 +108,16 @@ entries:
   - name: attachments
     kind: library.lua
     source: file://attachments.lua
-    modules: &resolution_modules [contract]
+    modules: [contract, funcs, base64]
     imports:
       client: kickside.mail:client
       types: kickside.mail:types
       message: kickside.mail:message
+      asset_refs: kickside.mail.library:asset_refs
   - name: recipients
     kind: library.lua
     source: file://recipients.lua
-    modules: *resolution_modules
+    modules: [contract]
     imports:
       types: kickside.mail:types
       message: kickside.mail:message

@@ -1,40 +1,20 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local contract = require("contract")
 local funcs = require("funcs")
 local http = require("http_client")
 local json = require("json")
 local registry = require("registry")
-local security = require("security")
 local sql = require("sql")
 local system = require("system")
 local time = require("time")
 local uuid = require("uuid")
 local test = require("test")
 local library_fixtures = require("library_fixtures")
+local fixtures = require("fixtures")
+local session = fixtures.session
+local settings = fixtures.settings
 
 local API = "/api/mail"
 local ZERO = "00000000-0000-0000-0000-000000000000"
-
-local function session(names)
-    local id = uuid.v4()
-    local email = id .. "@example.org"
-    local db = assert(sql.get("app:db"))
-    assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
-        VALUES ($1,$2,'Mail fixture','test-only','active')]], {id, email}))
-    local groups = {"app.mail_api:" .. names, "app:user"}
-    if names:find("sender", 1, true) then groups[#groups + 1] = "app:mail_senders" end
-    for _, group in ipairs(groups) do
-        assert(db:execute("INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)", {id, group}))
-    end
-    assert(db:release())
-    assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
-    local actor = assert(security.new_actor(id, {user_id = id, email = email, full_name = "Mail fixture", security_groups = groups}))
-    local scope = assert(security.named_scope(groups[1]))
-    local tokens = assert(security.token_store("kickside.users.security:tokens"))
-    local token = assert(tokens:create(actor, scope, {expiration = "1h"}))
-    tokens:close()
-    return {token = token, actor = actor, scope = scope, id = id, email = email}
-end
 
 local function request(who, method, path, payload)
     local state = assert(system.supervisor.state("app:gateway"))
@@ -54,15 +34,15 @@ local function data(who, method, path, payload, expected)
     return body.data
 end
 
-local function settings(driver, address)
-    local settings = assert(assert(contract.get("kickside.settings:settings")):open())
-    if driver == "" then
-        assert(settings:unset({namespace = "kickside.mail", key = "driver"}).success)
-        assert(settings:unset({namespace = "kickside.mail", key = "from_address"}).success)
-    else
-        assert(settings:set({namespace = "kickside.mail", key = "driver", value = driver}).success)
-        assert(settings:set({namespace = "kickside.mail", key = "from_address", value = address}).success)
-    end
+local function await_delivery(who, id)
+    local entry
+    local deadline = time.now():add(10 * time.SECOND):unix_nano()
+    repeat
+        entry = data(who, "GET", "/activity/" .. id)
+        if entry.status == "queued" then time.sleep("20ms") end
+    until entry.status ~= "queued" or time.now():unix_nano() >= deadline
+    test.eq("sent", entry.status)
+    return entry
 end
 
 local function fixture(kind, name, content)
@@ -73,9 +53,9 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail HTTP", function()
-        local owned, configured
+        local owned, activity_rows, configured
         test.before_each(function()
-            owned, configured = {}, false
+            owned, activity_rows, configured = {}, {}, false
         end)
         local function own(item)
             owned[#owned + 1] = {kind = item.kind, name = item.name}
@@ -85,8 +65,30 @@ return {run = test.run_cases(function()
             configured = true
             settings("capture", "mail@example.org")
         end
+        local function failed(sender, subject, recipient, at)
+            local id = uuid.v4()
+            activity_rows[#activity_rows + 1] = id
+            local now = at or time.now():unix_nano() // 1000000
+            local db = assert(sql.get("app:db"))
+            assert(db:execute([[INSERT INTO mail_message
+                (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments,driver_id,
+                error_kind,error_code,error_message,provider_detail,failed_html,failed_text)
+                VALUES ($1,$2,$2,'failed',$3,$4,$5,'mail@example.org','[]','fixture',
+                'PERMISSION_DENIED','credentials_invalid','Provider authorization refused','Provider response',
+                '<p>Saved content</p>','Saved content')]],
+                {id, now, sender, assert(json.encode({to = {recipient}})), subject}))
+            assert(db:release())
+            return id
+        end
         test.after_each(function()
             library_fixtures.remove(owned)
+            if #activity_rows > 0 then
+                local db = assert(sql.get("app:db"))
+                for _, id in ipairs(activity_rows) do
+                    assert(db:execute("DELETE FROM mail_message WHERE id=$1", {id}))
+                end
+                assert(db:release())
+            end
             if configured then settings("", "") end
         end)
 
@@ -101,13 +103,13 @@ return {run = test.run_cases(function()
                     count = count + 1
                     local path = endpoint.data.path:sub(#"/mail" + 1):gsub("{kind}", "message"):gsub("{name}", "notice"):gsub("{id}", ZERO)
                     test.eq(401, (request(nil, endpoint.data.method, path, {})), endpoint.id)
-                    if path:match("^/library") or path:match("^/delivery") or not path:match("/resend$") then
+                    if path:match("^/library") or path:match("^/delivery") then
                         local denied, _, raw = request(sender, endpoint.data.method, path, {})
                         assert(denied == 403, endpoint.id .. " returned " .. denied .. ": " .. raw)
                     end
                 end
             end
-            test.eq(17, count)
+            test.eq(18, count)
             local predicate = "kickside.mail.api:library_list.endpoint"
             test.eq("allow", editor.scope:evaluate(editor.actor, "access", predicate))
             test.neq("allow", sender.scope:evaluate(sender.actor, "access", predicate))
@@ -117,6 +119,220 @@ return {run = test.run_cases(function()
             test.eq(404, status)
             test.eq(errors.NOT_FOUND, body.kind)
             test.eq("message_not_found", body.code)
+        end)
+
+        test.it("allows scoped Mail managers to discover System tabs", function()
+            local endpoint = "kickside.ui.api:list_settings_tabs.endpoint"
+            for _, role in ipairs({"editor", "delivery"}) do
+                local manager = session(role)
+                test.eq("allow", manager.scope:evaluate(manager.actor, "access", endpoint), role)
+            end
+            local sender = session("sender")
+            test.neq("allow", sender.scope:evaluate(sender.actor, "access", endpoint))
+        end)
+
+        test.it("returns editable shipped templates without license comments", function()
+            local editor = session("editor")
+            local originals = data(editor, "GET", "/library?state=original")
+            local faces = 0
+            for _, item in ipairs(originals.items) do
+                if item.kind ~= "asset" then
+                    local resource = data(editor, "GET", "/library/" .. item.kind .. "/" .. item.name)
+                    test.is_nil(resource.html:find("SPDX-License-Identifier", 1, true), item.name)
+                    test.is_nil(resource.text:find("SPDX-License-Identifier", 1, true), item.name)
+                    test.is_nil(resource.description:find("site.title", 1, true), item.name)
+                    test.is_nil(resource.description:find("text face", 1, true), item.name)
+                    faces = faces + 1
+                end
+            end
+            test.is_true(faces > 0)
+        end)
+
+        test.it("labels shipped resources with their owning module title", function()
+            local editor = session("editor")
+            local list = data(editor, "GET", "/library?kind=message&state=original")
+            local notice, reminder
+            for _, item in ipairs(list.items) do
+                if item.name == "notice" then notice = item end
+                if item.name == "reminder" then reminder = item end
+            end
+            test.eq("kickside.mail.views:notice_template", notice.origin)
+            test.eq("Mail", notice.origin_label)
+            test.eq("KickSide", reminder.origin_label)
+            test.eq(notice.origin_label, data(editor, "GET", "/library/message/notice").origin_label)
+        end)
+
+        test.it("reports the effective Mail capabilities of the authenticated caller", function()
+            test.eq(401, (request(nil, "GET", "/capabilities")))
+            local expected = {
+                member = {false, false, false},
+                log_reader = {false, false, false},
+                sender = {true, false, false},
+                editor = {false, true, false},
+                delivery = {false, false, true},
+                editor_sender = {true, true, false},
+                delivery_sender = {true, false, true},
+            }
+            for role, flags in pairs(expected) do
+                local capabilities = data(session(role ~= "member" and role or nil), "GET", "/capabilities")
+                test.eq(flags[1], capabilities.send, role)
+                test.eq(flags[2], capabilities.edit_library, role)
+                test.eq(flags[3], capabilities.administer_delivery, role)
+            end
+        end)
+
+        test.it("lets senders read and resend only their own messages over HTTP", function()
+            local sender = session("sender")
+            local other = session("sender")
+            local admin = session("delivery")
+            local editor = session("editor")
+            local own_id = failed(sender.id, "Sender activity", "reader@example.org")
+            local other_id = failed(other.id, "Sender activity", "other@example.org")
+            local page = data(sender, "GET", "/activity")
+            test.eq(1, #page.items)
+            test.eq(own_id, page.items[1].message_id)
+            local message = data(sender, "GET", "/activity/" .. own_id)
+            test.is_nil(message.driver_id)
+            test.is_nil(message.provider_message_id)
+            test.is_nil(message.last_error.provider_detail)
+            test.eq("Ask a mail administrator to check delivery authorization.", message.last_error.message)
+            test.eq(404, (request(sender, "GET", "/activity/" .. other_id)))
+            test.eq(404, (request(sender, "POST", "/activity/" .. other_id .. "/resend")))
+            test.eq(403, (request(editor, "GET", "/activity")))
+            local full = data(admin, "GET", "/activity/" .. own_id)
+            test.eq("fixture", full.driver_id)
+            test.eq("Provider response", full.last_error.provider_detail)
+            configure()
+            local resent = data(sender, "POST", "/activity/" .. own_id .. "/resend", nil, 202)
+            test.eq(own_id, await_delivery(sender, resent.message_id).resend_of)
+        end)
+
+        test.it("searches effective library source and returns summary rows on request", function()
+            local editor = session("editor")
+            local filtered = data(editor, "GET", "/library?kind=part&q=margin-right%3A8px&view=summary")
+            test.eq(1, #filtered.items)
+            local header = filtered.items[1]
+            test.eq("header", header.name)
+            test.eq("part", header.kind)
+            test.eq("original", header.state)
+            test.eq("Mail", header.origin_label)
+            test.is_nil(header.html)
+            test.is_nil(header.text)
+            test.is_nil(header.subject)
+            test.is_nil(header.samples)
+            local full = data(editor, "GET", "/library?kind=part&q=margin-right%3A8px")
+            test.is_true(full.items[1].html:find("margin-right:8px", 1, true) ~= nil)
+            test.eq(full.items[1].html, data(editor, "GET", "/library/part/header").html)
+            local bases = data(editor, "GET", "/library?kind=base&q=standard&view=summary")
+            test.eq(1, #bases.items)
+            test.is_true(bases.items[1].used_by.messages >= 1)
+        end)
+
+        test.it("searches activity subjects and recipients with unpaged totals and today's failures", function()
+            local admin = session("delivery")
+            local first = failed(admin.id, "Status Needle", "reader@example.org")
+            local second = failed(admin.id, "Daily digest", "needle%tag@example.org")
+            failed(admin.id, "Daily digest", "other@example.org")
+            failed(admin.id, "Old digest", "old@example.org", 1)
+            local page = data(admin, "GET", "/activity?q=NEEDLE&status=failed&limit=1")
+            test.eq(2, page.total)
+            test.is_true(page.has_more)
+            test.is_true(page.failed_today >= 3)
+            local next_page = data(admin, "GET", "/activity?q=needle&status=failed&limit=1&cursor=" .. page.next_cursor)
+            test.eq(2, next_page.total)
+            test.is_false(next_page.has_more)
+            local seen = {[page.items[1].message_id] = true, [next_page.items[1].message_id] = true}
+            test.is_true(seen[first] and seen[second])
+            local exact = data(admin, "GET", "/activity?q=needle%25tag")
+            test.eq(1, exact.total)
+            test.eq(second, exact.items[1].message_id)
+            local empty = data(admin, "GET", "/activity?q=unmatched-string")
+            test.eq(0, empty.total)
+            test.eq(page.failed_today, empty.failed_today)
+        end)
+
+        test.it("records per-resource versions and the action that produced each revision", function()
+            local editor = session("editor")
+            local item = own(fixture("message", "history-actions", "{{ block body() }}Initial{{ end }}"))
+            item.base, item.subject = "plain", "Initial subject"
+            local route = "/library/message/" .. item.name
+            local created = data(editor, "POST", "/library", item, 201)
+            data(editor, "POST", "/library", own(fixture("part", "history-interleave", "Part")), 201)
+            item.expected_revision = created.revision
+            item.note = "Reword subject"
+            item.subject = "Edited subject"
+            local edited = data(editor, "PUT", route, item)
+            local moved = data(editor, "POST", route .. "/base", {base = "standard", expected_revision = edited.revision})
+            local restored = data(editor, "POST", route .. "/restore", {revision = created.revision, expected_revision = moved.revision})
+            local history = data(editor, "GET", route .. "/history").items
+            test.eq(4, #history)
+            test.eq("restored", history[1].action)
+            test.eq(1, history[1].restored_from)
+            test.eq(4, history[1].version)
+            test.eq("created", history[1].state)
+            test.eq(restored.revision, history[1].revision)
+            test.eq("base_changed", history[2].action)
+            test.eq("edited", history[3].action)
+            test.eq("Reword subject", history[3].note)
+            test.eq("created", history[4].action)
+            test.eq(1, history[4].version)
+            test.eq(created.revision, history[4].revision)
+            local original = own(data(editor, "GET", "/library/base/plain"))
+            original.expected_revision = original.revision
+            local custom = data(editor, "PUT", "/library/base/plain", original)
+            data(editor, "POST", "/library/base/plain/reset", {expected_revision = custom.revision})
+            local reset = data(editor, "GET", "/library/base/plain/history").items[1]
+            test.eq("reset", reset.action)
+            test.eq("original", reset.state)
+            test.eq(2, reset.version)
+        end)
+
+        test.it("labels library authors and delivery senders through the principal directory", function()
+            local editor = session("editor")
+            local item = own(fixture("part", "label-part", "Content"))
+            data(editor, "POST", "/library", item, 201)
+            local row = data(editor, "GET", "/library/part/" .. item.name)
+            test.eq(editor.id, row.author)
+            test.eq(editor.id, row.author_label.id)
+            test.eq("user", row.author_label.kind)
+            test.eq("Mail fixture", row.author_label.label)
+            local list = data(editor, "GET", "/library?kind=part&q=label-part")
+            test.eq("Mail fixture", list.items[1].author_label.label)
+            local history = data(editor, "GET", "/library/part/" .. item.name .. "/history")
+            test.eq("Mail fixture", history.items[1].author_label.label)
+            local admin = session("delivery")
+            local sender = session("sender")
+            local id = failed(sender.id, "Directory person", "label@example.org")
+            local missing = failed(ZERO, "Directory person", "absent@example.org")
+            local service = failed("principal:service:fixture", "Directory person", "service@example.org")
+            local found = data(admin, "GET", "/activity/" .. id)
+            test.eq(sender.id, found.sender)
+            test.eq("Mail fixture", found.sender_label.label)
+            test.eq("Unknown account", data(admin, "GET", "/activity/" .. missing).sender_label.label)
+            local service_label = data(admin, "GET", "/activity/" .. service).sender_label
+            test.eq("service", service_label.kind)
+            test.eq("Unknown account", service_label.label)
+            local page = data(admin, "GET", "/activity?q=Directory%20person")
+            test.eq(3, #page.items)
+            for _, entry in ipairs(page.items) do test.not_nil(entry.sender_label) end
+        end)
+
+        test.it("lists the packaged asset and previews its CID under the editor capability", function()
+            local editor = session("editor")
+            local sender = session("sender")
+            local assets = data(editor, "GET", "/library?kind=asset")
+            test.eq(1, #assets.items)
+            test.eq("logo", assets.items[1].name)
+            local logo = data(editor, "GET", "/library/asset/logo")
+            test.eq("original", logo.state)
+            test.eq("image/png", logo.asset.content_type)
+            test.eq(32, logo.asset.width)
+            test.eq("notice", logo.used_by.messages[1])
+            local preview = data(editor, "POST", "/library/preview", {message = "notice"})
+            test.not_nil(preview.html:find('src="cid:mail-library-logo"', 1, true))
+            test.not_nil(preview.inline_assets["mail-library-logo"]:match("^data:image/png;base64,"))
+            test.eq(403, (request(sender, "GET", "/library/asset/logo")))
+            test.eq(403, (request(sender, "POST", "/library", {kind = "asset", name = "proof"})))
         end)
 
         test.it("serves library edits and candidate previews through the router", function()
@@ -239,7 +455,7 @@ return {run = test.run_cases(function()
             test.eq("capture", status.driver.id)
             test.is_true(status.configured)
             test.eq("mail@example.org", status.from.address)
-            test.eq(403, request(sender, "GET", "/activity"))
+            test.eq(0, #data(sender, "GET", "/activity").items)
             test.eq(400, request(editor, "POST", "/library/send-test", {message = "notice", to = {"other@example.org"}}))
             test.eq(400, request(admin, "POST", "/delivery/send-test", {to = {"other@example.org"}}))
             local messages = {
@@ -248,13 +464,7 @@ return {run = test.run_cases(function()
             }
             for _, pair in ipairs(messages) do
                 local id, actor = pair[1].message_id, pair[2]
-                local entry
-                local deadline = time.now():add(10 * time.SECOND):unix_nano()
-                repeat
-                    entry = data(admin, "GET", "/activity/" .. id)
-                    if entry.status == "queued" then time.sleep("20ms") end
-                until entry.status ~= "queued" or time.now():unix_nano() >= deadline
-                test.eq("sent", entry.status)
+                local entry = await_delivery(admin, id)
                 test.eq(1, #entry.to)
                 test.eq(actor.email, entry.to[1])
                 test.eq("test", entry.origin.kind)

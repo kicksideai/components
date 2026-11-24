@@ -5,6 +5,7 @@ local security = require("security")
 local sql = require("sql")
 local store = require("store")
 local failure = require("failure")
+local policy = require("policy")
 local types = require("types")
 local uuid = require("uuid")
 
@@ -88,6 +89,22 @@ local function for_resend(message_id: string): (types.MessageRow?, error?)
     return row, nil
 end
 
+local function search_clause(dialect: string, needle: string): string
+    if dialect == "postgres" then
+        return "(strpos(lower(subject)," .. needle .. ")>0 OR EXISTS ("
+            .. "SELECT 1 FROM jsonb_each(recipients::jsonb) AS kind "
+            .. "CROSS JOIN LATERAL jsonb_array_elements_text(kind.value) AS address(value) "
+            .. "WHERE strpos(lower(address.value)," .. needle .. ")>0))"
+    end
+    return "(instr(lower(subject)," .. needle .. ")>0 OR EXISTS ("
+        .. "SELECT 1 FROM json_each(recipients) AS kind CROSS JOIN json_each(kind.value) AS address "
+        .. "WHERE instr(lower(address.value)," .. needle .. ")>0))"
+end
+
+local function where(filters: {string}): string
+    return #filters > 0 and " WHERE " .. table.concat(filters, " AND ") or ""
+end
+
 local function list_messages(input: types.ListRequest): (types.ListResult?, error?)
     if type(input) ~= "table" or type(input.limit) ~= "number" or input.limit % 1 ~= 0
         or input.limit < 1 or input.limit > 200 then
@@ -103,6 +120,9 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
         or input.since < 0 or input.since > 9007199254740991) then
         return nil, invalid("Since must be a nonnegative Unix timestamp in milliseconds")
     end
+    if input.q ~= nil and (type(input.q) ~= "string" or #input.q > 256 or input.q:find("%z")) then
+        return nil, invalid("Search must be text of up to 256 bytes")
+    end
     local cursor_time, cursor_id
     if input.cursor ~= nil then
         if type(input.cursor) ~= "string" then return nil, invalid("Invalid delivery log cursor") end
@@ -114,34 +134,48 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
     end
     local sender, err = viewer()
     if err then return nil, err end
-    local args: {unknown} = {}
-    local filters = {}
-    local function bind(value: unknown): string
-        args[#args + 1] = value
-        return "$" .. tostring(#args)
-    end
-    if sender then filters[#filters + 1] = "sender=" .. bind(sender) end
-    if input.template then filters[#filters + 1] = "template=" .. bind(input.template) end
-    if input.status then filters[#filters + 1] = "status=" .. bind(input.status) end
-    if input.since then filters[#filters + 1] = "created_at>=" .. bind(input.since) end
-    if cursor_time then
-        filters[#filters + 1] = "(created_at,id)<(" .. bind(cursor_time) .. "," .. bind(cursor_id) .. ")"
-    end
-    local where = #filters > 0 and " WHERE " .. table.concat(filters, " AND ") or ""
-    local query = "SELECT " .. COLUMNS .. " FROM mail_message" .. where
-        .. " ORDER BY created_at DESC, id DESC LIMIT " .. bind(input.limit + 1)
     return database.read(function(db: sql.DB): (types.ListResult?, error?)
+        local args: {unknown} = {}
+        local filters: {string} = {}
+        local function bind(value: unknown): string
+            args[#args + 1] = value
+            return "$" .. tostring(#args)
+        end
+        local owner = sender and ("sender=" .. bind(sender)) or nil
+        if owner then filters[#filters + 1] = owner end
+        if input.template then filters[#filters + 1] = "template=" .. bind(input.template) end
+        if input.status then filters[#filters + 1] = "status=" .. bind(input.status) end
+        if input.since then filters[#filters + 1] = "created_at>=" .. bind(input.since) end
+        if input.q and input.q ~= "" then
+            local dialect, dialect_err = db:type()
+            if dialect_err then return nil, dialect_err end
+            filters[#filters + 1] = search_clause(dialect, bind(input.q:lower()))
+        end
+        local summary = "SELECT COUNT(*) AS total FROM mail_message" .. where(filters)
+        local start = (policy.now() // policy.DAY_MS) * policy.DAY_MS
+        local failures = "SELECT COUNT(*) AS failed_today FROM mail_message WHERE status='failed' AND finished_at>="
+            .. bind(start) .. " AND finished_at<" .. bind(start + policy.DAY_MS)
+        if owner then failures = failures .. " AND " .. owner end
+        if cursor_time then
+            filters[#filters + 1] = "(created_at,id)<(" .. bind(cursor_time) .. "," .. bind(cursor_id) .. ")"
+        end
+        local page = "SELECT " .. COLUMNS .. " FROM mail_message" .. where(filters)
+            .. " ORDER BY created_at DESC, id DESC LIMIT " .. bind(input.limit + 1)
+        local query = "WITH summary AS (" .. summary .. "), failures AS (" .. failures .. "), page AS (" .. page .. ") "
+            .. "SELECT page.*,total,failed_today FROM summary CROSS JOIN failures LEFT JOIN page ON 1=1 "
+            .. "ORDER BY page.created_at DESC, page.id DESC"
         local rows, read_err = db:query(query, args)
         if read_err then return nil, read_err end
+        local size = rows[1].id and #rows or 0
         local items: {types.LogMessage} = {}
-        for index = 1, math.min(input.limit, #rows) do
+        for index = 1, math.min(input.limit, size) do
             local entry, entry_err = message(rows[index] :: types.MessageRow, sender == nil)
             if entry_err then return nil, entry_err end
             items[index] = entry :: types.LogMessage
         end
-        local more = #rows > input.limit
+        local more = size > input.limit
         local last = items[#items]
-        return {items = items, has_more = more,
+        return {items = items, has_more = more, total = rows[1].total :: integer, failed_today = rows[1].failed_today :: integer,
             next_cursor = more and (tostring(last.created_at) .. ":" .. last.message_id) or nil}, nil
     end)
 end

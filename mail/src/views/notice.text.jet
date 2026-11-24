@@ -1,4 +1,4 @@
-{{ extends "/base/standard" }}{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}
+{{ extends "/base/standard" }}
 {{ block body() -}}
 {{ if isset(preheader) && preheader != "" && preheader != message.subject }}{{ include "/part/preheader" }}
 

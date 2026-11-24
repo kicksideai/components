@@ -36,7 +36,8 @@
                   "automation",
                   "agent",
                   "module",
-                  "test"
+                  "test",
+                  "resend"
                 ]
               },
               "id": {
@@ -194,6 +195,8 @@
         ]
       }
     },
+    "total": {"type": "integer", "minimum": 0, "description": "Visible messages matching the filter across all pages."},
+    "failed_today": {"type": "integer", "minimum": 0, "description": "Visible messages that failed today in UTC across all filters."},
     "has_more": {
       "type": "boolean"
     },

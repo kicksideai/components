@@ -3,6 +3,7 @@ local types = require("types")
 local json = require("json")
 local database = require("database")
 local canonical = require("canonical_json")
+local asset_store = require("asset_store")
 
 local M = {}
 
@@ -15,7 +16,20 @@ function M.lock(tx: sql.Transaction, dialect: string): error?
     return err
 end
 
+local function asset_resource(row: types.LibraryRow): types.Resource
+    local asset: types.Asset = {source = "original"}
+    if row.asset_upload_id then
+        asset = {source = "upload", upload_id = row.asset_upload_id, filename = row.filename,
+            content_type = row.content_type, size = row.size_bytes, width = row.width, height = row.height}
+    end
+    return {kind = "asset", name = row.name, title = row.title, description = row.description,
+        html = "", text = "", schema = {type = "object", properties = {}}, samples = {}, asset = asset,
+        state = row.state, origin = row.origin, revision = row.revision, author = row.author,
+        created_at = row.created_at, updated_at = row.updated_at}
+end
+
 local function resource(row: types.LibraryRow): (types.Resource?, error?)
+    if row.kind == "asset" then return asset_resource(row), nil end
     local schema, schema_err = json.decode(row.schema_json)
     if schema_err then return nil, schema_err end
     local samples, sample_err = json.decode(row.samples_json)
@@ -28,7 +42,22 @@ local function resource(row: types.LibraryRow): (types.Resource?, error?)
     }, nil
 end
 
+local ASSET_SELECT = [[SELECT a.*, 'asset' AS kind, a.upload_id AS asset_upload_id,
+    CASE WHEN a.origin IS NULL THEN 'created' ELSE 'customized' END AS state,
+    f.filename,f.content_type,f.size_bytes,f.width,f.height
+    FROM mail_library_asset a JOIN mail_asset_file f ON f.upload_id=a.upload_id]]
+
 function M.get(db: types.Executor, key: types.ResourceKey): (types.Resource?, error?)
+    if key.kind == "asset" then
+        local assets, err = db:query(ASSET_SELECT .. " WHERE a.name=$1", {key.name})
+        if err then return nil, err end
+        if assets[1] then return asset_resource(assets[1] :: types.LibraryRow), nil end
+        local reset, reset_err = db:query([[SELECT * FROM mail_library_revision
+            WHERE kind='asset' AND name=$1 AND state='original' ORDER BY revision DESC LIMIT 1]], {key.name})
+        if reset_err then return nil, reset_err end
+        if not reset[1] then return nil, nil end
+        return asset_resource(reset[1] :: types.LibraryRow), nil
+    end
     local rows, err = db:query([[SELECT * FROM (
         SELECT *, NULL AS note FROM mail_library WHERE kind=$1 AND name=$2
         UNION ALL
@@ -49,11 +78,21 @@ function M.find(db: types.Executor, filter: types.ResourceFilter): ({types.Resou
     if filter.state then result = result:where(sql.builder.eq({state = filter.state})) end
     local rows, err = result:order_by("kind, name"):run_with(db):query()
     if err then return nil, err end
-    local resources = {}
-    for i, row in ipairs(rows) do
+    local resources: {types.Resource} = {}
+    if not filter.base and (not filter.kind or filter.kind == "asset") then
+        local condition = ""
+        if filter.state == "created" then condition = " WHERE a.origin IS NULL" end
+        if filter.state == "customized" then condition = " WHERE a.origin IS NOT NULL" end
+        local assets, asset_err = db:query(ASSET_SELECT .. condition .. " ORDER BY a.name")
+        if asset_err then return nil, asset_err end
+        for _, row in ipairs(assets) do
+            resources[#resources + 1] = asset_resource(row :: types.LibraryRow)
+        end
+    end
+    for _, row in ipairs(rows) do
         local item, read_err = resource(row :: types.LibraryRow)
         if read_err then return nil, read_err end
-        resources[i] = item :: types.Resource
+        resources[#resources + 1] = item :: types.Resource
     end
     return resources, nil
 end
@@ -76,29 +115,70 @@ function M.original_revisions(db: types.Executor): (types.OriginalRevisions?, er
 end
 
 function M.history(db: types.Executor, key: types.ResourceKey, revision: integer?): ({types.Revision}?, error?)
-    local query = "SELECT * FROM mail_library_revision WHERE kind=$1 AND name=$2"
+    local query = [[SELECT r.*,f.filename,f.content_type,f.size_bytes,f.width,f.height
+        FROM mail_library_revision r LEFT JOIN mail_asset_file f ON f.upload_id=r.asset_upload_id
+        WHERE r.kind=$1 AND r.name=$2]]
     local params: {string | integer} = {key.kind, key.name}
     if revision then
-        query = query .. " AND revision=$3"
+        query = query .. " AND r.revision=$3"
         params[3] = revision
     end
-    local rows, err = db:query(query .. " ORDER BY revision DESC", params)
+    local rows, err = db:query(query .. " ORDER BY r.revision DESC", params)
     if err then return nil, err end
     local history: {types.Revision} = {}
     for i, row in ipairs(rows) do
         local saved = row :: types.LibraryRow
         local item, read_err = resource(saved)
         if read_err then return nil, read_err end
-        history[i] = {kind = saved.kind, name = saved.name, revision = saved.revision,
+        history[i] = {kind = saved.kind, name = saved.name, revision = saved.revision, version = saved.version,
+            action = saved.action, state = saved.state, restored_from = saved.restored_from,
             content = {kind = item.kind, name = item.name, title = item.title, description = item.description,
                 html = item.html, text = item.text, subject = item.subject, base = item.base,
-                schema = item.schema, samples = item.samples},
+                schema = item.schema, samples = item.samples, asset = item.asset},
             author = saved.author, note = saved.note, created_at = saved.updated_at}
     end
     return history, nil
 end
 
-function M.write(tx: sql.Transaction, item: types.Resource, note: string?, reset: boolean): (types.Resource?, error?)
+local function trim(tx: sql.Transaction, key: types.ResourceKey): error?
+    local removed, err = tx:query([[DELETE FROM mail_library_revision WHERE kind=$1 AND name=$2 AND revision <
+        (SELECT revision FROM mail_library_revision WHERE kind=$1 AND name=$2 ORDER BY revision DESC LIMIT 1 OFFSET 24)
+        RETURNING asset_upload_id AS upload_id]], {key.kind, key.name})
+    if err then return err end
+    return asset_store.release(tx, removed :: {types.Record})
+end
+
+local function write_asset(tx: sql.Transaction, item: types.Resource, change: types.RevisionChange,
+    version: integer): (types.Resource?, error?)
+    local upload = (item.asset :: types.Asset).upload_id
+    local rows, err = tx:query([[INSERT INTO mail_library_asset
+        (name,title,description,origin,author,created_at,updated_at,upload_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        ON CONFLICT(name) DO UPDATE SET title=excluded.title, description=excluded.description,
+            revision=excluded.revision, author=excluded.author, updated_at=excluded.updated_at, upload_id=excluded.upload_id
+        RETURNING revision]],
+        {item.name, item.title, item.description, item.origin or sql.NULL, item.author, item.created_at, item.updated_at, upload or sql.NULL})
+    if err then return nil, err end
+    local revision = rows[1].revision :: integer
+    local _, record_err = tx:execute([[INSERT INTO mail_library_revision
+        (kind,name,revision,title,description,html,text,schema_json,samples_json,state,origin,author,created_at,updated_at,note,asset_upload_id,version,action,restored_from)
+        VALUES ('asset',$1,$2,$3,$4,'','','{"type":"object","properties":{}}','{}',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)]],
+        {item.name, revision, item.title, item.description, change.state,
+            item.origin or sql.NULL, item.author, item.created_at, item.updated_at, change.note or sql.NULL,
+            change.state ~= "original" and upload or sql.NULL, version, change.action, change.restored_from or sql.NULL})
+    if record_err then return nil, record_err end
+    local trim_err = trim(tx, item)
+    if trim_err then return nil, trim_err end
+    item.revision = revision
+    return item, nil
+end
+
+function M.write(tx: sql.Transaction, item: types.Resource, change: types.RevisionChange): (types.Resource?, error?)
+    local history, history_err = tx:query([[SELECT version FROM mail_library_revision
+        WHERE kind=$1 AND name=$2 ORDER BY revision DESC LIMIT 1]], {item.kind, item.name})
+    if history_err then return nil, history_err end
+    local version = (history[1] and (history[1].version :: integer) or 0) + 1
+    if item.kind == "asset" then return write_asset(tx, item, change, version) end
     local encoded_schema, schema_err = json.encode(item.schema)
     if schema_err then return nil, schema_err end
     local encoded_samples, sample_err = json.encode(item.samples)
@@ -117,18 +197,29 @@ function M.write(tx: sql.Transaction, item: types.Resource, note: string?, reset
     if err then return nil, err end
     item.revision = rows[1].revision :: integer
     local _, snapshot_err = tx:execute([[INSERT INTO mail_library_revision
-        (kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,state,origin,author,created_at,updated_at,note)
-        SELECT kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,$1,origin,author,created_at,updated_at,$2
-        FROM mail_library WHERE revision=$3]], {reset and "original" or item.state, note or sql.NULL, item.revision})
+        (kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,state,origin,author,
+            created_at,updated_at,note,version,action,restored_from)
+        SELECT kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,$1,origin,author,
+            created_at,updated_at,$2,$3,$4,$5 FROM mail_library WHERE revision=$6]],
+        {change.state, change.note or sql.NULL, version, change.action, change.restored_from or sql.NULL, item.revision})
     if snapshot_err then return nil, snapshot_err end
-    local _, trim_err = tx:execute([[DELETE FROM mail_library_revision WHERE kind=$1 AND name=$2 AND revision <
-        (SELECT revision FROM mail_library_revision WHERE kind=$1 AND name=$2 ORDER BY revision DESC LIMIT 1 OFFSET 24)]],
-        {item.kind, item.name})
+    local trim_err = trim(tx, item)
     if trim_err then return nil, trim_err end
     return item, nil
 end
 
 function M.remove(tx: sql.Transaction, key: types.ResourceKey, deleting: boolean): error?
+    if key.kind == "asset" then
+        local live, err = tx:query("DELETE FROM mail_library_asset WHERE name=$1 RETURNING upload_id", {key.name})
+        if err then return err end
+        if deleting then
+            local history, history_err = tx:query([[DELETE FROM mail_library_revision WHERE kind='asset' AND name=$1
+                RETURNING asset_upload_id AS upload_id]], {key.name})
+            if history_err then return history_err end
+            for _, row in ipairs(history) do live[#live + 1] = row end
+        end
+        return asset_store.release(tx, live :: {types.Record})
+    end
     if deleting then
         local _, err = tx:execute("DELETE FROM mail_library_revision WHERE kind=$1 AND name=$2", {key.kind, key.name})
         if err then return err end
