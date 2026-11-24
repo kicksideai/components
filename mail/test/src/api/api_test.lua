@@ -148,6 +148,29 @@ return {run = test.run_cases(function()
             test.is_true(faces > 0)
         end)
 
+        test.it("reads shipped source before and during customization", function()
+            local editor = session("editor")
+            local route = "/library/message/notice"
+            local shipped = data(editor, "GET", route)
+            own(shipped)
+            local edit = {kind = shipped.kind, name = shipped.name, title = shipped.title, description = shipped.description,
+                html = shipped.html, text = shipped.text, subject = "Customized subject", base = shipped.base,
+                schema = shipped.schema, samples = shipped.samples, expected_revision = shipped.revision}
+            data(editor, "PUT", route, edit)
+            local current = data(editor, "GET", route)
+            test.eq("customized", current.state)
+            test.eq("Customized subject", current.subject)
+            for _, field in ipairs({"html", "text", "subject", "base"}) do
+                test.eq(shipped[field], current.original[field], field)
+            end
+            test.eq(shipped.schema.properties.subject.type, current.original.schema.properties.subject.type)
+            test.eq(shipped.samples.subject, current.original.samples.subject)
+            test.eq(403, (request(session("sender"), "GET", route)))
+            local part = own(fixture("part", "original-source-local", "Local part"))
+            data(editor, "POST", "/library", part, 201)
+            test.is_nil(data(editor, "GET", "/library/part/" .. part.name).original)
+        end)
+
         test.it("labels shipped resources with their owning module title", function()
             local editor = session("editor")
             local list = data(editor, "GET", "/library?kind=message&state=original")

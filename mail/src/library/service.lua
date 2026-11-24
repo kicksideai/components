@@ -396,9 +396,14 @@ end
 function M.get(input: types.ResourceKey): (types.Resource?, error?)
     local denied = client.require_library()
     if denied then return nil, denied end
-    local found, err = resources.get(input)
+    local found, err, declared = resources.get(input)
     if err then return nil, err end
     local item = found :: types.Resource
+    if declared and item.kind ~= "asset" then
+        local source = declared.resource
+        item.original = {html = source.html, text = source.text, subject = source.subject,
+            base = source.base, schema = source.schema, samples = source.samples}
+    end
     local usage, usage_err = used_by(item)
     if usage_err then return nil, usage_err end
     item.used_by = usage

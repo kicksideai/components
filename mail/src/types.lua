@@ -71,10 +71,12 @@ type ResourceContent = {
     title: string, description: string, html: string, text: string, base: string?,
     subject: string?, schema: VariableSchema, samples: JsonObject, asset: Asset?,
 }
+type OriginalSource = {html: string, text: string, subject: string?, base: string?,
+    schema: VariableSchema, samples: JsonObject}
 type Resource = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema: VariableSchema, samples: JsonObject,
-    asset: Asset?, state: string, origin: string?, origin_label: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?, used_by: UsedBy?,
+    asset: Asset?, original: OriginalSource?, state: string, origin: string?, origin_label: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?, used_by: UsedBy?,
 }
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
