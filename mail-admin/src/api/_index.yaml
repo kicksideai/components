@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.mail.admin.api
+entries:
+  - name: drivers
+    kind: function.lua
+    meta:
+      comment: Lists installed mail delivery drivers and their settings views for delivery administrators.
+    source: file://drivers.lua
+    method: list
+    modules: [http, registry, security]
+    imports:
+      types: kickside.mail.admin:types
+      http_errors: kickside.contract:http_errors
+    security:
+      policies:
+        - kickside.mail.security:driver_discovery
+  - name: drivers.endpoint
+    kind: http.endpoint
+    method: GET
+    func: drivers
+    path: /mail-admin/drivers

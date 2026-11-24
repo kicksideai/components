@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: mail-admin-harness
+description: Standalone harness that boots kickside/mail-admin over kickside/mail and runs its co-located *_test.lua suites.

@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.mail.admin.security
+entries:
+- name: module_access
+  kind: security.policy
+  meta:
+    title: KickSide Mail administration
+    surface: kickside.mail.admin
+    includes:
+    - kickside.mail.admin.security:member_endpoints
+    - kickside.mail.admin.security:module_runtime
+  groups: []
+  policy:
+    resources:
+    - kickside.mail.admin:admin
+    - kickside.mail.admin:settings_tab
+    - kickside.mail.admin:delivery
+    - kickside.mail.admin:delivery_block
+    actions:
+    - registry.get
+    - registry.find
+    effect: allow
+- name: member_endpoints
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.mail.admin:ui_static
+    - kickside.mail.admin:admin
+    - kickside.mail.admin:delivery
+    - kickside.mail.admin.api:drivers.endpoint
+    actions: access
+    effect: allow
+- name: module_runtime
+  kind: security.policy
+  meta:
+    private: true
+  groups: []
+  policy:
+    resources:
+    - kickside.mail.admin.api:drivers
+    - kickside.mail.admin.api:drivers.endpoint
+    actions:
+    - registry.get
+    - funcs.call
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  meta:
+    value_kind: security.scope
+    comment: Group that can load the Mail administration bundle. The System tab appears only
+      for callers that can read the mail library.
+  default: kickside.security.groups:members
+  targets:
+  - entry: kickside.mail.admin.security:module_access
+    path: .groups +=
+  - entry: kickside.mail.admin.security:member_endpoints
+    path: .groups +=
+  - entry: kickside.mail.admin.security:module_runtime
+    path: .groups +=
