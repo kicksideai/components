@@ -76,11 +76,11 @@ function focusFilters() {
 <template>
   <Teleport :to="control" :disabled="!control">
     <div ref="anchor" class="kanban-filter-anchor">
-      <Button class="kanban-filter-trigger" :pt="{ label: { class: 'kanban-filter-label' } }" label="Filter"
+      <Button class="kanban-filter-trigger" label="Filter" :badge="selection.length ? String(selection.length) : undefined"
         :aria-label="'Filter' + (selection.length ? ', ' + selection.length + ' active' : '')"
         aria-haspopup="dialog" :aria-expanded="open" title="Filter issues"
-        type="button" severity="secondary" text @click.stop="popover?.toggle($event)">
-        <template #icon><Icon icon="tabler:filter" aria-hidden="true" /></template>
+        type="button" severity="secondary" outlined @click.stop="popover?.toggle($event)">
+        <template #icon="{ class: iconClass }"><Icon icon="tabler:filter" :class="iconClass" aria-hidden="true" /></template>
       </Button>
       <Popover ref="popover" append-to="self" :pt="{ root: { class: 'kanban-filter-popover' } }"
         aria-label="Issue filters" @show="focusFilters" @hide="open = false">

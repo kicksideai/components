@@ -7,9 +7,9 @@ import type { BoardOption, BoardSchema } from '../work/types'
 import type { Invalidation } from '../live/coordinator'
 import { presentationContext } from './context'
 import {
-  and, backlogPageSize, boardFirstPageSize, bucketQuery, columnPageSize, findView, pageIdentity,
+  and, backlogPageSize, boardFirstPageSize, bucketQuery, columnPageSize, createViewReader, pageIdentity,
   queryFor, requireComplete, viewType, type Cursor, type FilterSelection, type FirstViewRead, type ItemSummary,
-  type Json, type Predicate, type QueryBucket, type QueryPage, type SavedView,
+  type Json, type Predicate, type QueryBucket, type QueryPage, type SavedView, type ViewReader,
 } from './query'
 
 export interface BoardColumn {
@@ -35,6 +35,7 @@ interface Options {
   tab: () => KanbanTab
   work: WorkClient
   firstView?: FirstViewRead
+  readView?: () => ViewReader | undefined
   accessLost: () => void
 }
 
@@ -53,6 +54,17 @@ function precedingEdge(edges: ColumnEdge[] | undefined, row: number, length: num
 function mergeRows(first: ItemSummary[], second: ItemSummary[], count: number) {
   const seen = new Set<string>()
   return [...first, ...second].filter(item => !seen.has(item.id) && !!seen.add(item.id)).slice(0, count)
+}
+
+function retainItems(column: BoardColumn, previous: BoardColumn) {
+  let unchanged = column.items.length === previous.items.length
+  const items = column.items.map((item, index) => {
+    const prior = previous.items[index]
+    if (prior?.id === item.id && prior.version === item.version) return prior
+    unchanged = false
+    return item
+  })
+  return unchanged ? previous.items : items
 }
 
 function subgroupPredicate(field: string, value: Json | undefined): Predicate {
@@ -112,10 +124,11 @@ export function usePages(options: Options) {
   let rowOffsets = new Map<string, number>()
   let generation = 0
   let sequence = 0
+  let invalidatedThrough = 0
   const snapshot = () => ({
     filters: filters.value, saved: saved.value, lanes: lanes.value, backlog: backlog.value, anchors: anchors.value,
     backlogIndex: backlogIndex.value, visible: visible.value, subgroupLimited: subgroupLimited.value,
-    columnEdges, rowOffsets,
+    columnEdges, rowOffsets, sequence,
   })
   const tabPages = new Map<KanbanTab, ReturnType<typeof snapshot>>()
   let firstView = options.firstView
@@ -133,6 +146,7 @@ export function usePages(options: Options) {
   function reset() {
     generation++
     begin()
+    sequence = 0
     saved.value = undefined
     visible.value = []
     held.value = new Set()
@@ -150,7 +164,7 @@ export function usePages(options: Options) {
 
   const viewKey = () => JSON.stringify([options.board().board_id, options.schema().generation, options.tab()])
   watch([() => options.board().board_id, () => options.schema().generation, options.tab], ([board, schema, tab], [priorBoard, priorSchema, priorTab]) => {
-    if (board !== priorBoard) sequence = 0
+    if (board !== priorBoard) invalidatedThrough = 0
     if (board !== priorBoard || schema !== priorSchema) {
       tabPages.clear()
       views.clear()
@@ -169,6 +183,7 @@ export function usePages(options: Options) {
       subgroupLimited.value = cached.subgroupLimited
       columnEdges = cached.columnEdges
       rowOffsets = cached.rowOffsets
+      sequence = cached.sequence
     }
   }, { flush: 'sync' })
   watch(() => options.board().access.read, readable => {
@@ -188,10 +203,27 @@ export function usePages(options: Options) {
   }
 
   function fence(minSeq?: number) {
-    return Math.max(sequence, minSeq ?? 0) || undefined
+    return Math.max(sequence, invalidatedThrough, minSeq ?? 0) || undefined
+  }
+
+  function activate(minSeq?: number) {
+    const tab = options.tab()
+    if (tab !== 'board' && tab !== 'backlog') return
+    if (fetching.value) return
+    const required = Math.max(invalidatedThrough, minSeq ?? 0)
+    const fresh = tab === 'backlog' ? !!backlog.value && backlog.value.as_of >= required
+      : !!lanes.value.length && lanes.value.every(lane => lane.columns.every(column =>
+        (!visible.value.length || visible.value.includes(column.id)) ? (column.asOf ?? 0) >= required : true))
+    if (!error.value && fresh) return
+    void refresh({ minSeq, revalidate: false })
   }
 
   async function refresh({ minSeq, revalidate }: Invalidation = { revalidate: false }, targetPage?: number) {
+    invalidatedThrough = Math.max(invalidatedThrough, minSeq ?? 0)
+    if (revalidate) {
+      tabPages.clear()
+      views.clear()
+    }
     const kind = options.tab()
     if (kind !== 'board' && kind !== 'backlog') return
     const board = options.board()
@@ -208,8 +240,8 @@ export function usePages(options: Options) {
     fetching.value = true
     error.value = undefined
     try {
-      const view = (!revalidate && views.get(key))
-        || await (initial?.view ?? findView(options.work, board.board_id, viewType(kind)))
+      const reader = options.readView?.() ?? createViewReader(options.work, board.board_id)
+      const view = (!revalidate && views.get(key)) || await (initial?.view ?? reader(viewType(kind)))
       if (!current()) return
       if (oldView && pageIdentity(board.board_id, options.schema().generation, oldView, selected)
           !== pageIdentity(board.board_id, options.schema().generation, view, selected)) {
@@ -266,6 +298,7 @@ export function usePages(options: Options) {
             const prior = retained.get(column.id)
             if (!prior) return column
             if (held.value.has(column.id) || (targeted && !updated.has(column.id))) return prior
+            if (!revalidate) column.items = retainItems(column, prior)
             if (prior.items.length <= groupedPageLimit || column.count <= column.items.length) return column
             const offset = rowOffsets.get(column.id) ?? 0
             const edge = updated.has(column.id) && offset >= deepWindowStart
@@ -349,7 +382,7 @@ export function usePages(options: Options) {
   function visibleNeedsRefresh(entered: readonly string[]) {
     if (!entered.length) return false
     if (fetching.value) return true
-    return lanes.value.some(lane => lane.columns.some(column => entered.includes(column.id) && (column.asOf ?? 0) < sequence))
+    return lanes.value.some(lane => lane.columns.some(column => entered.includes(column.id) && (column.asOf ?? 0) < invalidatedThrough))
   }
 
   async function pageBacklog(direction: -1 | 1) {
@@ -364,6 +397,6 @@ export function usePages(options: Options) {
 
   return {
     context, lanes, backlog, backlogIndex, error, fetching, paging, subgroupLimited, visible, held,
-    select, refresh, more, pageBacklog, visibleRow, visibleNeedsRefresh,
+    select, activate, refresh, more, pageBacklog, visibleRow, visibleNeedsRefresh,
   }
 }
