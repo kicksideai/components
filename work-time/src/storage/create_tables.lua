@@ -62,7 +62,11 @@ local UP: { string } = {
         over_estimate INTEGER NOT NULL DEFAULT 0 CHECK (over_estimate IN (0, 1)),
         PRIMARY KEY (attachment_id, item_id)
     )]],
-    [[CREATE INDEX kickside_work_time_total_board_item ON kickside_work_time_total (board_id, item_id)]],
+    [[CREATE VIEW kickside_work_time_active_total AS
+        SELECT t.board_id, t.item_id, t.minutes, t.entry_count, t.over_estimate
+        FROM kickside_work_plugin p JOIN kickside_work_time_total t
+          ON t.attachment_id = p.attachment_id AND t.board_id = p.board_id
+        WHERE p.plugin = 'kickside.work.time:plugin' AND p.active = 1]],
     -- An empty sprint id makes unallocated time a single upsertable bucket.
     [[CREATE TABLE kickside_work_time_daily (
         attachment_id TEXT NOT NULL,
@@ -95,6 +99,7 @@ local function create(db, sqlite: boolean)
 end
 
 local function drop(db)
+    execute(db, "DROP VIEW kickside_work_time_active_total")
     for _, name in ipairs({ "daily", "total", "receipt", "worklog", "item", "attachment" }) do
         execute(db, "DROP TABLE kickside_work_time_" .. name)
     end

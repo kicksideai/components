@@ -8,8 +8,8 @@ local CAPABILITY = "kickside.work.planning:sprint_reference"
 
 -- Planning owns validation and may be absent. Its resolver runs as the
 -- request actor and treats a captured sprint as the first date candidate.
-function M.resolve(tx: sql.Transaction, board_id: string, item: string, work_date: string, sprint_id: string?): (string?, error?)
-    local planning, err = plugin_rows.active(tx, board_id, "kickside.work.planning:plugin")
+function M.resolve(db: sql.DB, board_id: string, item: string, work_date: string, sprint_id: string?): (string?, error?)
+    local planning, err = plugin_rows.active(db, board_id, "kickside.work.planning:plugin")
     if err or not planning then return nil, err end
     local entry, discovery_err = registry.get(CAPABILITY)
     if errors.is(discovery_err, errors.NOT_FOUND) then return nil, nil end

@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+# Generated from src/contracts/vocabulary.json.
+version: '1.0'
+namespace: kickside.work.time
+entries:
+- name: time
+  kind: contract.definition
+  methods:
+  - name: create
+    description: 'Log time on a Work item'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"minutes":{"type":"integer","minimum":1},"work_date":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"note":{"type":"string","maxLength":8192},"key":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id","item","minutes","work_date","key"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"id":{"type":"string","minLength":1,"maxLength":255},"version":{"type":"integer","minimum":1},"replayed":{"type":"boolean"}},"required":["id","version","replayed"],"additionalProperties":false}'
+  - name: edit
+    description: 'Edit a versioned worklog'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"id":{"type":"string","minLength":1,"maxLength":255},"expected_version":{"type":"integer","minimum":1},"minutes":{"type":"integer","minimum":1},"work_date":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"note":{"type":"string","maxLength":8192}},"required":["board_id","id","expected_version"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"id":{"type":"string","minLength":1,"maxLength":255},"version":{"type":"integer","minimum":1}},"required":["id","version"],"additionalProperties":false}'
+  - name: delete
+    description: 'Delete a versioned worklog'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"id":{"type":"string","minLength":1,"maxLength":255},"expected_version":{"type":"integer","minimum":1}},"required":["board_id","id","expected_version"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"id":{"type":"string","minLength":1,"maxLength":255},"version":{"type":"integer","minimum":1}},"required":["id","version"],"additionalProperties":false}'
+  - name: list
+    description: 'List visible Work time entries'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"from":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"to":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"person":{"type":"string","minLength":1,"maxLength":255},"cursor":{"type":"string","minLength":1,"maxLength":4096},"limit":{"type":"integer","minimum":1,"maximum":100}},"required":["board_id"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"entries":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"person":{"type":"string","minLength":1,"maxLength":255},"person_name":{"type":"string"},"work_date":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"minutes":{"type":"integer","minimum":1},"version":{"type":"integer","minimum":1},"note":{"type":"string","maxLength":8192},"sprint":{"type":"string","minLength":1,"maxLength":255},"can_edit":{"type":"boolean"}},"required":["id","item","person","work_date","minutes","version","can_edit"],"additionalProperties":false}},"cursor":{"type":"string","minLength":1,"maxLength":4096}},"required":["entries"],"additionalProperties":false}'
+  - name: totals
+    description: 'Read Work time totals'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"from":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"to":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"person":{"type":"string","minLength":1,"maxLength":255},"cursor":{"type":"string","minLength":1,"maxLength":4096},"limit":{"type":"integer","minimum":1,"maximum":100},"sprint":{"type":"string","minLength":1,"maxLength":255},"group_by":{"type":"string","enum":["board","person_week","sprint"]}},"required":["board_id"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"groups":{"type":"array","items":{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint":{"type":"string","minLength":1,"maxLength":255},"person":{"type":"string","minLength":1,"maxLength":255},"person_name":{"type":"string"},"week":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"entry_count":{"type":"integer","minimum":0},"minutes":{"type":"integer","minimum":0},"original_minutes":{"type":"integer","minimum":0},"points":{"type":"number"}},"required":["board_id","entry_count","minutes"],"additionalProperties":false}},"cursor":{"type":"string","minLength":1,"maxLength":4096},"coverage":{"type":"string","enum":["complete","limited"]},"direct_minutes":{"type":"integer","minimum":0},"subtree_minutes":{"type":"integer","minimum":0},"entry_count":{"type":"integer","minimum":0},"original_minutes":{"type":"integer","minimum":0},"remaining_minutes":{"type":"integer","minimum":0},"over_estimate":{"type":"boolean"}},"required":["coverage"],"additionalProperties":false}'
+  - name: summary
+    description: 'Read direct time and estimates for a batch of items'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"items":{"type":"array","items":{"type":"string","minLength":1,"maxLength":255},"minItems":1,"maxItems":100}},"required":["board_id","items"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"items":{"type":"array","items":{"type":"object","properties":{"item":{"type":"string","minLength":1,"maxLength":255},"minutes":{"type":"integer","minimum":0},"entry_count":{"type":"integer","minimum":0},"original_minutes":{"type":"integer","minimum":0},"remaining_minutes":{"type":"integer","minimum":0},"over_estimate":{"type":"boolean"}},"required":["item","minutes","entry_count","over_estimate"],"additionalProperties":false}}},"required":["items"],"additionalProperties":false}'
+- name: time_binding
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work.time:time
+    default: true
+    methods:
+      create: kickside.work.time.api:handle_create
+      edit: kickside.work.time.api:handle_edit
+      delete: kickside.work.time.api:handle_delete
+      list: kickside.work.time.api:handle_list
+      totals: kickside.work.time.api:handle_totals
+      summary: kickside.work.time.api:handle_summary
+- name: estimate_fields
+  kind: contract.definition
+  methods:
+  - name: fields
+    description: 'Discover the active Time estimate field codes'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"original":{"type":"string","minLength":1,"maxLength":255},"remaining":{"type":"string","minLength":1,"maxLength":255}},"required":["original","remaining"],"additionalProperties":false}'
+- name: estimate_fields_binding
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work.time:estimate_fields
+    default: true
+    methods: {fields: kickside.work.time.api:handle_estimate_fields}

@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.time.api
+entries:
+- name: handlers
+  kind: library.lua
+  source: file://handlers.lua
+  modules: [funcs, sql]
+  imports:
+    shape: kickside.work.domain:shape
+    schemas: kickside.work.time.contracts:schemas
+    items: kickside.work.time.reads:items
+    reports: kickside.work.time.reads:reports
+    snapshot: kickside.work.time.reads:snapshot
+    types: kickside.work.time.reads:types
+    work: kickside.work:types
+    names: kickside.work.time.reads:names
+- name: csv
+  kind: library.lua
+  source: file://csv.lua
+  imports:
+    types: kickside.work.time.reads:types

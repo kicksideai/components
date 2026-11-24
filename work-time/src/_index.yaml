@@ -27,6 +27,8 @@ entries:
   - {entry: 'kickside.work.time:provider_access', path: '.groups +='}
   - {entry: 'kickside.work.time.worklogs:mutation_access', path: '.groups +='}
   - {entry: 'kickside.work.time.projection:worker_discovery', path: '.groups +='}
+  - {entry: 'kickside.work.time.api:transport_access', path: '.groups +='}
+  - {entry: 'kickside.work.time.api:endpoint_access', path: '.groups +='}
 - name: plugin
   kind: registry.entry
   meta:
@@ -41,6 +43,13 @@ entries:
     - kind: kickside.work.time:items
       input: state
       worker_ref: func://kickside.work.time.projection:worker
+    seams: ['kickside.work.time.reads:logged_time']
+    tools:
+    - kickside.work.time.api:log_time
+    - kickside.work.time.api:edit_worklog
+    - kickside.work.time.api:delete_worklog
+    - kickside.work.time.api:list_worklogs
+    - kickside.work.time.api:time_totals
     schema:
       provider: kickside.work.time:schema_provider
     config_schema:
@@ -114,6 +123,8 @@ entries:
     - kickside.work.time:attachment
     - kickside.work.time:schema_provider
     - kickside.work.time.projection:worker
+    - kickside.work.time.reads:logged_time
+    - kickside.work.time:estimate_fields
     - kickside.work.time.events:worklog.changed
     - kickside.work.time.events:time.over_estimate
     - kickside.work.time.events:worklog_changed_port

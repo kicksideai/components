@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.time.reads
+entries:
+- name: logged_time
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: kickside.work.time:plugin
+    table: kickside_work_time_active_total
+    board_column: board_id
+    item_column: item_id
+    projection: kickside.work.time:items
+    filters:
+      minutes: {column: minutes, type: integer, ops: [gt]}
+      over_estimate: {column: over_estimate, type: integer, ops: [eq]}
+- name: types
+  kind: library.lua
+  source: file://types.lua
+  imports:
+    work: kickside.work:types
+    access: kickside.work.time.access:access
+    config: kickside.work.time:config
+- name: snapshot
+  kind: library.lua
+  source: file://snapshot.lua
+  modules: [sql, time, json]
+  imports:
+    types: kickside.work.time.reads:types
+    access: kickside.work.time.access:access
+    storage: kickside.work.time:storage
+    store: kickside.work.persist:store
+    job_rows: kickside.work.persist:job_rows
+    layout: kickside.work.domain:layout
+    values: kickside.work.domain:values
+    cursor_codec: kickside.work.read:cursor_codec
+    access_rows: kickside.work.persist:access_rows
+- name: windows
+  kind: library.lua
+  source: file://windows.lua
+  modules: [time]
+  imports:
+    types: kickside.work.time.reads:types
+    access: kickside.work.time.access:access
+    input: kickside.work.time.worklogs:input
+- name: items
+  kind: library.lua
+  source: file://items.lua
+  modules: [sql]
+  imports:
+    types: kickside.work.time.reads:types
+    snapshot: kickside.work.time.reads:snapshot
+    access: kickside.work.time.access:access
+    store: kickside.work.persist:store
+    work: kickside.work:types
+    document: kickside.work.domain:document
+    rules: kickside.work.domain:access_rules
+- name: reports
+  kind: library.lua
+  source: file://reports.lua
+  modules: [sql, contract, registry]
+  imports:
+    types: kickside.work.time.reads:types
+    snapshot: kickside.work.time.reads:snapshot
+    windows: kickside.work.time.reads:windows
+    items: kickside.work.time.reads:items
+    access: kickside.work.time.access:access
+    store: kickside.work.persist:store
+    plugin_rows: kickside.work.persist:plugin_rows
+    work: kickside.work:types
+- name: names
+  kind: library.lua
+  source: file://names.lua
+  modules: [contract]

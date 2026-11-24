@@ -31,7 +31,7 @@ function M.explicit_delete_deadline(created: string): (string?, error?)
     return day:add(30 * DAY):format(DATE), nil
 end
 
-local function calendar_date(date: unknown): error?
+function M.calendar_date(date: unknown): error?
     if type(date) == "string" and date:match("^%d%d%d%d%-%d%d%-%d%d$") then
         local parsed, err = time.parse(DATE, date)
         if not err and parsed and parsed:format(DATE) == date then return nil end
@@ -60,7 +60,7 @@ function M.validate(raw: unknown, operation: string): error?
         if not positive(input.minutes) then return invalid("worklog_minutes_invalid", "Minutes must be a positive integer") end
     end
     if operation == "create" or input.work_date ~= nil then
-        local err = calendar_date(input.work_date)
+        local err = M.calendar_date(input.work_date)
         if err then return err end
     end
     if input.note ~= nil and (type(input.note) ~= "string" or input.note:find("\0", 1, true) or not utf8.len(input.note)) then
