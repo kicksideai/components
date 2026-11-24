@@ -10,6 +10,7 @@
   "pim-admin": "0.1.25",
   "work-admin": "0.1.29",
   "work-search": "0.1.6",
-  "work-planning": "0.1.7",
-  "work-kanban": "0.1.5"
+  "work-planning": "0.1.8",
+  "work-kanban": "0.1.5",
+  "work-time": "0.1.0"
 }
