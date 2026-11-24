@@ -27,7 +27,7 @@ Load a tag lazily through the shell and give a badge only the already-authorized
 
 ## Plugin extensions
 
-Manifests with `meta.type: kickside.work.plugin` declare interface version 1, an attachment binding, optional deployment settings and board configuration, dependencies, seam IDs, tools, projections, and a schema source. Schema sources are static templates or `kickside.work:schema_provider` bindings. Packs compose those sources with a board schema and saved views.
+Manifests with `meta.type: kickside.work.plugin` declare interface version 1, an attachment binding, optional deployment settings and board configuration, dependencies, seam IDs, tools, projections, and a schema source. Optional `title`, `description`, `icon` and `category` strings describe the plugin to administrators; `category` names the purpose heading that groups it in board administration. Schema sources are static templates or `kickside.work:schema_provider` bindings. Packs compose those sources with a board schema and saved views.
 
 When board ADMIN supplies `config` to `configure_plugin` for an active plugin with a schema provider, Work submits the complete override through the same provider resolution, compilation and change checks as schema review. A successful change records the configuration and compiled schema in one schema generation. Refusals return the typed schema findings. Settings for plugins whose schemas are static or absent are written directly to the attachment.
 

@@ -34,11 +34,12 @@ function M.list(board_id: string, desired: { types.PluginState }, activations: {
             title = type(meta.title) == "string" and meta.title or nil,
             description = type(meta.description) == "string" and meta.description or nil,
             icon = type(meta.icon) == "string" and meta.icon or nil,
+            category = type(meta.category) == "string" and meta.category or nil,
             requires = {}, tools = {}, projections = table.create(0, 1), lifecycle = { state = "ready" } }
         local plugin, perr = manifests.load(id)
         if plugin then
             view.interface_version = plugin.interface_version
-            view.title, view.description, view.icon = plugin.title, plugin.description, plugin.icon
+            view.title, view.description, view.icon, view.category = plugin.title, plugin.description, plugin.icon, plugin.category
             view.requires, view.tools = plugin.requires, plugin.tools
             if options then view.config_schema = plugin.config_schema end
         elseif options and type(meta.config_schema) == "table" then view.config_schema = meta.config_schema :: types.JsonObject end

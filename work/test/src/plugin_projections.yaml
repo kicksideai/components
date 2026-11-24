@@ -131,6 +131,7 @@ entries:
     title: Contract
     description: Contract fixture
     icon: puzzle
+    category: Testing
     attachment: app:fold_attachment
     config_schema:
       type: object
@@ -199,3 +200,10 @@ entries:
     - app:credential_attachment
     actions: [registry.get, contract.get, contract.open]
     effect: allow
+- name: numeric_category_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    interface_version: 1
+    category: 3
+    attachment: app:fold_attachment

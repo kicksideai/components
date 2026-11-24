@@ -56,11 +56,16 @@ local function define()
             local p = assert(manifests.load("app:contract_plugin"))
             test.eq(p.description, "Contract fixture")
             test.eq(p.icon, "puzzle")
+            test.eq(p.category, "Testing")
+            local views = assert(plugins.list("category-board", {}, {}, false, true))
+            local view: types.PluginView? = nil
+            for _, candidate in ipairs(views) do if candidate.plugin == "app:contract_plugin" then view = candidate end end
+            test.eq(assert(view).category, "Testing")
             test.eq(p.projections[1].input, "state")
             test.eq(p.projections[1].revision, 2)
             test.eq(p.projections[2].input, "events")
             test.eq(p.projections[2].revision, 1)
-            for id, code in pairs({ ["app:absent_plugin"] = "unknown_plugin", ["app:leaky_plugin"] = "plugin_invalid", ["app:missing_worker_plugin"] = "plugin_projection_invalid" }) do
+            for id, code in pairs({ ["app:absent_plugin"] = "unknown_plugin", ["app:leaky_plugin"] = "plugin_invalid", ["app:numeric_category_plugin"] = "plugin_invalid", ["app:missing_worker_plugin"] = "plugin_projection_invalid" }) do
                 local _, err = manifests.load(id)
                 test.not_nil(err)
                 test.eq(err:kind(), errors.INVALID)
