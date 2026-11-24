@@ -53,11 +53,18 @@ profiles:
         default: true
         methods: {fields: 'app:fail_estimate_fields'}
   malformed-estimates:
+    workspace:
+      replacements:
+        kickside/work: ../../work
+        kickside/work-planning: ../../work-planning
     disable:
       entries: ['app:work_time_sprint_reference_test', 'app:work_time_combined_integration_test', 'app:work_time_combined_stress_test', 'app:work_time_estimate_failure_test']
       meta:
         type: [test_support]
     override:
+      app:dep.planning:parameters:
+      - name: kickside.work.planning.api:api_router
+        value: app:api
       kickside.work.time:estimate_fields_binding:contracts:
       - contract: kickside.work.time:estimate_fields
         default: true
