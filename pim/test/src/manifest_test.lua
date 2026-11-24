@@ -149,11 +149,16 @@ local function define()
             local p = assert(plugins.load("app:probe_shelf_plugin"))
             test.eq(p.id, "app:probe_shelf_plugin")
             test.eq(p.settings, "app.probe_shelf")
+            test.eq(p.category, "Stock")
+            local listed = assert(plugins.list())
+            local shelf: types.PluginOption? = nil
+            for _, option in ipairs(listed) do if option.plugin == "app:probe_shelf_plugin" then shelf = option end end
+            test.eq(assert(shelf).category, "Stock")
             test.eq(p.attachment, "app:probe_shelf_attachment")
             test.not_nil(assert(p.schema).template)
             test.is_nil(assert(p.schema).provider)
             test.not_nil((plugins.load("app:probe_bare_plugin")))
-            for _, bad in ipairs({ "app:nope", "app:manifest_test", "app:probe_leaky_plugin" }) do
+            for _, bad in ipairs({ "app:nope", "app:manifest_test", "app:probe_leaky_plugin", "app:probe_numeric_category_plugin" }) do
                 local _, err = plugins.load(bad)
                 test.not_nil(err, bad)
             end

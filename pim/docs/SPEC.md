@@ -415,6 +415,7 @@ One `registry.entry`, `meta.type: kickside.pim.plugin`, declares a plugin.
 | Field | Meaning |
 |---|---|
 | `title`, `description`, `icon` | display |
+| `category` | optional purpose heading that groups the plugin in catalog administration |
 | `attachment` | binding id of the plugin's attachment component kind; required |
 | `config_schema` | JSON schema of the per-catalog configuration; no secret-annotated property at any depth (properties, items, allOf/anyOf/oneOf, `$defs`, local `$ref`); secrecy comes from the schema annotation, never from a property's name |
 | `settings` | deployment defaults for configuration values only; a deployment default never activates a plugin |
@@ -500,7 +501,7 @@ One entry shape applies wherever plugin state is answered (`get_schema.plugins`,
 a list, and the options listing):
 
 ```
-{ plugin: <id>, interface_version?: integer, title, description, icon, installed: boolean, active: boolean,
+{ plugin: <id>, interface_version?: integer, title, description, icon, category?, installed: boolean, active: boolean,
   attachment_id?: string, config?: object,          -- the validated effective configuration
   requires: [..], tools: [..],
   lifecycle: { state: "pending" | "ready" | "failed", error?: { kind, code, message, field?, projection?, start_seq?, max_pruned_seq? } },

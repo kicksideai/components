@@ -108,13 +108,13 @@ type PluginSchema = { fragment: JsonObject, version: string?, digest: string }
 -- Registry metadata authored by a plugin, before the host applies defaults.
 type PluginProjectionDeclaration = { kind: string, worker_ref: string, input: "state" | "events", revision: integer?, events: { string }? }
 type PluginManifest = {
-    type: "kickside.pim.plugin", interface_version: integer?, title: string?, description: string?, icon: string?, settings: string?,
+    type: "kickside.pim.plugin", interface_version: integer?, title: string?, description: string?, icon: string?, category: string?, settings: string?,
     attachment: string, config_schema: JsonObject?, schema: PluginSchemaSource?, projections: { PluginProjectionDeclaration }?,
     tools: { string }?, requires: { string }?, seams: { string }?,
 }
 -- Plugin is a loaded kickside.pim.plugin manifest.
 type Plugin = {
-    id: string, interface_version: integer, title: string?, description: string?, icon: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?,
+    id: string, interface_version: integer, title: string?, description: string?, icon: string?, category: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?,
     projections: { PluginProjection }?, tools: { string }?, requires: { string }?, seams: { string }?,
 }
 type PluginLifecycleError = {
@@ -141,7 +141,7 @@ type PluginFeedRequest = { catalog_id: string, plugin: string, kind: string, tok
 type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, gap: FeedGap?, changes: { ChangeItem }, token: string, done: boolean }
 type PluginContext = ReadStamp & { attachment_id: string?, config: JsonObject, lifecycle: PluginLifecycle, projections: { [string]: PluginProjectionState }, retention: { event_days: integer } }
 type PluginReferences = { fields: { string }, scopes: { string }, checks: { string }, plugins: { string }, shell_bindings: { string } }
-type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
+type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, category: string?, installed: boolean, active: boolean,
     attachment_id: string?, config: JsonObject?, requires: { string }, tools: { string }, lifecycle: PluginLifecycle,
     projections: { [string]: PluginProjectionState }, problem: PluginProblem?, references: PluginReferences? }
 
