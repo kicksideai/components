@@ -5,7 +5,7 @@ SHELL := bash
 ENCRYPTION_KEY ?= 0000000000000000000000000000000000000000000000000000000000000000
 export ENCRYPTION_KEY
 
-.PHONY: lockrefresh lint typecheck test verify publish
+.PHONY: lockrefresh lint typecheck check-module test verify publish
 lockrefresh:
 	cd test && $(WIPPY) update
 
@@ -21,8 +21,11 @@ test:
 	LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' test/.wippy/test.log | tr '\r' '\n' | \
 		awk '/No tests found|No tests match/ { empty=1 } /^[[:space:]]*FAILED([[:space:]]|$$)/ { failed=1 } /^[[:space:]]*PASSED([[:space:]]|$$)/ { passed=1 } END { exit(empty || failed || !passed) }'
 
+check-module:
+	WIPPY="$(WIPPY)" node scripts/check-module.mjs
+
 verify: lockrefresh
-	$(MAKE) lint typecheck test
+	$(MAKE) lint typecheck check-module test
 
 publish:
 	@echo "Releases use GitHub Release Please (.github/workflows/release.yml)." >&2

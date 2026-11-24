@@ -8,13 +8,12 @@
       "module": "mail",
       "type": "plugin",
       "visibility": "public",
-      "embed": [
-        "kickside.mail.views:layout_assets"
-      ],
+      "embed": [],
       "targets": [
         "lockrefresh",
         "lint",
         "typecheck",
+        "check-module",
         "test",
         "verify",
         "publish"
