@@ -97,12 +97,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-block-size: 55px;
+  min-block-size: var(--kanban-toolbar-height);
   background: var(--p-content-background);
 }
-.kanban-issue-header-actions { display: flex; align-items: center; gap: 2px; margin-inline-start: auto; }
-.kanban-issue-header-actions svg { inline-size: 14px; block-size: 14px; }
-.kanban-issue-header .kanban-issue-icon { inline-size: var(--kx-control-height-sm); padding-inline: 0; }
+.kanban-issue-header-actions { display: flex; align-items: center; gap: 4px; margin-inline-start: auto; }
 .kanban-issue-identity { font-size: 14px; font-weight: 600; }
 .kanban-issue-identity:focus { outline: none; }
 .kanban-issue-kind { color: var(--p-text-muted-color); font-size: 12px; }
@@ -175,8 +173,15 @@
 .issue-stream-list .kanban-issue-link { margin-inline-end: .5rem; }
 
 @container kanban-page (max-width: 679px) {
-  .kanban-page:has(> .kanban-issue-drawer) > .kanban-main, .kanban-issue-resizer { display: none; }
-  .kanban-issue-drawer { flex: 1 1 0; border-inline-start: 0; }
+  .kanban-page[data-issue-open='true'] > .kanban-main > :not(.kanban-toolbar) { visibility: hidden; }
+  .kanban-issue-resizer { display: none; }
+  .kanban-issue-drawer {
+    position: absolute;
+    inset: var(--kanban-toolbar-height) 0 0;
+    border-inline-start: 0;
+  }
+  .kanban-issue-drawer[data-full-page='true'] { inset-block-start: 0; }
+  .kanban-issue-drawer:not([data-full-page='true']) .kanban-issue-header { padding-inline-start: var(--kanban-gutter); }
 }
 
 @media (max-width: 767px) {
