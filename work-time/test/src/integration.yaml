@@ -25,3 +25,30 @@ entries:
     scoped: app:scoped
     steps: app:steps
     test: wippy.test:test
+- name: work_time_estimate_failure_test
+  kind: function.lua
+  meta: {type: test, suite: work_time_estimate_failure, timeout: 120s}
+  source: file://stress_integration.lua
+  method: run_failure
+  modules: [time]
+  imports:
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps
+    test: wippy.test:test
+- name: fail_estimate_fields
+  kind: function.lua
+  source: |
+    local function run(): (nil, error)
+        return nil, errors.new({ kind = errors.CONFLICT, message = "Estimate fields unavailable",
+            details = { code = "estimate_fields_test_conflict" } })
+    end
+    return { run = run }
+  method: run
+- name: fail_estimate_fields_access
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  policy:
+    resources: [app:fail_estimate_fields]
+    actions: [contract.call, funcs.call]
+    effect: allow

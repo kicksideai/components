@@ -1,16 +1,15 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local work = require("work")
+local types = require("types")
 local M = {}
 
 type Config = {
     issue_types: { string }?, epic_types: { string }?, epic_due_field: string?, points_field: string?,
 }
-type EstimateFields = { original: string, remaining: string }
 type Workload = { assignee: string?, points: string?, original: string?, remaining: string?, sprint: string? }
 type RoadmapType = { start: string, finish: string, progress_field: string?, membership: string? }
 
 M.Config = Config
-M.EstimateFields = EstimateFields
 M.Workload = Workload
 M.RoadmapType = RoadmapType
 
@@ -28,7 +27,7 @@ local function numeric(field: work.Field?): boolean
     return field ~= nil and field.cardinality == "one" and (field.form == "int" or field.form == "dec")
 end
 
-function M.workload(schema: work.Compiled, config: Config, estimates: EstimateFields?): Workload
+function M.workload(schema: work.Compiled, config: Config, estimates: types.EstimateFields?): Workload
     local fields = catalog(schema)
     local points = fields[config.points_field or "story_points"]
     local original = estimates and fields[estimates.original]

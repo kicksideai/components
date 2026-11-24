@@ -45,7 +45,7 @@ local function day(now, offset)
     return now:add(offset * 24 * time.HOUR):format("2006-01-02")
 end
 
-return { run = test.run_cases(function()
+local run = test.run_cases(function()
     test.describe("installed Time and Planning capabilities", function()
         test.it("loads point capacity on a Planning-only board", function()
             local admin = scoped.admin()
@@ -80,7 +80,9 @@ return { run = test.run_cases(function()
             local capacity = ok(planning(admin, "check_capacity", { board_id = board.id, sprint_id = sprint }))
             test.eq(capacity.total.load, 90)
             test.eq(capacity.total.capacity, 120)
-            test.eq(ok(planning(admin, "workload", { board_id = board.id, sprint_id = sprint })).total.load, 60)
+            local member = scoped.member()
+            steps.call(board, "grant", { subject_id = member.id, mask = 1 })
+            test.eq(ok(planning(member, "workload", { board_id = board.id, sprint_id = sprint })).total.load, 60)
 
             local route = "/" .. board.id .. "/time/"
             local logged = ok(admin.http("POST", route .. "worklogs", { item = issue, minutes = 30,
@@ -98,4 +100,24 @@ return { run = test.run_cases(function()
             test.eq(summary.original_minutes, 90)
         end)
     end)
-end) }
+end)
+
+local run_failure = test.run_cases(function()
+    test.describe("Planning's Time estimate capability", function()
+        test.it("propagates the conflict returned by the active Time estimate binding", function()
+            local admin = scoped.admin()
+            local board = setup(admin, true)
+            local sprint = steps.create(board, "sprint", { name = "Minutes" })
+            local request = { board_id = board.id, sprint_id = sprint }
+            ok(planning(admin, "set_capacity", {
+                board_id = board.id, sprint_id = sprint, expected_version = 0, unit = "minutes",
+                rows = { { person = admin.id, amount = 120 } },
+            }))
+            local reply = planning(admin, "workload", request)
+            test.eq(reply.status, 409, reply.raw)
+            test.eq(reply.body.details.code, "estimate_fields_test_conflict", reply.raw)
+        end)
+    end)
+end)
+
+return { run = run, run_failure = run_failure }

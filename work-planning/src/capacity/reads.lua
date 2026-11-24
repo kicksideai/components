@@ -6,13 +6,13 @@ local query = require("query")
 local budget = require("budget")
 local storage = require("storage")
 local mapping = require("mapping")
-local funcs = require("funcs")
-local registry = require("registry")
+local types = require("types")
+local contract = require("contract")
 local M = {}
 
 local PLUGIN = "kickside.work.planning:plugin"
 local TIME_PLUGIN = "kickside.work.time:plugin"
-local TIME_FIELDS = "kickside.work.time.api:handle_estimate_fields"
+local TIME_FIELDS = "kickside.work.time:estimate_fields"
 local OPEN = { "triage", "backlog", "unstarted", "started" }
 
 type Request = { board_id: string, sprint_id: string?, budget: work_reads.ReadBudget? }
@@ -48,21 +48,18 @@ local function active_board(id: string): (Board?, error?)
     return nil, problem(errors.NOT_FOUND, "plugin_inactive", "Work Planning is inactive on this board.")
 end
 
-local function estimates(board_id: string, schema: work_reads.SchemaView): (mapping.EstimateFields?, error?)
+local function estimates(board_id: string, schema: work_reads.SchemaView): (types.EstimateFields?, error?)
     local active = false
     for _, plugin in ipairs(schema.plugins or {}) do
         if plugin.plugin == TIME_PLUGIN and plugin.active then active = true end
     end
     if not active then return nil, nil end
-    local entry, err = registry.get(TIME_FIELDS)
+    local definition, err = contract.get(TIME_FIELDS, types.EstimateFieldsClient)
     if errors.is(err, errors.NOT_FOUND) then return nil, nil end
-    if err or not entry then return nil, err end
-    local result, field_err = funcs.call(TIME_FIELDS, { board_id = board_id })
-    if field_err or not result then return nil, field_err end
-    if type(result) ~= "table" or type(result.original) ~= "string" or type(result.remaining) ~= "string" then
-        return nil, problem(errors.INTERNAL, "planning_estimate_fields_invalid", "Work Time returned invalid estimate fields.")
-    end
-    return { original = result.original, remaining = result.remaining }, nil
+    if not definition then return nil, err end
+    local client, open_err = definition:open()
+    if not client then return nil, open_err end
+    return client:fields({ board_id = board_id })
 end
 
 local function bucket(): Bucket
@@ -147,7 +144,7 @@ local function read(request: Request, workload: boolean): (Report?, error?)
 
     local unit = held.unit
     if not request.sprint_id then unit = "minutes" end
-    local time_fields: mapping.EstimateFields? = nil
+    local time_fields: types.EstimateFields? = nil
     if unit == "minutes" then
         local found, field_err = estimates(request.board_id, schema)
         if field_err then return nil, field_err end
