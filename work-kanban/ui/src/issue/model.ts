@@ -6,6 +6,8 @@ import type { BoardSchema } from '../work/types'
 import type { DeclaredTransition, Detail, Field, FieldValue, Issue, IssueType, Schema, Transition, Values, WriteResult } from './types'
 
 export const issuePageLimit = 20
+export const richTextFields = ['description', 'acceptance_criteria', 'planning_goal']
+
 const common = ['title', 'name', 'description', 'assignee', 'priority', 'story_points', 'current_sprint', 'due_date']
 
 export function compiledSchema(board: BoardSchema): Schema {

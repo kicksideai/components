@@ -2,14 +2,18 @@
 <script setup lang="ts">
 import SystemTabs from '@kickside/ui-kit/SystemTabs.vue'
 import Button from 'primevue/button'
-import Textarea from 'primevue/textarea'
-import { computed, ref, useId, watch } from 'vue'
+import { computed, ref, shallowRef, useId, watch } from 'vue'
+import IssueAssignee from '../presentation/IssueAssignee.vue'
+import { currentUser } from '../work/me'
 import { issuePath, kanbanRoot } from '../route'
 import FieldDisplay from './FieldDisplay.vue'
+import MarkdownEditor from './MarkdownEditor.vue'
+import MarkdownView from './MarkdownView.vue'
+import { exactTime, relativeTime } from './markdown'
 import { useCursorPage } from './cursor'
 import { issuePageLimit, issueProblem, stateLabel, title } from './model'
 import { usePrincipalNames } from './principals'
-import type { Comment, History, Issue, Link, Operation, QueryCursor, Schema } from './types'
+import type { Comment, History, Issue, Link, Operation, Principal, QueryCursor, Schema } from './types'
 import { queryIssues, type IssueWork } from './work'
 
 const props = defineProps<{
@@ -18,9 +22,17 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ open: [id: string, board?: string]; denied: [problem: unknown] }>()
 const id = useId()
-const tabs = [{ value: 'activity', label: 'Activity' }, { value: 'relationships', label: 'Relationships' }, { value: 'history', label: 'History' }]
+const tabs = [{ value: 'activity', label: 'Activity' }, { value: 'relationships', label: 'Relationships' }]
 const selection = ref('activity')
 const body = ref('')
+const bodyMentions = shallowRef<Principal[]>([])
+const filter = ref<'all' | 'comments' | 'history'>('all')
+const me = ref<string>()
+const editing = ref<string>()
+const draft = ref('')
+const draftMentions = shallowRef<Principal[]>([])
+const now = ref(Date.now())
+currentUser().then(id => { me.value = id }, () => {})
 const itemRef = () => ({ item: { id: props.item.id }, limit: issuePageLimit })
 const deny = (error: unknown) => emit('denied', error)
 const activity = useCursorPage(async (after?: string) => {
@@ -55,8 +67,10 @@ function show(section: string, reload = false) {
   const start = (page: { loaded: { value: boolean }; pending: { value: boolean }; load: () => Promise<void> }) => {
     if (reload || !page.loaded.value && !page.pending.value) void page.load()
   }
-  if (section === 'activity') start(activity)
-  if (section === 'history') start(history)
+  if (section === 'activity') {
+    start(activity)
+    start(history)
+  }
   if (section === 'relationships') {
     start(children)
     start(links)
@@ -66,15 +80,57 @@ function show(section: string, reload = false) {
 watch(() => props.item.id, () => {
   for (const page of [activity, history, children, links]) page.reset()
   body.value = ''
+  bodyMentions.value = []
+  editing.value = undefined
   show('activity')
 }, { immediate: true })
-watch(() => props.sequence, () => show(selection.value, true))
+watch(() => props.sequence, () => {
+  now.value = Date.now()
+  show(selection.value, true)
+})
 
 async function post() {
   const draft = body.value.trim()
   if (props.locked || !props.writable || !draft) return
-  await props.submit([{ op: 'comment', item: props.item.id, body: draft }], () => {
+  const mentions = draft.includes('@') ? bodyMentions.value : []
+  await props.submit([{ op: 'comment', item: props.item.id, body: draft, ...(mentions.length ? { mentions } : {}) }], () => {
     body.value = ''
+    bodyMentions.value = []
+    void activity.load()
+  })
+}
+
+type Entry = { kind: 'comment', at: string, key: string, comment: Comment } | { kind: 'history', at: string, key: string, entry: History }
+const timeline = computed<Entry[]>(() => {
+  const rows: Entry[] = []
+  if (filter.value !== 'history') {
+    for (const comment of activity.rows.value) rows.push({ kind: 'comment', at: comment.created_at, key: 'c' + comment.id, comment })
+  }
+  if (filter.value !== 'comments') {
+    for (const entry of history.rows.value) {
+      if (!entry.kind.startsWith('comment')) rows.push({ kind: 'history', at: entry.at, key: 'h' + entry.seq + ':' + entry.n, entry })
+    }
+  }
+  return rows.sort((a, b) => a.at.localeCompare(b.at))
+})
+function startEdit(comment: Comment) {
+  editing.value = comment.id
+  draft.value = comment.body
+  draftMentions.value = comment.mentions ?? []
+}
+async function saveEdit(comment: Comment) {
+  const text = draft.value.trim()
+  if (props.locked || !text) return
+  await props.submit([{ op: 'comment', item: props.item.id, comment: comment.id, body: text, mentions: draftMentions.value }], () => {
+    editing.value = undefined
+    void activity.load()
+  })
+}
+const confirming = ref<string>()
+async function remove(comment: Comment) {
+  if (props.locked) return
+  await props.submit([{ op: 'comment', item: props.item.id, comment: comment.id, delete: true }], () => {
+    confirming.value = undefined
     void activity.load()
   })
 }
@@ -85,9 +141,7 @@ function follow(event: MouseEvent, item: string, board = props.board) {
   if (!props.locked) emit('open', item, board)
 }
 
-function date(at: string) {
-  return new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-}
+
 function historyLabel(entry: History) {
   if (entry.kind === 'state') return 'Changed status'
   if (entry.field) return 'Changed ' + (props.schema.fields.find(field => field.code === entry.field)?.title ?? entry.field)
@@ -101,24 +155,81 @@ function historyLabel(entry: History) {
   <section class="issue-streams" aria-label="Issue activity">
     <SystemTabs :value="selection" label="Issue sections" :items="tabs.map(tab => ({ ...tab, controls: id + '-' + tab.value }))"
       @update:value="show" />
-    <div v-if="selection === 'activity'" :id="id + '-activity'" role="tabpanel" aria-label="Activity">
-      <form v-if="writable" class="issue-comment" @submit.prevent="post">
-        <Textarea v-model="body" aria-label="Add a comment" placeholder="Add a comment…" :disabled="locked" rows="1" fluid />
-        <Button v-if="body.trim()" type="submit" label="Post" aria-label="Post comment" size="small" :disabled="locked" />
-      </form>
-      <p v-if="activity.pending.value && !activity.loaded.value" role="status">Loading comments…</p>
+    <div v-if="selection === 'activity'" :id="id + '-activity'" role="tabpanel" aria-label="Activity" class="issue-activity">
+      <div class="issue-activity-filter" role="group" aria-label="Show activity">
+        <Button v-for="option in (['all', 'comments', 'history'] as const)" :key="option" type="button" text size="small"
+          severity="secondary" :label="option === 'all' ? 'All' : option === 'comments' ? 'Comments' : 'History'"
+          :aria-pressed="filter === option" @click="filter = option" />
+      </div>
+      <Button v-if="filter !== 'comments' && history.after.value" text size="small" label="Show earlier activity"
+        :loading="history.pending.value" @click="history.load(true)" />
+      <p v-if="(activity.pending.value && !activity.loaded.value) || (history.pending.value && !history.loaded.value)" role="status"
+        class="kanban-issue-pending">Loading activity…</p>
       <div v-if="activity.error.value" role="alert">{{ issueProblem(activity.error.value).message }}
         <Button text size="small" label="Retry comments" @click="activity.retry()" />
       </div>
-      <p v-else-if="activity.loaded.value && !activity.rows.value.length">No comments yet.</p>
-      <ul v-if="activity.rows.value.length" class="issue-stream-list">
-        <li v-for="comment in activity.rows.value" :key="comment.id">
-          <strong>{{ name(comment.author) ?? 'Person unavailable' }}</strong>
-          <small> · <time :datetime="comment.created_at">{{ date(comment.created_at) }}</time></small>
-          <p class="issue-comment-body" dir="auto">{{ comment.body }}</p>
+      <div v-if="history.error.value" role="alert">{{ issueProblem(history.error.value).message }}
+        <Button text size="small" label="Retry history" @click="history.retry()" />
+      </div>
+      <p v-else-if="activity.loaded.value && history.loaded.value && !timeline.length" class="kanban-rich-empty">
+        {{ filter === 'history' ? 'No history yet.' : 'No comments yet.' }}
+      </p>
+      <ol v-if="timeline.length" class="issue-timeline">
+        <li v-for="row in timeline" :key="row.key" :class="row.kind === 'comment' ? 'issue-comment-entry' : 'issue-event-entry'">
+          <template v-if="row.kind === 'comment'">
+            <IssueAssignee :id="row.comment.author" :name="name(row.comment.author)" />
+            <div class="issue-comment-card">
+              <div class="issue-comment-head">
+                <strong>{{ name(row.comment.author) ?? 'Person unavailable' }}</strong>
+                <time :datetime="row.comment.created_at" :title="exactTime(row.comment.created_at)">{{ relativeTime(row.comment.created_at, now) }}</time>
+                <span v-if="row.comment.edited_at" class="issue-comment-edited" :title="'Edited ' + exactTime(row.comment.edited_at)">edited</span>
+                <span v-if="writable && me === row.comment.author && editing !== row.comment.id" class="issue-comment-actions">
+                  <Button type="button" text size="small" severity="secondary" label="Edit" :aria-label="'Edit comment from ' + relativeTime(row.comment.created_at, now)"
+                    :disabled="locked" @click="startEdit(row.comment)" />
+                  <Button type="button" text size="small" severity="secondary" label="Delete" :aria-label="'Delete comment from ' + relativeTime(row.comment.created_at, now)"
+                    :disabled="locked" @click="confirming = row.comment.id" />
+                </span>
+              </div>
+              <div v-if="confirming === row.comment.id" class="kx-notice issue-comment-confirm" role="alert">
+                <span>Delete this comment?</span>
+                <Button type="button" size="small" severity="danger" label="Delete comment" :disabled="locked" @click="remove(row.comment)" />
+                <Button type="button" size="small" text severity="secondary" label="Keep" @click="confirming = undefined" />
+              </div>
+              <MarkdownEditor v-if="editing === row.comment.id" v-model="draft" v-model:mentions="draftMentions" label="Edit comment"
+                submit-label="Save" autofocus :disabled="locked" @submit="saveEdit(row.comment)" @cancel="editing = undefined">
+                <template #actions>
+                  <Button type="button" text size="small" severity="secondary" label="Cancel" @click="editing = undefined" />
+                  <Button type="button" size="small" label="Save" :disabled="locked || !draft.trim()" @click="saveEdit(row.comment)" />
+                </template>
+              </MarkdownEditor>
+              <MarkdownView v-else :source="row.comment.body" />
+            </div>
+          </template>
+          <template v-else>
+            <span class="issue-event-dot" aria-hidden="true" />
+            <span class="issue-event-text">
+              <strong>{{ name(row.entry.actor) ?? 'Person unavailable' }}</strong>
+              {{ historyLabel(row.entry).charAt(0).toLowerCase() + historyLabel(row.entry).slice(1) }}
+              <template v-if="row.entry.kind !== 'created' && (row.entry.before != null || row.entry.after != null)">
+                <FieldDisplay :value="row.entry.before" :name="name" />
+                <span aria-label="changed to">→</span>
+                <FieldDisplay :value="row.entry.after" :name="name" />
+              </template>
+              <time :datetime="row.entry.at" :title="exactTime(row.entry.at)">{{ relativeTime(row.entry.at, now) }}</time>
+            </span>
+          </template>
         </li>
-      </ul>
-      <Button v-if="activity.after.value" text label="Load more comments" size="small" :loading="activity.pending.value" @click="activity.load(true)" />
+      </ol>
+      <Button v-if="filter !== 'history' && activity.after.value" text label="Load more comments" size="small"
+        :loading="activity.pending.value" @click="activity.load(true)" />
+      <form v-if="writable && filter !== 'history'" class="issue-comment" @submit.prevent="post">
+        <MarkdownEditor v-model="body" v-model:mentions="bodyMentions" label="Add a comment" placeholder="Add a comment…"
+          submit-label="Comment" compact :disabled="locked" @submit="post" @cancel="body = ''">
+          <template #actions>
+            <Button type="submit" label="Comment" aria-label="Post comment" size="small" :disabled="locked || !body.trim()" />
+          </template>
+        </MarkdownEditor>
+      </form>
     </div>
     <div v-else-if="selection === 'relationships'" :id="id + '-relationships'" role="tabpanel" aria-label="Relationships">
       <h3>Child issues</h3>
@@ -152,25 +263,6 @@ function historyLabel(entry: History) {
         </li>
       </ul>
       <Button v-if="links.after.value" text label="Load more links" size="small" :loading="links.pending.value" @click="links.load(true)" />
-    </div>
-    <div v-else :id="id + '-history'" role="tabpanel" aria-label="History">
-      <p v-if="history.pending.value && !history.loaded.value" role="status">Loading history…</p>
-      <div v-if="history.error.value" role="alert">{{ issueProblem(history.error.value).message }}
-        <Button text size="small" label="Retry history" @click="history.retry()" />
-      </div>
-      <p v-else-if="history.loaded.value && !history.rows.value.length">No history yet.</p>
-      <ul v-if="history.rows.value.length" class="issue-stream-list">
-        <li v-for="entry in history.rows.value" :key="entry.seq + ':' + entry.n">
-          <strong>{{ historyLabel(entry) }}</strong>
-          <small> · {{ name(entry.actor) ?? 'Person unavailable' }} · <time :datetime="entry.at">{{ date(entry.at) }}</time></small>
-          <div v-if="entry.before != null || entry.after != null" class="issue-history-change">
-            <FieldDisplay :value="entry.before" :name="name" />
-            <span aria-label="changed to">→</span>
-            <FieldDisplay :value="entry.after" :name="name" />
-          </div>
-        </li>
-      </ul>
-      <Button v-if="history.after.value" text label="Load more history" size="small" :loading="history.pending.value" @click="history.load(true)" />
     </div>
   </section>
 </template>

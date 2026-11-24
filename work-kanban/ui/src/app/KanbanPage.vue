@@ -9,6 +9,7 @@ import { computed, defineAsyncComponent, nextTick, onScopeDispose, ref, shallowR
 import { title } from '../issue/model'
 import { usePrincipalNames } from '../issue/principals'
 import type { Issue } from '../issue/types'
+import { provideMarkdown } from '../issue/markdownContext'
 import { readIssue } from '../issue/work'
 import { createCoordinator } from '../live/coordinator'
 import { subscribeBoard } from '../live/subscribe'
@@ -168,6 +169,22 @@ watch(() => ready.value && board.value?.board_id, (target, _, cleanup) => {
     window.cancelAnimationFrame(paint)
     window.cancelIdleCallback(id)
   })
+})
+const issueKeys = new Map<string, Promise<string>>()
+watch(() => board.value?.board_id, () => issueKeys.clear())
+provideMarkdown({
+  board: computed(() => board.value?.board_id), schema,
+  resolve(key) {
+    const target = board.value?.board_id
+    if (!target) return Promise.reject(new Error('No board is open.'))
+    let request = issueKeys.get(key)
+    if (!request) {
+      request = work.boardRead<{ item: { id: string } }>(target, 'get', { item: { key } }).then(detail => detail.item.id)
+      request.catch(() => issueKeys.delete(key))
+      issueKeys.set(key, request)
+    }
+    return request
+  },
 })
 const placements = computed(() => board.value ? checkPlacements(schema.value?.extensions, board.value.access) : [])
 const panel = computed(() => placements.value.find(entry => entry.slot === 'board_panel' && entry.target === 'board:' + route.value?.tab))
