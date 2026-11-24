@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: kickside
+module: mail-admin
+type: plugin
+description: System administration for KickSide Mail templates and delivery activity.
+license: LicenseRef-KickSide-Community-1.0
+repository: https://github.com/kicksideai/components
+homepage: https://wippy.ai
+keywords: [kickside, mail, admin, templates]
+embed: [kickside.mail.admin:ui_fs]
+exclude_meta:
+  type: [test, test_helper, test_support]
+exclude:
+  - build-inputs/**
+  - build-inputs:**
+  - ui/.wippy/**
+  - ui/.wippy:**
+  - wippy.lock
+  - app:**
+  - "app.**:**"
+  - app.env:**
+  - test/**
+  - test:**
+  - .wippy/**
+  - .wippy:**
+  - ui/node_modules/**
+  - ui/node_modules:**
+  - ui/coverage/**
+  - ui/coverage:**
+  - ui/dist/**
+  - static/*.map
+  - static/**/*.map
