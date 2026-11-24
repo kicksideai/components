@@ -7,7 +7,9 @@ const origin = process.env.PIM_TEST_ORIGIN ?? 'http://localhost:19382'
 const endpoint = '/api/v1/pim/catalogs/recovery'
 const manifest = 'fixture.supplier:plugin'
 const projection = 'fixture.supplier:replica'
-const diagnostics = (root, text) => root.locator('.kx-disclosure').filter({ hasText: text })
+const pluginStatus = (row, label) => row.locator('.pim-plugin-state').getByText(label, { exact: true })
+const missingIssuer = manifest + ' config: missing required property issuer.'
+const cleanupRefusal = 'Restore the plugin package before removing it. The catalog needs the package to clean up the plugin’s data.'
 const configSchema = {
   type: 'object',
   properties: { issuer: { type: 'string', title: 'Certificate issuer', minLength: 2 } },
@@ -33,44 +35,45 @@ async function associatedError(field, message) {
 
 async function applyConfiguration(page, button) {
   await button(page, 'Review changes').click()
-  const review = page.getByRole('dialog', { name: 'Review changes' })
+  const review = page.getByRole('dialog', { name: 'Review changes', exact: true })
   await button(review, 'Apply changes').click()
 }
 
 const cases = [
   {
-    name: 'failed', status: 'Setup failed', action: 'Check status',
+    name: 'failed', status: 'Setup failed', expand: 'Details', action: 'Check status',
     state: { lifecycle: { state: 'failed', error: issue('plugin_interface_version_unsupported', 'The installed package ' + manifest + ' uses interface version 2.') } },
-    async verify({ row, state, requests, button }) {
-      await row.getByText(/restore a compatible package/i).waitFor()
-      await diagnostics(row, manifest).getByText(/uses interface version 2/).waitFor({ state: 'hidden' })
-      await button(row, 'Technical details').click()
-      await diagnostics(row, manifest).getByText(/uses interface version 2/).waitFor()
+    async verify({ row, details, state, requests, button }) {
+      await row.getByText('This package uses a plugin interface this deployment cannot run. Restore a compatible package to use this plugin.', { exact: true }).waitFor()
+      const error = details.getByText('The installed package ' + manifest + ' uses interface version 2.', { exact: true })
+      await error.waitFor({ state: 'hidden' })
+      await button(details, 'Technical details').click()
+      await error.waitFor()
       state.plugin = ready
       const reads = requests.schema
       await button(row, 'Check status').click()
-      await row.getByText('Enabled', { exact: true }).waitFor()
+      await pluginStatus(row, 'Enabled').waitFor()
       assert.ok(requests.schema > reads)
     },
   },
   {
-    name: 'degraded', status: 'Background update paused', action: 'Reset background updates',
+    name: 'degraded', status: 'Paused', expand: 'Configure', action: 'Reset background updates',
     state: { projections: { [projection]: cursor({ parked: true, error: 'Supplier mapping crashed in ' + projection + '.' }) } },
-    async verify({ row, state, requests, button, page }) {
-      await row.getByText(/the background worker stopped/i).waitFor()
-      await row.getByText(/last applied position 81/i).waitFor()
-      await button(row, 'Technical details').click()
-      await diagnostics(row, projection).getByText(/Supplier mapping crashed/).waitFor()
+    async verify({ row, details, state, requests, button, page }) {
+      await row.getByText('The background worker stopped.', { exact: true }).waitFor()
+      await row.getByText('Last applied position 81.', { exact: true }).waitFor()
+      await button(details, 'Technical details').click()
+      await details.getByText('· Supplier mapping crashed in ' + projection + '.', { exact: true }).waitFor()
       await page.clock.pauseAt(await page.evaluate(() => Date.now()) + 1_000)
       await button(row, 'Reset background updates').click()
-      const dialog = page.getByRole('dialog')
+      const dialog = page.getByRole('dialog', { name: 'Reset background updates?', exact: true })
       await button(dialog, 'Reset background updates').click()
-      await row.getByText('Catching up', { exact: true }).waitFor()
+      await pluginStatus(row, 'Catching up').waitFor()
       assert.deepEqual(requests.configure, [{ plugin: manifest, config: ready.config, reset: true }])
       const catchingUp = requests.schema
       state.plugin = { ...ready, projections: { [projection]: cursor({ last_seq: 100 }) } }
       await page.clock.runFor(10_000)
-      await row.getByText('Enabled', { exact: true }).waitFor()
+      await pluginStatus(row, 'Enabled').waitFor()
       assert.equal(requests.schema, catchingUp + 1, 'a pending projection should be polled')
       const settled = requests.schema
       await page.clock.runFor(10_000)
@@ -78,7 +81,7 @@ const cases = [
     },
   },
   {
-    name: 'repair-parked-worker', status: 'Background update paused', action: 'Reset background updates',
+    name: 'repair-parked-worker', status: 'Paused', expand: 'Configure', action: 'Reset background updates',
     state: {
       config_schema: {
         type: 'object',
@@ -88,17 +91,17 @@ const cases = [
       projections: { [projection]: cursor({ parked: true, error: 'Supplier mapping crashed.' }) },
     },
     async verify({ row, requests, button, page }) {
-      const crash = row.getByRole('checkbox', { name: 'Crash on update' })
+      const crash = row.getByRole('checkbox', { name: 'Crash on update', exact: true })
       await crash.waitFor()
       assert.equal(await crash.isChecked(), true)
       await crash.uncheck()
       await applyConfiguration(page, button)
-      await row.getByText('Enabled', { exact: true }).waitFor()
+      await pluginStatus(row, 'Enabled').waitFor()
       assert.deepEqual(requests.configure, [{ plugin: manifest, config: { region: 'EU', crash: false } }])
     },
   },
   {
-    name: 'configuration-field-label', status: 'Degraded', action: 'Check status',
+    name: 'configuration-field-label', status: 'Needs attention', expand: 'Configure', action: 'Check status',
     state: {
       config_schema: { type: 'object', properties: { hold_seconds: { type: 'integer', minimum: 1 } } },
       config: { hold_seconds: 30 },
@@ -111,63 +114,65 @@ const cases = [
     },
   },
   {
-    name: 'worker-error', status: 'Degraded', action: 'Check status',
+    name: 'worker-error', status: 'Needs attention', expand: 'Configure', action: 'Check status',
     state: { projections: { [projection]: cursor({ last_seq: 100, error: 'The supplier feed is unavailable.' }) } },
-    async verify({ row, state, requests, button }) {
-      await row.getByText(/background worker reported an error/i).waitFor()
-      await row.getByText(/last applied position 100/i).waitFor()
-      await button(row, 'Technical details').click()
-      await diagnostics(row, projection).getByText(projection, { exact: true }).waitFor()
-      await diagnostics(row, projection).getByText(/supplier feed is unavailable/i).waitFor()
+    async verify({ row, details, state, requests, button }) {
+      await row.getByText('The background worker reported an error.', { exact: true }).waitFor()
+      await row.getByText('Last applied position 100.', { exact: true }).waitFor()
+      await button(details, 'Technical details').click()
+      await details.getByText(projection, { exact: true }).waitFor()
+      await details.getByText('· The supplier feed is unavailable.', { exact: true }).waitFor()
       state.plugin = ready
       await button(row, 'Check status').click()
-      await row.getByText('Enabled', { exact: true }).waitFor()
+      await pluginStatus(row, 'Enabled').waitFor()
       assert.deepEqual(requests.configure, [])
     },
   },
   {
-    name: 'explicit-pause', status: 'Background update paused', action: 'Resume background update',
+    name: 'explicit-pause', status: 'Paused', expand: 'Configure', action: 'Resume background update',
     state: { projections: { [projection]: cursor({ parked: true, status: 'paused', cursor_id: 'paused-cursor' }) } },
     async verify({ row, requests, button }) {
-      await row.getByText(/this update was paused/i).waitFor()
+      await row.getByText('This update was paused.', { exact: true }).waitFor()
       await button(row, 'Resume background update').click()
-      await row.getByText('Enabled', { exact: true }).waitFor()
+      await pluginStatus(row, 'Enabled').waitFor()
       assert.deepEqual(requests.resume, [{ cursor_id: 'paused-cursor' }])
       assert.deepEqual(requests.configure, [])
     },
   },
   {
-    name: 'misconfigured', status: 'Configuration needed',
+    name: 'misconfigured', status: 'Needs configuration', expand: 'Configure',
     state: {
-      config: {}, problem: issue('plugin_config_invalid', manifest + ' config: missing required property issuer.', { field: 'issuer' }),
-      lifecycle: { state: 'failed', error: issue('plugin_config_invalid', manifest + ' config: missing required property issuer.', { field: 'issuer' }) },
+      config: {}, problem: issue('plugin_config_invalid', missingIssuer, { field: 'issuer' }),
+      lifecycle: { state: 'failed', error: issue('plugin_config_invalid', missingIssuer, { field: 'issuer' }) },
     },
-    async verify({ row, requests, button, page, capture }) {
+    async verify({ row, details, requests, button, page, capture }) {
       const field = row.getByRole('textbox', { name: 'Certificate issuer', exact: true })
       await row.getByRole('alert').getByText('A value is required.', { exact: true }).waitFor()
       await associatedError(field, 'A value is required.')
-      await button(row, 'Technical details').click()
-      await diagnostics(row, manifest).getByText(/missing required property issuer/).waitFor()
+      await button(details, 'Technical details').click()
+      await details.getByText(missingIssuer, { exact: true }).waitFor()
       await field.fill('Reject me')
       await applyConfiguration(page, button)
-      await page.getByText(/Choose an approved certificate issuer/).waitFor()
+      await row.getByRole('alert').getByText('Choose an approved certificate issuer.', { exact: true }).waitFor()
       await capture('save-refusal')
       await associatedError(field, 'Choose an approved certificate issuer.')
       assert.equal(await field.inputValue(), 'Reject me')
       await field.fill('Approved issuer')
       await applyConfiguration(page, button)
-      await row.getByText('Enabled', { exact: true }).waitFor()
+      await pluginStatus(row, 'Enabled').waitFor()
       assert.equal(await field.inputValue(), 'Approved issuer')
       assert.deepEqual(requests.configure, ['Reject me', 'Approved issuer'].map(issuer => ({ plugin: manifest, config: { issuer } })))
     },
   },
   {
-    name: 'activation-configuration-refusal', status: 'Disabled', action: 'Enable Supplier compliance',
+    name: 'activation-configuration-refusal', status: 'Available', expand: 'Details',
     state: { active: false, config: {} },
     async verify({ row, requests, button, page, capture }) {
-      await row.getByRole('switch', { name: 'Enable Supplier compliance' }).check()
+      await row.getByRole('switch', { name: 'Enable Supplier compliance', exact: true }).check()
+      await pluginStatus(row, 'Turns on when applied').waitFor()
       await button(page, 'Review changes').click()
-      await page.getByText(/A required plugin setting is missing/).waitFor()
+      await row.getByRole('alert').getByText('A required plugin setting is missing.', { exact: true }).waitFor()
+      await pluginStatus(row, 'Needs configuration').waitFor()
       await capture('review-refusal')
       const field = row.getByRole('textbox', { name: 'Certificate issuer', exact: true })
       await associatedError(field, 'A required plugin setting is missing.')
@@ -180,29 +185,29 @@ const cases = [
     },
   },
   {
-    name: 'history-pruned', status: 'Reset required', action: 'Reset background updates',
+    name: 'history-pruned', status: 'Stopped', expand: 'Configure', action: 'Reset background updates',
     state: {
       lifecycle: { state: 'failed', error: issue('plugin_projection_history_pruned', 'Plugin projection history was pruned.',
         { projection, start_seq: 20, max_pruned_seq: 35 }) },
     },
-    async verify({ row, requests, button, page }) {
-      await row.getByText(/history.*removed/i).waitFor()
-      await row.getByText(/earliest retained position.*36/i).waitFor()
-      await button(row, 'Technical details').click()
-      await diagnostics(row, projection).getByText(projection, { exact: true }).waitFor()
+    async verify({ row, details, requests, button, page }) {
+      await row.getByText('The event history this background update needs was removed.', { exact: true }).waitFor()
+      await row.getByText('Earliest retained position 36.', { exact: true }).waitFor()
+      await button(details, 'Technical details').click()
+      await details.getByText(projection, { exact: true }).waitFor()
       await button(row, 'Reset background updates').click()
-      const dialog = page.getByRole('dialog')
-      await dialog.getByText(/start from a new catalog event/i).waitFor()
+      const dialog = page.getByRole('dialog', { name: 'Reset background updates?', exact: true })
+      await dialog.getByText('Background updates will start from a new catalog event. Current product data will be rebuilt into the plugin’s index. Earlier events will be skipped.', { exact: true }).waitFor()
       await button(dialog, 'Cancel').click()
       assert.deepEqual(requests.configure, [])
       await button(row, 'Reset background updates').click()
       await button(dialog, 'Reset background updates').click()
-      await row.getByText('Catching up', { exact: true }).waitFor()
+      await pluginStatus(row, 'Catching up').waitFor()
       assert.deepEqual(requests.configure, [{ plugin: manifest, config: ready.config, reset: true }])
     },
   },
   {
-    name: 'uninstalled', status: 'Uninstalled · still referenced', action: 'Review references',
+    name: 'uninstalled', status: 'Not installed', expand: 'Details', action: 'Review references',
     state: {
       installed: false, title: undefined, references: missingRefs,
       problem: issue('plugin_missing', 'Plugin manifest is unavailable.'),
@@ -210,19 +215,19 @@ const cases = [
     },
     async verify({ row, requests, button, page }) {
       assert.equal(await row.getByRole('switch').count(), 0)
-      await row.getByText(/package was removed/i).waitFor()
+      await row.getByText('The package was removed while it was still enabled for this catalog.', { exact: true }).waitFor()
       await button(row, 'Review references').click()
-      const dialog = page.getByRole('dialog', { name: 'Plugin references' })
+      const dialog = page.getByRole('dialog', { name: 'Plugin references', exact: true })
       await dialog.getByText('Certificate', { exact: true }).waitFor()
       await dialog.getByText('Region', { exact: true }).waitFor()
       await dialog.getByText('Catalog app', { exact: true }).waitFor()
       await button(dialog, 'Technical details').click()
-      for (const ref of Object.values(missingRefs).flat()) await diagnostics(dialog, ref).getByText(ref, { exact: true }).waitFor()
-      await dialog.getByText(/replace or remove these references/i).waitFor()
-      assert.equal(await dialog.getByRole('button', { name: 'Review removal' }).count(), 0)
+      for (const ref of Object.values(missingRefs).flat()) await dialog.getByText(ref, { exact: true }).waitFor()
+      await dialog.getByText('Replace or remove these references before deactivating the plugin. You can also restore the package to keep using them.', { exact: true }).waitFor()
+      assert.equal(await button(dialog, 'Review removal').count(), 0)
       assert.equal(requests.plan.length, 0)
       await button(dialog, 'Clear catalog app binding').click()
-      await button(page.getByRole('dialog', { name: 'Clear catalog app binding?' }), 'Clear binding').click()
+      await button(page.getByRole('dialog', { name: 'Clear catalog app binding?', exact: true }), 'Clear binding').click()
       await dialog.getByText(missingRefs.shell_bindings[0], { exact: true }).waitFor({ state: 'hidden' })
       assert.deepEqual(requests.settings, [{ ui_app: '' }])
       await button(dialog, 'Review removal').click()
@@ -231,15 +236,15 @@ const cases = [
     },
   },
   {
-    name: 'attachment-binding-absent', status: 'Uninstalled · still referenced', action: 'Review references',
+    name: 'attachment-binding-absent', status: 'Not installed', expand: 'Details', action: 'Review references',
     state: {
       installed: false, title: undefined, references: { fields: [], scopes: [], shell_bindings: [] },
       lifecycle: { state: 'failed', error: issue('unknown_plugin', 'Plugin manifest is unavailable.') },
     },
     async verify({ row, requests, button, page }) {
       await button(row, 'Review references').click()
-      await button(page.getByRole('dialog', { name: 'Plugin references' }), 'Review removal').click()
-      await page.getByRole('alert').getByText(/restore the plugin package before removing it/i).waitFor()
+      await button(page.getByRole('dialog', { name: 'Plugin references', exact: true }), 'Review removal').click()
+      await page.getByRole('alert').getByText(cleanupRefusal, { exact: true }).waitFor()
       assert.equal(await button(page, 'Apply changes').count(), 0)
       assert.equal(requests.plan.length, 1)
     },
@@ -384,23 +389,24 @@ try {
       })
       try {
         await page.goto(origin + '/recovery')
-        await page.getByRole('navigation', { name: 'Catalog settings sections' }).getByRole('button', { name: 'Plugins', exact: true }).click()
-        const row = page.locator('.pim-definition').filter({ has: page.getByRole('button', { name: new RegExp(title) }) })
-        await row.getByText(test.status, { exact: true }).waitFor({ timeout: 3000 })
-        const toggle = row.getByRole('button', { name: new RegExp(title) })
+        await page.getByRole('navigation', { name: 'Catalog settings sections', exact: true }).getByRole('button', { name: 'Plugins', exact: true }).click()
+        const row = page.getByRole('article').filter({ has: page.getByRole('heading', { name: title, exact: true }) })
+        await pluginStatus(row, test.status).waitFor()
+        const toggle = button(row, test.expand + ' ' + title)
         if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click()
-        if (test.action && test.state.active !== false) {
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'true')
+        if (test.action) {
           await button(row, test.action).waitFor()
           assert.ok(await button(row, test.action).evaluate(element => {
-            const body = element.closest('.pim-definition-body')
+            const body = element.closest('.kx-settings-item-body')
             return body && element.getBoundingClientRect().width < body.getBoundingClientRect().width - 16
           }), 'recovery action uses an intrinsic button width')
         }
         for (const id of [manifest, projection, ...Object.values(missingRefs).flat()]) {
-          const exposed = await row.getByText(id).evaluateAll(elements => elements.some(element => element.getClientRects().length > 0))
+          const exposed = await row.getByText(id, { exact: true }).evaluateAll(elements => elements.some(element => element.getClientRects().length > 0))
           assert.equal(exposed, false, 'technical IDs are hidden before disclosure')
         }
-        assert.equal(await row.getByText('Enabled', { exact: true }).count(), 0)
+        assert.equal(await pluginStatus(row, 'Enabled').count(), 0)
         assert.ok(await row.evaluate(element => {
           const rect = element.getBoundingClientRect()
           return rect.left >= -1 && rect.right <= innerWidth + 1 && element.scrollWidth <= element.clientWidth + 1
@@ -408,9 +414,12 @@ try {
         assert.equal(await page.locator('html').evaluate((html, expected) => html.classList.contains('w-theme-' + expected), theme), true)
         await row.screenshot({ path: new URL(name + '.png', shots).pathname, animations: 'disabled' })
         await capture('initial')
-        await test.verify({ row, state, requests, button, page, capture })
+        const details = row.locator('.kx-disclosure').filter({
+          has: page.getByText('Plugin ID', { exact: true }),
+        })
+        await test.verify({ row, details, state, requests, button, page, capture })
         if (test.name === 'attachment-binding-absent') {
-          await page.getByRole('alert').filter({ hasText: 'Restore the plugin package before removing it.' })
+          await page.getByRole('alert').getByText(cleanupRefusal, { exact: true })
             .screenshot({ path: new URL(name + '-refusal.png', shots).pathname, animations: 'disabled' })
         }
         assert.deepEqual(pageErrors, [])
