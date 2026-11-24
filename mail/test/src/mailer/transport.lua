@@ -31,10 +31,16 @@ local function capture(message)
         if behavior == "detail" then
             if attempts == 1 then
                 return nil, errors.new({kind = errors.RATE_LIMITED, retryable = true, message = "Test rate limit",
-                    details = {code = "rate_limited", provider_detail = "Fixture retry detail"}})
+                    details = {code = "rate_limited", provider_detail = "Upstream retry diagnostic"}})
             end
             return nil, errors.new({kind = errors.INVALID, retryable = false, message = "Test refusal",
-                details = {code = "message_rejected", provider_detail = "Fixture refusal detail"}})
+                details = {code = "message_rejected", provider_detail = "Upstream refusal diagnostic"}})
+        end
+        if behavior == "echo" then
+            local detail = "Rejected record: " .. message.to[1] .. " <" .. message.bcc[1] .. "> different@sample.org; "
+                .. message.subject .. " / Private message body / Confidential fragment / Restricted HTML phrase"
+            return nil, errors.new({kind = errors.INVALID, retryable = false, message = detail,
+                details = {code = "message_rejected", provider_detail = detail}})
         end
         if behavior == "rejected" then
             return nil, errors.new({kind = errors.PERMISSION_DENIED, retryable = false, message = "Test authorization refused",

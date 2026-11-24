@@ -87,10 +87,13 @@ local function deliver(input: types.JobInput): (types.Record?, error?)
     if delivery_err then
         local details = delivery_err:details()
         local code = details and details.code
-        cause = {kind = delivery_err:kind(), code = type(code) == "string" and code or "delivery_failed",
-            message = delivery_err:message(), provider_detail = delivery.clean_detail(details and details.provider_detail)}
+        local content = {subject = row.subject, text = row.text, html = row.html}
+        cause = {kind = delivery_err:kind(),
+            code = type(code) == "string" and code:match("^[a-z][a-z0-9_]*$") and code or "delivery_failed",
+            message = delivery.clean_detail(delivery_err:message(), content) or "Mail delivery failed",
+            provider_detail = delivery.clean_detail(details and details.provider_detail, content)}
         next_at = policy.retry_at(delivery_err, row.attempts, now)
-        options.record = {status = "failed", error = cause.message}
+        options.record = {status = "failed", error = cause.code}
         if next_at then
             options.rearm = time.unix(next_at // 1000, (next_at % 1000) * 1000000):utc():format("2006-01-02T15:04:05.000Z07:00")
         end

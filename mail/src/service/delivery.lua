@@ -43,14 +43,32 @@ function M.retry_hint(response: types.HttpResponse, reset: string, units: string
 end
 
 local function text_only(value: string): string
-    return (value:gsub("[\r\n\t]+", " "):gsub("%c", ""):gsub("<[^>]*>", "")
+    return (value:gsub("[\r\n\t]+", " "):gsub("%c", ""):gsub("<[^>]*>", " ")
         :gsub("[\194][\128-\159]", ""):gsub("\226\128[\139-\143\170-\174]", "")
         :gsub("\226\129[\160-\175]", ""))
 end
 
-function M.clean_detail(value: unknown): string?
+local WORD = "[%w_\128-\255]+"
+
+local function redact_message(value: string, content: types.Rendered): string
+    local text = value:gsub("[^%s<>()%[%],;]+@[^%s<>()%[%],;]+", "[redacted]")
+    local words: {[string]: boolean} = {}
+    for word in text:gmatch(WORD) do words[word:lower()] = false end
+    for _, part in ipairs({content.subject, content.text or "", content.html or ""}) do
+        for word in text_only(part):gmatch(WORD) do
+            local key = word:lower()
+            if words[key] == false then words[key] = true end
+        end
+    end
+    return (text:gsub(WORD, function(word: string): string
+        return words[word:lower()] and "[redacted]" or word
+    end))
+end
+
+function M.clean_detail(value: unknown, content: types.Rendered?): string?
     if type(value) ~= "string" or not utf8.len(value) then return nil end
     local text = text_only(value):match("^%s*(.-)%s*$") :: string
+    if content then text = redact_message(text, content) end
     if text == "" then return nil end
     if #text <= 512 then return text end
     local cut = utf8.offset(text, 0, 513) :: integer

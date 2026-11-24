@@ -409,7 +409,7 @@ return {
                 test.eq("queued", retry.status)
                 test.is_nil(retry.last_error.provider_detail)
                 local pending = assert(invoke(admin_view, "get_message", admitted.message_id))
-                test.eq("Fixture retry detail", pending.last_error.provider_detail)
+                test.eq("Upstream retry diagnostic", pending.last_error.provider_detail)
                 local failed = terminal(sender, admitted)
                 test.eq("failed", failed.status)
                 test.is_nil(failed.last_error.provider_detail)
@@ -418,11 +418,11 @@ return {
                 test.is_nil(sender_items[1].last_error.provider_detail)
                 test.eq("Ask a mail administrator to check why the message was refused.", sender_items[1].last_error.message)
                 local final = assert(invoke(admin_view, "get_message", admitted.message_id))
-                test.eq("Fixture refusal detail", final.last_error.provider_detail)
+                test.eq("Upstream refusal diagnostic", final.last_error.provider_detail)
                 local items = assert(invoke(admin_view, "list_messages", {limit = 200, status = "failed"})).items
                 for _, row in ipairs(items) do
                     if row.message_id == admitted.message_id then
-                        test.eq("Fixture refusal detail", row.last_error.provider_detail)
+                        test.eq("Upstream refusal diagnostic", row.last_error.provider_detail)
                         return
                     end
                 end
@@ -443,6 +443,30 @@ return {
                 test.eq("credentials_invalid", diagnostic.code)
                 test.eq("Test authorization refused", diagnostic.message)
                 no_body(queued.message_id)
+            end)
+
+            test.it("keeps message content out of delivery diagnostics and Jobs", function()
+                capture_with(admin)
+                local input = {
+                    to = {"personal@example.org"}, bcc = {"blind@example.org"},
+                    subject = "Fixture echo", text = "Private message body\nConfidential fragment",
+                    html = "<p>Restricted HTML phrase</p>",
+                }
+                local queued = assert(invoke(sender, "send", input))
+                local failed = terminal(log_admin, queued)
+                test.eq("failed", failed.status)
+                local row = persisted(queued.message_id)
+                local detail = assert(row.provider_detail)
+                test.not_nil(detail:find("Rejected record", 1, true))
+                for _, secret in ipairs({"personal@example.org", "blind@example.org", "different@sample.org",
+                    "Fixture echo", "Private message body", "Confidential fragment", "Restricted HTML phrase"}) do
+                    test.is_nil(detail:find(secret, 1, true), secret)
+                    test.is_nil(row.error_message:find(secret, 1, true), secret)
+                end
+                local run = query("SELECT error_text FROM kickside_job_run WHERE job_id=$1", {row.job_id})[1]
+                test.eq("message_rejected", run.error_text)
+                test.not_nil(row.failed_text)
+                test.not_nil(row.failed_html)
             end)
 
             test.it("resends only visible failed mail without rendering the stored bodies again", function()
