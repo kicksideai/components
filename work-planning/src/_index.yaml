@@ -23,6 +23,8 @@ entries:
   targets:
   - entry: kickside.work.planning.capacity:initial_storage
     path: .meta.target_db
+  - entry: kickside.work.planning.api:storage_access
+    path: .policy.resources
 - name: types
   kind: library.lua
   source: file://types.lua
@@ -93,7 +95,13 @@ entries:
     category: Planning and tracking
     attachment: kickside.work.planning:attachment
     seams: ['kickside.work.planning:date_order']
-    tools: ['kickside.work.planning:plan_close', 'kickside.work.planning:close']
+    tools:
+    - kickside.work.planning:plan_close
+    - kickside.work.planning:close
+    - kickside.work.planning.api:plan_sprint
+    - kickside.work.planning.api:move_dates
+    - kickside.work.planning.api:check_capacity
+    - kickside.work.planning.api:set_capacity
     projections:
     - kind: kickside.work.planning:capacity_lifecycle
       worker_ref: func://kickside.work.planning.capacity:project

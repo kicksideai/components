@@ -33,14 +33,21 @@ end
 
 local function define()
     test.describe("Planning configuration admission", function()
-        test.it("activates with no Sprint type and only the registered closure tools", function()
+        test.it("activates with no Sprint type and exposes its registered Planning tools", function()
             local h = board(scoped.admin())
             assert(h.call("apply_schema", { declaration = { plugins = { { use = PLUGIN } } } }))
             local plugin = planning(h)
             test.is_true(plugin.active)
-            test.eq(#plugin.tools, 2)
-            test.eq(plugin.tools[1], "kickside.work.planning:plan_close")
-            test.eq(plugin.tools[2], "kickside.work.planning:close")
+            local expected = {
+                "kickside.work.planning:plan_close",
+                "kickside.work.planning:close",
+                "kickside.work.planning.api:plan_sprint",
+                "kickside.work.planning.api:move_dates",
+                "kickside.work.planning.api:check_capacity",
+                "kickside.work.planning.api:set_capacity",
+            }
+            test.eq(#plugin.tools, #expected)
+            for i, id in ipairs(expected) do test.eq(plugin.tools[i], id) end
         end)
 
         test.it("adopts Planning dates only on configured epic types", function()

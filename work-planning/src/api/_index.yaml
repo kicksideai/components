@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.planning.api
+entries:
+- name: handlers
+  kind: library.lua
+  source: file://handlers.lua
+  imports:
+    capacity: kickside.work.planning.commands:capacity
+    capacity_reads: kickside.work.planning.capacity:reads
+    edits: kickside.work.planning.commands:edits
+    reference: kickside.work.planning.commands:sprint_reference
+    schemas: kickside.work.planning.contracts:schemas
+    shape: kickside.work.domain:shape
+    work: kickside.work:types
+- name: storage_access
+  kind: security.policy
+  meta: {private: true, service_only: true}
+  groups: []
+  policy:
+    resources: [app:db]
+    actions: [db.get]
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  meta: {value_kind: security.scope}
+  default: kickside.security.groups:members
+  targets:
+  - {entry: 'kickside.work.planning.api:contract_access', path: '.groups +='}
+  - {entry: 'kickside.work.planning.api:tool_access', path: '.groups +='}
+  - {entry: 'kickside.work.planning.api:endpoint_access', path: '.groups +='}

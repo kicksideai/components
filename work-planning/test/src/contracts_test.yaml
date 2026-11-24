@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: planning_contracts_fixtures
+  kind: library.lua
+  source: file://contracts_fixtures.lua
+  modules: [json]
+- name: planning_contracts_test
+  kind: function.lua
+  meta: {type: test, suite: kickside_work_planning_contracts, timeout: 120s}
+  source: file://contracts_test.lua
+  method: run
+  modules: [funcs, json, registry]
+  imports:
+    fixtures: app:planning_contracts_fixtures
+    fixture: app:fixture
+    schemas: kickside.work.planning.contracts:schemas
+    scoped: app:scoped
+    steps: app:steps
+    test: wippy.test:test
+    values: kickside.work.domain:values
