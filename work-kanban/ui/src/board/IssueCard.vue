@@ -70,7 +70,6 @@ const priorities: Record<string, string> = {
           <template v-if="!initials" #icon><Icon icon="tabler:user" aria-hidden="true" /></template>
         </Avatar>
         <Button v-if="writable" class="kanban-card-menu" text rounded size="small" severity="secondary"
-          style="box-sizing: border-box; width: 24px; height: 24px; min-height: 0; padding: 0"
           :aria-label="'Move ' + item.key" :aria-describedby="moveHelp" aria-haspopup="menu" :disabled="pending"
           @pointerdown="emit('pointer', $event)" @keydown="emit('pickup', $event)" @click="emit('menu', $event)">
           <template #icon><Icon icon="tabler:grip-vertical" aria-hidden="true" /></template>

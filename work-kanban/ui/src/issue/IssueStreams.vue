@@ -4,6 +4,7 @@ import SystemTabs from '@kickside/ui-kit/SystemTabs.vue'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
 import { computed, ref, useId, watch } from 'vue'
+import { issuePath, kanbanRoot } from '../route'
 import FieldDisplay from './FieldDisplay.vue'
 import { useCursorPage } from './cursor'
 import { issuePageLimit, issueProblem, stateLabel, title } from './model'
@@ -15,7 +16,7 @@ const props = defineProps<{
   work: IssueWork; board: string; item: Issue; schema: Schema; writable: boolean; locked: boolean; sequence?: number;
   submit: (ops: Operation[], onSuccess?: () => void) => Promise<boolean>;
 }>()
-const emit = defineEmits<{ open: [id: string]; denied: [problem: unknown] }>()
+const emit = defineEmits<{ open: [id: string, board?: string]; denied: [problem: unknown] }>()
 const id = useId()
 const tabs = [{ value: 'activity', label: 'Activity' }, { value: 'relationships', label: 'Relationships' }, { value: 'history', label: 'History' }]
 const selection = ref('activity')
@@ -78,6 +79,12 @@ async function post() {
   })
 }
 
+function follow(event: MouseEvent, item: string, board = props.board) {
+  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  if (!props.locked) emit('open', item, board)
+}
+
 function date(at: string) {
   return new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
@@ -96,8 +103,8 @@ function historyLabel(entry: History) {
       @update:value="show" />
     <div v-if="selection === 'activity'" :id="id + '-activity'" role="tabpanel" aria-label="Activity">
       <form v-if="writable" class="issue-comment" @submit.prevent="post">
-        <Textarea v-model="body" aria-label="Add a comment" placeholder="Add a comment…" :disabled="locked" rows="3" fluid />
-        <Button type="submit" label="Post comment" size="small" :disabled="locked || !body.trim()" />
+        <Textarea v-model="body" aria-label="Add a comment" placeholder="Add a comment…" :disabled="locked" rows="1" fluid />
+        <Button v-if="body.trim()" type="submit" label="Post" aria-label="Post comment" size="small" :disabled="locked" />
       </form>
       <p v-if="activity.pending.value && !activity.loaded.value" role="status">Loading comments…</p>
       <div v-if="activity.error.value" role="alert">{{ issueProblem(activity.error.value).message }}
@@ -122,7 +129,8 @@ function historyLabel(entry: History) {
       <p v-else-if="children.loaded.value && !children.rows.value.length">No child issues.</p>
       <ul v-if="children.rows.value.length" class="issue-stream-list">
         <li v-for="child in children.rows.value" :key="child.id">
-          <Button text size="small" :label="child.key + ' · ' + title(child)" @click="emit('open', child.id)" />
+          <a class="kanban-issue-link" :href="kanbanRoot + '/' + issuePath(board, child.id)"
+            @click="follow($event, child.id)">{{ child.key }} · {{ title(child) }}</a>
           <small>{{ stateLabel(schema, child) }}</small>
         </li>
       </ul>
@@ -136,9 +144,10 @@ function historyLabel(entry: History) {
       <ul v-if="rels.length" class="issue-stream-list">
         <li v-for="(link, index) in rels" :key="index">
           {{ link.label }}
-          <Button v-if="'item' in link.peer && link.peer.board === board" text size="small"
-            :aria-label="link.label + ', open linked issue ' + (index + 1)" label="Open issue" @click="emit('open', link.peer.item)" />
-          <span v-else-if="'item' in link.peer">Issue on another board</span>
+          <a v-if="'item' in link.peer" class="kanban-issue-link"
+            :href="kanbanRoot + '/' + issuePath(link.peer.board, link.peer.item)"
+            :aria-label="link.label + ', open linked issue ' + (index + 1)"
+            @click="follow($event, link.peer.item, link.peer.board)">Open issue</a>
           <span v-else>Unavailable issue</span>
         </li>
       </ul>

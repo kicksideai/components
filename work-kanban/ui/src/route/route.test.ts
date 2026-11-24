@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { describe, expect, it } from 'vitest'
-import { boardPath, dismissIssue, parseRoute, switchBoard } from './index'
+import { boardPath, dismissIssue, issuePath, parseRoute, routeInSurface, switchBoard } from './index'
 
 describe('Kanban routes', () => {
   it('parses the shell-relative board path and optional issue overlay', () => {
@@ -27,4 +27,15 @@ describe('Kanban routes', () => {
     expect(dismissIssue({ board: 'b', tab: 'search', issue: 'i' }))
       .toEqual({ path: 'board/b/search', back: { within: 'board/b/search' } })
   })
+})
+
+it('keeps the source tab behind a canonical issue URL until the user leaves the issue', () => {
+  const board = 'b'
+  const previous = { board, tab: 'search' } as const
+  const path = 'board/b/issue/i'
+  expect(issuePath(board, 'i')).toBe(path)
+  expect(routeInSurface(path, previous)).toEqual({ board, tab: 'search', issue: 'i' })
+  expect(routeInSurface(path)).toEqual({ board, tab: 'board', issue: 'i' })
+  expect(routeInSurface('board/c/issue/i', previous)).toEqual({ board: 'c', tab: 'board', issue: 'i' })
+  expect(routeInSurface('board/b', previous)).toEqual({ board, tab: 'board' })
 })

@@ -3,7 +3,7 @@ import { WorkError } from '../work/client'
 import { workFailure } from '../work/errors'
 import { workRows } from './cursor'
 import type { BoardSchema } from '../work/types'
-import type { Detail, Field, FieldValue, Issue, IssueType, Schema, Values, WriteResult } from './types'
+import type { DeclaredTransition, Detail, Field, FieldValue, Issue, IssueType, Schema, Transition, Values, WriteResult } from './types'
 
 export const issuePageLimit = 20
 const common = ['title', 'name', 'description', 'assignee', 'priority', 'story_points', 'current_sprint', 'due_date']
@@ -57,6 +57,46 @@ export function transitionInputs(schema: Schema, detail: Detail, id: string, reg
     .filter(code => !provided(detail.item.values[code])))
   return schema.fields.filter(field => missing.has(field.code) && detail.field_edit?.[field.code] !== 'field_denied'
     && (detail.field_edit?.[field.code] === 'editable' || field.transition_only))
+}
+
+export interface StatusChoice {
+  edge: Transition
+  reason?: string
+}
+
+function blockedReason(edge: DeclaredTransition, kind?: string) {
+  if (kind === 'gate' && edge.id !== 'reject') return 'Finish the required review before moving this issue.'
+  if (kind === 'parallel') return 'Complete the required workflow branches before moving this issue.'
+  const when = edge.when
+  if (when?.rel === 'blocks' && when.dir === 'inward' && when.where?.field === 'category'
+    && when.where.op === 'nin' && when.where.value?.length === 2
+    && when.where.value.includes('completed') && when.where.value.includes('canceled')) {
+    if (when.q === 'some') return 'Link an open blocker to use this transition.'
+    if (when.q === 'none') return 'Resolve or remove open blockers before using this transition.'
+  }
+  return 'The current workflow rules or destination capacity block this transition.'
+}
+
+export function statusChoices(schema: Schema, detail: Detail): StatusChoice[] {
+  if (!detail.access.write) return []
+  const { type, state } = detail.item
+  const process = schema.processes.find(row => row.id === schema.item_types.find(kind => kind.id === type)?.process)
+  const edges = workRows(detail.transitions)
+  const choices: StatusChoice[] = edges.map(edge => ({ edge }))
+  if (!process) return choices
+  const automatic = new Set(process.states.flatMap(({ run }) => [run?.on_pass, run?.on_fail, run?.on_cancel, run?.on_exhausted]))
+  const active: [region: string | undefined, state: string][] = typeof state === 'string' ? [[undefined, state]] : Object.entries(state)
+  for (const [region, current] of active) {
+    const kind = process.states.find(row => row.id === current)?.kind
+    for (const edge of workRows(process.transitions)) {
+      const internal = edge.command || edge.prepare_command || edge.people === false
+        || edge.people !== true && (edge.auto || automatic.has(edge.id))
+      if (internal || !edge.any && !workRows(edge.from).includes(current)
+        || edges.some(candidate => candidate.id === edge.id && candidate.region === region)) continue
+      choices.push({ edge: { ...edge, region }, reason: blockedReason(edge, kind) })
+    }
+  }
+  return choices
 }
 
 export function fieldChanges(before: Values, draft: Values, allowed: string[]) {
