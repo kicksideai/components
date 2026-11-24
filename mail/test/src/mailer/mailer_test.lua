@@ -411,6 +411,7 @@ return {
                 local request = assert(json.decode(captured.provider_message_id))
                 assert(change(admin, "driver", "first").success)
                 input.subject = "Resend fixture"
+                input.origin = {kind = "workflow", id = "fixture-workflow", label = "Fixture workflow"}
                 local failed = terminal(sender, assert(invoke(sender, "send", input)))
                 test.eq("failed", failed.status)
                 local stored = persisted(failed.message_id)
@@ -431,6 +432,13 @@ return {
                 test.eq("sent", row.status)
                 test.eq(failed.message_id, row.resend_of)
                 test.eq(failed.sender, row.sender)
+                test.eq("resend", row.origin and row.origin.kind)
+                test.eq(row.sender, row.origin.id)
+                test.eq("Resent message", row.origin.label)
+                local original = assert(invoke(log_admin, "get_message", row.resend_of))
+                test.eq("workflow", original.origin.kind)
+                test.eq(input.origin.id, original.origin.id)
+                test.eq(input.origin.label, original.origin.label)
                 local result = assert(json.decode(row.provider_message_id))
                 test.eq(stored.failed_html, result.html)
                 test.eq(stored.failed_text, result.text)
@@ -448,6 +456,7 @@ return {
                 local admin_row = terminal(admin_sender, another_send)
                 test.eq(failed.message_id, admin_row.resend_of)
                 test.is_true(failed.sender ~= admin_row.sender)
+                test.eq(admin_row.sender, admin_row.origin.id)
             end)
 
             test.it("uses the active driver at delivery even after a different driver rearmed the job", function()

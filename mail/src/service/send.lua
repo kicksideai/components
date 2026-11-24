@@ -98,12 +98,16 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     })
     if attachment_err then return nil, attachment_err end
 
+    local origin: types.Origin? = input.origin
+    if resend_of then
+        origin = {kind = "resend", id = actor.actor_id, label = "Resent message"}
+    end
     local saved, save_err = store.insert({
         sender = actor.actor_id, actor_context = actor.actor_context, template = input.template,
         from = from,
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = reply_to,
         subject = parts.subject, html = parts.html, text = parts.text, attachments = input.attachments,
-        library_assets = parts.library_assets, idempotency_key = input.idempotency_key, content_hash = hash, origin = input.origin, resend_of = resend_of,
+        library_assets = parts.library_assets, idempotency_key = input.idempotency_key, content_hash = hash, origin = origin, resend_of = resend_of,
     })
     if save_err then return nil, save_err end
     if saved.inserted then

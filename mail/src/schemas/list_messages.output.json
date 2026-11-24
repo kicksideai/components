@@ -36,7 +36,8 @@
                   "automation",
                   "agent",
                   "module",
-                  "test"
+                  "test",
+                  "resend"
                 ]
               },
               "id": {
