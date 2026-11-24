@@ -64,6 +64,7 @@ jobs:
       matrix:
         include:
         - module: mail
+          wippy_version: 0.3.70a
           engine: sqlite
           commands: |
             set -euo pipefail
@@ -73,6 +74,7 @@ jobs:
             version=$(jq -er '.["mail"] // "0.1.0"' .release-please-manifest.json)
             wippy publish --config mail --version "$version" --dry-run --create --module-visibility public --module-type plugin
         - module: mail
+          wippy_version: 0.3.70a
           engine: postgres
           commands: |
             set -euo pipefail
@@ -417,6 +419,7 @@ jobs:
             make -C work-admin test-scope WIPPY_ARGS="--profile postgres --set vars.pg_database=$custom_scope --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
             make -C work-admin pack
         - module: mail-admin
+          wippy_version: 0.3.70a
           engine: sqlite
           commands: |
             set -euo pipefail
@@ -426,6 +429,7 @@ jobs:
             make -C mail-admin test
             make -C mail-admin pack
         - module: mail-admin
+          wippy_version: 0.3.70a
           engine: postgres
           commands: |
             set -euo pipefail
@@ -507,7 +511,7 @@ jobs:
         node-version: '22'
     - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
       with:
-        version: 0.3.66a
+        version: ${{ matrix.wippy_version || '0.3.66a' }}
         hub-url: https://hub.wippy.ai
     - name: Check out converters module sources
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
