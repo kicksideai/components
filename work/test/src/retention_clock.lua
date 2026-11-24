@@ -12,7 +12,7 @@ function M.deadline(ms: integer): types.Deadline
     if type(now_ms) ~= "number" then return real.deadline(ms) end
     local ns = (now_ms + ms) * time.MILLISECOND
     local instant = time.unix(ns // time.SECOND, ns % time.SECOND):utc()
-    return { at = instant:format("2006-01-02T15:04:05.000000000Z"), ns = ns }
+    return { at = instant:format("2006-01-02T15:04:05.000000000Z"), ns = instant:unix_nano() }
 end
 
 function M.now(): string
