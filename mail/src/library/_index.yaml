@@ -162,7 +162,13 @@ entries:
     source: *service_source
     modules: *service_modules
     imports: *service_imports
-    security: *usage_security
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:settings_admin_read
   - name: render
     kind: function.lua
     method: render

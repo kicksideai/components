@@ -377,6 +377,27 @@ return {run = test.run_cases(function()
             test.eq("Unknown account", senders[ZERO].sender_label.label)
         end)
 
+        test.it("lists assets when the draft overlay is occupied and clears old scratch on reconciliation", function()
+            local editor = session("editor")
+            local owner = "kickside.mail.library:projection"
+            local id = "kickside.mail.draft:html"
+            local overlay = assert(registry.overlay(owner))
+            local changes = overlay:changes()
+            assert(changes:create({id = id, kind = "template.set", data = {engine = {escape = "html"}}}))
+            assert(changes:apply())
+            local summary, body, raw = request(editor, "GET", "/library?kind=asset&view=summary")
+            local boot = assert(funcs.call("kickside.mail.library:reconcile"))
+            test.eq("success", boot.status, boot.message)
+            local entries = assert(assert(registry.overlay(owner)):entries())
+            for _, entry in ipairs(entries) do test.neq(id, entry.id) end
+            test.eq(200, summary, raw)
+            test.eq("logo", body.data.items[1].name)
+            local rendered = data(editor, "POST", "/library/preview", {message = "notice"})
+            test.not_nil(rendered.html)
+            local item = data(editor, "GET", "/library/asset/logo")
+            test.eq("notice", item.used_by.messages[1])
+        end)
+
         test.it("lists the packaged asset and previews its CID under the editor capability", function()
             local editor = session("editor")
             local sender = session("sender")

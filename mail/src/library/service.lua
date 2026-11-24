@@ -371,10 +371,9 @@ local function sampled_asset_usage(): ({[string]: {string}}?, error?)
     end)
 end
 
-local function used_by(item: types.Resource, asset_usage: {[string]: {string}}?): (types.UsedBy?, error?)
+local function used_by(item: types.Resource): (types.UsedBy?, error?)
     if item.kind == "asset" then
-        local usage, err = asset_usage, nil
-        if not usage then usage, err = sampled_asset_usage() end
+        local usage, err = sampled_asset_usage()
         if err then return nil, err end
         return {messages = usage[item.name] or {}}, nil
     elseif item.kind == "base" then
@@ -432,7 +431,6 @@ function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, erro
         return resources.key(row :: types.ResourceKey)
     end, limit :: integer, cursor)
     local rows: {types.LibraryListRow} = {}
-    local asset_usage: {[string]: {string}}?
     local base_counts: {[string]: integer}?
     for i, value in ipairs(page) do
         local item = value :: types.Resource
@@ -447,14 +445,9 @@ function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, erro
                     base_counts[base] = (base_counts[base] or 0) + 1
                 end
             end
-        else
-            if item.kind == "asset" and not asset_usage then
-                local asset_err
-                asset_usage, asset_err = sampled_asset_usage()
-                if asset_err then return nil, asset_err end
-            end
+        elseif item.kind == "message" then
             local usage_err
-            usage, usage_err = used_by(item, asset_usage)
+            usage, usage_err = used_by(item)
             if usage_err then return nil, usage_err end
         end
         rows[i] = {kind = item.kind, name = item.name, title = item.title, description = item.description,
