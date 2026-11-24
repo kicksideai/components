@@ -11,12 +11,3 @@ entries:
     test: wippy.test:test
     fixture: app:fixture
     scoped: app:scoped
-- name: capacity_work_validation
-  kind: function.lua
-  meta: {type: test, suite: kickside_work_planning_work_validation, timeout: 120s}
-  source: file://capacity_configuration.lua
-  method: work_validation
-  imports:
-    test: wippy.test:test
-    fixture: app:fixture
-    scoped: app:scoped

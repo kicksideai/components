@@ -93,12 +93,7 @@ local function define()
                 test.eq(reply.body.details.item_type, MISSING)
             end
         end)
-    end)
-end
 
--- Run this entry against the Work release that shares schema admission with configure_plugin.
-local function define_work_validation()
-    test.describe("Planning attachment configuration admission", function()
         test.it("refuses to save a missing item type through direct attachment configuration", function()
             local admin = scoped.admin()
             local h = board(admin)
@@ -111,10 +106,12 @@ local function define_work_validation()
                 local plugin = planning(h)
                 local persisted = plugin.config and plugin.config[setting] and plugin.config[setting][1]
                 test.eq(reply.status, 400, reply.raw .. " persisted item type: " .. tostring(persisted))
+                test.eq(reply.body.details.code, "invalid_schema")
+                test.eq(reply.body.details.item_type, MISSING)
                 test.is_nil(persisted)
             end
         end)
     end)
 end
 
-return { run = test.run_cases(define), work_validation = test.run_cases(define_work_validation) }
+return { run = test.run_cases(define) }
