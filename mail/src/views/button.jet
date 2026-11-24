@@ -1,5 +1,5 @@
-{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0 12px;">
-      <tr><td bgcolor="#183b60" style="background-color:#183b60;border-radius:6px;">
-        <a href="{{ .action_url }}" style="display:inline-block;border:12px solid #183b60;border-left-width:20px;border-right-width:20px;border-radius:6px;color:#ffffff;font-size:15px;font-weight:bold;line-height:20px;text-decoration:none;">{{ .action_label }}</a>
-      </td></tr>
-    </table>
+{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:22px 0 26px;">
+  <tr><td bgcolor="#ba321f" style="background-color:#ba321f;border-radius:6px;">
+    <a href="{{ .action_url }}" style="display:inline-block;background-color:#ba321f;border:12px solid #ba321f;border-left-width:22px;border-right-width:22px;border-radius:6px;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;line-height:20px;text-decoration:none;overflow-wrap:anywhere;">{{ if isset(.action_label) }}{{ .action_label }}{{ else }}Open{{ end }}</a>
+  </td></tr>
+</table>

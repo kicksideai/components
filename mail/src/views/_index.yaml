@@ -148,7 +148,7 @@ entries:
       kind: base
       name: standard
       title: Standard
-      description: A card with a header and footer.
+      description: A white message card with the installation title above and below it.
       html: *standard_html
       text: *standard_text
       entries: { html: "kickside.mail.views:layout", text: "kickside.mail.views:layout.text" }
@@ -159,7 +159,7 @@ entries:
       kind: base
       name: plain
       title: Plain
-      description: A text-first layout.
+      description: A text-first layout for account and security messages.
       html: *plain_html
       text: *plain_text
       entries: { html: "kickside.mail.views:plain", text: "kickside.mail.views:plain.text" }
@@ -170,11 +170,12 @@ entries:
       kind: part
       name: header
       title: Header
-      description: Shows the installation title.
+      description: Shows the installation title from site.title.
       html: *header_html
       text: *header_text
       entries: { html: "kickside.mail.views:header", text: "kickside.mail.views:header.text" }
       input_schema: { type: object, properties: {} }
+      sample: {}
   - name: footer_template
     kind: registry.entry
     meta: { type: "kickside.mail:template" }
@@ -182,11 +183,12 @@ entries:
       kind: part
       name: footer
       title: Footer
-      description: Closes the message with the installation title.
+      description: Closes the message with the installation title from site.title.
       html: *footer_html
       text: *footer_text
       entries: { html: "kickside.mail.views:footer", text: "kickside.mail.views:footer.text" }
       input_schema: { type: object, properties: {} }
+      sample: {}
   - name: preheader_template
     kind: registry.entry
     meta: { type: "kickside.mail:template" }
@@ -194,11 +196,15 @@ entries:
       kind: part
       name: preheader
       title: Preheader
-      description: Shows the inbox preview text.
+      description: Supplies the inbox preview from message.preheader.
       html: *preheader_html
       text: *preheader_text
       entries: { html: "kickside.mail.views:preheader", text: "kickside.mail.views:preheader.text" }
-      input_schema: { type: object, properties: {} }
+      input_schema:
+        type: object
+        properties:
+          preheader: { type: string, description: Inbox preview text. }
+      sample: { preheader: Your report is ready to review. }
   - name: button_template
     kind: registry.entry
     meta: { type: "kickside.mail:template" }
@@ -212,11 +218,11 @@ entries:
       entries: { html: "kickside.mail.views:button", text: "kickside.mail.views:button.text" }
       input_schema:
         type: object
-        required: [action_url, action_label]
+        required: [action_url]
         properties:
-          action_url: { type: string }
-          action_label: { type: string }
-      sample: { action_url: "https://example.org/report", action_label: Open }
+          action_url: { type: string, description: Destination address. }
+          action_label: { type: string, default: Open, description: Text that describes the destination. }
+      sample: { action_url: "https://example.org/report", action_label: Read the report }
   - name: details_template
     kind: registry.entry
     meta: { type: "kickside.mail:template" }

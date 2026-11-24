@@ -38,6 +38,30 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail library", function()
+        test.it("renders Notice on Plain without the Standard card or branded frame", function()
+            local notice = assert(call("get", {kind = "message", name = "notice"}))
+            notice.base = "plain"
+            local result = assert(call("render_draft", {
+                resource = notice, message = notice.name,
+                vars = {subject = "Account update", preheader = "Review your account", heading = "New sign-in",
+                    message = "Check the sign-in details.", action_url = "https://example.org/account",
+                    action_label = "Review sign-in", details = {{key = "Status", value = "New"}},
+                    inline_content_id = "sign-in-map", image_alt = "Approximate sign-in location"},
+            }))
+            test.not_nil(result.html:find('name="color-scheme" content="light only"', 1, true))
+            test.not_nil(result.html:find("max-width:600px", 1, true))
+            test.not_nil(result.html:find("New sign-in</h1>", 1, true))
+            test.not_nil(result.html:find("Review sign-in</a>", 1, true))
+            test.not_nil(result.html:find('src="cid:sign-in-map"', 1, true))
+            test.not_nil(result.html:find('alt="Approximate sign-in location"', 1, true))
+            test.is_nil(result.html:find("border-radius:12px", 1, true))
+            test.is_nil(result.html:find(">KickSide</", 1, true))
+            test.not_nil(result.text:find("Review your account", 1, true))
+            test.not_nil(result.text:find("Status: New", 1, true))
+            test.not_nil(result.text:find("Approximate sign-in location", 1, true))
+            test.not_nil(result.text:find("https://example.org/account", 1, true))
+        end)
+
         test.it("projects edits, switches a base, and refuses a change that breaks a dependent", function()
             assert(env.set("PUBLIC_API_URL", "https://example.org"))
             local part = candidate("part", "library-note", "HTML {{ .label }}", "Text {{ .label }}")

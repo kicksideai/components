@@ -52,3 +52,13 @@ entries:
     kind: template.jet
     set: kickside.mail.views:templates
     source: Undeclared
+  - name: standalone_part
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: test/standalone-part }
+    source: &standalone_part '{{ include part_path inputs }}'
+  - name: standalone_part.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: test/standalone-part }
+    source: *standalone_part

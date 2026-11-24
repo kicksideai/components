@@ -23,6 +23,14 @@ local function refuses(change, code)
     test.eq(code, err:details().code)
 end
 
+local function part(face, name, inputs)
+    local set = assert(templates.get("kickside.mail.views:" .. face))
+    local rendered, err = set:render("test/standalone-part", {part_path = "/part/" .. name, inputs = inputs})
+    set:release()
+    assert(not err, tostring(err))
+    return rendered
+end
+
 return { run = test.run_cases(function()
     test.describe("Mail message", function()
         test.it("rejects caller-supplied From and invalid recipient and reply-to addresses", function()
@@ -89,6 +97,38 @@ return { run = test.run_cases(function()
             test.not_nil(result.html:find('src="cid:content"', 1, true))
             test.not_nil(result.html:find('alt="Status graphic"', 1, true))
         end)
+        test.it("renders the notice with a left-aligned card, preview line and accessible details", function()
+            local rendered = assert(render.render("notice", {
+                subject = "Status", preheader = "A & B", heading = "Report ready",
+                message = "Read the update.", action_label = "Read the report", action_url = "https://example.org/report",
+                details = {{key = "Status", value = "Ready"}}, inline_content_id = "content", image_alt = [[A "chart"]],
+            }))
+            local html = rendered.html
+            local preheader = assert(html:find("A &amp; B", 1, true))
+            local header = assert(html:find(">KickSide</strong>", 1, true))
+            local card = assert(html:find("border-radius:12px", 1, true))
+            local heading = assert(html:find("Report ready</h1>", 1, true))
+            local footer = assert(html:find(">KickSide</", header + 1, true))
+            test.is_true(preheader < header and header < card and card < heading and heading < footer)
+            local _, filler = html:sub(preheader, header):gsub("&zwnj;&nbsp;", "")
+            test.is_true(filler >= 120)
+            test.not_nil(html:find('<html lang="en">', 1, true))
+            test.not_nil(html:find('name="color-scheme" content="light only"', 1, true))
+            test.not_nil(html:find('name="supported-color-schemes" content="light only"', 1, true))
+            test.not_nil(html:match('<!%-%-%[if mso%]>.*width="600"'))
+            test.not_nil(html:find("max-width:600px", 1, true))
+            test.not_nil(html:find('role="presentation"', 1, true))
+            test.not_nil(html:find('scope="row"', 1, true))
+            test.not_nil(html:find("Read the report</a>", 1, true))
+            test.not_nil(html:find('alt="A &#34;chart&#34;"', 1, true))
+            test.is_nil(html:find("<style", 1, true))
+            test.is_nil(html:find("<script", 1, true))
+            test.is_true(#html < 102 * 1024)
+            for _, literal in ipairs({"A & B", "Report ready", "Read the update.", "Read the report",
+                "https://example.org/report", [[A "chart"]], "Status: Ready", "KickSide"}) do
+                test.not_nil(rendered.text:find(literal, 1, true))
+            end
+        end)
         test.it("wraps prose and preserves the full action link in the text layout", function()
             local url = "https://example.org/reports/" .. string.rep("a", 75) .. "?a=1&b=2"
             local result = assert(render.render("notice", {
@@ -102,6 +142,17 @@ return { run = test.run_cases(function()
                 test.is_true(line == url or #line <= 72)
             end
             test.not_nil(result.html:find("?a=1&amp;b=2", 1, true))
+        end)
+        test.it("uses the default label in both standalone button faces", function()
+            local button = {action_url = "https://example.org/report"}
+            test.not_nil(part("templates", "button", button):find(">Open</a>", 1, true))
+            test.eq("Open\n" .. button.action_url, part("text_templates", "button", button))
+        end)
+        test.it("accepts standalone preheader input without message globals", function()
+            local inputs = {preheader = "Review A & B"}
+            local html = part("templates", "preheader", inputs)
+            test.not_nil(html:find("Review A &amp; B", 1, true))
+            test.eq(inputs.preheader, part("text_templates", "preheader", inputs))
         end)
         test.it("omits actions with non-web URLs in both bodies", function()
             local result = assert(render.render("notice", {

@@ -1,13 +1,13 @@
 {{ extends "/base/standard" }}{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}
 {{ block body() }}
-  {{ if isset(heading) }}<h1 style="margin:0 0 16px;color:#182231;font-size:28px;line-height:1.2;">{{ heading }}</h1>{{ end }}
+  {{ if isset(heading) }}<h1 style="margin:0 0 16px;color:#1f2328;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.25;">{{ heading }}</h1>{{ end }}
   {{ if isset(vars.message) }}<p style="margin:0 0 14px;">{{ vars.message }}</p>{{ end }}
   {{ if isset(paragraphs) }}{{ range _, paragraph := paragraphs }}<p style="margin:0 0 14px;">{{ paragraph }}</p>{{ end }}{{ end }}
   {{ if isset(action_url, action_label) && action_label != "" && (hasPrefix(action_url, "https://") || hasPrefix(action_url, "http://")) }}
     {{ include "/part/button" vars }}
   {{ end }}
   {{ if isset(inline_content_id) }}
-    <img src="cid:{{ inline_content_id }}" width="552" alt="{{ if isset(image_alt) }}{{ image_alt }}{{ else }}Notice image{{ end }}" style="display:block;width:100%;max-width:552px;height:auto;border:0;margin:20px 0 0;">
+    <img src="cid:{{ inline_content_id }}" alt="{{ if isset(image_alt) && image_alt != "" }}{{ image_alt }}{{ else }}Notice image{{ end }}" width="534" style="display:block;width:100%;max-width:534px;height:auto;border:0;margin:20px 0 0;color:#1f2328;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;">
   {{ end }}
   {{ if isset(details) && len(details) > 0 }}
     {{ include "/part/details" vars }}

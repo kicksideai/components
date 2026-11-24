@@ -1,2 +1,2 @@
-{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}{{ range _, row := .details }}
-{{ row.key }}: {{ row.value }}{{ end -}}
+{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}{{ range index, row := .details }}{{ if index > 0 }}
+{{ end }}{{ row.key }}: {{ row.value }}{{ end -}}
