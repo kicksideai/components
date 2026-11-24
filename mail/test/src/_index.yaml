@@ -4,6 +4,7 @@ namespace: app
 entries:
   - name: definition
     kind: ns.definition
+    meta: { title: KickSide }
   - name: db
     kind: db.sql.sqlite
     file: ":memory:"
@@ -127,6 +128,7 @@ entries:
     meta: { type: test, suite: mail }
     source: file://message_test.lua
     method: run
+    modules: [templates]
     imports:
       test: wippy.test:test
       message: kickside.mail:message

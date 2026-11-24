@@ -9,8 +9,6 @@ homepage: https://wippy.ai
 keywords: [email, mail, templates, automation]
 exclude_meta:
   type: [test, test_helper, test_support]
-embed:
-  - kickside.mail.views:layout_assets
 exclude:
   - wippy.lock
   - 'app:**'

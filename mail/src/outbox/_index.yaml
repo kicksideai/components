@@ -85,9 +85,6 @@ entries:
       client: kickside.mail:client
       types: kickside.mail:types
       message: kickside.mail:message
-      render: kickside.mail.views:render
-    security:
-      policies: [kickside.mail.security:template_access]
   - name: owner
     kind: function.lua
     meta: { private: true, type: kickside.retention.owner }

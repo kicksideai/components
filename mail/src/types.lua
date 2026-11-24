@@ -55,7 +55,7 @@ type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, 
 type TemplateRequest = {template: string}
 type PreviewRequest = {template: string, vars: JsonObject}
 type PreviewResult = {subject: string, html: string, text: string}
-type Rendered = {subject: string, html: string, text: string?, attachments: {Attachment}}
+type Rendered = {subject: string, html: string, text: string?}
 type TemplateParts = {subject: string, html: string, text: string}
 type VariableSchema = {type: string, properties: JsonObject, additionalProperties: boolean?}
 type TemplateSummary = {name: string, title: string, description: string}
@@ -67,7 +67,6 @@ type TemplateSet = {
     render: (self: TemplateSet, name: string, data: JsonObject) -> (string?, error?),
     release: (self: TemplateSet) -> (),
 }
-type LayoutImage = {filename: string, content_type: string, content_id: string, filesystem: string}
 type SchemaIssue = {schema_path: string, instance_path: string}
 type Driver = {id: string, label: string, icon: string, description: string, binding: string,
     settings_ns: string, available_func: string, max_recipients: integer?, max_message_bytes: integer?}
@@ -117,7 +116,7 @@ return {
     TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
     PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, Rendered = Rendered, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,
-    ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, LayoutImage = LayoutImage, SchemaIssue = SchemaIssue,
+    ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, SchemaIssue = SchemaIssue,
     Driver = Driver, Availability = Availability, Settings = Settings, ApiSettings = ApiSettings,
     SettingsResult = SettingsResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
     Mailer = Mailer, Transport = Transport, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,

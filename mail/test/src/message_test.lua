@@ -2,6 +2,7 @@
 local test = require("test")
 local message = require("message")
 local render = require("render")
+local templates = require("templates")
 
 local function valid()
     return { to = {"to@example.org"}, subject = "Status", text = "Ready" }
@@ -64,6 +65,15 @@ return { run = test.run_cases(function()
     end)
 
     test.describe("Mail templates", function()
+        test.it("requires template.set engine.escape none for mail text", function()
+            local set, open_err = templates.get("kickside.mail.views:text_templates")
+            assert(set, "Mail requires a text template set and runtime support for template.set engine.escape: " .. tostring(open_err))
+            local literal = [[A & <B> "C" 'D']]
+            local subject, render_err = set:render("message/notice.subject", {subject = literal})
+            set:release()
+            assert(not render_err, tostring(render_err))
+            assert(subject == literal, "Mail requires a runtime that honors template.set engine.escape: none")
+        end)
         test.it("renders the notice header and text verbatim while escaping HTML", function()
             local literal = [[A & <B> "C" 'D' &lt;]]
             local escaped = "A &amp; &lt;B&gt; &#34;C&#34; &#39;D&#39; &amp;lt;"

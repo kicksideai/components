@@ -1,0 +1,8 @@
+{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}<table width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;margin-top:20px;border-collapse:collapse;color:#202938;font-size:14px;line-height:21px;">
+      {{ range _, row := .details }}
+      <tr>
+        <th scope="row" align="left" valign="top" style="padding:10px 12px;border-top:1px solid #e3e7ed;background-color:#f8f9fb;color:#49586b;font-weight:bold;">{{ row.key }}</th>
+        <td valign="top" style="padding:10px 12px;border-top:1px solid #e3e7ed;">{{ row.value }}</td>
+      </tr>
+      {{ end }}
+    </table>

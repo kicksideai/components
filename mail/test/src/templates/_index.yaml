@@ -6,19 +6,19 @@ entries:
     kind: template.jet
     set: kickside.mail.views:templates
     source: |
-      {{ extends "layout" }}
+      {{ extends "/base/standard" }}
       {{ block body() }}<p>Please finish {{ task }}.</p>{{ end }}
   - name: reminder.title
     kind: template.jet
-    set: kickside.mail.views:templates
+    set: kickside.mail.views:text_templates
     source: |-
-      Reminder: {{ raw(task) }}
+      Reminder: {{ task }}
   - name: reminder.plain
     kind: template.jet
-    set: kickside.mail.views:templates
+    set: kickside.mail.views:text_templates
     source: |
-      {{ extends "layout.text" }}
-      {{ block body() }}Please finish {{ raw(task) }}.{{ end }}
+      {{ extends "/base/standard" }}
+      {{ block body() }}Please finish {{ task }}.{{ end }}
   - name: reminder_template
     kind: registry.entry
     meta: { type: "kickside.mail:template" }

@@ -157,9 +157,10 @@ entries:
       resources:
         - kickside.mail.views:templates
         - kickside.mail.views:layout
-        - kickside.mail.views:layout_assets
+        - kickside.mail.views:text_templates
+        - app:definition
         - kickside.mail.views:notice_template
-      actions: [template.get, registry.get, registry.find, fs.get]
+      actions: [template.get, registry.get, registry.find]
       effect: allow
   - name: user_security_scope
     kind: ns.requirement
@@ -169,3 +170,10 @@ entries:
       - { entry: "kickside.mail.security:module_access", path: ".groups +=" }
       - { entry: "kickside.mail.security:module_runtime", path: ".groups +=" }
       - { entry: "kickside.mail.security:template_access", path: ".groups +=" }
+  - name: site_url
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [PUBLIC_API_URL]
+      actions: [env.get]
+      effect: allow

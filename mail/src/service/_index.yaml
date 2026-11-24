@@ -23,6 +23,7 @@ entries:
       store: kickside.mail.outbox:store
     security:
       policies:
+        - kickside.mail.security:site_url
         - kickside.mail.security:driver_dispatch
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
@@ -51,6 +52,8 @@ entries:
     method: preview
     modules: *mailer_modules
     imports: *mailer_imports
+    security:
+      policies: [kickside.mail.security:site_url]
   - name: delivery
     kind: library.lua
     source: file://delivery.lua
@@ -66,7 +69,6 @@ entries:
       client: kickside.mail:client
       types: kickside.mail:types
       message: kickside.mail:message
-      render: kickside.mail.views:render
   - name: recipients
     kind: library.lua
     source: file://recipients.lua

@@ -1,0 +1,5 @@
+{* SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 *}<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:18px 0 12px;">
+      <tr><td bgcolor="#183b60" style="background-color:#183b60;border-radius:6px;">
+        <a href="{{ .action_url }}" style="display:inline-block;border:12px solid #183b60;border-left-width:20px;border-right-width:20px;border-radius:6px;color:#ffffff;font-size:15px;font-weight:bold;line-height:20px;text-decoration:none;">{{ .action_label }}</a>
+      </td></tr>
+    </table>

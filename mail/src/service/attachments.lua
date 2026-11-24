@@ -3,7 +3,6 @@ local types = require("types")
 local contract = require("contract")
 local client = require("client")
 local message = require("message")
-local render = require("render")
 
 local function content_result<T>(result: T | types.ContentFailure | nil, err: error?): (T?, error?)
     if err then return nil, err end
@@ -13,15 +12,10 @@ local function content_result<T>(result: T | types.ContentFailure | nil, err: er
         message = "Content provider returned no attachment", details = {code = "attachment_unavailable"}})
 end
 
-local function resolve(attachments: {types.Attachment}, input: types.AttachmentInput, read_bytes: boolean): ({types.Attachment}?, error?)
+local function resolve(input: types.AttachmentInput, read_bytes: boolean): ({types.Attachment}?, error?)
     local bytes = input.message_bytes
-    local content_ids: {[string]: boolean} = {}
+    local attachments: {types.Attachment} = {}
     local total = 0
-    for _, attachment in ipairs(attachments) do
-        total = total + #attachment.content
-        bytes = bytes + message.attachment_size(#attachment.content, attachment.filename, attachment.content_type, attachment.content_id)
-        if attachment.content_id then content_ids[attachment.content_id:lower()] = true end
-    end
     local oversized = message.message_size_error(bytes, input.max_message_bytes)
     if oversized then return nil, oversized end
     if not input.refs or #input.refs == 0 then return attachments, nil end
@@ -29,13 +23,6 @@ local function resolve(attachments: {types.Attachment}, input: types.AttachmentI
     if definition_err then return nil, definition_err end
 
     for _, ref in ipairs(input.refs) do
-        if ref.content_id then
-            local content_id = ref.content_id:lower()
-            if content_ids[content_id] then
-                return nil, errors.new({kind = errors.INVALID, retryable = false,
-                    message = "Attachment content IDs must be distinct", details = {code = "duplicate_content_id"}})
-            end
-        end
         local provider, open_err = definition:open("kickside.uploads:content_provider", {upload_id = ref.upload_id})
         if open_err then return nil, open_err end
         provider = provider :: types.ContentProvider
@@ -81,17 +68,15 @@ end
 
 local M = {}
 
-function M.validate(layout: {types.Attachment}, input: types.AttachmentInput): error?
-    local _, err = resolve(layout, input, false)
+function M.validate(input: types.AttachmentInput): error?
+    local _, err = resolve(input, false)
     return err
 end
 
 function M.read(input: types.AttachmentInput): ({types.Attachment}?, error?)
     local denied = client.require_send()
     if denied then return nil, denied end
-    local logo, err = render.layout_image()
-    if err then return nil, err end
-    return resolve({logo :: types.Attachment}, input, true)
+    return resolve(input, true)
 end
 
 return M

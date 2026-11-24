@@ -100,7 +100,7 @@ local function send(request: unknown): (types.SendResult?, error?)
         from = from, reply_to = reply_to, to = addresses.to, cc = addresses.cc, bcc = addresses.bcc,
         subject = parts.subject, html = parts.html, text = parts.text,
     })
-    local attachment_err = attachments.validate(parts.attachments, {
+    local attachment_err = attachments.validate({
         refs = input.attachments, message_bytes = bytes, max_message_bytes = driver.max_message_bytes,
     })
     if attachment_err then return nil, attachment_err end

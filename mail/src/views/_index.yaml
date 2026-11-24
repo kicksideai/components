@@ -4,37 +4,95 @@ namespace: kickside.mail.views
 entries:
   - name: templates
     kind: template.set
+    engine: { escape: html }
+  - name: text_templates
+    kind: template.set
+    engine: { escape: none }
   - name: layout
     kind: template.jet
     set: kickside.mail.views:templates
+    meta: { name: "base/standard" }
     source: file://layout.jet
-    meta:
-      inline_image:
-        filesystem: kickside.mail.views:layout_assets
-        filename: kickside-logo.png
-        content_type: image/png
-        content_id: kickside-layout-logo
   - name: layout.text
     kind: template.jet
-    set: kickside.mail.views:templates
+    set: kickside.mail.views:text_templates
+    meta: { name: "base/standard" }
     source: file://layout.text.jet
-  - name: layout_assets
-    kind: fs.directory
-    base: module
-    directory: src/views/assets
-    mode: "0555"
+  - name: plain
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "base/plain" }
+    source: file://plain.jet
+  - name: plain.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "base/plain" }
+    source: file://plain.text.jet
+  - name: header
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/header" }
+    source: file://header.jet
+  - name: header.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/header" }
+    source: file://header.text.jet
+  - name: footer
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/footer" }
+    source: file://footer.jet
+  - name: footer.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/footer" }
+    source: file://footer.text.jet
+  - name: preheader
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/preheader" }
+    source: file://preheader.jet
+  - name: preheader.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/preheader" }
+    source: file://preheader.text.jet
+  - name: button
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/button" }
+    source: file://button.jet
+  - name: button.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/button" }
+    source: file://button.text.jet
+  - name: details
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/details" }
+    source: file://details.jet
+  - name: details.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/details" }
+    source: file://details.text.jet
   - name: notice
     kind: template.jet
     set: kickside.mail.views:templates
+    meta: { name: "message/notice" }
     source: file://notice.jet
   - name: notice.subject
     kind: template.jet
-    set: kickside.mail.views:templates
+    set: kickside.mail.views:text_templates
+    meta: { name: "message/notice.subject" }
     source: |-
-      {{ raw(subject) }}
+      {{ subject }}
   - name: notice.text
     kind: template.jet
-    set: kickside.mail.views:templates
+    set: kickside.mail.views:text_templates
+    meta: { name: "message/notice" }
     source: file://notice.text.jet
   - name: notice_template
     kind: registry.entry
@@ -42,8 +100,8 @@ entries:
     template:
       name: notice
       title: Notice
-      description: Send a branded notice with optional details, a link, and an inline image.
-      parts: { subject: notice.subject, html: notice, text: notice.text }
+      description: Send a notice with optional details, a link, and an inline image.
+      parts: { subject: message/notice.subject, html: message/notice, text: message/notice }
       variable_schema:
         type: object
         additionalProperties: false
@@ -83,9 +141,15 @@ entries:
   - name: render
     kind: library.lua
     source: file://render.lua
-    modules: [templates, html, registry, fs]
+    modules: [templates, html]
     imports:
       types: kickside.mail:types
       catalog: kickside.mail.views:catalog
       message: kickside.mail:message
+      globals: kickside.mail.views:globals
       error_envelope: kickside.contract:error_envelope
+  - name: globals
+    kind: library.lua
+    source: file://globals.lua
+    modules: [env, registry, security]
+    imports: { types: kickside.mail:types }
