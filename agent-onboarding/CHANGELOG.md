@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.15](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.14...agent-onboarding-v0.1.15) (2026-11-24)
+
+
+### Bug Fixes
+
+* restore Work Admin, onboarding and notices checks ([#427](https://github.com/kicksideai/components/issues/427)) ([94c5789](https://github.com/kicksideai/components/commit/94c5789d5180db9d00476cd14c56168608e7a392))
+
 ## [0.1.14](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.13...agent-onboarding-v0.1.14) (2026-11-24)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.49](https://github.com/kicksideai/components/compare/work-v0.1.48...work-v0.1.49) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** keep plugin projections current for restricted items ([#432](https://github.com/kicksideai/components/issues/432)) ([5e8b193](https://github.com/kicksideai/components/commit/5e8b1939b361a9b0d87c539df6a91452c380a0a2))
+
 ## [0.1.48](https://github.com/kicksideai/components/compare/work-v0.1.47...work-v0.1.48) (2026-11-24)
 
 
