@@ -296,8 +296,10 @@ entries:
   - security
   - funcs
   - uuid
+  - json
   imports: &work_call_imports
     threads: kickside.work.persist:threads
+    projection_feed: kickside.work.extensions:plugin_feed
     pack_rows: kickside.work.persist:operation_rows
     automations: kickside.automation:automation
     pack_views: kickside.work.service:pack_views

@@ -95,7 +95,6 @@ entries:
     - kickside.work.service:plan_move
     - kickside.work.service:plan_schema
     - kickside.work.service:plugin_context
-    - kickside.work.service:plugin_feed
     - kickside.work.service:query
     - kickside.work.service:rename_view
     - kickside.work.service:report

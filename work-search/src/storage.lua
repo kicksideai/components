@@ -3,15 +3,17 @@ local sql = require("sql")
 local registry = require("registry")
 local json = require("json")
 local index = require("index")
+local access_rows = require("access_rows")
+local work = require("work")
 
 type Generation = { id: string, schema: integer, scope: string, registration: integer }
 type State = { revision: integer?, active: Generation?, building: Generation?, retired: string?, token: string?, deleting: boolean? }
 type Candidate = { item_id: string, item_key: string, source_seq: integer }
 type Document = Candidate & { content: string }
 
-local M = { Generation = Generation, State = State, Document = Document }
+local M = { Generation = Generation, State = State, Document = Document, Candidate = Candidate }
 
-function M.open(): (sql.DB?, error?)
+function M.db_id(): (string?, error?)
     local entry, err = registry.get("kickside.work_search:storage_config")
     if err then return nil, err end
     local id = entry and entry.meta.db_id
@@ -19,6 +21,12 @@ function M.open(): (sql.DB?, error?)
         return nil, errors.new({ kind = errors.UNAVAILABLE, message = "Work Search database is not configured",
             details = { code = "search_unavailable" } })
     end
+    return id, nil
+end
+
+function M.open(): (sql.DB?, error?)
+    local id, err = M.db_id()
+    if err or not id then return nil, err end
     return sql.get(id)
 end
 
@@ -80,7 +88,25 @@ function M.save(tx: sql.Transaction, attachment_id: string, state: State): error
     return save_err
 end
 
-local function lookup(tx: sql.Transaction, dialect: string, attachment_id: string, schema: integer, scope: string, text: string, limit: integer): ({ Candidate }?, error?)
+-- Add the Work point predicate before LIMIT so hidden hits cannot cause an overflow.
+local function visible(board: work.Board?, args: { unknown }): (string?, error?)
+    if not board then return "", nil end
+    local condition, err = access_rows.item_visibility(board)
+    if err or not condition then return nil, err end
+    local offset = #args
+    args[offset + 1] = board.board_id
+    for _, value in ipairs(condition.args) do args[#args + 1] = value end
+    -- Keep the Work item check a point lookup driven by each lexical hit.
+    local statement = [[ AND (SELECT 1 FROM kickside_work_item r
+        WHERE r.board_id=? AND r.item_id=s.item_id AND r.updated_seq=s.source_seq AND r.life='live' AND ]] .. condition.sql .. ") = 1"
+    return (statement:gsub("%?", function(): string
+        offset = offset + 1
+        return "$" .. offset
+    end)), nil
+end
+
+local function lookup(tx: sql.DB | sql.Transaction, dialect: string, attachment_id: string, schema: integer, scope: string, text: string,
+    limit: integer, board: work.Board?): ({ Candidate }?, error?)
     local state, err = M.load(tx, attachment_id)
     if err then return nil, err end
     local active = state and not state.deleting and state.active
@@ -90,8 +116,11 @@ local function lookup(tx: sql.Transaction, dialect: string, attachment_id: strin
     end
     local key = text:match("^%s*([a-zA-Z][a-zA-Z0-9]*%-%d+)%s*$")
     if key then
-        local rows, err = tx:query([[SELECT item_id, item_key, source_seq FROM kickside_work_search_row
-            WHERE generation_id=$1 AND item_key=$2]], { active.id, key:upper() })
+        local args: { unknown } = { active.id, key:upper() }
+        local predicate, err = visible(board, args)
+        if err or not predicate then return nil, err end
+        local rows, err = tx:query([[SELECT item_id, item_key, source_seq FROM kickside_work_search_row s
+            WHERE generation_id=$1 AND item_key=$2]] .. predicate, args)
         return rows :: { Candidate }?, err
     end
     local sqlite = dialect == sql.type.SQLITE
@@ -100,17 +129,25 @@ local function lookup(tx: sql.Transaction, dialect: string, attachment_id: strin
     local token = index.lexical_scope_token(active.id)
     local matches, match_err
     if sqlite then
-        matches, match_err = tx:query([[SELECT rowid AS row_id FROM kickside_work_search_fts
-            WHERE kickside_work_search_fts MATCH $1 LIMIT $2]],
-            { 'scope_token : "' .. token .. '" AND content : (' .. match .. ')', limit + 1 })
+        local args: { unknown } = { 'scope_token : "' .. token .. '" AND content : (' .. match .. ')' }
+        local predicate, err = visible(board, args)
+        if err or not predicate then return nil, err end
+        local from = "kickside_work_search_fts"
+        if board then from = from .. " JOIN kickside_work_search_row s ON s.row_id=kickside_work_search_fts.rowid" end
+        args[#args + 1] = limit + 1
+        matches, match_err = tx:query("SELECT kickside_work_search_fts.rowid AS row_id FROM " .. from
+            .. " WHERE kickside_work_search_fts MATCH $1" .. predicate .. " LIMIT $" .. #args, args)
     else
         -- GiST can stream a capped match set. A bitmap scan builds every match before LIMIT runs.
         local _, plan_err = tx:query([[SELECT set_config('enable_bitmapscan', 'off', true),
             set_config('enable_seqscan', 'off', true)]], {})
         if plan_err then return nil, plan_err end
-        matches, match_err = tx:query([[SELECT row_id FROM kickside_work_search_row
-            WHERE search_vector @@ (to_tsquery('simple', $1) && to_tsquery('simple', $2))
-            LIMIT $3]], { match, token .. "@scope.invalid:D", limit + 1 })
+        local args: { unknown } = { match, token .. "@scope.invalid:D" }
+        local predicate, err = visible(board, args)
+        if err or not predicate then return nil, err end
+        args[#args + 1] = limit + 1
+        matches, match_err = tx:query([[SELECT row_id FROM kickside_work_search_row s
+            WHERE search_vector @@ (to_tsquery('simple', $1) && to_tsquery('simple', $2))]] .. predicate .. " LIMIT $" .. #args, args)
     end
     if match_err or not matches then return nil, match_err end
     if #matches > limit then
@@ -127,6 +164,11 @@ local function lookup(tx: sql.Transaction, dialect: string, attachment_id: strin
     local rows, read_err = tx:query([[SELECT item_id, item_key, source_seq FROM kickside_work_search_row
         WHERE generation_id=$1 AND row_id IN (]] .. table.concat(marks, ",") .. ")", args)
     return rows :: { Candidate }?, read_err
+end
+
+function M.visible_candidates(tx: sql.DB | sql.Transaction, dialect: string, attachment_id: string, board: work.Board,
+    scope: string, text: string, limit: integer): ({ Candidate }?, error?)
+    return lookup(tx, dialect, attachment_id, board.generation, scope, text, limit, board)
 end
 
 function M.candidates(attachment_id: string, schema: integer, scope: string, text: string, limit: integer): ({ Candidate }?, error?)

@@ -63,6 +63,51 @@ function M.admit(board_id: string, required_access: integer?): error?
     return err
 end
 
+local function snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?, fn: types.Snapshot<T>,
+    allowance: types.ReadAllowance, partial: boolean?, admitted: domain.Board?): (T?, error?)
+    local db, err = store.open()
+    if not db then return nil, err end
+    local tx, berr = db:begin()
+    if berr then
+        db:release()
+        return nil, errors.wrap(berr, "read transaction begin failed")
+    end
+    if db:type() == sql.type.POSTGRES then
+        local isolation_err = store.read_snapshot(tx, allowance.deadline)
+        if isolation_err then tx:rollback(); db:release(); return nil, isolation_err end
+    end
+    local board, cerr = store.board(tx, board_id)
+    local result: T?
+    local ferr: error?
+    if cerr then ferr = cerr
+    elseif not board then ferr = errors.new({ details = { code = "board_schema_missing" }, kind = errors.NOT_FOUND, message = "board has no schema" })
+    elseif min_seq and board.applied_seq < min_seq then
+        ferr = errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "board has not reached seq " .. min_seq,
+            details = { code = "projection_pending", min_seq = min_seq, applied_seq = board.applied_seq } })
+    elseif admitted and board.digest ~= admitted.digest then
+        ferr = M.changed()
+    else
+        if admitted then board.caller, board.memberships = admitted.caller, admitted.memberships end
+        board.dialect = db:type()
+        result, ferr = fn(tx, board, db:type())
+    end
+    tx:rollback()
+    db:release()
+    if ferr or not result or not board then return nil, ferr end
+    if not partial then
+        local expired = budget.check(allowance)
+        if expired then return nil, expired end
+    end
+    result.as_of = board.applied_seq
+    result.generation = board.generation
+    return result, nil
+end
+
+-- The projection reader validates the attachment and registration inside this snapshot.
+function M.projection_snapshot<T: types.ReadStamp>(board_id: string, allowance: types.ReadAllowance, fn: types.Snapshot<T>): (T?, error?)
+    return snapshot(board_id, nil, fn, allowance)
+end
+
 -- with_snapshot runs fn for an admitted caller inside one read transaction over
 -- the board. Context carries the selection's admission and live caller authority.
 function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?, fn: types.Snapshot<T>, context: types.ReadContext?, asked: types.ReadBudget?, where: unknown?, required_access: integer?, prepare: types.SnapshotPreparation?): (T?, error?)
@@ -107,42 +152,7 @@ function M.with_snapshot<T: types.ReadStamp>(board_id: string, min_seq: integer?
         local err = prepare(admitted)
         if err then return nil, err end
     end
-    db, err = store.open()
-    if not db then return nil, err end
-    local tx, berr = db:begin()
-    if berr then
-        db:release()
-        return nil, errors.wrap(berr, "read transaction begin failed")
-    end
-    if db:type() == sql.type.POSTGRES then
-        local isolation_err = store.read_snapshot(tx, allowance.deadline)
-        if isolation_err then tx:rollback(); db:release(); return nil, isolation_err end
-    end
-    local board, cerr = store.board(tx, board_id)
-    local result: T?
-    local ferr: error?
-    if cerr then ferr = cerr
-    elseif not board then ferr = errors.new({ details = { code = "board_schema_missing" }, kind = errors.NOT_FOUND, message = "board has no schema" })
-    elseif min_seq and board.applied_seq < min_seq then
-        ferr = errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = "board has not reached seq " .. min_seq,
-            details = { code = "projection_pending", min_seq = min_seq, applied_seq = board.applied_seq } })
-    elseif board.digest ~= admitted.digest then
-        ferr = M.changed()
-    else
-        board.caller, board.memberships = admitted.caller, admitted.memberships
-        board.dialect = db:type()
-        result, ferr = fn(tx, board, db:type())
-    end
-    tx:rollback()
-    db:release()
-    if ferr or not result or not board then return nil, ferr end
-    if not (context and context.partial) then
-        local expired = budget.check(allowance)
-        if expired then return nil, expired end
-    end
-    result.as_of = board.applied_seq
-    result.generation = board.generation
-    return result, nil
+    return snapshot(board_id, min_seq, fn, allowance, context and context.partial, admitted)
 end
 
 return M

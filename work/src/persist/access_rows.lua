@@ -104,16 +104,12 @@ function M.holders_condition(board: domain.Board, list: { domain.Holder }, alias
     return { sql = #parts > 0 and "(" .. table.concat(parts, " OR ") .. ")" or "1=0", args = args }, nil
 end
 
--- Point conditions read canonical documents while an index rebuild is pending.
-function M.permits(tx: sql.DB | sql.Transaction, board: domain.Board, id: string): (boolean, error?)
+-- Candidate lookups evaluate visibility on the canonical Work item row (alias r).
+function M.item_visibility(board: domain.Board): (domain.Condition?, error?)
     local rule, caller = board.compiled.visibility, board.caller
-    if not rule then return true, nil end
-    if not caller then return false, errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = "caller authority is unavailable", details = { code = "contract_unavailable" } }) end
-    if caller.admin and rule.bypass == "admin" then
-        local rows, err = tx:query("SELECT 1 AS allowed FROM kickside_work_item WHERE board_id = $1 AND item_id = $2", { board.board_id, id })
-        return rows ~= nil and rows[1] ~= nil, err
-    end
-    local args: { unknown } = { board.board_id, id }
+    if not rule or (caller and caller.admin and rule.bypass == "admin") then return { sql = "1 = 1", args = {} }, nil end
+    if not caller then return nil, unavailable("caller authority is unavailable") end
+    local args: { unknown } = {}
     local postgres = board.dialect == sql.type.POSTGRES
     local function value(field: domain.Field): string
         args[#args + 1] = postgres and tostring(field.id) or ("$." .. field.id .. ".p")
@@ -124,12 +120,22 @@ function M.permits(tx: sql.DB | sql.Transaction, board: domain.Board, id: string
         local level_sql = value(board.model.fields[rule.field]) .. " = ?"
         args[#args + 1] = level.id
         local holders, err = M.holders_condition(board, level.holders, "r", board.model.fields)
-        if err or not holders then return false, err end
+        if err or not holders then return nil, err end
         for _, arg in ipairs(holders.args) do args[#args + 1] = arg end
         parts[#parts + 1] = "(" .. level_sql .. " AND (" .. holders.sql .. "))"
     end
-    if #args > 4096 then return false, errors.new({ kind = errors.UNAVAILABLE, retryable = false, message = "visibility exceeds its bound of 4096 parameters", details = { code = "contract_unavailable" } }) end
-    local statement = "SELECT 1 AS allowed FROM kickside_work_item r WHERE r.board_id = ? AND r.item_id = ? AND (" .. table.concat(parts, " OR ") .. ")"
+    if #args > 4094 then return nil, unavailable("visibility exceeds its bound of 4096 parameters") end
+    return { sql = "(" .. table.concat(parts, " OR ") .. ")", args = args }, nil
+end
+
+-- Point conditions read canonical documents while an index rebuild is pending.
+function M.permits(tx: sql.DB | sql.Transaction, board: domain.Board, id: string): (boolean, error?)
+    if not board.compiled.visibility then return true, nil end
+    local condition, cerr = M.item_visibility(board)
+    if cerr or not condition then return false, cerr end
+    local args: { unknown } = { board.board_id, id }
+    for _, value in ipairs(condition.args) do args[#args + 1] = value end
+    local statement = "SELECT 1 AS allowed FROM kickside_work_item r WHERE r.board_id = ? AND r.item_id = ? AND " .. condition.sql
     local n = 0
     statement = statement:gsub("%?", function(): string n = n + 1; return "$" .. n end)
     local rows, err = tx:query(statement, args)

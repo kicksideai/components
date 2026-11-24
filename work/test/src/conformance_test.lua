@@ -103,12 +103,12 @@ local function define()
             end
             test.is_true(methods.schema_options == true)
             test.eq(assert(registry.get("kickside.work.traits:schema_options")).data.method, "schema_options")
-            for _, method in ipairs({ "plugin_context", "plugin_feed" }) do
-                test.is_true(methods[method] == true, method)
-                test.eq(#assert(registry.find({ [".id"] = "kickside.work.traits:" .. method })), 0, "host admission adds no tool")
-            end
+            test.is_true(methods.plugin_context == true)
+            test.eq(#assert(registry.find({ [".id"] = "kickside.work.traits:plugin_context" })), 0, "host admission adds no tool")
+            test.is_nil(methods.plugin_feed)
+            test.eq(assert(registry.get("kickside.work.extensions:plugin_feed")).kind, "library.lua")
             test.is_true(methods.delete == true, "board teardown contract")
-            test.eq(#definition.data.methods, #expected + 4)
+            test.eq(#definition.data.methods, #expected + 3)
             test.eq(assert(registry.get("kickside.work:types")).kind, "library.lua")
             test.eq(assert(registry.get("kickside.work.api:access")).kind, "library.lua")
         end)

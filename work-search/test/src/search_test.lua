@@ -377,6 +377,68 @@ local function define()
             test.eq(indexed(admin, id, found.key:lower(), 1)[1].id, item)
         end)
 
+        test.it("indexes restricted edits for their holder and hides them from the board owner", function()
+            local owner = session(true)
+            local holder, holder_id = session(false)
+            local schema = declaration(TEXT)
+            schema.fields[3] = { code = "audience", form = "text", index = "key" }
+            schema.item_types[1].fields[3] = "audience"
+            schema.visibility = { field = "audience", levels = { { id = "private", holders = { { user = holder_id } } } } }
+            local id = create(owner, schema)
+            checked(owner("grant", { subject_id = holder_id, mask = 7 }, id))
+            local item = apply(holder, id, { op = "create", type = "issue", values = { title = "Peridot", audience = "private" } }).item
+            test.eq(indexed(holder, id, "peridot", 1)[1].id, item)
+            apply(holder, id, { op = "set", item = item, values = { title = "Sphalerite" } })
+            test.eq(indexed(holder, id, "sphalerite", 1)[1].id, item)
+            test.eq(#indexed(holder, id, "peridot", 0), 0)
+            test.eq(#indexed(owner, id, "sphalerite", 0), 0)
+            local grouped = checked(owner("query", { where = { match = "sphalerite" }, group_by = "type" }, id))
+            test.eq(#grouped.groups, 0)
+            apply(holder, id, { op = "delete", item = item })
+            test.eq(#indexed(holder, id, "sphalerite", 0), 0)
+        end)
+
+        test.it("applies item visibility before the lexical candidate cap", function()
+            local owner, owner_id = session(true)
+            local reader, reader_id = session(false)
+            local schema = declaration(TEXT)
+            schema.fields[3] = { code = "audience", form = "text", index = "key" }
+            schema.item_types[1].fields[3] = "audience"
+            schema.visibility = { field = "audience", levels = { { id = "private", holders = { { user = owner_id } } } } }
+            local id = create(owner, schema)
+            checked(owner("grant", { subject_id = reader_id, mask = 1 }, id))
+            local public = apply(owner, id, { op = "create", type = "issue", values = { title = "Tourmaline" } }).item
+            local hidden = apply(owner, id, { op = "create", type = "issue", values = { title = "Tourmaline", audience = "private" } }).item
+            indexed(owner, id, "tourmaline", 2)
+
+            local db = assert(sql.get("app:db"))
+            local sqlite = db:type() == sql.type.SQLITE
+            local tx = assert(db:begin())
+            local generation = assert(tx:query("SELECT generation_id FROM kickside_work_search_row WHERE item_id=$1", { hidden }))[1].generation_id
+            local counter = "WITH RECURSIVE counter(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM counter WHERE n<2000) "
+            assert(tx:execute(counter .. [[INSERT INTO kickside_work_item
+                (board_id,item_id,number,type,state,category,process_generation,visit,path,version,life,document,created_seq,updated_seq,created_at,updated_at)
+                SELECT board_id,'hidden-'||n,number+10000+n,type,state,category,process_generation,visit,path,version,life,document,created_seq,updated_seq,created_at,updated_at
+                FROM kickside_work_item, counter WHERE board_id=$1 AND item_id=$2]], { id, hidden }))
+            assert(tx:execute(counter .. [[INSERT INTO kickside_work_search_row (generation_id,item_id,item_key,source_seq,content)
+                SELECT generation_id,'hidden-'||n,'HIDDEN-'||n,source_seq,content
+                FROM kickside_work_search_row, counter WHERE generation_id=$1 AND item_id=$2]], { generation, hidden }))
+            if sqlite then
+                assert(tx:execute([[INSERT INTO kickside_work_search_fts (rowid,content,scope_token)
+                    SELECT row_id,content,$1 FROM kickside_work_search_row WHERE generation_id=$2 AND item_id LIKE 'hidden-%']],
+                    { index.lexical_scope_token(generation), generation }))
+            end
+            assert(tx:commit())
+            db:release()
+
+            local answer = checked(reader("query", { where = { match = "tourmaline" } }, id))
+            test.eq(#answer.items, 1)
+            test.eq(answer.items[1].id, public)
+            local denied, err = owner("query", { where = { match = "tourmaline" } }, id)
+            test.is_nil(denied)
+            test.eq(err:details().code, "search_verification_budget")
+        end)
+
         test.it("checks live board access and visibility and preserves Work ordering across pages", function()
             local admin, admin_id = session(true)
             local member, member_id = session(false)

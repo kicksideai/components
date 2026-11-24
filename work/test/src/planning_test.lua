@@ -344,6 +344,28 @@ local function define()
             test.eq(#ready.snapshot.members, 1)
         end)
 
+        test.it("filters and counts sprint membership by the reader's visibility", function()
+            local owner, holder = scoped.admin(), scoped.member()
+            local board = create_board(owner)
+            local source = sprint(board, "sprint", true)
+            assert(board.call("apply_schema", { declaration = {
+                fields = { { code = "level", form = "text", index = "key" } },
+                item_types = { { id = "issue", process = "planning_issue", fields = { "title", "current_sprint", "milestone", "level" } } },
+                visibility = { field = "level", levels = { { id = "private", holders = { { user = holder.id } } } } },
+            } }))
+            steps.rebuilt(board.id, "reindex")
+            assert(board.call("grant", { subject_id = holder.id, mask = 3 }))
+            local created = assert(holder.call("apply", { ops = { { op = "create", type = "issue", values = {
+                title = "Restricted sprint member", level = "private", current_sprint = { board = board.id, item = source },
+            } } } }, board.id)).outcomes[1]
+            test.eq(created.status, "applied")
+            local request = { where = { field = "current_sprint", op = "eq", value = { board = board.id, item = source } } }
+            test.eq(assert(holder.call("query", request, board.id)).items[1].id, created.item)
+            test.eq(assert(holder.call("count", request, board.id)).total, 1)
+            test.eq(#assert(board.call("query", request)).items, 0)
+            test.eq(assert(board.call("count", request)).total, 0)
+        end)
+
         test.it("requires write access to the sprint reference on every affected item", function()
             local owner, writer = scoped.admin(), scoped.member()
             local board = create_board(owner)

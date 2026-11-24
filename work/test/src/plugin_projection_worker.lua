@@ -1,7 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local sql = require("sql")
 local security = require("security")
-local board = require("board")
 local json = require("json")
 local M = {}
 local function ensure(db: sql.DB): error?
@@ -9,13 +8,15 @@ local function ensure(db: sql.DB): error?
     return err
 end
 type Map = { [string]: unknown }
-type Change = { item_id: string, updated_seq: integer, op: string }
-type Body = { worker_config: { plugin: string, input: string }, token: string?, delivered: { unknown }?, patches: { Map }? }
-type Input = { thread_id: string, projection: { kind: string, body: Body }, range: { from_seq: integer, to_seq: integer }, events: { Map }?, worker_input_mode: string }
+type Change = { item_id: string, updated_seq: integer, op: string, values: { estimate: integer? }? }
+type Body = { worker_config: { plugin: string, input: string, attachment_id: string }, token: string?, delivered: { unknown }?, patches: { Map }? }
+type Input = { thread_id: string, projection: { id: string, kind: string, body: Body }, range: { from_seq: integer, to_seq: integer }, events: { Map }?, worker_input_mode: string }
 type Feed = { config: { fail: boolean?, marker: string? }, changes: { Change }, token: string, done: boolean }
 function M.run(input: Input): (Map?, error?)
+    local projection_feed = require("projection_feed")
     local body = input.projection.body
-    local page, ferr = board.call("plugin_feed", { board_id = input.thread_id, plugin = body.worker_config.plugin,
+    local page, ferr = projection_feed.page({ board_id = input.thread_id, plugin = body.worker_config.plugin,
+        attachment_id = body.worker_config.attachment_id, projection_id = input.projection.id,
         kind = input.projection.kind, token = body.token })
     if ferr or not page then return nil, ferr end
     local feed = page :: Feed
@@ -29,7 +30,10 @@ function M.run(input: Input): (Map?, error?)
     local tx, terr = db:begin()
     if terr or not tx then db:release(); return nil, terr end
     for _, event in ipairs(feed.changes) do
-        local _, werr = tx:execute("INSERT INTO work_test_plugin_fold (board_id, seq, item_id, event_type, actor_id, marker, deliveries) VALUES ($1, $2, $3, $4, $5, $6, 1) ON CONFLICT (board_id, seq) DO UPDATE SET marker=excluded.marker, deliveries=work_test_plugin_fold.deliveries+1", { input.thread_id, event.updated_seq, event.item_id, event.op, (security.actor() :: security.Actor):id(), feed.config.marker or "initial" })
+        -- Model T3's 80 logged minutes in this fixture without depending on Time's worker.
+        local estimate = event.values and event.values.estimate
+        local marker = estimate and (estimate < 80 and "over_estimate" or "within_estimate") or feed.config.marker or "initial"
+        local _, werr = tx:execute("INSERT INTO work_test_plugin_fold (board_id, seq, item_id, event_type, actor_id, marker, deliveries) VALUES ($1, $2, $3, $4, $5, $6, 1) ON CONFLICT (board_id, seq) DO UPDATE SET marker=excluded.marker, deliveries=work_test_plugin_fold.deliveries+1", { input.thread_id, event.updated_seq, event.item_id, event.op, (security.actor() :: security.Actor):id(), marker })
         if werr then tx:rollback(); db:release(); return nil, werr end
     end
     local _, cerr = tx:commit()

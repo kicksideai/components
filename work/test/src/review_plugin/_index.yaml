@@ -106,6 +106,7 @@ entries:
   modules: [sql, ctx]
   imports: &register_imports
     board: kickside.work:client
+    projection_feed: kickside.work.extensions:plugin_feed
     component: kickside.component:component
     scopes: kickside.work.read:scopes
     types: kickside.work.read:types
