@@ -123,7 +123,10 @@ end
 
 function M.render(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, values: types.RenderGlobals): (types.Rendered?, error?)
     return with_draft(items, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
-        return render.faces(item, vars, values, html, text)
+        local result, err = render.faces(item, vars, values, html, text)
+        if not err then return result, nil end
+        if not (err:details() or {}).face then err = render.face_error(item, "variables", err) end
+        return nil, invalid(err)
     end)
 end
 

@@ -10,6 +10,8 @@ local jobs = require("jobs")
 local notifier = require("notifier")
 local store = require("store")
 local log = require("log")
+local security = require("security")
+local resources = require("resources")
 local message = require("message")
 local render = require("render")
 local attachments = require("attachments")
@@ -63,24 +65,13 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     if limit_err then return nil, limit_err end
     local unavailable = drivers.check_available(driver)
     if unavailable then return nil, unavailable end
-    if not config.from_address or not config.from_address:find("%S") then
-        return nil, settings.missing("A mail From address is required")
-    end
-    if not message.address(config.from_address) then
-        return nil, settings.missing("The mail From address is invalid")
-    end
-    local name = config.from_name
-    if name and name:find("%c") then
-        return nil, settings.missing("The mail From name contains a control character")
-    end
-    if name and not name:find("%S") then name = nil end
-
+    local from, from_err = drivers.sender(config)
+    if from_err then return nil, from_err end
     local reply_to = input.reply_to
-    if not reply_to and not resend_of and config.reply_to and config.reply_to ~= "" then
-        reply_to = config.reply_to
-        if not message.address(reply_to) then
-            return nil, settings.missing("The mail Reply-To address is invalid")
-        end
+    if not reply_to and not resend_of then
+        local reply_err
+        reply_to, reply_err = drivers.reply_to(config)
+        if reply_err then return nil, reply_err end
     end
 
     if not rendered then
@@ -91,7 +82,6 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     local parts = rendered :: types.Rendered
     local body_err = message.body_error(parts.text, parts.html)
     if body_err then return nil, body_err end
-    local from = {address = config.from_address, name = name}
     local bytes = message.delivery_size({
         from = from, reply_to = reply_to, to = addresses.to, cc = addresses.cc, bcc = addresses.bcc,
         subject = parts.subject, html = parts.html, text = parts.text,
@@ -138,4 +128,50 @@ local function resend(message_id: string): (types.SendResult?, error?)
         {subject = row.subject, html = row.failed_html, text = row.failed_text}, row.id)
 end
 
-return {send = send, preview = preview, resend = resend}
+local function test_input(): (types.SendRequest?, error?)
+    local actor, err = security.actor()
+    if err then return nil, err end
+    local meta = actor and actor:meta()
+    local address = meta and meta.email
+    if not meta or meta.user_id ~= actor:id() or not message.address(address) then
+        return nil, errors.new({kind = errors.INVALID, message = "The acting person has no valid email address",
+            retryable = false, details = {code = "recipient_address_missing"}})
+    end
+    return {to = {address :: string}, origin = {kind = "test", id = actor:id(),
+        label = "Test email"}}, nil
+end
+
+local function library_send_test(request: types.TestSend): (types.SendResult?, error?)
+    local denied = client.require_library() or client.require_send()
+    if denied then return nil, denied end
+    local input, err = test_input()
+    if err then return nil, err end
+    if type(request) ~= "table" or type(request.message) ~= "string" then
+        return nil, resources.error(errors.INVALID, "invalid_mail_test", "Provide a library message to send")
+    end
+    for field in pairs(request) do
+        if field ~= "message" and field ~= "vars" then
+            return nil, resources.error(errors.INVALID, "invalid_mail_test", "A test is addressed to the acting person")
+        end
+    end
+    local item, read_err = resources.get({kind = "message", name = request.message})
+    if read_err then return nil, read_err end
+    input.template, input.vars = item.name, request.vars
+    if input.vars == nil then input.vars = item.samples end
+    return admit(input)
+end
+
+local function delivery_send_test(request: types.Record): (types.SendResult?, error?)
+    local denied = client.require_admin() or client.require_send()
+    if denied then return nil, denied end
+    if type(request) ~= "table" or next(request) ~= nil then
+        return nil, resources.error(errors.INVALID, "invalid_mail_test", "A test is addressed to the acting person")
+    end
+    local input, err = test_input()
+    if err then return nil, err end
+    input.subject, input.text = "Mail delivery test", "This is a test of your mail delivery settings."
+    return admit(input)
+end
+
+return {send = send, preview = preview, resend = resend, library_send_test = library_send_test,
+    delivery_send_test = delivery_send_test}

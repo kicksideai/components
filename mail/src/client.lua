@@ -13,6 +13,14 @@ function M.require_send(): error?
     return nil
 end
 
+function M.require_admin(): error?
+    if not security.can("mail.log.admin", "kickside.mail:mailer") then
+        return errors.new({kind = errors.PERMISSION_DENIED, message = "Administer mail delivery access is required",
+            retryable = false, details = {code = "mail_delivery_denied"}})
+    end
+    return nil
+end
+
 function M.require_library(): error?
     if not security.can("access", "kickside.mail.library:list") then
         return errors.new({kind = errors.PERMISSION_DENIED, message = "Edit mail library access is required",

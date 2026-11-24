@@ -46,6 +46,27 @@ entries:
       - { entry: kickside.mail.migrations:05_message_template_index, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:06_failed_content, path: ".meta.target_db" }
       - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
+  - name: api_router
+    kind: ns.requirement
+    meta: { value_kind: http.router, comment: Authenticated router for the Mail administration API. }
+    targets:
+      - { entry: kickside.mail.api:library_list.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_get.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_create.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_update.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_save.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_set_base.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_reset.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_delete.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_history.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_restore.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_preview.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_send_test.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:activity_list.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:activity_get.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:activity_resend.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:delivery_status.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:delivery_send_test.endpoint, path: ".meta.router" }
   - name: db_config
     kind: registry.entry
     meta: { private: true, db_id: "" }
@@ -71,7 +92,7 @@ entries:
     kind: library.lua
     source: file://drivers_registry.lua
     modules: [registry, contract, funcs]
-    imports: { settings: kickside.mail:settings, types: kickside.mail:types }
+    imports: { settings: kickside.mail:settings, types: kickside.mail:types, message: kickside.mail:message }
   - name: mailer
     kind: contract.definition
     meta: { title: Mailer }

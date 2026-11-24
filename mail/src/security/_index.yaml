@@ -52,7 +52,7 @@ entries:
       title: Send mail
       surface: kickside.mail
       intent: tool_access
-      includes: [kickside.mail.security:module_runtime]
+      includes: [kickside.mail.security:module_runtime, kickside.mail.security:send_endpoints]
     groups: []
     policy:
       resources: [kickside.mail:mailer]
@@ -107,6 +107,7 @@ entries:
       title: Administer mail delivery
       surface: kickside.mail
       intent: settings_access
+      includes: [kickside.mail.security:log_admin, kickside.mail.security:delivery_calls, kickside.mail.security:delivery_endpoints]
     groups: []
     policy:
       resources:
@@ -176,6 +177,7 @@ entries:
     targets:
       - { entry: "kickside.mail.security:module_access", path: ".groups +=" }
       - { entry: "kickside.mail.security:module_runtime", path: ".groups +=" }
+      - { entry: "kickside.mail.security:member_endpoints", path: ".groups +=" }
   - name: site_url
     kind: security.policy
     meta: { private: true }
@@ -189,7 +191,7 @@ entries:
       title: Edit mail library
       surface: kickside.mail
       intent: module_management
-      includes: [kickside.mail.security:module_runtime, kickside.mail.security:library_calls]
+      includes: [kickside.mail.security:module_runtime, kickside.mail.security:library_calls, kickside.mail.security:library_endpoints]
     groups: []
     policy:
       resources: [kickside.mail.library:list]
@@ -212,6 +214,7 @@ entries:
         - kickside.mail.library:delete
         - kickside.mail.library:render
         - kickside.mail.library:render_draft
+        - kickside.mail.service:library_send_test
       actions: [funcs.call, registry.get]
       effect: allow
   - name: overlay_owner
@@ -258,4 +261,73 @@ entries:
     policy:
       resources: ["kickside.mail.draft:*"]
       actions: [registry.overlay.create.template.jet, registry.overlay.delete.template.jet, registry.overlay.create.template.set, registry.overlay.delete.template.set, template.get]
+      effect: allow
+  - name: member_endpoints
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources:
+        - kickside.mail.api:library_list.endpoint
+        - kickside.mail.api:library_get.endpoint
+        - kickside.mail.api:library_create.endpoint
+        - kickside.mail.api:library_update.endpoint
+        - kickside.mail.api:library_save.endpoint
+        - kickside.mail.api:library_set_base.endpoint
+        - kickside.mail.api:library_reset.endpoint
+        - kickside.mail.api:library_delete.endpoint
+        - kickside.mail.api:library_history.endpoint
+        - kickside.mail.api:library_restore.endpoint
+        - kickside.mail.api:library_preview.endpoint
+        - kickside.mail.api:library_send_test.endpoint
+        - kickside.mail.api:activity_list.endpoint
+        - kickside.mail.api:activity_get.endpoint
+        - kickside.mail.api:activity_resend.endpoint
+        - kickside.mail.api:delivery_status.endpoint
+        - kickside.mail.api:delivery_send_test.endpoint
+      actions: [registry.get]
+      effect: allow
+  - name: library_endpoints
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources:
+        - kickside.mail.api:library_list.endpoint
+        - kickside.mail.api:library_get.endpoint
+        - kickside.mail.api:library_create.endpoint
+        - kickside.mail.api:library_update.endpoint
+        - kickside.mail.api:library_save.endpoint
+        - kickside.mail.api:library_set_base.endpoint
+        - kickside.mail.api:library_reset.endpoint
+        - kickside.mail.api:library_delete.endpoint
+        - kickside.mail.api:library_history.endpoint
+        - kickside.mail.api:library_restore.endpoint
+        - kickside.mail.api:library_preview.endpoint
+        - kickside.mail.api:library_send_test.endpoint
+      actions: [access]
+      effect: allow
+  - name: delivery_endpoints
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources:
+        - kickside.mail.api:activity_list.endpoint
+        - kickside.mail.api:activity_get.endpoint
+        - kickside.mail.api:delivery_status.endpoint
+        - kickside.mail.api:delivery_send_test.endpoint
+      actions: [access]
+      effect: allow
+  - name: send_endpoints
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources:
+        - kickside.mail.api:activity_resend.endpoint
+      actions: [access]
+      effect: allow
+  - name: delivery_calls
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail.settings:delivery_status, kickside.mail.service:delivery_send_test]
+      actions: [funcs.call, registry.get]
       effect: allow

@@ -6,7 +6,7 @@ entries:
     kind: function.lua
     source: file://send.lua
     method: send
-    modules: &mailer_modules [logger]
+    modules: &mailer_modules [logger, security]
     imports: &mailer_imports
       types: kickside.mail:types
       client: kickside.mail:client
@@ -22,6 +22,7 @@ entries:
       notifier: kickside.core.retention:notifier
       store: kickside.mail.outbox:store
       log: kickside.mail.outbox:log
+      resources: kickside.mail.library:resources
     security: &send_security
       policies:
         - kickside.mail.security:site_url
@@ -37,6 +38,20 @@ entries:
     kind: function.lua
     source: file://send.lua
     method: resend
+    modules: *mailer_modules
+    imports: *mailer_imports
+    security: *send_security
+  - name: library_send_test
+    kind: function.lua
+    source: file://send.lua
+    method: library_send_test
+    modules: *mailer_modules
+    imports: *mailer_imports
+    security: *send_security
+  - name: delivery_send_test
+    kind: function.lua
+    source: file://send.lua
+    method: delivery_send_test
     modules: *mailer_modules
     imports: *mailer_imports
     security: *send_security

@@ -30,6 +30,9 @@ entries:
     kind: http.router
     meta: { server: app:gateway }
     prefix: /api
+    middleware: [token_auth]
+    post_middleware: [endpoint_firewall]
+    options: { token_store: kickside.users.security:tokens }
   - name: public
     kind: http.router
     meta: { server: app:gateway }
@@ -146,6 +149,7 @@ entries:
     parameters:
       - { name: "kickside.mail.security:user_security_scope", value: "app:user" }
       - { name: "kickside.mail:target_db", value: "app:db" }
+      - { name: "kickside.mail:api_router", value: "app:api" }
   - name: dep.workflows
     kind: ns.dependency
     component: kickside/workflows

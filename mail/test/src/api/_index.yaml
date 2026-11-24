@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.mail_api
+entries:
+  - name: api_test
+    kind: function.lua
+    meta: { type: test, suite: mail_api }
+    source: file://api_test.lua
+    method: run
+    modules: [contract, funcs, http_client, json, registry, security, sql, system, uuid, time]
+    imports: { test: wippy.test:test }
+  - name: sender
+    kind: security.scope
+  - name: sender_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:sender
+    policies:
+      - kickside.mail.security:send_access
+      - kickside.mail.security:module_runtime
+      - kickside.mail.security:member_endpoints
+      - kickside.mail.security:send_endpoints
+  - name: editor
+    kind: security.scope
+  - name: editor_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:editor
+    policies:
+      - kickside.mail.security:library_access
+      - kickside.mail.security:library_calls
+      - kickside.mail.security:library_endpoints
+      - kickside.mail.security:module_runtime
+      - kickside.mail.security:member_endpoints
+  - name: editor_sender
+    kind: security.scope
+  - name: editor_sender_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:editor_sender
+    policies:
+      - kickside.mail.security:library_access
+      - kickside.mail.security:library_calls
+      - kickside.mail.security:library_endpoints
+      - kickside.mail.security:module_runtime
+      - kickside.mail.security:member_endpoints
+      - kickside.mail.security:send_access
+  - name: delivery
+    kind: security.scope
+  - name: delivery_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:delivery
+    policies:
+      - kickside.mail.security:driver_admin
+      - kickside.mail.security:log_admin
+      - kickside.mail.security:delivery_endpoints
+      - kickside.mail.security:delivery_calls
+      - kickside.mail.security:module_runtime
+      - kickside.mail.security:member_endpoints
+  - name: delivery_sender
+    kind: security.scope
+  - name: delivery_sender_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:delivery_sender
+    policies:
+      - kickside.mail.security:driver_admin
+      - kickside.mail.security:log_admin
+      - kickside.mail.security:delivery_endpoints
+      - kickside.mail.security:delivery_calls
+      - kickside.mail.security:module_runtime
+      - kickside.mail.security:member_endpoints
+      - kickside.mail.security:send_access

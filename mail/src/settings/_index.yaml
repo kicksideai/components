@@ -89,3 +89,14 @@ entries:
     source: file://validate.lua
     method: retention
     imports: *validation_imports
+  - name: delivery_status
+    kind: function.lua
+    source: file://status.lua
+    method: status
+    imports:
+      types: kickside.mail:types
+      settings: kickside.mail:settings
+      drivers: kickside.mail:drivers_registry
+      client: kickside.mail:client
+    security:
+      policies: [kickside.mail.security:settings_read, kickside.mail.security:settings_admin_read, kickside.mail.security:driver_dispatch]

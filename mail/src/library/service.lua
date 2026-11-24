@@ -83,7 +83,19 @@ local function prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: 
         return nil, nil
     end
     local content = edit.content
-    if edit.restore then
+    if operation == "create" and edit.from then
+        local bad_from = resources.check_key(edit.from)
+        if bad_from then return nil, bad_from end
+        if edit.from.kind ~= key.kind then
+            return nil, resources.error(errors.INVALID, "invalid_mail_resource", "The source must have the same resource kind", key)
+        end
+        local source = items[resources.key(edit.from)]
+        if not source then return nil, missing(edit.from) end
+        local copy: types.Record = {}
+        for field, value in pairs(source) do copy[field] = value end
+        for field, value in pairs(content) do copy[field] = value end
+        content = copy :: types.ResourceContent
+    elseif edit.restore then
         local history, history_err = store.history(tx, key, edit.restore)
         if history_err then return nil, history_err end
         if not history[1] then
@@ -238,7 +250,7 @@ end
 
 function M.create(input: types.ResourceCreate): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceCreate
-    return change_one({key = input, content = input, note = fields.note}, "create")
+    return change_one({key = input, content = input :: types.ResourceContent, note = fields.note, from = fields.from}, "create")
 end
 
 function M.update(input: types.ResourceEdit): (types.Resource?, error?)
@@ -342,7 +354,9 @@ function M.render_draft(input: types.DraftRequest): (types.Rendered?, error?)
         local key = {kind = "message", name = input.message}
         local item = items[resources.key(key)]
         if not item then return nil, missing(key) end
-        return draft.render(items :: types.ResourceMap, item, input.vars or item.samples, values :: types.RenderGlobals)
+        local vars = input.vars
+        if vars == nil then vars = item.samples end
+        return draft.render(items :: types.ResourceMap, item, vars, values :: types.RenderGlobals)
     end)
 end
 

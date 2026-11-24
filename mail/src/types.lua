@@ -74,14 +74,15 @@ type ResourceMap = {[string]: Resource}
 type OriginalMap = {[string]: Original}
 type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?}
 type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?}
-type ResourceCreate = ResourceContent & {note: string?}
+type ResourceCreate = ResourceKey & {note: string?, from: ResourceKey?, title: string?, description: string?,
+    html: string?, text: string?, base: string?, subject: string?, schema: VariableSchema?, samples: JsonObject?}
 type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?}
 type ResourceRestore = ResourceRevision & {revision: integer}
 type Revision = {kind: string, name: string, revision: integer, content: ResourceContent, author: string, note: string?, created_at: integer}
 type OriginalRevisions = {[string]: {[string]: integer}}
 type DraftRequest = {resource: ResourceContent?, resources: {ResourceContent}?, message: string, vars: JsonObject?}
 type ResourceSave = {resources: {ResourceEdit}, note: string?}
-type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?, note: string?}
+type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?, note: string?, from: ResourceKey?}
 type LibraryRow = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema_json: string, samples_json: string, state: string,
@@ -141,6 +142,9 @@ type WritableSink = {
     origin: (SinkRequest) -> (string?, SinkFailure?),
     fail: (string, string?, boolean?, string?, Record?) -> SinkFailure,
 }
+type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, from: Mailbox?, reply_to: string?, reason: string?}
+type TestSend = {message: string, vars: JsonObject?}
+
 type HttpAuth = {user: string, pass: string}
 type HttpResponse = {status_code: number, headers: {[string]: string | {string}}, body: string}
 
@@ -165,5 +169,5 @@ return {
     SettingsResult = SettingsResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
     Mailer = Mailer, Transport = Transport, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
     ContentFailure = ContentFailure, ContentProvider = ContentProvider, SinkRequest = SinkRequest,
-    SinkResult = SinkResult, SinkFailure = SinkFailure, WritableSink = WritableSink, HttpAuth = HttpAuth, HttpResponse = HttpResponse,
+    SinkResult = SinkResult, SinkFailure = SinkFailure, WritableSink = WritableSink, DeliveryStatus = DeliveryStatus, TestSend = TestSend, HttpAuth = HttpAuth, HttpResponse = HttpResponse,
 }

@@ -4,6 +4,7 @@ local registry = require("registry")
 local contract = require("contract")
 local funcs = require("funcs")
 local settings = require("settings")
+local message = require("message")
 
 local M = {}
 local LIMITS = {"max_recipients", "max_message_bytes"}
@@ -68,6 +69,22 @@ function M.check_available(driver: types.Driver): error?
     end
     local _, open_err = M.transport(driver)
     return open_err
+end
+
+function M.sender(config: types.Settings): (types.Mailbox?, error?)
+    local address = config.from_address
+    if not address or not address:find("%S") then return nil, settings.missing("A mail From address is required") end
+    if not message.address(address) then return nil, settings.missing("The mail From address is invalid") end
+    local name = config.from_name
+    if name and name:find("%c") then return nil, settings.missing("The mail From name contains a control character") end
+    return {address = address, name = name and name:find("%S") and name or nil}, nil
+end
+
+function M.reply_to(config: types.Settings): (string?, error?)
+    local address = config.reply_to
+    if not address or address == "" then return nil, nil end
+    if not message.address(address) then return nil, settings.missing("The mail Reply-To address is invalid") end
+    return address, nil
 end
 
 return M
