@@ -24,10 +24,11 @@ entries:
   source: file://mapping.lua
   imports:
     work: kickside.work:types
+    types: kickside.work.planning:types
 - name: reads
   kind: library.lua
   source: file://reads.lua
-  modules: [funcs, registry]
+  modules: [contract]
   imports:
     board_client: kickside.work:client
     work: kickside.work:types
@@ -36,6 +37,7 @@ entries:
     budget: kickside.work.read:budget
     storage: kickside.work.planning.capacity:storage
     mapping: kickside.work.planning.capacity:mapping
+    types: kickside.work.planning:types
 - name: project
   kind: function.lua
   meta: {type: projection.worker}
