@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.14](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.13...agent-onboarding-v0.1.14) (2026-11-24)
+
+
+### Bug Fixes
+
+* **agent-onboarding:** gate model setup by caller access ([#405](https://github.com/kicksideai/components/issues/405)) ([b48287e](https://github.com/kicksideai/components/commit/b48287e0bc8e687bac98c1f8647fa7b8c522bf22))
+
 ## [0.1.13](https://github.com/kicksideai/components/compare/agent-onboarding-v0.1.12...agent-onboarding-v0.1.13) (2026-11-19)
 
 
