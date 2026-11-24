@@ -244,6 +244,7 @@ local function define()
             assert(db:execute("ANALYZE " .. table_name, {}))
             assert(db:execute("ANALYZE " .. names.set, {}))
             assert(db:execute("ANALYZE kickside_work_item", {}))
+            assert(db:execute("ANALYZE app_work_query_text", {}))
         end)
         test.after_all(function() if db then db:release() end end)
 
@@ -286,6 +287,29 @@ local function define()
             local output = explain(db, plan.statement, plan.args)
             print("MEMBERSHIP SQL " .. plan.statement .. "\n" .. output)
             test.is_true(output:find(set_lookup,1,true) ~= nil, output)
+        end)
+
+        test.it("probes the plugin item index for an ordered one-item scope page", function()
+            local request = { limit = 1, scopes = {
+                { id = "app:query_text_search_scope", where = { content = { eq = "ordinary" } } },
+            } }
+            local plan = assert(board.call("explain", request)).plan
+            local output = explain(db, plan.statement, plan.args)
+            local matches = assert(db:query(plan.statement, plan.args))
+            print("PLUGIN SCOPE SQL " .. plan.statement .. "\n" .. output)
+            test.eq(#matches, 2, "one result and one lookahead")
+            test.eq(matches[1].item_id, "sample-100001")
+            test.eq(matches[2].item_id, "sample-100002")
+            if db:type() == "postgres" then
+                test.is_true(output:find("using app_work_query_text_pkey", 1, true) ~= nil, output)
+                test.is_true(output:match("Index Cond: [^\n]*item_id = i%.item_id") ~= nil, output)
+                test.is_true(output:match("using app_work_query_text_pkey[^\n]*actual rows=1 loops=2") ~= nil, output)
+                test.is_nil(output:find("Sort", 1, true), output)
+            else
+                test.is_nil(output:find("LIST SUBQUERY", 1, true), output)
+                test.is_true(output:find("sqlite_autoindex_app_work_query_text_1 (board_id=? AND item_id=?)", 1, true) ~= nil, output)
+                test.is_nil(output:find("TEMP B-TREE", 1, true), output)
+            end
         end)
 
         test.it("seeks directly to the numeric cursor and change-feed tuple", function()
