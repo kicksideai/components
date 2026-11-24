@@ -33,8 +33,13 @@ local function message(row: types.MessageRow, admin: boolean): (types.LogMessage
     if err then return nil, err end
     local last_error: types.MessageError?
     if row.error_kind then
-        last_error = {kind = row.error_kind, code = row.error_code :: string, message = admin and row.error_message :: string or failure.text(row.error_code :: string),
-            provider_detail = admin and row.provider_detail or nil}
+        local code = row.error_code or "delivery_failed"
+        if admin then
+            last_error = {kind = row.error_kind, code = code, message = row.error_message :: string,
+                provider_detail = row.provider_detail}
+        else
+            last_error = failure.public(row.error_kind, code)
+        end
     end
     return {
         message_id = row.id, status = row.status, created_at = row.created_at, attempts = row.attempts,

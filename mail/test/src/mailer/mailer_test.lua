@@ -191,6 +191,7 @@ local function unconfigured(executor)
     local value, err = invoke(executor, "send", body())
     test.is_nil(value)
     test.eq("invalid_config", err:details().code)
+    for key in pairs(err:details()) do test.eq("code", key) end
     test.is_false(err:retryable())
     return err
 end
@@ -436,9 +437,11 @@ return {
                 local failed = terminal(sender, queued)
                 test.eq("failed", failed.status)
                 test.eq(1, failed.attempts)
-                test.eq("credentials_invalid", failed.last_error.code)
-                test.eq("Ask a mail administrator to check delivery authorization.", failed.last_error.message)
-                test.eq("Test authorization refused", assert(invoke(log_admin, "get_message", failed.message_id)).last_error.message)
+                test.eq("provider_rejected", failed.last_error.code)
+                test.eq("Ask a mail administrator to check why the message was refused.", failed.last_error.message)
+                local diagnostic = assert(invoke(log_admin, "get_message", failed.message_id)).last_error
+                test.eq("credentials_invalid", diagnostic.code)
+                test.eq("Test authorization refused", diagnostic.message)
                 no_body(queued.message_id)
             end)
 
@@ -943,7 +946,18 @@ return {
                 test.eq(missing_driver:message(), destination.error.message)
                 test.is_false(destination.error.retriable)
                 test.is_true(change(admin, "driver", "first").success)
-                test.is_true(unconfigured(sender):message() ~= missing_driver:message())
+                test.eq(missing_driver:message(), unconfigured(sender):message())
+                local tool_result, tool_err = sender:call(TOOL_NS .. "mail_send", body())
+                refusal(tool_result, tool_err, errors.INVALID, "invalid_config")
+                test.eq(missing_driver:message(), tool_err:message())
+                for key in pairs(tool_err:details()) do test.eq("code", key) end
+                local workflow = assert(sender:with_context({
+                    run_context = {run_id = "example-run", flow_ref = {kind = "flow", id = "example-flow", version = 1}},
+                }))
+                local workflow_result, workflow_err = workflow:call(TOOL_NS .. "mail_send", body())
+                refusal(workflow_result, workflow_err, errors.INVALID, "invalid_config")
+                test.eq(missing_driver:message(), workflow_err:message())
+                for key in pairs(workflow_err:details()) do test.eq("code", key) end
             end)
 
             test.it("refuses a caller without the send capability before looking up settings", function()

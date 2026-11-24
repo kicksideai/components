@@ -52,7 +52,7 @@ The panel emits `change` with `detail: {values}` for every locally changed key. 
 
 `GET /mail/delivery/drivers` requires **Administer mail delivery**. It returns `{success: true, data: {items: [...]}}` with each installed driver’s `id`, `label`, `icon`, `description`, `settings_ns`, optional `settings_view`, `availability` and `settings`. A setting row identifies its namespace, key, type and form metadata. Non-secret rows include the effective value and declared default. Secret rows contain `is_secret: true` and `has_value`; their values and defaults stay on the server.
 
-`GET /mail/delivery` returns the active driver summary, sender, reply-to address and `configured` flag. If setup is incomplete, `code` identifies the issue and `reason` tells the administrator what to do. Driver configuration codes keep the send contract’s `invalid_config` error code.
+`GET /mail/delivery` returns the active driver summary, sender, reply-to address and `configured` flag. If setup is incomplete, `code` identifies the issue and `reason` tells the administrator what to do. Sending surfaces return a general `invalid_config` error for delivery setup failures. Use delivery status for the specific setup reason.
 
 ## Template library
 

@@ -26,6 +26,7 @@ entries:
   - name: failure
     kind: library.lua
     source: file://failure.lua
+    imports: {types: kickside.mail:types}
   - name: log
     kind: library.lua
     source: &log_source file://log.lua

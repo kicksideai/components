@@ -35,6 +35,10 @@ local function preview(request: types.PreviewRequest): (types.PreviewResult?, er
     return {subject = result.subject, html = result.html :: string, text = result.text :: string, inline_assets = inline}, nil
 end
 
+local function unavailable(): error
+    return settings.missing("Mail delivery requires setup. Ask a mail administrator to check the delivery settings.")
+end
+
 local function admit(input: types.SendRequest, rendered: types.Rendered?, resend_of: string?): (types.SendResult?, error?)
     local execution, capture_err = identity.capture()
     if capture_err then return nil, capture_err :: error end
@@ -63,22 +67,21 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     if recipient_err then return nil, recipient_err end
 
     local config, config_err = settings.read("kickside.mail")
-    if config_err then return nil, config_err end
+    if config_err then return nil, unavailable() end
     config = config :: types.Settings
     local driver, driver_err = drivers.resolve(config.driver)
-    if driver_err then return nil, driver_err end
+    if driver_err then return nil, unavailable() end
     driver = driver :: types.Driver
     local limit_err = message.recipients_error(addresses, driver.max_recipients)
     if limit_err then return nil, limit_err end
-    local unavailable = drivers.check_available(driver)
-    if unavailable then return nil, unavailable end
+    if drivers.check_available(driver) then return nil, unavailable() end
     local from, from_err = drivers.sender(config)
-    if from_err then return nil, from_err end
+    if from_err then return nil, unavailable() end
     local reply_to = input.reply_to
     if not reply_to and not resend_of then
         local reply_err
         reply_to, reply_err = drivers.reply_to(config)
-        if reply_err then return nil, reply_err end
+        if reply_err then return nil, unavailable() end
     end
 
     if not rendered then
