@@ -17,11 +17,19 @@ local function validated(method: string, handler: Handler): Handler
     end
 end
 
+local function roadmap(input: { board_id: string }): (unknown, error?)
+    local types, err = capacity_reads.roadmap(input.board_id)
+    if not types then return nil, err end
+    return { types = types }, nil
+end
+
 return {
     plan_sprint = validated("plan_sprint", edits.plan_sprint :: Handler),
     move_dates = validated("move_dates", edits.move_dates :: Handler),
     check_capacity = validated("check_capacity", capacity_reads.check_capacity :: Handler),
     set_capacity = validated("set_capacity", capacity.set_capacity :: Handler),
+    workload = validated("workload", capacity_reads.workload :: Handler),
+    roadmap = validated("roadmap", roadmap :: Handler),
     resolve = validated("resolve", reference.resolve :: Handler),
     report = validated("report", reference.report :: Handler),
 }

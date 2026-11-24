@@ -102,6 +102,8 @@ entries:
     - kickside.work.planning.api:move_dates
     - kickside.work.planning.api:check_capacity
     - kickside.work.planning.api:set_capacity
+    - kickside.work.planning.api:workload
+    - kickside.work.planning.api:roadmap
     projections:
     - kind: kickside.work.planning:capacity_lifecycle
       worker_ref: func://kickside.work.planning.capacity:project

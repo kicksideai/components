@@ -184,7 +184,7 @@
       ],
       "additionalProperties": false
     },
-    "check_capacity": {
+    "sprint_read": {
       "type": "object",
       "properties": {
         "board_id": {
@@ -197,6 +197,24 @@
       "required": [
         "board_id",
         "sprint_id"
+      ],
+      "additionalProperties": false
+    },
+    "check_capacity": {
+      "$planning_ref": "sprint_read"
+    },
+    "workload": {
+      "$planning_ref": "sprint_read"
+    },
+    "roadmap": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$planning_ref": "id"
+        }
+      },
+      "required": [
+        "board_id"
       ],
       "additionalProperties": false
     },
@@ -321,6 +339,40 @@
         "caller_visible",
         "incomplete",
         "as_of"
+      ],
+      "additionalProperties": false
+    },
+    "roadmap_result": {
+      "type": "object",
+      "properties": {
+        "types": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "$planning_ref": "id"
+              },
+              "finish": {
+                "$planning_ref": "id"
+              },
+              "progress_field": {
+                "$planning_ref": "id"
+              },
+              "membership": {
+                "$planning_ref": "id"
+              }
+            },
+            "required": [
+              "start",
+              "finish"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "types"
       ],
       "additionalProperties": false
     },
@@ -485,6 +537,23 @@
       "storage": true
     },
     {
+      "method": "workload",
+      "output": "capacity_report",
+      "title": "Read sprint workload",
+      "http": "POST",
+      "tool": "WorkReadWorkload",
+      "scope": "state.read",
+      "storage": true
+    },
+    {
+      "method": "roadmap",
+      "output": "roadmap_result",
+      "title": "Read roadmap field mappings",
+      "http": "POST",
+      "tool": "WorkReadRoadmap",
+      "scope": "state.read"
+    },
+    {
       "method": "resolve",
       "output": "resolved",
       "title": "Resolve a work date to a readable sprint",
@@ -637,6 +706,32 @@
               "amount": -1
             }
           ]
+        }
+      ]
+    },
+    "workload": {
+      "valid": [
+        {
+          "board_id": "board",
+          "sprint_id": "sprint"
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board"
+        }
+      ]
+    },
+    "roadmap": {
+      "valid": [
+        {
+          "board_id": "board"
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "sprint_id": "sprint"
         }
       ]
     },

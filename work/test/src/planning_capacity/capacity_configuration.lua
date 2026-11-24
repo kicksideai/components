@@ -45,6 +45,8 @@ local function define()
                 "kickside.work.planning.api:move_dates",
                 "kickside.work.planning.api:check_capacity",
                 "kickside.work.planning.api:set_capacity",
+                "kickside.work.planning.api:workload",
+                "kickside.work.planning.api:roadmap",
             }
             test.eq(#plugin.tools, #expected)
             for i, id in ipairs(expected) do test.eq(plugin.tools[i], id) end

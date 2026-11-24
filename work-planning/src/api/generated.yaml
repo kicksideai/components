@@ -11,6 +11,8 @@ entries:
   - {entry: 'kickside.work.planning.api:move_dates.endpoint', path: .meta.router}
   - {entry: 'kickside.work.planning.api:check_capacity.endpoint', path: .meta.router}
   - {entry: 'kickside.work.planning.api:set_capacity.endpoint', path: .meta.router}
+  - {entry: 'kickside.work.planning.api:workload.endpoint', path: .meta.router}
+  - {entry: 'kickside.work.planning.api:roadmap.endpoint', path: .meta.router}
 - name: handle_plan_sprint
   kind: function.lua
   source: file://contract.lua
@@ -155,6 +157,78 @@ entries:
   method: POST
   func: http_set_capacity
   path: /work/planning/set_capacity
+- name: handle_workload
+  kind: function.lua
+  source: file://contract.lua
+  method: workload
+  imports: {handlers: 'kickside.work.planning.api:handlers'}
+  security:
+    policies: [kickside.work.planning.api:storage_access]
+- name: workload
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: 'Read sprint workload'
+    llm_alias: WorkReadWorkload
+    llm_description: 'Read sprint workload'
+    mcp: {required_scopes: [state.read]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint_id":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id","sprint_id"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"unit":{"type":"string","enum":["minutes","points"]},"version":{"type":"integer","minimum":1,"maximum":9007199254740991},"rows":{"type":"array","items":{"type":"object","properties":{"load":{"type":"number"},"items":{"type":"integer","minimum":0},"missing_estimates":{"type":"integer","minimum":0},"person":{"type":"string","minLength":1,"maxLength":255},"capacity":{"type":"number","minimum":0,"maximum":9007199254740991}},"required":["load","items","missing_estimates","person"],"additionalProperties":false}},"total":{"type":"object","properties":{"load":{"type":"number"},"items":{"type":"integer","minimum":0},"missing_estimates":{"type":"integer","minimum":0},"capacity":{"type":"number","minimum":0}},"required":["load","items","missing_estimates"],"additionalProperties":false},"unassigned":{"type":"object","properties":{"load":{"type":"number"},"items":{"type":"integer","minimum":0},"missing_estimates":{"type":"integer","minimum":0},"capacity":{"type":"number","minimum":0,"maximum":9007199254740991}},"required":["load","items","missing_estimates"],"additionalProperties":false},"estimates_available":{"type":"boolean"},"caller_visible":{"type":"boolean","const":true},"incomplete":{"type":"boolean"},"as_of":{"type":"integer","minimum":0},"success":{"type":"boolean","const":true}},"required":["rows","total","unassigned","estimates_available","caller_visible","incomplete","as_of","success"],"additionalProperties":false}'
+  source: file://tools.lua
+  method: workload
+  imports: {handlers: 'kickside.work.planning.api:handlers'}
+  security:
+    policies: [kickside.work.planning.api:storage_access]
+- name: http_workload
+  kind: function.lua
+  source: file://http.lua
+  method: workload
+  modules: [http, json]
+  imports:
+    handlers: kickside.work.planning.api:handlers
+    schemas: kickside.work.planning.contracts:schemas
+    access: kickside.work.api:access
+  security:
+    policies: [kickside.work.planning.api:storage_access]
+- name: workload.endpoint
+  kind: http.endpoint
+  method: POST
+  func: http_workload
+  path: /work/planning/workload
+- name: handle_roadmap
+  kind: function.lua
+  source: file://contract.lua
+  method: roadmap
+  imports: {handlers: 'kickside.work.planning.api:handlers'}
+- name: roadmap
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: 'Read roadmap field mappings'
+    llm_alias: WorkReadRoadmap
+    llm_description: 'Read roadmap field mappings'
+    mcp: {required_scopes: [state.read]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"types":{"type":"object","additionalProperties":{"type":"object","properties":{"start":{"type":"string","minLength":1,"maxLength":255},"finish":{"type":"string","minLength":1,"maxLength":255},"progress_field":{"type":"string","minLength":1,"maxLength":255},"membership":{"type":"string","minLength":1,"maxLength":255}},"required":["start","finish"],"additionalProperties":false}},"success":{"type":"boolean","const":true}},"required":["types","success"],"additionalProperties":false}'
+  source: file://tools.lua
+  method: roadmap
+  imports: {handlers: 'kickside.work.planning.api:handlers'}
+- name: http_roadmap
+  kind: function.lua
+  source: file://http.lua
+  method: roadmap
+  modules: [http, json]
+  imports:
+    handlers: kickside.work.planning.api:handlers
+    schemas: kickside.work.planning.contracts:schemas
+    access: kickside.work.api:access
+- name: roadmap.endpoint
+  kind: http.endpoint
+  method: POST
+  func: http_roadmap
+  path: /work/planning/roadmap
 - name: handle_resolve
   kind: function.lua
   source: file://contract.lua
@@ -172,7 +246,7 @@ entries:
   meta: {private: true}
   groups: []
   policy:
-    resources: ['kickside.work.planning:planning', 'kickside.work.planning:planning_binding', 'kickside.work.planning:sprint_reference', 'kickside.work.planning:sprint_reference_binding', 'kickside.work.planning.api:handle_plan_sprint', 'kickside.work.planning.api:handle_move_dates', 'kickside.work.planning.api:handle_check_capacity', 'kickside.work.planning.api:handle_set_capacity', 'kickside.work.planning.api:handle_resolve', 'kickside.work.planning.api:handle_report']
+    resources: ['kickside.work.planning:planning', 'kickside.work.planning:planning_binding', 'kickside.work.planning:sprint_reference', 'kickside.work.planning:sprint_reference_binding', 'kickside.work.planning.api:handle_plan_sprint', 'kickside.work.planning.api:handle_move_dates', 'kickside.work.planning.api:handle_check_capacity', 'kickside.work.planning.api:handle_set_capacity', 'kickside.work.planning.api:handle_workload', 'kickside.work.planning.api:handle_roadmap', 'kickside.work.planning.api:handle_resolve', 'kickside.work.planning.api:handle_report']
     actions: [registry.get, contract.get, contract.open, contract.call, funcs.call]
     effect: allow
 - name: tool_access
@@ -180,7 +254,7 @@ entries:
   meta: {private: true}
   groups: []
   policy:
-    resources: ['kickside.work.planning.api:plan_sprint', 'kickside.work.planning.api:move_dates', 'kickside.work.planning.api:check_capacity', 'kickside.work.planning.api:set_capacity']
+    resources: ['kickside.work.planning.api:plan_sprint', 'kickside.work.planning.api:move_dates', 'kickside.work.planning.api:check_capacity', 'kickside.work.planning.api:set_capacity', 'kickside.work.planning.api:workload', 'kickside.work.planning.api:roadmap']
     actions: [registry.get, registry.find, funcs.call]
     effect: allow
 - name: endpoint_access
@@ -188,6 +262,6 @@ entries:
   meta: {private: true}
   groups: []
   policy:
-    resources: ['kickside.work.planning.api:plan_sprint.endpoint', 'kickside.work.planning.api:move_dates.endpoint', 'kickside.work.planning.api:check_capacity.endpoint', 'kickside.work.planning.api:set_capacity.endpoint']
+    resources: ['kickside.work.planning.api:plan_sprint.endpoint', 'kickside.work.planning.api:move_dates.endpoint', 'kickside.work.planning.api:check_capacity.endpoint', 'kickside.work.planning.api:set_capacity.endpoint', 'kickside.work.planning.api:workload.endpoint', 'kickside.work.planning.api:roadmap.endpoint']
     actions: [access]
     effect: allow

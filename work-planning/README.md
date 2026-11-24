@@ -76,3 +76,21 @@ a new review. Retrying the same review and key returns the original receipt.
 Work records the adoption as one schema generation. Existing sprints keep
 their process generation and history, and milestones keep ordinary closure.
 Sprint closure then uses Planning's preview and commit.
+
+## Read sprint workload and roadmap fields
+
+Both reads require board READ and an active Planning attachment. Workload also
+requires a readable live sprint on that board and includes only unfinished work
+visible to the caller. Roadmap returns the board's field mappings for milestones
+and configured epic types. Use Work's caller-visible item reads to load the
+items for those mappings.
+
+- `POST /api/v1/work/planning/workload` accepts `board_id` and `sprint_id`.
+  `WorkReadWorkload` returns the per-person, total, and unassigned workload,
+  with capacity, estimate availability, and coverage from Planning's sprint read.
+- `POST /api/v1/work/planning/roadmap` accepts `board_id`.
+  `WorkReadRoadmap` returns `types`, keyed by item type, with `start`, `finish`,
+  and optional `progress_field` and `membership` field codes.
+
+The agent and MCP tools use the same inputs and caller permissions as HTTP.
+Both MCP tools require `state.read`.
