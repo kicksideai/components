@@ -126,18 +126,19 @@ local function define()
             test.eq(steps.get(h, id).item.state, "approved")
         end)
 
-        test.it("rejects re-adoption when the new validator excludes a stored risk score", function()
+        test.it("rejects provider configuration when the new validator excludes a stored risk score", function()
             local h = fixture.board()
             enable(h, 1)
             local low = create(h, "Rotate deployment keys", 2)
             local old = call(h, "get_schema", {})
-            call(h, "configure_plugin", { plugin = PLUGIN, config = { threshold = 4 } })
-            test.eq(call(h, "plugin_context", { plugin = PLUGIN }).config.threshold, 4)
-            local proposal = { declaration = { plugins = { { use = PLUGIN } } } }
+            local config = { threshold = 4 }
+            local proposal = { declaration = { plugins = { { use = PLUGIN } } }, plugin_configs = { [PLUGIN] = config } }
             local plan = call(h, "plan_schema", proposal)
             test.eq(plan.class, "refused")
             test.eq(plan.refused[1].what, "config.range")
             rejected(h, "apply_schema", proposal, "migration_required")
+            rejected(h, "configure_plugin", { plugin = PLUGIN, config = config }, "migration_required")
+            test.eq(call(h, "plugin_context", { plugin = PLUGIN }).config.threshold, 1)
             test.eq(call(h, "get_schema", {}).generation, old.generation)
             test.eq(steps.get(h, low).item.values.risk, 2)
         end)

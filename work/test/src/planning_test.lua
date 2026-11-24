@@ -220,6 +220,30 @@ local function define()
         end)
     end)
     test.describe("planning plugin adoption", function()
+        test.it("refuses to save an absent issue type with the same finding as schema review", function()
+            local admin = scoped.admin()
+            local board = custom_board(admin)
+            local plugins = { { use = PLUGIN } }
+            assert(board.call("apply_schema", { declaration = { plugins = plugins } }))
+            local config = { issue_types = { "absent_epic" } }
+            local plan = admin.http("POST", admin.route(board.id, "plan_schema"), {
+                declaration = { plugins = plugins }, plugin_configs = { [PLUGIN] = config },
+            })
+            test.eq(plan.status, 400, plan.raw)
+            test.eq(plan.body.kind, errors.INVALID)
+            test.eq(plan.body.details.code, "invalid_schema")
+            test.eq(plan.body.details.item_type, "absent_epic")
+
+            local reply = admin.http("POST", admin.route(board.id, "configure_plugin"), { plugin = PLUGIN, config = config })
+            local plugin = assert(find(assert(board.call("get_schema", {})).plugins, PLUGIN, "plugin"))
+            local persisted = plugin.config and plugin.config.issue_types and plugin.config.issue_types[1]
+            test.eq(reply.status, 400, reply.raw .. " persisted issue type: " .. tostring(persisted))
+            test.eq(reply.body.kind, plan.body.kind)
+            test.eq(reply.body.details.code, plan.body.details.code)
+            test.eq(reply.body.details.item_type, plan.body.details.item_type)
+            test.is_nil(persisted)
+        end)
+
         test.it("provisions a board-owned root attachment and reaps it on board deletion", function()
             local admin = scoped.admin()
             local board = custom_board(admin)
