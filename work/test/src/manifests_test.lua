@@ -5,6 +5,7 @@
 local test = require("test")
 local manifests = require("manifests")
 local plugins = require("plugins")
+local plugin_views = require("plugin_views")
 local types = require("types")
 local sql = require("sql")
 local security = require("security")
@@ -57,7 +58,7 @@ local function define()
             test.eq(p.description, "Contract fixture")
             test.eq(p.icon, "puzzle")
             test.eq(p.category, "Testing")
-            local views = assert(plugins.list("category-board", {}, {}, false, true))
+            local views = assert(plugin_views.list("category-board", {}, {}, false, true))
             local view: types.PluginView? = nil
             for _, candidate in ipairs(views) do if candidate.plugin == "app:contract_plugin" then view = candidate end end
             test.eq(assert(view).category, "Testing")

@@ -229,6 +229,7 @@ entries:
     test: wippy.test:test
     manifests: kickside.work.domain:manifests
     plugins: kickside.work.domain:plugins
+    plugin_views: kickside.work.read:plugins
     types: kickside.work:types
 - name: filter_test
   kind: function.lua
