@@ -27,7 +27,7 @@ entries:
 - name: reads
   kind: library.lua
   source: file://reads.lua
-  modules: [contract]
+  modules: [funcs, registry]
   imports:
     board_client: kickside.work:client
     work: kickside.work:types
