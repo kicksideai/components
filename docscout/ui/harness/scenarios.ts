@@ -5,6 +5,14 @@ export function scenario(state:string|null){
  const data=structuredClone(snapshot),run=structuredClone(result),current=structuredClone(evaluation),history=structuredClone(evaluations)
  if(state==='nested'&&data.can_edit){
   data.config.fields.push({...newField(),name:'terms',group:'contract',type:'object',required:true,description:'Payment schedule with amounts and due dates.',properties:[{...newProperty(),name:'currency',type:'enum',enum_values:['USD','EUR'],required:true},{...newProperty(),name:'payments',type:'list',item:{type:'object',properties:[{...newProperty(),name:'amount',type:'number',required:true},{...newProperty(),name:'due',type:'date'}]}}]})
+  run.values.terms={currency:'USD',payments:[{amount:625,due:'2026-12-01'},{amount:625,due:'2027-01-01'}]}
+  run.fields.push({name:'terms',path:'terms',value:run.values.terms,confidence:.96,verified:true,evidence:[{quote:'Payment is due in two installments of USD 625.',section:'Payment terms',page:2,chunk_id:'terms',found:true}]})
+  data.runs[0].result={fields:run.fields,values:run.values}
+  data.field_count=data.config.fields.length
+ }
+ if(state==='many'&&data.can_edit){
+  data.title='Vendor agreement'
+  data.config.fields=Array.from({length:24},(_,index)=>({...newField(),group:index<12?'agreement':'parties',name:`field_${index+1}`,search_hints:index%2?'':'Locate this agreement value',strategy:index%3?'standard':'deep',search_within:index%4?'document':'sections'}))
   data.field_count=data.config.fields.length
  }
  if(state==='groups'&&data.can_edit){
