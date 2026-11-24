@@ -150,12 +150,12 @@ local function define()
             local planning_router = assert(registry.get("kickside.work.planning.api:api_router"))
             local planning_targets = {}
             for _, target in ipairs(planning_router.data.targets) do planning_targets[target.entry] = target.path end
-            for _, method in ipairs({ "plan_sprint", "move_dates", "check_capacity", "set_capacity" }) do
+            for _, method in ipairs({ "plan_sprint", "move_dates", "check_capacity", "set_capacity", "workload", "roadmap" }) do
                 local id = "kickside.work.planning.api:" .. method .. ".endpoint"
                 test.eq(planning_targets[id], ".meta.router", id)
                 test.eq(assert(registry.get(id)).meta.router, work_router, id)
             end
-            test.eq(#planning_router.data.targets, 4)
+            test.eq(#planning_router.data.targets, 6)
             local binding = assert(registry.get("kickside.work.binding:board"))
             test.is_nil(binding.meta.component)
             test.eq(binding.meta.retention.event_days, 17)

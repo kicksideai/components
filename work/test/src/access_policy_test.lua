@@ -49,6 +49,8 @@ local PLANNING_ENDPOINTS = {
     ["kickside.work.planning.api:move_dates.endpoint"] = true,
     ["kickside.work.planning.api:check_capacity.endpoint"] = true,
     ["kickside.work.planning.api:set_capacity.endpoint"] = true,
+    ["kickside.work.planning.api:workload.endpoint"] = true,
+    ["kickside.work.planning.api:roadmap.endpoint"] = true,
 }
 local ADMIN_ENDPOINTS = {
     ["kickside.work.api:pack_plan.endpoint"] = true,
@@ -82,7 +84,7 @@ local function exact(policy_id: string, expected: { [string]: boolean })
             test.eq(policy:evaluate(actor, "access", id), expected[id] and "allow" or "undefined", id)
         end
     end
-    test.eq(seen, 48)
+    test.eq(seen, 50)
     test.eq(policy:evaluate(actor, "access", "kickside.work.api:get.endpoint.unlisted"), "undefined")
 end
 

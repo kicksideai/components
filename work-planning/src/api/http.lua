@@ -27,4 +27,6 @@ function M.plan_sprint() return run("plan_sprint") end
 function M.move_dates() return run("move_dates") end
 function M.check_capacity() return run("check_capacity") end
 function M.set_capacity() return run("set_capacity") end
+function M.workload() return run("workload") end
+function M.roadmap() return run("roadmap") end
 return M

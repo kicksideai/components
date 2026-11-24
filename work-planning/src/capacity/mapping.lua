@@ -48,7 +48,7 @@ function M.roadmap(schema: work.Compiled, config: Config): ({ [string]: RoadmapT
     local all_fields = catalog(schema)
     local epics: { [string]: boolean } = {}
     for _, id in ipairs(config.epic_types or {}) do epics[id] = true end
-    local mapping: { [string]: RoadmapType } = {}
+    local mapping: { [string]: RoadmapType } = table.create(0, 1)
     for _, kind in ipairs(schema.item_types) do
         local epic = epics[kind.id]
         if epic or kind.id == "milestone" then

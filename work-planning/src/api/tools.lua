@@ -17,4 +17,6 @@ M.plan_sprint = tool(handlers.plan_sprint)
 M.move_dates = tool(handlers.move_dates)
 M.check_capacity = tool(handlers.check_capacity)
 M.set_capacity = tool(handlers.set_capacity)
+M.workload = tool(handlers.workload)
+M.roadmap = tool(handlers.roadmap)
 return M

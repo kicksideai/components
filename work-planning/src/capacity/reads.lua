@@ -59,7 +59,7 @@ local function estimates(board_id: string, schema: work_reads.SchemaView): (mapp
     local client, open_err = definition:open()
     if not client then return nil, open_err end
     local result, field_err = client:fields({ board_id = board_id })
-    if field_err or not result then return nil, field_err end
+    if field_err or not result then return nil, field_err :: error? end
     return result :: mapping.EstimateFields, nil
 end
 
@@ -156,7 +156,7 @@ local function read(request: Request, workload: boolean): (Report?, error?)
     local original = unit == "points" and fields.points or fields.original
     local remaining = workload and fields.remaining or nil
     local result: Report = {
-        unit = unit, version = held.version, rows = {}, total = bucket(), unassigned = bucket(),
+        unit = unit, version = held.version, rows = table.create(1, 0), total = bucket(), unassigned = bucket(),
         estimates_available = original ~= nil, caller_visible = true, incomplete = false, as_of = schema.as_of :: integer,
     }
     local people: { [string]: Person } = {}
