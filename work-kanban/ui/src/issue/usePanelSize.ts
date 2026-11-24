@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { api } from '@wippy-fe/proxy'
+import { currentUser } from '../work/me'
 import { computed, ref, watch } from 'vue'
 
 const minimum = 320
@@ -26,9 +26,9 @@ export function usePanelSize(surface: () => HTMLElement | undefined) {
 
   async function loadPreference() {
     try {
-      const { data } = await api.get<{ user?: { id?: string } }>('/api/v1/user/me')
-      if (!data.user?.id) return
-      storageKey = 'work-kanban.issue-panel-width.' + data.user.id
+      const user = await currentUser()
+      if (!user) return
+      storageKey = 'work-kanban.issue-panel-width.' + user
       if (resized) remember()
       else {
         const saved = Number(localStorage.getItem(storageKey))

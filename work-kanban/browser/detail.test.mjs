@@ -67,8 +67,8 @@ test('creates an issue with Work’s root default, patches in the drawer, posts 
     await issue.getByRole('textbox', { name: 'Add a comment' }).fill('Fire verifies the drawer comment.')
     await button(issue, 'Post comment').click()
     await issue.getByText('Fire verifies the drawer comment.', { exact: true }).waitFor()
-    await issue.getByRole('tab', { name: 'History' }).click()
-    await issue.getByRole('listitem').filter({ hasText: summary + ' reviewed' }).getByText('Changed Summary', { exact: true }).waitFor()
+    await button(issue, 'History').click()
+    await issue.getByRole('listitem').filter({ hasText: summary + ' reviewed' }).getByText(/changed Summary/).first().waitFor()
     expect(errors).toEqual([])
   } finally {
     await context.close()
