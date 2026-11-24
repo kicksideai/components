@@ -5,6 +5,7 @@ local component = require("component")
 local component_types = require("component_types")
 local agents = require("agents")
 local agent_types = require("agent_types")
+local memory_config = require("memory_config")
 
 local function new(dependencies: any?): any
     local contract = dependencies and dependencies.contract or contract
@@ -26,11 +27,15 @@ local function new(dependencies: any?): any
             if query_err then return nil, query_err end
             local memory_id = rows and rows[1] and rows[1].component_id
             if not memory_id then
+                local config, config_err = memory_config.defaults()
+                if config_err then return nil, config_err end
                 local definition, definition_err = contract.get("kickside.knowledge:knowledge_bases")
                 if definition_err then return nil, definition_err end
                 local knowledge, open_err = definition:open()
                 if open_err then return nil, open_err end
-                local memory, memory_err = knowledge:create({name="My Memory", kb_type="memory", embedding_model="class:embed"})
+                local memory, memory_err = knowledge:create({
+                    name="My Memory", kb_type="memory", embedding_model="class:embed", config=config,
+                })
                 if memory_err then return nil, memory_err end
                 memory_id = memory.component_id
             end

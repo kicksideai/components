@@ -90,10 +90,8 @@ local function define_tests()
             test.eq(store.kb_type, "memory")
             test.eq(store.embedding_model, "class:embed")
             local defaults = assert(memory_config.defaults())
-            -- Onboarding deliberately sends no config. Knowledge owns creation
-            -- semantics and persists the selected engine's declared defaults,
-            -- so the stored shape must be exactly those defaults (and never
-            -- caller-supplied settings).
+            -- Onboarding supplies the Memory engine's declared defaults explicitly.
+            -- The stored config must match those defaults exactly.
             for key, value in pairs(defaults) do test.eq(store.config[key], value, key) end
             for key in pairs(store.config) do test.not_nil(defaults[key], "unexpected memory setting: " .. key) end
             local effective = assert(memory_config.effective(store.config))

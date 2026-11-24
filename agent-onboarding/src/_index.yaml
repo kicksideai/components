@@ -51,6 +51,7 @@ entries:
     component_types: kickside.component:types
     agents: kickside.agents.binding:user_agents_func
     agent_types: kickside.agents:types
+    memory_config: kickside.memory:config
 - name: create_agent
   kind: function.lua
   security:
