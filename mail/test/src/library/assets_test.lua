@@ -13,6 +13,7 @@ local settings = require("settings")
 local records = require("records")
 local upload_types = require("upload_types")
 local fixtures = require("fixtures")
+local asset_store = require("asset_store")
 
 local LIBRARY = "kickside.mail.library:"
 local function setup_actor(groups)
@@ -314,6 +315,68 @@ end)
 
 local expiry = test.run_cases(function()
     test.describe("Mail asset expiry", function()
+        test.it("reports blocked assets while expiring messages and progressing beyond a failed batch", function()
+            local db = assert(sql.get("app:db"))
+            local day = 86400000
+            local now = time.now():unix_nano() // 1000000 + day
+            local expired, collectable = uuid.v4(), uuid.v4()
+            local prefix = "invalid-" .. uuid.v4()
+            local batch = 200
+            local tx = assert(db:begin())
+            for i = 1, batch do
+                assert(tx:execute([[INSERT INTO mail_asset_file
+                    (upload_id,filename,content_type,size_bytes,due_at) VALUES ($1,'fixture','image/gif',1,$2)]],
+                    {prefix .. "-" .. i, now - 2}))
+            end
+            assert(tx:execute([[INSERT INTO mail_asset_file
+                (upload_id,filename,content_type,size_bytes,due_at) VALUES ($1,'fixture','image/gif',1,$2)]], {collectable, now - 1}))
+            assert(tx:execute([[INSERT INTO mail_message
+                (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments)
+                VALUES ($1,$2,$2,'failed','fixture','{}','Expiry','mail@example.org','[]')]], {expired, now - 30 * day}))
+            assert(tx:commit())
+
+            local function sweep(at)
+                local exec = assert(funcs.new():with_context({mail_test_now = at}))
+                return assert(exec:call("kickside.mail.outbox:owner", {}))
+            end
+            local first = sweep(now)
+            local second = sweep(now)
+            local messages = assert(db:query("SELECT id FROM mail_message WHERE id=$1", {expired}))
+            local assets = assert(db:query("SELECT upload_id, due_at FROM mail_asset_file WHERE upload_id LIKE $1 OR upload_id=$2",
+                {prefix .. "%", collectable}))
+            local at_deadline = second.deadline_ms and sweep(second.deadline_ms)
+            assert(db:execute("DELETE FROM mail_message WHERE id=$1", {expired}))
+            assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id LIKE $1 OR upload_id=$2", {prefix .. "%", collectable}))
+            assert(db:release())
+
+            test.eq(0, #messages, "Asset failures cannot prevent delivery log expiry")
+            test.eq(batch, #assets, "The collectable row beyond the failed page is removed")
+            test.is_true(first.needs_continue)
+            test.eq(batch, #first.blocked)
+            test.eq("invalid_asset_request", first.blocked[1].error:details().code)
+            test.is_false(second.needs_continue)
+            test.eq(0, #second.blocked)
+            test.is_true(second.deadline_ms > now)
+            test.eq(second.deadline_ms, assets[1].due_at)
+            test.eq(batch, #at_deadline.blocked)
+        end)
+
+        test.it("keeps an expired adoption lease closed after deferring collection", function()
+            local db = assert(sql.get("app:db"))
+            local version = uuid.v4()
+            local now = time.now():unix_nano() // 1000000
+            local lease = now - 1
+            local due = now + 60000
+            assert(db:execute([[INSERT INTO mail_asset_file
+                (upload_id,filename,content_type,size_bytes,due_at) VALUES ($1,'fixture','image/gif',1,$2)]], {version, due}))
+            local tx = assert(db:begin())
+            local failure = asset_store.activate(tx, version, lease)
+            assert(tx:rollback())
+            assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id=$1", {version}))
+            assert(db:release())
+            test.eq("mail_asset_version_unavailable", assert(failure):details().code)
+        end)
+
         test.it("keeps an asset reference when a message enters the expiry batch after unlink starts", function()
             local db = assert(sql.get("app:db"))
             local postgres = assert(db:type()) == "postgres"

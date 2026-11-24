@@ -64,7 +64,9 @@ type JobInput = {job: Job, payload: {message_id: string}}
 type Lease = {token: string, execution_seq: integer}
 type ActorRow = {actor_id: string, actor_context: string}
 type OwnerInput = {change: {kind: string?, job_id: string?, owner_locator: {kind: string, id: string}?}?}
-type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, needs_continue: boolean?, error: error?}
+type BlockedAsset = {component_id: string, error: error}
+type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, needs_continue: boolean?,
+    error: error?, blocked: {BlockedAsset}?}
 type AssetContent = {revision: integer, content_type: string, bytes: string}
 type ResourceKey = {kind: string, name: string}
 type ResourceContent = {
@@ -111,7 +113,8 @@ type LibraryListRow = LibraryRowSummary & {
     base: string?, author: string?, updated_at: integer?,
 }
 type LibraryPage = {items: {LibraryListRow}, next_cursor: string?}
-type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?, note: string?, from: ResourceKey?}
+type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?,
+    note: string?, from: ResourceKey?, asset_deadline: integer?}
 type LibraryRow = {
     asset_upload_id: string?, filename: string?, content_type: string?, size_bytes: integer?, width: integer?, height: integer?,
     kind: string, name: string, title: string, description: string, html: string, text: string,
@@ -189,6 +192,7 @@ return {
     MessageRef = MessageRef, ListRequest = ListRequest, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, Admission = Admission, AdmissionResult = AdmissionResult,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, OwnerResult = OwnerResult,
+    BlockedAsset = BlockedAsset,
     ResourceKey = ResourceKey, ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,

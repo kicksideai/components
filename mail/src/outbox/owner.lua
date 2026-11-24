@@ -101,11 +101,11 @@ local function run(input: types.OwnerInput): types.OwnerResult
     local now = policy.now()
     local err = reconcile(now, input)
     if err then return {success = false, error = err} end
-    local collected, collect_err = asset_store.collect(now, policy.BATCH)
-    if collect_err then return {success = false, error = collect_err} end
+    local collected, blocked, collect_err = asset_store.collect(now, policy.BATCH, now + policy.RECHECK_MS)
     local result, sweep_err = sweep(now, days * policy.DAY_MS)
-    if sweep_err then return {success = false, error = sweep_err} end
+    if sweep_err or collect_err then return {success = false, error = sweep_err or collect_err} end
     local report = result :: types.OwnerResult
+    report.blocked = blocked
     report.deleted = (report.deleted or 0) + (collected or 0)
     return report
 end

@@ -242,7 +242,8 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
             stored.origin = original and original.resource.origin or nil
             stored.origin_label = original and original.resource.origin_label or nil
             if stored.asset and edits[i].content then
-                local activate_err = asset_store.activate(tx, (stored.asset :: types.Asset).upload_id :: string)
+                local activate_err = asset_store.activate(tx, (stored.asset :: types.Asset).upload_id :: string,
+                    edits[i].asset_deadline :: integer)
                 if activate_err then return nil, activate_err end
             end
             local resetting = operation == "reset" or (stored.asset ~= nil and stored.asset.source == "original")
@@ -338,7 +339,8 @@ local function adopt(input: types.AssetWrite, operation: string): (types.Resourc
     local lease = time.now():utc():add(15 * time.MINUTE)
     local asset: types.Asset = {source = "upload", upload_id = version, filename = info.filename,
         content_type = info.content_type, size = info.size :: integer, width = input.width, height = input.height}
-    local _, reserve_err = asset_store.reserve(asset, lease:unix_nano() // 1000000)
+    local deadline = lease:unix_nano() // 1000000
+    local _, reserve_err = asset_store.reserve(asset, deadline)
     if reserve_err then return nil, reserve_err end
     local _, notify_err = notifier.notify({kind = "owner_eligibility_changed"})
     if notify_err then return nil, notify_err end
@@ -353,7 +355,8 @@ local function adopt(input: types.AssetWrite, operation: string): (types.Resourc
     local candidate: types.ResourceContent = {kind = key.kind, name = input.name, title = input.title or (current and current.title) or input.name,
         description = input.description or (current and current.description) or "", html = "", text = "",
         schema = {type = "object", properties = {}}, samples = {}, asset = asset}
-    return change_one({key = key, content = candidate, expected = input.expected_revision, note = input.note}, operation)
+    return change_one({key = key, content = candidate, expected = input.expected_revision, note = input.note,
+        asset_deadline = deadline}, operation)
 end
 
 function M.asset_add(input: types.AssetWrite): (types.Resource?, error?)

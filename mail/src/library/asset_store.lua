@@ -32,9 +32,9 @@ local function unavailable(): error
         retryable = false, details = {code = "mail_asset_version_unavailable"}})
 end
 
-function M.activate(tx: sql.Transaction, id: string): error?
+function M.activate(tx: sql.Transaction, id: string, deadline: integer): error?
     local result, err = tx:execute([[UPDATE mail_asset_file SET due_at=NULL
-        WHERE upload_id=$1 AND due_at>$2]], {id, now()})
+        WHERE upload_id=$1 AND due_at=$2 AND due_at>$3]], {id, deadline, now()})
     if err then return err end
     if result.rows_affected ~= 1 then return unavailable() end
     return nil
@@ -110,37 +110,44 @@ function M.drop_expired_links(tx: sql.Transaction, cutoff: integer, limit: integ
     return M.release(tx, removed :: {types.Record}, now_ms)
 end
 
-function M.collect(now_ms: integer, limit: integer): (integer?, error?)
+function M.collect(now_ms: integer, limit: integer, blocked_until: integer): (integer?, {types.BlockedAsset}?, error?)
     local rows, read_err = database.read(function(db: sql.DB): ({types.Record}?, error?)
         local found, err = db:query([[SELECT upload_id FROM mail_asset_file WHERE due_at<=$1
             ORDER BY due_at,upload_id LIMIT $2]], {now_ms, limit})
         return found :: {types.Record}?, err
     end)
-    if read_err then return nil, read_err end
+    if read_err then return nil, nil, read_err end
     local component_id = M.component_id()
     local removed: {string} = {}
-    local failure: error?
+    local deferred: {string} = {}
+    local blocked: {types.BlockedAsset} = {}
     for _, row in ipairs(rows) do
         local id = row.upload_id :: string
         local _, err = funcs.call("kickside.uploads:reap_component_upload",
             {component_id = component_id, version_id = id, owner_impl = M.IMPLEMENTATION})
         if err then
-            failure = failure or err
+            deferred[#deferred + 1] = id
+            blocked[#blocked + 1] = {component_id = component_id, error = err}
         else
             removed[#removed + 1] = id
         end
     end
-    if #removed > 0 then
+    if #rows > 0 then
         local _, err = database.transaction(function(tx: sql.Transaction): (boolean?, error?)
             for _, id in ipairs(removed) do
                 local _, delete_err = tx:execute("DELETE FROM mail_asset_file WHERE upload_id=$1 AND due_at<=$2", {id, now_ms})
                 if delete_err then return nil, delete_err end
             end
+            for _, id in ipairs(deferred) do
+                local _, update_err = tx:execute("UPDATE mail_asset_file SET due_at=$1 WHERE upload_id=$2 AND due_at<=$3",
+                    {blocked_until, id, now_ms})
+                if update_err then return nil, update_err end
+            end
             return true, nil
         end)
-        if err then return nil, err end
+        if err then return nil, nil, err end
     end
-    return #removed, failure
+    return #removed, blocked, nil
 end
 
 return M

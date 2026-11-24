@@ -55,6 +55,7 @@ entries:
       upload_types: kickside.uploads:types
       lookup: kickside.uploads.persist:upload_query_repo
       settings: app.mail_api:fixtures
+      asset_store: kickside.mail.library:asset_store
   - name: asset_expiry_test
     kind: function.lua
     meta: { type: test, suite: mail_asset_expiry }
