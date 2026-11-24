@@ -396,6 +396,7 @@ entries:
     meta: { private: true }
     policy:
       resources:
+        - kickside.ui.api:list_settings_tabs.endpoint
         - kickside.mail.api:library_list.endpoint
         - kickside.mail.api:library_get.endpoint
         - kickside.mail.api:library_create.endpoint
@@ -415,6 +416,7 @@ entries:
     meta: { private: true }
     policy:
       resources:
+        - kickside.ui.api:list_settings_tabs.endpoint
         - kickside.mail.api:activity_list.endpoint
         - kickside.mail.api:activity_get.endpoint
         - kickside.mail.api:delivery_status.endpoint

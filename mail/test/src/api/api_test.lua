@@ -87,6 +87,16 @@ return {run = test.run_cases(function()
             test.eq("message_not_found", body.code)
         end)
 
+        test.it("allows scoped Mail managers to discover System tabs", function()
+            local endpoint = "kickside.ui.api:list_settings_tabs.endpoint"
+            for _, role in ipairs({"editor", "delivery"}) do
+                local manager = session(role)
+                test.eq("allow", manager.scope:evaluate(manager.actor, "access", endpoint), role)
+            end
+            local sender = session("sender")
+            test.neq("allow", sender.scope:evaluate(sender.actor, "access", endpoint))
+        end)
+
         test.it("lists the packaged asset and previews its CID under the editor capability", function()
             local editor = session("editor")
             local sender = session("sender")
