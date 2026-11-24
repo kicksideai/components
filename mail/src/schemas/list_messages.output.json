@@ -92,7 +92,7 @@
                 },
                 "filename": {
                   "type": "string",
-                  "minLength": 1
+                  "description": "Caller-supplied filename. An empty value uses the default name for delivery."
                 },
                 "disposition": {
                   "enum": [

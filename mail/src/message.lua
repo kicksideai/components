@@ -6,6 +6,7 @@ local M = {
     MAX_KEY_BYTES = 2048,
     MAX_SUBJECT_CHARACTERS = 255,
     MAX_BODY_BYTES = 256 * 1024,
+    MAX_FILENAME_BYTES = 255,
 }
 
 local function invalid(code: string, message: string): error
@@ -129,6 +130,20 @@ function M.add_attachment_size(total: number, size: unknown): (number?, error?)
     return total + size, nil
 end
 
+function M.attachment_filename(value: string?): (string?, error?)
+    local filename = value or ""
+    if filename:find("%c") or not utf8.len(filename) or filename:find("[\194][\128-\159]") then
+        return nil, invalid("invalid_attachment_filename", "Attachment filename must be UTF-8 without control characters")
+    end
+    local basename = filename:match("[^/\\]+$") or ""
+    if not basename:find("%S") or basename == "." or basename == ".." then return "attachment", nil end
+    if #basename > M.MAX_FILENAME_BYTES then
+        return nil, M.limit_error("invalid_attachment_filename", "Attachment filename exceeds the byte limit",
+            "max_filename_bytes", M.MAX_FILENAME_BYTES)
+    end
+    return basename, nil
+end
+
 local ATTACHMENT_FIELDS = {upload_id = true, filename = true, disposition = true, content_id = true}
 
 local function attachments_error(attachments: unknown): error?
@@ -139,7 +154,7 @@ local function attachments_error(attachments: unknown): error?
     local content_ids = {}
     for _, ref in ipairs(attachments) do
         if type(ref) ~= "table" or not nonempty(ref.upload_id)
-            or (ref.filename ~= nil and (not nonempty(ref.filename) or ref.filename:find("[%c]")))
+            or (ref.filename ~= nil and type(ref.filename) ~= "string")
             or (ref.disposition ~= nil and ref.disposition ~= "attachment" and ref.disposition ~= "inline") then
             return invalid("invalid_attachment", "Each attachment must reference an upload and have valid metadata")
         end

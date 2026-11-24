@@ -46,7 +46,8 @@ local function resolve(attachments: {types.Attachment}, input: types.AttachmentI
         local updated, limit_err = message.add_attachment_size(total, info.size)
         if limit_err then return nil, limit_err end
         total = updated :: number
-        local filename = ref.filename or info.filename
+        local filename, filename_err = message.attachment_filename(ref.filename or info.filename)
+        if filename_err then return nil, filename_err end
         local content_type = info.content_type
         local part_size = message.attachment_size(info.size, filename, content_type, ref.content_id)
         bytes = bytes + part_size

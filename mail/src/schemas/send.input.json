@@ -31,7 +31,7 @@
         "required": ["upload_id"],
         "properties": {
           "upload_id": {"type": "string", "minLength": 1},
-          "filename": {"type": "string", "minLength": 1},
+          "filename": {"type": "string", "description": "Attachment basename, at most 255 bytes. An empty name uses a default."},
           "disposition": {"enum": ["attachment", "inline"]},
           "content_id": {"type": "string", "minLength": 1}
         },

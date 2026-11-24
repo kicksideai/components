@@ -23,7 +23,7 @@ Under **Integrations → Mail**, choose the installed driver ID and set the From
 
 `kickside.mail:mailer` exposes `send`, `get_message`, `list_messages`, `list_templates`, `get_template`, and `preview`. The corresponding tools are `MailSend`, `MailListTemplates`, `MailGetTemplate`, and `MailPreview`. The `kickside.mail.traits:mail` trait includes all four. The `kickside.mail.traits:mail_readonly` trait includes the three template tools.
 
-Supply a nonempty `to` list and either a `template` with its `vars`, or a `subject` with `text`, `html`, or both. `cc` and `bcc` use the same address or `{user_id}` entries as `to`. After resolving user IDs, Mail includes each address once, comparing case-insensitively in To, Cc, then Bcc order. Subjects allow up to 255 characters and each raw or rendered body allows up to 256 KiB. `attachments` accepts up to ten upload references with a 25 MiB raw combined limit including the layout image. The configured driver’s total message limit also applies, including attachment encoding overhead. An inline reference supplies a `content_id` that the HTML can address as `cid:<content_id>`.
+Supply a nonempty `to` list and either a `template` with its `vars`, or a `subject` with `text`, `html`, or both. `cc` and `bcc` use the same address or `{user_id}` entries as `to`. After resolving user IDs, Mail includes each address once, comparing case-insensitively in To, Cc, then Bcc order. Subjects allow up to 255 characters and each raw or rendered body allows up to 256 KiB. `attachments` accepts up to ten upload references with a 25 MiB raw combined limit including the layout image. The configured driver’s total message limit also applies, including attachment encoding overhead. Mail uses the basename of the supplied or stored upload filename, up to 255 bytes, and uses `attachment` for an empty name. An inline reference supplies a `content_id` that the HTML can address as `cid:<content_id>`.
 
 Send validates and renders the message, commits it with a delivery job, and returns `{message_id, status = "queued"}`. An optional `idempotency_key` of up to 2048 bytes names the write for that sender while its log row exists. Repeating the key and message content returns the original ID and current status. Different content with the same key returns `idempotency_conflict`.
 
@@ -56,6 +56,7 @@ incomplete_attachment          Internal           No
 idempotency_conflict            Conflict           No
 invalid_address                Invalid            No
 invalid_attachment             Invalid            No
+invalid_attachment_filename    Invalid            No
 invalid_attachment_size        Internal           No
 invalid_body                   Invalid            No
 invalid_config                 Invalid            No
