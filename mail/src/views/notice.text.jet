@@ -13,9 +13,11 @@
 {{ if isset(action_url, action_label) && action_label != "" && (hasPrefix(action_url, "https://") || hasPrefix(action_url, "http://")) }}
 
 {{ include "/part/button" vars }}{{ end -}}
-{{ if isset(inline_content_id) }}
+{{ if isset(inline_content_id) -}}
+{{ alt := "Notice image" -}}
+{{ if isset(image_alt) && image_alt != "" }}{{ alt = image_alt }}{{ end }}
 
-{{ if isset(image_alt) && image_alt != "" }}{{ image_alt }}{{ else }}Notice image{{ end }}{{ end -}}
+{{ include "/part/image" map("alt", alt) }}{{ end -}}
 {{ if isset(details) && len(details) > 0 }}
 
 {{ include "/part/details" vars }}{{ end -}}

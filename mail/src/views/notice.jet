@@ -7,7 +7,9 @@
     {{ include "/part/button" vars }}
   {{ end }}
   {{ if isset(inline_content_id) }}
-    <img src="cid:{{ inline_content_id }}" alt="{{ if isset(image_alt) && image_alt != "" }}{{ image_alt }}{{ else }}Notice image{{ end }}" width="534" style="display:block;width:100%;max-width:534px;height:auto;border:0;margin:20px 0 0;color:#1f2328;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;">
+    {{ alt := "Notice image" }}
+    {{ if isset(image_alt) && image_alt != "" }}{{ alt = image_alt }}{{ end }}
+    {{ include "/part/image" map("src", "cid:" + inline_content_id, "alt", alt, "width", 534) }}
   {{ end }}
   {{ if isset(details) && len(details) > 0 }}
     {{ include "/part/details" vars }}

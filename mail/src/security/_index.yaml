@@ -168,6 +168,8 @@ entries:
         - kickside.mail.views:preheader_template
         - kickside.mail.views:button_template
         - kickside.mail.views:details_template
+        - kickside.mail.views:image_template
+        - kickside.mail.views:signature_template
       actions: [template.get, registry.get, registry.find]
       effect: allow
   - name: user_security_scope
@@ -250,6 +252,10 @@ entries:
         - kickside.mail.views:button.text
         - kickside.mail.views:details
         - kickside.mail.views:details.text
+        - kickside.mail.views:image
+        - kickside.mail.views:image.text
+        - kickside.mail.views:signature
+        - kickside.mail.views:signature.text
         - kickside.mail.views:notice
         - kickside.mail.views:notice.text
         - kickside.mail.views:notice.subject

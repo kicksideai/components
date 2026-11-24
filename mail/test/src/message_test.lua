@@ -73,6 +73,24 @@ return { run = test.run_cases(function()
     end)
 
     test.describe("Mail templates", function()
+        test.it("identifies the face and registry ID when a template set cannot be opened", function()
+            local missing = "app.templates:missing_set"
+            for _, item in ipairs({
+                {face = "html", html = missing, text = "kickside.mail.views:text_templates"},
+                {face = "text", html = "kickside.mail.views:templates", text = missing},
+            }) do
+                local result, err = render.with_sets(item.html, item.text, function()
+                    error("An unavailable template set must not be rendered")
+                end)
+                test.is_nil(result)
+                test.not_nil(err)
+                local details = assert(err:details(), tostring(err))
+                test.eq("template_set_unavailable", details.code)
+                test.eq(item.face, details.face)
+                test.eq(missing, details.template_set)
+                test.not_nil(err:message():find("resource not found", 1, true))
+            end
+        end)
         test.it("requires template.set engine.escape none for mail text", function()
             local set, open_err = templates.get("kickside.mail.views:text_templates")
             assert(set, "Mail requires a text template set and runtime support for template.set engine.escape: " .. tostring(open_err))
@@ -147,6 +165,25 @@ return { run = test.run_cases(function()
             local button = {action_url = "https://example.org/report"}
             test.not_nil(part("templates", "button", button):find(">Open</a>", 1, true))
             test.eq("Open\n" .. button.action_url, part("text_templates", "button", button))
+        end)
+        test.it("renders standalone image and signature parts in both faces", function()
+            local image = {src = "cid:chart", alt = "A & B", width = 320, height = 160, url = "https://example.org/report"}
+            local html = part("templates", "image", image)
+            test.not_nil(html:find('src="cid:chart" alt="A &amp; B" width="320" height="160"', 1, true))
+            test.not_nil(html:find('href="https://example.org/report"', 1, true))
+            test.eq("A & B\n" .. image.url, part("text_templates", "image", image))
+            image.height, image.url = nil, nil
+            html = part("templates", "image", image)
+            test.is_nil(html:find(' height="', 1, true))
+            test.is_nil(html:find(' href="', 1, true))
+            test.eq("A & B", part("text_templates", "image", image))
+            local signature = {name = "A & B", role = "Operations"}
+            html = part("templates", "signature", signature)
+            test.not_nil(html:find("<strong>A &amp; B</strong>", 1, true))
+            test.not_nil(html:find("Operations</span>", 1, true))
+            test.eq("A & B\nOperations", part("text_templates", "signature", signature))
+            signature.role = nil
+            test.eq("A & B", part("text_templates", "signature", signature))
         end)
         test.it("accepts standalone preheader input without message globals", function()
             local inputs = {preheader = "Review A & B"}

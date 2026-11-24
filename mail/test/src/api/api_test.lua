@@ -10,6 +10,7 @@ local system = require("system")
 local time = require("time")
 local uuid = require("uuid")
 local test = require("test")
+local library_fixtures = require("library_fixtures")
 
 local API = "/api/mail"
 local ZERO = "00000000-0000-0000-0000-000000000000"
@@ -72,6 +73,23 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail HTTP", function()
+        local owned, configured
+        test.before_each(function()
+            owned, configured = {}, false
+        end)
+        local function own(item)
+            owned[#owned + 1] = {kind = item.kind, name = item.name}
+            return item
+        end
+        local function configure()
+            configured = true
+            settings("capture", "mail@example.org")
+        end
+        test.after_each(function()
+            library_fixtures.remove(owned)
+            if configured then settings("", "") end
+        end)
+
         test.it("requires authenticated capability on each exact endpoint", function()
             local sender = session("sender")
             local editor = session("editor")
@@ -103,13 +121,13 @@ return {run = test.run_cases(function()
 
         test.it("serves library edits and candidate previews through the router", function()
             local editor = session("editor")
-            local base = fixture("base", "http-frame", "[{{ block body() }}{{ end }}]")
+            local base = own(fixture("base", "http-frame", "[{{ block body() }}{{ end }}]"))
             local saved_base = data(editor, "POST", "/library", base, 201)
-            local msg = fixture("message", "http-message", "{{ block body() }}Body{{ end }}")
+            local msg = own(fixture("message", "http-message", "{{ block body() }}Body{{ end }}"))
             msg.base, msg.subject = base.name, "Hello"
             local saved = data(editor, "POST", "/library", msg, 201)
-            local copy = data(editor, "POST", "/library", {kind = "message", name = "http-copy",
-                from = {kind = "message", name = msg.name}, title = "Copy of the fixture"}, 201)
+            local copy = data(editor, "POST", "/library", own({kind = "message", name = "http-copy",
+                from = {kind = "message", name = msg.name}, title = "Copy of the fixture"}), 201)
             test.eq(msg.subject, copy.subject)
             test.eq(msg.base, copy.base)
             local list = data(editor, "GET", "/library?kind=message&state=created&q=fixture")
@@ -151,7 +169,7 @@ return {run = test.run_cases(function()
             test.eq("Save both", revisions.items[2].note)
             local restored = data(editor, "POST", name .. "/restore", {revision = saved.revision, expected_revision = moved.revision})
             test.eq(base.name, restored.base)
-            local shipped = data(editor, "GET", "/library/base/plain")
+            local shipped = own(data(editor, "GET", "/library/base/plain"))
             local original_revision = shipped.revision
             shipped.html, shipped.text = base.html, base.text
             shipped.expected_revision = original_revision
@@ -171,8 +189,8 @@ return {run = test.run_cases(function()
             assert(db:release())
             local editor = session("editor_sender")
             local admin = session("delivery")
-            settings("capture", "mail@example.org")
-            local item = fixture("base", "event-frame", "{{ block body() }}{{ end }}")
+            configure()
+            local item = own(fixture("base", "event-frame", "{{ block body() }}{{ end }}"))
             local saved = data(editor, "POST", "/library", item, 201)
             item.expected_revision = 0
             test.eq(409, (request(editor, "PUT", "/library/base/" .. item.name, item)))
@@ -210,14 +228,13 @@ return {run = test.run_cases(function()
             test.is_true(seen.sent)
             test.eq("sent", data(admin, "GET", "/activity/" .. send.message_id).status)
             data(editor, "DELETE", "/library/base/" .. item.name, {expected_revision = saved.revision})
-            settings("", "")
         end)
 
         test.it("authorizes delivery administration and sends tests only to the acting address", function()
             local editor = session("editor_sender")
             local admin = session("delivery_sender")
             local sender = session("sender")
-            settings("capture", "mail@example.org")
+            configure()
             local status = data(admin, "GET", "/delivery")
             test.eq("capture", status.driver.id)
             test.is_true(status.configured)
@@ -245,7 +262,6 @@ return {run = test.run_cases(function()
             end
             local activity = data(admin, "GET", "/activity?status=sent&message=notice&limit=1&since=0")
             test.eq("notice", activity.items[1].template)
-            settings("", "")
             test.is_false(data(admin, "GET", "/delivery").configured)
         end)
     end)

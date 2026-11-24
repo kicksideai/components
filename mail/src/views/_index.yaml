@@ -78,6 +78,26 @@ entries:
     set: kickside.mail.views:text_templates
     meta: { name: "part/details" }
     source: &details_text file://details.text.jet
+  - name: image
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/image" }
+    source: &image_html file://image.jet
+  - name: image.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/image" }
+    source: &image_text file://image.text.jet
+  - name: signature
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/signature" }
+    source: &signature_html file://signature.jet
+  - name: signature.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/signature" }
+    source: &signature_text file://signature.text.jet
   - name: notice
     kind: template.jet
     set: kickside.mail.views:templates
@@ -247,6 +267,50 @@ entries:
                 key: { type: string }
                 value: { type: string }
       sample: { details: [{key: State, value: Ready}] }
+  - name: image_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: part
+      name: image
+      title: Image
+      description: Shows a content image and includes its alternative text in the text face.
+      html: *image_html
+      text: *image_text
+      entries: { html: "kickside.mail.views:image", text: "kickside.mail.views:image.text" }
+      input_schema:
+        type: object
+        required: [src, alt, width]
+        properties:
+          src: { type: string, minLength: 1, description: Content ID URL or hosted image URL. }
+          alt: { type: string, minLength: 1, description: Text that conveys the content of the image. }
+          width: { type: integer, minimum: 1, description: Display width in pixels. }
+          height: { type: integer, minimum: 1, description: Display height in pixels when known. }
+          url: { type: string, description: Optional HTTP or HTTPS destination. }
+      sample:
+        src: "cid:activity-chart"
+        alt: Weekly activity chart
+        width: 320
+        height: 160
+        url: https://example.org/report
+  - name: signature_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      kind: part
+      name: signature
+      title: Signature
+      description: Shows the sender name and an optional role.
+      html: *signature_html
+      text: *signature_text
+      entries: { html: "kickside.mail.views:signature", text: "kickside.mail.views:signature.text" }
+      input_schema:
+        type: object
+        required: [name]
+        properties:
+          name: { type: string, minLength: 1, description: Sender name. }
+          role: { type: string, description: Sender role. }
+      sample: { name: Reporting team, role: Workspace operations }
   - name: catalog
     kind: library.lua
     source: file://catalog.lua

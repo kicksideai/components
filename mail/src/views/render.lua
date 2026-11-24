@@ -46,11 +46,22 @@ local function empty_body(part: string): error
         retryable = false, details = {code = "body_required"}})
 end
 
+local function open_set(id: string, face: string): (types.TemplateSet?, error?)
+    local set, err = templates.get(id)
+    if not err then return set :: types.TemplateSet, nil end
+    local details: types.Record = {}
+    for key, value in pairs(err:details() or {}) do details[key] = value end
+    details.code = details.code or "template_set_unavailable"
+    details.face = face
+    details.template_set = id
+    return nil, errors.new({kind = err:kind(), retryable = err:retryable() == true, message = err:message(), details = details})
+end
+
 function M.with_sets<T>(html_id: string, text_id: string,
     run: (types.TemplateSet, types.TemplateSet) -> (T?, error?)): (T?, error?)
-    local html_set, html_err = templates.get(html_id)
+    local html_set, html_err = open_set(html_id, "html")
     if html_err then return nil, html_err end
-    local text_set, text_err = templates.get(text_id)
+    local text_set, text_err = open_set(text_id, "text")
     if text_err then
         html_set:release()
         return nil, text_err
@@ -119,7 +130,7 @@ function M.body(subject: string, text: string?, markup: string?): (types.Rendere
     local values, globals_err = globals.read()
     if globals_err then return nil, globals_err end
     local context = globals.data(values :: types.RenderGlobals, data, subject)
-    local set, err = templates.get(jet.html)
+    local set, err = open_set(jet.html, "html")
     if err then return nil, err end
     local body, render_err = set:render("base/standard", context)
     set:release()

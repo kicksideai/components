@@ -2,10 +2,27 @@
 version: "1.0"
 namespace: app.mail_library
 entries:
+  - name: site_url_storage
+    kind: env.storage.static
+    values: {PUBLIC_API_URL: "https://example.org"}
+  - name: site_url
+    kind: env.variable
+    variable: PUBLIC_API_URL
+    storage: app.mail_library:site_url_storage
+  - name: fixtures
+    kind: library.lua
+    source: file://fixtures.lua
+    modules: [funcs]
+    imports:
+      database: kickside.mail.outbox:database
+      store: kickside.mail.library:store
   - name: library_test
     kind: function.lua
     meta: { type: test, suite: mail_library }
     source: file://library_test.lua
     method: run
-    modules: [funcs, registry, templates, security, env]
-    imports: { test: wippy.test:test }
+    modules: [funcs, registry, templates, security]
+    imports:
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
+      jet: kickside.mail.library:jet

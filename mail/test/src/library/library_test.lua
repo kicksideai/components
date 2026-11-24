@@ -4,7 +4,8 @@ local funcs = require("funcs")
 local registry = require("registry")
 local templates = require("templates")
 local security = require("security")
-local env = require("env")
+local fixtures = require("fixtures")
+local jet = require("jet")
 
 local NS = "kickside.mail.library:"
 local HTML = "kickside.mail.views:templates"
@@ -29,15 +30,65 @@ local function value(set_id, name, data)
     return result, err
 end
 
-local function discard_overlay()
+local function discard_overlay(items)
+    local names = {}
+    for _, item in ipairs(items) do
+        names[jet.name(item)] = true
+        if item.kind == "message" then names[jet.name(item, "subject")] = true end
+    end
     local overlay = assert(registry.overlay(OWNER))
     local changes = overlay:changes()
-    assert(changes:delete(overlay:entries()))
+    for _, entry in ipairs(assert(overlay:entries())) do
+        if names[entry.meta.name] then assert(changes:delete(entry.id)) end
+    end
     assert(changes:apply())
 end
 
 return {run = test.run_cases(function()
     test.describe("Mail library", function()
+        local owned, originals
+        test.before_each(function()
+            owned, originals = {}, {}
+        end)
+        local function own(item)
+            owned[#owned + 1] = {kind = item.kind, name = item.name}
+            return item
+        end
+        test.after_each(function()
+            fixtures.remove(owned)
+            if #originals > 0 then
+                local changes = assert(registry.snapshot()):changes()
+                for _, original in ipairs(originals) do assert(changes:update(original)) end
+                assert(changes:apply())
+            end
+        end)
+        test.it("exposes the shipped Image and Signature to library editors", function()
+            local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
+                assert(security.policy("kickside.mail.security:library_calls"))}))
+            local actor = assert(security.new_actor("parts-editor", {}))
+            local editor = assert(funcs.new():with_actor(actor):with_scope(scope))
+            local parts = {}
+            for _, item in ipairs(assert(editor:call(NS .. "list", {kind = "part"}))) do
+                parts[item.name] = item
+            end
+            local projection = assert(security.new_scope({assert(security.policy("kickside.mail.security:overlay_originals"))}))
+            for _, name in ipairs({"image", "signature"}) do
+                test.not_nil(parts[name])
+                local item = assert(editor:call(NS .. "get", {kind = "part", name = name}))
+                test.eq("original", item.state)
+                for _, face in ipairs({name, name .. ".text"}) do
+                    for _, action in ipairs({"registry.overlay.shadow", "registry.overlay.update.template.jet",
+                        "registry.overlay.delete.template.jet"}) do
+                        test.eq("allow", projection:evaluate(actor, action, "kickside.mail.views:" .. face))
+                    end
+                end
+            end
+            local notice = assert(editor:call(NS .. "render_draft", {message = "notice", vars = {
+                subject = "Status", inline_content_id = "chart", image_alt = "Weekly chart",
+            }}))
+            test.not_nil(notice.html:find('src="cid:chart" alt="Weekly chart" width="534"', 1, true))
+            test.not_nil(notice.text:find("Weekly chart", 1, true))
+        end)
         test.it("renders Notice on Plain without the Standard card or branded frame", function()
             local notice = assert(call("get", {kind = "message", name = "notice"}))
             notice.base = "plain"
@@ -63,18 +114,17 @@ return {run = test.run_cases(function()
         end)
 
         test.it("projects edits, switches a base, and refuses a change that breaks a dependent", function()
-            assert(env.set("PUBLIC_API_URL", "https://example.org"))
-            local part = candidate("part", "library-note", "HTML {{ .label }}", "Text {{ .label }}")
+            local part = own(candidate("part", "library-note", "HTML {{ .label }}", "Text {{ .label }}"))
             part.schema.properties.label = {type = "string"}
             part.samples.label = "Sample"
             local saved_part = assert(call("create", part))
-            local base = candidate("base", "library-frame",
+            local base = own(candidate("base", "library-frame",
                 'Frame {{ include "/part/library-note" map("label", "from base") }} [{{ block body() }}{{ end }}]',
-                'Text frame {{ include "/part/library-note" map("label", "from base") }} [{{ block body() }}{{ end }}]')
+                'Text frame {{ include "/part/library-note" map("label", "from base") }} [{{ block body() }}{{ end }}]'))
             local saved_base = assert(call("create", base))
-            local message = candidate("message", "library-example",
+            local message = own(candidate("message", "library-example",
                 '{{ block body() }}{{ include "/part/library-note" vars }} {{ site.title }} {{ site.url }} {{ sender.name }} {{ message.subject }} {{ message.preheader }}{{ end }}',
-                '{{ block body() }}{{ include "/part/library-note" vars }}{{ end }}')
+                '{{ block body() }}{{ include "/part/library-note" vars }}{{ end }}'))
             message.base = base.name
             message.subject = "{{ label }}"
             message.schema.properties.label = {type = "string"}
@@ -103,13 +153,14 @@ return {run = test.run_cases(function()
             test.not_nil(preview.html:find("Draft from base", 1, true))
             test.eq(rendered.html, assert(executor:call(NS .. "render", {template = message.name, vars = message.samples})).html)
 
-            local second = candidate("message", "library-second", message.html, message.text)
+            local second = own(candidate("message", "library-second", message.html, message.text))
             second.base, second.subject, second.schema, second.samples = message.base, message.subject, message.schema, message.samples
             local saved_second = assert(call("create", second))
             local used, use_err = call("delete", {kind = "part", name = part.name, expected_revision = saved_part.revision})
             test.is_nil(used)
-            test.eq("mail_resource_in_use", use_err:details().code)
-            local failed = use_err:details().messages
+            local details = assert(use_err:details(), tostring(use_err))
+            test.eq("mail_resource_in_use", details.code, tostring(use_err))
+            local failed = details.messages
             test.eq(2, #failed)
             test.eq(message.name, failed[1])
             test.eq(second.name, failed[2])
@@ -149,7 +200,7 @@ return {run = test.run_cases(function()
             test.is_nil(switched_render.html:find("Frame", 1, true))
             test.not_nil(switched_render.html:find("Changed A &amp; &lt;B&gt;", 1, true))
 
-            discard_overlay()
+            discard_overlay({part, base, message})
             local missing, missing_err = value(HTML, "message/" .. message.name)
             test.is_nil(missing)
             test.eq(errors.NOT_FOUND, missing_err:kind())
@@ -172,7 +223,7 @@ return {run = test.run_cases(function()
         end)
 
         test.it("shadows a shipped entry and resets to the original after a module update", function()
-            local key = {kind = "part", name = "header"}
+            local key = own({kind = "part", name = "header"})
             local original = assert(call("get", key))
             test.eq("original", original.state)
             local edit = candidate("part", key.name, "Customized {{ site.title }}", "Custom text {{ site.title }}")
@@ -183,13 +234,12 @@ return {run = test.run_cases(function()
             local data = {site = {title = "Example"}}
             test.eq("Customized Example", assert(value(HTML, "part/header", data)))
             test.eq("Custom text Example", assert(value(TEXT, "part/header", data)))
-            discard_overlay()
+            discard_overlay({key})
 
             local id = "kickside.mail.views:header"
             local entry = assert(registry.get(id))
-            local old_source = entry.data.source
             local declaration = assert(registry.get(original.origin))
-            local old_original = declaration.data.template.html
+            originals = {assert(registry.get(id)), assert(registry.get(original.origin))}
             entry.data.source = "New original {{ site.title }}"
             declaration.data.template.html = entry.data.source
             local snapshot = assert(registry.snapshot())
@@ -202,13 +252,6 @@ return {run = test.run_cases(function()
             local reset = assert(call("reset", {kind = key.kind, name = key.name, expected_revision = saved.revision}))
             test.eq("original", reset.state)
             test.eq("New original Example", assert(value(HTML, "part/header", data)))
-            entry.data.source = old_source
-            declaration.data.template.html = old_original
-            snapshot = assert(registry.snapshot())
-            changes = snapshot:changes()
-            assert(changes:update(entry))
-            assert(changes:update(declaration))
-            assert(changes:apply())
         end)
 
         test.it("retains the newest 25 revisions, including reset and restore", function()
@@ -221,7 +264,7 @@ return {run = test.run_cases(function()
                 if err then error(method .. ": " .. err:message() .. " (" .. tostring((err:details() or {}).code) .. ")") end
                 return result
             end
-            local key = {kind = "base", name = "plain"}
+            local key = own({kind = "base", name = "plain"})
             local initial = read("get", key)
             local initial_history = #read("history", key)
             local edit = candidate("base", key.name, "First [{{ block body() }}{{ end }}]",
@@ -273,6 +316,7 @@ return {run = test.run_cases(function()
             local message = candidate("message", "batch-message", "{{ block body() }}Body{{ end }}", "{{ block body() }}Body{{ end }}")
             message.subject, message.base = "Subject", base.name
             for _, item in ipairs({one, two, base, message}) do
+                own(item)
                 item.expected_revision = assert(call("create", item)).revision
             end
             local old = assert(call("render", {template = message.name, vars = {}}))
