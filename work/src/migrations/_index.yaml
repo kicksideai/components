@@ -42,14 +42,3 @@ entries:
   imports:
     migration: wippy.migration:migration
   method: migrate
-- name: 04_plugin_attachments
-  kind: function.lua
-  meta:
-    type: migration
-    tags: [work, board]
-    comment: Indexes active attachment discovery by plugin.
-    timestamp: '2026-11-24T00:00:04Z'
-  source: file://04_plugin_attachments.lua
-  imports:
-    migration: wippy.migration:migration
-  method: migrate

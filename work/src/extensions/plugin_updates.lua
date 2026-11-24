@@ -63,7 +63,7 @@ local function reconcile(previous: types.Catalog): (types.Catalog, boolean)
     local pending = false
     for plugin, manifest in pairs(current) do
         if not values.equal(previous[plugin], manifest) then
-            local migrated = ready(db_id, { "kickside.work.migrations:04_plugin_attachments" })
+            local migrated = ready(db_id, { "kickside.work.migrations:01_work" })
             for target, ids in pairs(migrations[manifest.owner] or {}) do
                 migrated = migrated and ready(target, ids)
             end

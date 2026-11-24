@@ -75,8 +75,16 @@ print(json.dumps([row, indexes]))
   ])
 })
 
+test('Work initializes the active plugin attachment index in the base migration', async () => {
+  const index = 'CREATE INDEX kickside_work_plugin_active ON kickside_work_plugin (plugin, board_id) WHERE active = 1'
+  for (const engine of ['sqlite', 'postgres']) {
+    const up = await statements('01_work', 'up', engine)
+    assert.ok(up.includes(index), `Base Work migration must create the active plugin attachment index on ${engine}`)
+  }
+})
+
 test('Work rollback removes every fixed table including board metadata', async () => {
-  const names = ['01_work', '02_board_ui_app', '03_move_alias_indexes', '04_plugin_attachments']
+  const names = ['01_work', '02_board_ui_app', '03_move_alias_indexes']
   const up = (await Promise.all(names.map(name => statements(name, 'up')))).flat()
   const down = (await Promise.all(names.toReversed().map(name => statements(name, 'down')))).flat()
   const result = await run('python3', ['-c', `
