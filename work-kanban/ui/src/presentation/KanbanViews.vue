@@ -1,10 +1,12 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import EmptyState from '@kickside/ui-kit/EmptyState.vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import { Icon } from '@iconify/vue'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
-import { computed, defineAsyncComponent, nextTick, onScopeDispose, ref, shallowRef, watch, type Component } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onActivated, onDeactivated, onScopeDispose, ref, shallowRef, watch, type Component } from 'vue'
+import KanbanSkeleton from '../app/KanbanSkeleton.vue'
 import { sprintChoices } from '../backlog/sprints'
 import BoardViewport from '../board/BoardViewport.vue'
 import { planMove, type MovePlan } from '../board/move'
@@ -18,12 +20,12 @@ import type { KanbanRoute } from '../route'
 import { isAccessLoss, planningPlugin, WorkError, type WorkClient } from '../work/client'
 import { workFailure } from '../work/errors'
 import type { BoardOption, BoardSchema } from '../work/types'
-import { principalRef } from './context'
+import { principalRef, statusSeverity, type PresentationContext } from './context'
 import FilterBar, { type ActiveFilter } from './FilterBar.vue'
 import { applyWork, command } from './mutation'
 import { readItemDetail } from './query'
-import type { Cursor, FirstViewRead, ItemDetail, ItemSummary, WorkCommand, WorkOperation } from './query'
-import { usePages } from './usePages'
+import type { Cursor, FirstViewRead, ItemDetail, ItemSummary, ViewReader, WorkCommand, WorkOperation } from './query'
+import { usePages, type Swimlane } from './usePages'
 
 const BacklogEditor = defineAsyncComponent(() => import('../backlog/BacklogEditor.vue'))
 const BacklogTable = defineAsyncComponent(() => import('../backlog/BacklogTable.vue'))
@@ -38,18 +40,23 @@ const props = defineProps<{
   revalidate?: () => Promise<void>
   invalidate?: ReturnType<typeof createCoordinator>['invalidate']
   firstView?: FirstViewRead
+  readView?: ViewReader
+  sequence?: number
   fieldControl?: Component
   usePrincipalNames?: (values: () => ReturnType<typeof principalRef>[]) =>
     (value: ReturnType<typeof principalRef>) => string | undefined
 }>()
 const emit = defineEmits<{
-  openIssue: [item: string]
+  openIssue: [item: ItemSummary, assignee?: string]
+  prefetchIssue: [item: string]
+  cancelPrefetch: []
   moveForm: [draft: { detail: ItemDetail, plan: MovePlan }]
   accessLost: []
 }>()
 const activeFilters = shallowRef<ActiveFilter[]>([])
 const tabFilters = new Map<KanbanRoute['tab'], ActiveFilter[]>()
 const laneId = ref('')
+const statusHost = ref<HTMLElement>()
 const boardViewport = ref<InstanceType<typeof BoardViewport>>()
 const backlogTable = ref<InstanceType<typeof BacklogTable>>()
 const originatingItem = shallowRef<{ item: string, status?: string }>()
@@ -62,6 +69,7 @@ const placements = computed(() => checkPlacements(props.schema.extensions, props
 const planning = computed(() => props.schema.plugins?.some(plugin => plugin.plugin === planningPlugin && plugin.active) === true)
 const pages = usePages({
   board: () => props.board, schema: () => props.schema, tab: () => props.route.tab, work: props.work, firstView: props.firstView,
+  readView: () => props.readView,
   accessLost: () => {
     editor.value = undefined
     uncertain.value = undefined
@@ -71,7 +79,31 @@ const pages = usePages({
 })
 const { context, lanes, backlog, backlogIndex, error, fetching, paging, subgroupLimited } = pages
 const lane = computed(() => lanes.value.find(lane => lane.id === laneId.value) ?? lanes.value[0])
+const boardPresentation = computed<{
+  generation: number; lane: Swimlane; context: PresentationContext; paging: ReadonlyMap<string, unknown>;
+} | undefined>(previous => {
+  if (!props.board.access.read) return
+  const generation = props.schema.generation
+  if (props.route.tab !== 'board') return previous?.generation === generation ? previous : undefined
+  if (lane.value) return { generation, lane: lane.value, context: context.value, paging: paging.value }
+})
 const hasCards = computed(() => lanes.value.some(lane => lane.columns.some(column => column.count > 0)))
+const boardSummary = computed<string | undefined>(previous => {
+  if (props.route.tab !== 'board' || !lanes.value.length || activeFilters.value.length) return previous
+  const tones = new Map(context.value.statuses.map(status => [status.id, statusSeverity(status)]))
+  let open = 0
+  let started = 0
+  let blocked = 0
+  for (const { columns } of lanes.value) {
+    for (const { count, state } of columns) {
+      const tone = tones.get(state)
+      if (tone !== 'success') open += count
+      if (tone === 'info') started += count
+      if (tone === 'danger') blocked += count
+    }
+  }
+  return `${open.toLocaleString()} open · ${started.toLocaleString()} in progress · ${blocked.toLocaleString()} blocked`
+})
 const personName = props.usePrincipalNames?.(() => {
   const items = props.route.tab === 'backlog' ? backlog.value?.items
     : lane.value?.columns.filter(column => pages.visible.value.includes(column.id)).flatMap(column => column.items)
@@ -85,7 +117,7 @@ function invalidate(seq?: number, revalidate = false) {
   const notify = props.invalidate ?? live?.invalidate
   notify?.(seq, revalidate)
 }
-defineExpose({ refresh: pages.refresh })
+defineExpose({ refresh: pages.refresh, boardSummary })
 watch(() => props.board.board_id, (id, _, onCleanup) => {
   if (props.invalidate) return
   const coordinator = createCoordinator(async request => {
@@ -102,6 +134,14 @@ watch(() => props.board.board_id, (id, _, onCleanup) => {
   })
 }, { immediate: true, flush: 'sync' })
 
+let parked = false
+onDeactivated(() => { parked = true })
+onActivated(() => {
+  if (!parked) return
+  parked = false
+  invalidate()
+})
+
 let shown = false
 useHostVisibilityRefresh(() => {
   if (shown && !props.invalidate) invalidate(undefined, true)
@@ -110,14 +150,14 @@ useHostVisibilityRefresh(() => {
 watch([() => props.board.board_id, () => props.schema.generation], () => {
   tabFilters.clear()
   activeFilters.value = []
+  laneId.value = ''
 })
 watch(() => props.route.tab, tab => {
   activeFilters.value = tabFilters.get(tab) ?? []
-  laneId.value = ''
   editor.value = undefined
   mutationError.value = undefined
   uncertain.value = undefined
-  invalidate()
+  pages.activate(props.sequence)
 }, { immediate: true })
 watch(() => props.schema.generation, () => invalidate())
 watch(() => props.board.access.write, writable => {
@@ -135,14 +175,15 @@ function updateFilters(filters: ActiveFilter[]) {
   tabFilters.set(props.route.tab, filters)
   activeFilters.value = filters
   pages.select(filters.map(filter => filter.selection))
-  invalidate()
+  pages.activate(props.sequence)
 }
-function showItem(item: string) {
-  const status = lane.value?.columns.find(column => column.items.some(row => row.id === item))?.state
-  originatingItem.value = { item, status }
-  emit('openIssue', item)
+function showItem(item: ItemSummary) {
+  const status = typeof item.state === 'string' ? item.state : undefined
+  originatingItem.value = { item: item.id, status }
+  emit('openIssue', item, person(item))
 }
 function visibleColumns(ids: string[]) {
+  if (props.route.tab !== 'board') return
   const previous = pages.visible.value
   pages.visible.value = ids
   if (previous.length && pages.visibleNeedsRefresh(ids.filter(id => !previous.includes(id)))) invalidate()
@@ -154,7 +195,7 @@ function holdColumns(ids: string[]) {
   if (previous.size && !ids.length) invalidate()
 }
 function visibleRow(column: string, row: number) {
-  if (pages.visibleRow(column, row)) invalidate()
+  if (props.route.tab === 'board' && pages.visibleRow(column, row)) invalidate()
 }
 watch(() => props.route.issue, async (issue, previous) => {
   if (issue || !previous) return
@@ -255,8 +296,11 @@ function apply(operations: WorkOperation[]) {
 </script>
 
 <template>
-  <section v-if="board.access.read && (route.tab === 'board' || route.tab === 'backlog')" class="kanban-views" :aria-label="route.tab === 'board' ? 'Board' : 'Backlog view'">
-    <FilterBar :board="board.board_id" :context="context" :placements="placements" :selection="activeFilters"
+  <section v-if="board.access.read" v-show="route.tab === 'board' || route.tab === 'backlog'"
+    class="kanban-views" :aria-label="route.tab === 'board' ? 'Board' : 'Backlog view'">
+    <div v-show="route.tab === 'board'" ref="statusHost" class="kanban-status-host" />
+    <FilterBar v-if="route.tab === 'board' || route.tab === 'backlog'"
+      :board="board.board_id" :context="context" :placements="placements" :selection="activeFilters"
       :control="filterHost" @apply="updateFilters" />
     <div v-if="error || mutationError && !editor" class="kx-notice error kanban-view-notice"
       :class="{ 'kanban-move-notice': route.tab === 'board' && !error }" role="alert">
@@ -269,26 +313,36 @@ function apply(operations: WorkOperation[]) {
         <template #icon><Icon icon="tabler:x" aria-hidden="true" /></template>
       </Button>
     </div>
-    <p v-if="fetching && !lane && !backlog" class="kx-loading" role="status">
-      <Icon icon="tabler:loader-2" aria-hidden="true" /> Loading issues…
-    </p>
+    <KanbanSkeleton v-if="fetching && !lane && !backlog" :variant="route.tab === 'board' ? 'board' : 'rows'"
+      label="Loading issues…" :compact="compact" />
     <template v-if="route.tab === 'board' && lane">
       <p v-if="subgroupLimited" class="kanban-view-notice" role="status">Work could not load the swimlanes. Showing status columns.</p>
-      <p v-if="!hasCards" class="kanban-view-notice" role="status">{{ activeFilters.length ? 'No issues match these filters.' : 'No issues on this board.' }}</p>
-      <Select v-if="lanes.length > 1" :model-value="lane.id" :options="lanes" option-value="id" option-label="title"
-        aria-label="Swimlane" size="small" @update:model-value="laneId = $event" />
-      <BoardViewport ref="boardViewport" :key="lane.id" :columns="lane.columns" :context="context" :placements="placements"
-        :writable="writable" :compact="compact" :pending-ids="pending" :paging="paging" :destinations="destinations" :person="person" :move="move"
-        :open-issue-state="openIssueState"
-        @visible="visibleColumns" @hold="holdColumns" @window="visibleRow"
-        @open="showItem" @more="pages.more" />
+      <EmptyState v-if="!hasCards" icon="tabler:layout-kanban" role="status"
+        :title="activeFilters.length ? 'No issues match these filters.' : 'No issues on this board.'" />
+      <Teleport v-if="lanes.length > 1" :to="statusHost" :disabled="!statusHost">
+        <Select :model-value="lane.id" :options="lanes" option-value="id" option-label="title"
+          aria-label="Swimlane" size="small" @update:model-value="laneId = $event" />
+      </Teleport>
     </template>
-    <BacklogTable v-if="route.tab === 'backlog' && backlog" ref="backlogTable" :page="backlog" :page-index="backlogIndex"
-      :context="context" :writable="writable" :can-edit="!!fieldControl" :planning="planning"
-      :fetching="fetching" :person="person" :pending-ids="pending" :sprints="sprints" @open="showItem" @page="pages.pageBacklog"
-      @edit="edit" @apply="apply">
-      <template #empty>{{ activeFilters.length ? 'No issues match these filters.' : 'No issues in the backlog.' }}</template>
-    </BacklogTable>
+    <div v-if="boardPresentation" v-show="route.tab === 'board'" class="kanban-board-pane">
+      <BoardViewport ref="boardViewport" :key="boardPresentation.lane.id" :active="route.tab === 'board'"
+        :columns="boardPresentation.lane.columns" :context="boardPresentation.context" :placements="placements"
+        :writable="writable" :compact="compact" :pending-ids="pending" :paging="boardPresentation.paging" :destinations="destinations" :person="person" :move="move"
+        :open-issue-state="openIssueState" :status-host="statusHost" :frozen="!!route.issue"
+        @visible="visibleColumns" @hold="holdColumns" @window="visibleRow"
+        @open="showItem" @more="pages.more" @prefetch="emit('prefetchIssue', $event)" @cancel-prefetch="emit('cancelPrefetch')" />
+    </div>
+    <KeepAlive :max="1">
+      <BacklogTable v-if="route.tab === 'backlog' && backlog" ref="backlogTable" :page="backlog" :page-index="backlogIndex"
+        :context="context" :writable="writable" :can-edit="!!fieldControl" :planning="planning"
+        :fetching="fetching" :person="person" :pending-ids="pending" :sprints="sprints" @open="showItem" @page="pages.pageBacklog"
+        @edit="edit" @apply="apply">
+        <template #empty>
+          <EmptyState icon="tabler:list-details" role="status"
+            :title="activeFilters.length ? 'No issues match these filters.' : 'No issues in the backlog.'" />
+        </template>
+      </BacklogTable>
+    </KeepAlive>
     <BacklogEditor v-if="editor && writable && fieldControl" :key="editor.id" :board="board.board_id" :work="work"
       :item="editor" :fields="context.fields" :field-control="fieldControl"
       :pending="pending.has(editor.id)" :locked="!!uncertain" :mutation-error="mutationError"

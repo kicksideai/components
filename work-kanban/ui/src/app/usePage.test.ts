@@ -35,6 +35,8 @@ describe('the Kanban page controller', () => {
       expect(schema).toHaveBeenCalledWith('linked')
       expect(reads.boardRead).toHaveBeenCalledWith('linked', 'list_views', { limit: 50, after: undefined })
       expect(reads.runView).not.toHaveBeenCalled()
+      await flush()
+      expect(reads.runView).toHaveBeenCalledWith('view', { limit: 10 })
       finishDirectory({ boards: [option('linked')] })
       await flush()
       expect(reads.runView).toHaveBeenCalledWith('view', { limit: 10 })
@@ -57,6 +59,36 @@ describe('the Kanban page controller', () => {
       expect(schema).toHaveBeenCalledOnce()
       expect(reads.boardRead).not.toHaveBeenCalled()
       expect(reads.runView).not.toHaveBeenCalled()
+    } finally { scope.stop() }
+  })
+
+  it('shows a visited board immediately and revalidates its schema in the background', async () => {
+    const route = ref<KanbanRoute>({ tab: 'board', board: 'first' })
+    const boards = vi.fn().mockResolvedValue({ boards: [option('first'), option('second')] })
+    const pending: ((value: BoardSchema) => void)[] = []
+    const schema = vi.fn((board: string) => board === 'first' && !pending.length && schema.mock.calls.length === 1
+      ? Promise.resolve(snapshot) : new Promise<BoardSchema>(resolve => { pending.push(resolve) }))
+    const reads = viewReads()
+    const scope = effectScope()
+    try {
+      const page = scope.run(() => usePage(route, { boards, schema, ...reads }, vi.fn(), vi.fn()))!
+      await flush()
+      expect(page.schema.value).toBe(snapshot)
+      route.value = { tab: 'board', board: 'second' }
+      await flush()
+      pending.shift()!({ ...snapshot, generation: 2 })
+      await flush()
+      expect(page.board.value?.board_id).toBe('second')
+      const listings = reads.boardRead.mock.calls.length
+      route.value = { tab: 'board', board: 'first' }
+      await flush()
+      expect(page.board.value?.board_id).toBe('first')
+      expect(page.schema.value).toBe(snapshot)
+      expect(reads.boardRead.mock.calls.length).toBe(listings)
+      const fresh = { ...snapshot, generation: 3 }
+      pending.shift()!(fresh)
+      await flush()
+      expect(page.schema.value).toBe(fresh)
     } finally { scope.stop() }
   })
 

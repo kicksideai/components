@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
@@ -7,7 +8,7 @@ import Select from 'primevue/select'
 import { computed, nextTick, onMounted, onScopeDispose, ref, shallowRef, useId, watch } from 'vue'
 import type { WorkExtension } from '../work/types'
 import { workFailure } from '../work/errors'
-import type { PresentationContext } from '../presentation/context'
+import { statusSeverity, type PresentationContext } from '../presentation/context'
 import type { Issue } from '../issue/types'
 import type { ItemSummary } from '../presentation/query'
 import type { BoardColumn } from '../presentation/usePages'
@@ -20,8 +21,11 @@ const props = defineProps<{
   context: PresentationContext
   placements: readonly WorkExtension[]
   writable: boolean
+  active: boolean
   compact?: boolean
+  frozen?: boolean
   openIssueState?: Issue['state']
+  statusHost?: HTMLElement
   move: (intent: MoveIntent) => Promise<MoveResult>
   pendingIds: ReadonlySet<string>
   paging: ReadonlyMap<string, unknown>
@@ -29,7 +33,7 @@ const props = defineProps<{
   destinations: (item: ItemSummary) => Promise<string[]>
 }>()
 const emit = defineEmits<{
-  open: [item: string], more: [column: BoardColumn],
+  open: [item: ItemSummary], more: [column: BoardColumn], prefetch: [item: string], cancelPrefetch: [],
   visible: [ids: string[]], hold: [ids: string[]], window: [column: string, firstRow: number],
 }>()
 const viewport = ref<HTMLElement>()
@@ -41,14 +45,19 @@ const x = ref(0)
 const focusItem = ref<string>()
 const y = shallowRef(new Map<string, number>())
 const instructions = useId()
-const gap = 10
-const minimumColumnWidth = 260
-const rowGap = 6
-const rowStride = computed(() => props.compact ? 66 : 86)
+const columnsPerFrame = 2
+const gap = ref(0)
+const rowGap = ref(0)
+const rowStride = computed(() => (props.compact ? 60 : 80) + rowGap.value)
 const mobile = computed(() => width.value <= 520)
-const stride = computed(() => Math.max(minimumColumnWidth + gap,
-  (width.value + gap) / Math.min(5, props.columns.length || 1)))
-const contentWidth = computed(() => Math.max(width.value, stride.value * props.columns.length - gap))
+// Lanes keep their width while the issue panel narrows the viewport.
+const layoutWidth = ref(0)
+watch(width, next => {
+  if (!props.frozen || !layoutWidth.value) layoutWidth.value = next
+}, { immediate: true })
+const stride = computed(() => Math.max((mobile.value ? 260 : 216) + gap.value,
+  (layoutWidth.value + gap.value) / Math.min(5, props.columns.length || 1)))
+const contentWidth = computed(() => Math.max(width.value, stride.value * props.columns.length - gap.value))
 const issueColumn = computed(() => {
   const state = props.openIssueState
   if (!state) return -1
@@ -59,13 +68,13 @@ watch([issueColumn, width, stride], ([index]) => {
   if (index >= 0 && width.value) void revealColumn(index)
 }, { flush: 'post' })
 const motion = useBoardMove({
-  viewport, columns: () => props.columns, columnElement,
-  columnStride: () => stride.value, rowStride: () => rowStride.value,
+  viewport, active: () => props.active, columns: () => props.columns, columnElement,
+  columnStride: () => stride.value, rowStride: () => rowStride.value, rowGap: () => rowGap.value,
   canMove, hold: ids => emit('hold', ids), move: intent => props.move(intent), reveal,
   focus: (id, state) => restore(id, state, true),
 })
 const { pick, moving, lift, liftItem, liftBox, landing, announcement } = motion
-const visible = computed<number[]>(prior => {
+const windowed = computed<number[]>(prior => {
   if (!width.value || !height.value) return []
   const indices = boardWindow(x.value, width.value, stride.value, props.columns.length)
   const retained = pick.value ? [pick.value.source.column, pick.value.target.column]
@@ -82,12 +91,37 @@ const visible = computed<number[]>(prior => {
   if (retained.length) indices.sort((a, b) => a - b)
   return prior?.length === indices.length && indices.every((index, offset) => index === prior[offset]) ? prior : indices
 })
+// A long jump mounts the columns in view first and the rest over the following frames.
+const visible = shallowRef<number[]>([])
+let mountFrame = 0
+function mountColumns() {
+  mountFrame = 0
+  const target = windowed.value
+  const mounted = visible.value.filter(index => target.includes(index))
+  const fresh = target.filter(index => !mounted.includes(index))
+  const inView = (index: number) => index * stride.value < x.value + width.value && (index + 1) * stride.value > x.value
+  const next = [...fresh.filter(inView), ...fresh.filter(index => !inView(index))].slice(0, columnsPerFrame)
+  visible.value = [...mounted, ...next].sort((a, b) => a - b)
+  if (fresh.length > next.length) mountFrame = requestAnimationFrame(mountColumns)
+}
+watch(windowed, target => {
+  cancelAnimationFrame(mountFrame)
+  mountFrame = 0
+  const fresh = target.filter(index => !visible.value.includes(index))
+  if (fresh.length <= columnsPerFrame || !visible.value.length || pick.value) visible.value = target
+  else mountColumns()
+}, { immediate: true })
 const activeColumn = computed(() => {
   if (x.value === 0) return props.columns[0]?.id
   if (x.value >= contentWidth.value - width.value - 1) return props.columns.at(-1)?.id
   return props.columns[Math.round(x.value / stride.value)]?.id
 })
 const jumpOptions = computed(() => props.columns.map(column => ({ id: column.id, title: column.title + ' (' + column.count + ')' })))
+const loaded = computed(() => new Map(props.columns.flatMap(column => column.items.map(item => [item.id, item]))))
+function parentOf(item: ItemSummary) {
+  return item.parent ? loaded.value.get(item.parent) : undefined
+}
+const statusTones = computed(() => Object.fromEntries(props.context.statuses.map(status => [status.id, statusSeverity(status)])))
 const firstFocusable = computed(() => visible.value.find(index => props.columns[index].items.length > 0))
 let observer: ResizeObserver | undefined
 let menuRequest = 0
@@ -125,18 +159,33 @@ watch(rowStride, (next, prior) => {
 onMounted(() => {
   const element = viewport.value
   if (!element) return
-  width.value = element.clientWidth
-  height.value = element.clientHeight
+  const measure = () => {
+    const css = getComputedStyle(element)
+    rowGap.value = parseFloat(css.rowGap) || 0
+    gap.value = parseFloat(css.columnGap) || 0
+    width.value = element.clientWidth
+    height.value = element.clientHeight
+  }
+  measure()
   observer = new ResizeObserver(([size]) => {
     if (!size || size.contentRect.width <= 0) return
-    width.value = size.contentRect.width
-    height.value = size.contentRect.height
+    measure()
   })
   observer.observe(element)
+})
+watch(() => props.active, active => {
+  if (active) return
+  cancelAnimationFrame(frame)
+  frame = 0
+  pendingScroll.clear()
+  pendingX = undefined
+  menuRequest++
+  menu.value?.hide()
 })
 onScopeDispose(() => {
   observer?.disconnect()
   cancelAnimationFrame(frame)
+  cancelAnimationFrame(mountFrame)
   menuRequest++
 })
 
@@ -177,20 +226,29 @@ const rendered = computed<RenderedColumn[]>(prior => {
     const slots = length + Number(insertion >= 0)
     const visibleRows = rowWindow(y.value.get(column.id) ?? 0, Math.max(0, height.value - 40), rowStride.value, slots)
     const preview = source || target ? current : undefined
+    const delta = current?.placed ? Number(target && remove < 0) - Number(source && !target && remove >= 0) : 0
+    const count = column.count + delta
     const existing = prior?.find(entry => entry.index === index)
-    if (existing?.column === column && existing.preview === preview
+    if (existing?.column.items === column.items && existing.preview === preview
       && visibleRows.length === existing.window.length
-      && visibleRows[0] === existing.window[0]) return existing
+      && visibleRows[0] === existing.window[0] && existing.slots === slots) {
+      if (existing.column === column) return existing
+      return { ...existing, column, count }
+    }
     const rows = visibleRows.map(row => {
       if (row === insertion) return { row, base: row, item: current?.placed ? current.item : undefined }
       const index = row - Number(insertion >= 0 && row > insertion)
       const base = index + Number(remove >= 0 && index >= remove)
       return { row, base, item: column.items[base] }
     })
-    const delta = current?.placed ? Number(target && remove < 0) - Number(source && !target && remove >= 0) : 0
-    return { column, index, rows, window: visibleRows, slots, count: column.count + delta, target: target && !current?.placed, preview }
+    return { column, index, rows, window: visibleRows, slots, count, target: target && !current?.placed, preview }
   }
 })
+// A column re-renders for focus only when its roving tab stop changes.
+function focusKey(index: number, rows: RenderedColumn['rows']) {
+  if (focusItem.value) return rows.some(({ item }) => item?.id === focusItem.value) ? focusItem.value : ''
+  return index === firstFocusable.value ? 'first' : ''
+}
 function cardTabIndex(item: ItemSummary, column: number, row: number) {
   return focusItem.value === item.id || (!focusItem.value && column === firstFocusable.value && row === 0) ? 0 : -1
 }
@@ -225,7 +283,8 @@ function scheduleWindow() {
 }
 const vColumnScroll = {
   mounted(element: HTMLElement, { value }: { value: string }) {
-    element.scrollTop = y.value.get(value) ?? 0
+    const offset = y.value.get(value)
+    if (offset) element.scrollTop = offset
   },
 }
 async function jumpToColumn(index: number) {
@@ -244,7 +303,7 @@ function columnElement(index: number) {
 function revealColumn(index: number) {
   const start = index * stride.value
   const offset = Math.abs(viewport.value?.scrollLeft ?? 0)
-  if (start < offset || start + stride.value - gap > offset + width.value) return jumpToColumn(index)
+  if (start < offset || start + stride.value - gap.value > offset + width.value) return jumpToColumn(index)
 }
 async function reveal(id: string, row: number) {
   const index = props.columns.findIndex(column => column.id === id)
@@ -287,8 +346,8 @@ function rove(event: KeyboardEvent, columnIndex: number, itemIndex: number) {
   let nextItem = itemIndex
   if (event.key === 'ArrowDown') nextItem++
   else if (event.key === 'ArrowUp') nextItem--
-  else if (event.key === 'ArrowRight') nextColumn++
-  else if (event.key === 'ArrowLeft') nextColumn--
+  else if (event.key === 'ArrowRight') nextColumn += rtl() ? -1 : 1
+  else if (event.key === 'ArrowLeft') nextColumn += rtl() ? 1 : -1
   else return
   const column = props.columns[nextColumn]
   const item = column?.items[Math.min(nextItem, column.items.length - 1)]
@@ -345,29 +404,33 @@ function pageProblem(column: BoardColumn) {
 </script>
 
 <template>
-  <div v-if="columns.length > 5" class="kanban-window-tools">
-    <Select :model-value="activeColumn" :options="jumpOptions"
-      option-value="id" option-label="title" aria-label="Jump to status" size="small" @update:model-value="jump" />
-  </div>
-  <nav v-else-if="mobile && columns.length > 1" class="kanban-status-nav" aria-label="Jump to status">
-    <Button v-for="column in columns" :key="column.id" :label="column.title"
-      :aria-current="activeColumn === column.id ? 'true' : undefined" size="small"
-      outlined severity="secondary" @click="jump(column.id)" />
-  </nav>
+  <Teleport :to="statusHost" :disabled="!statusHost" :defer="true">
+    <div v-if="active && columns.length > 5" class="kanban-window-tools">
+      <Select :model-value="activeColumn" :options="jumpOptions"
+        option-value="id" option-label="title" aria-label="Jump to status" size="small" @update:model-value="jump" />
+    </div>
+    <nav v-else-if="active && mobile && columns.length > 1" class="kanban-status-nav" aria-label="Jump to status">
+      <Button v-for="column in columns" :key="column.id" :label="column.title"
+        :aria-current="activeColumn === column.id ? 'true' : undefined" size="small"
+        outlined severity="secondary" @click="jump(column.id)" />
+    </nav>
+  </Teleport>
   <section ref="viewport" class="kanban-board-viewport kx-focus-outline"
     :data-moving="!!pick || moving || undefined" :data-compact="compact || undefined"
     aria-label="Workflow board" tabindex="0" @scroll.passive="horizontal" @keydown="motion.keyboard">
     <div class="kanban-board-track" :style="{ width: contentWidth + 'px' }">
       <section v-for="{ column, index, rows, slots, count, target } in rendered" :key="column.id"
         v-memo="[column, index, rows, slots, count, target, stride, rowStride, context, placements, compact, writable,
-          pendingIds, paging, focusItem, firstFocusable, ...rows.map(({ item }) => item && person(item))]"
+          pendingIds, paging, focusKey(index, rows), ...rows.map(({ item }) => item && person(item)),
+          ...rows.map(({ item }) => item && parentOf(item))]"
         class="kanban-column kx-focus-outline"
         :style="{ width: stride - gap + 'px', insetInlineStart: index * stride + 'px' }"
         :data-state="column.state" :data-column-index="index" :data-drop-target="target || undefined"
         :aria-label="column.title" tabindex="-1">
         <header class="kanban-column-head">
-          <h2>{{ column.title }}</h2>
-          <span class="kanban-column-count">{{ count }}</span>
+          <span class="kanban-column-signal" :data-status-tone="statusTones[column.state] ?? 'secondary'" aria-hidden="true" />
+          <h2 :title="column.title">{{ column.title }}</h2>
+          <span class="kanban-column-count" :aria-label="count + ' issues'">{{ count }}</span>
         </header>
         <div v-column-scroll="column.id" class="kanban-column-body" @scroll.passive="scrollRows(column.id, $event)">
           <div class="kanban-row-track" :style="{ height: slots * rowStride + 'px' }">
@@ -378,9 +441,11 @@ function pageProblem(column: BoardColumn) {
               }"
               @keydown="item && rove($event, index, row)">
               <IssueCard v-if="item" :item="item" :context="context" :placements="placements" :compact="compact"
-                :writable="writable" :pending="pendingIds.has(item.id)" :person="person(item)" :move-help="instructions"
+                :writable="writable" :pending="pendingIds.has(item.id)" :person="person(item)" :parent="parentOf(item)"
+                :move-help="instructions"
                 :tab-index="cardTabIndex(item, index, row)"
-                @open="emit('open', item.id)" @focus="focusItem = item.id"
+                @open="emit('open', item)" @focus="focusItem = item.id"
+                @prefetch="emit('prefetch', item.id)" @cancel-prefetch="emit('cancelPrefetch')"
                 @menu="openMenu($event, column, item, row)"
                 @pickup="motion.pickup($event, { column: column.id, row }, item)"
                 @pointer="motion.begin($event, { column: column.id, row }, item)" />
@@ -392,14 +457,14 @@ function pageProblem(column: BoardColumn) {
             <Button :label="pageProblem(column) ? 'Retry' : 'Load more issues'" text size="small" severity="secondary"
               :loading="paging.get(column.id) === true" @click="emit('more', column)" />
           </div>
-          <p v-else-if="!slots" class="kanban-column-empty">No issues</p>
+          <p v-else-if="!slots" class="kanban-column-empty"><Icon icon="tabler:inbox" aria-hidden="true" /> No issues</p>
         </div>
       </section>
     </div>
   </section>
   <div v-if="liftBox && liftItem" v-show="!landing" ref="lift" class="kanban-drag-lift" :style="liftBox" inert aria-hidden="true">
     <IssueCard :item="liftItem" :context="context" :placements="[]" :compact="compact"
-      :writable="writable" :pending="false" :person="person(liftItem)" :tab-index="-1" />
+      :writable="writable" :pending="false" :person="person(liftItem)" :parent="parentOf(liftItem)" :tab-index="-1" />
   </div>
   <span :id="instructions" class="kanban-visually-hidden">Press Space to pick up, use arrow keys to move, and press Space to drop or Escape to cancel.</span>
   <span class="kanban-visually-hidden" role="status">{{ announcement }}</span>

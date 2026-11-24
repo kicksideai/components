@@ -65,7 +65,7 @@ function key(event: KeyboardEvent) {
     <FieldControl ref="control" :field="field" :model-value="value" :board="board" :work="work" inline
       :disabled="saving" @update:model-value="emit('input', $event)" />
   </div>
-  <component :is="heading !== undefined ? 'h2' : 'div'" v-else :class="{ 'kanban-issue-title': heading !== undefined }"
+  <component :is="heading !== undefined ? 'h2' : 'div'" v-else :class="{ 'kanban-issue-title kx-title': heading !== undefined }"
     :aria-labelledby="heading !== undefined ? headingId : undefined">
     <FieldDisplay v-if="editable && expandable" :field="field" :value="value" :name="name" />
     <button v-if="editable" ref="trigger" type="button" class="kanban-inline-value kx-focus-outline"

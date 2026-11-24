@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { api } from '@wippy-fe/proxy'
-import { computed, ref, watch, type Ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const minimum = 320
 const maximum = 760
 const boardMinimum = 320
 
-export function usePanelSize(panel: Ref<HTMLElement | undefined>) {
+export function usePanelSize(surface: () => HTMLElement | undefined) {
   const preferred = ref(480)
   const available = ref(maximum)
   const width = computed(() => Math.max(minimum, Math.min(available.value, preferred.value)))
@@ -39,11 +39,9 @@ export function usePanelSize(panel: Ref<HTMLElement | undefined>) {
     }
   }
 
-  watch(panel, (element, _, onCleanup) => {
-    const page = element?.parentElement
+  watch(surface, (page, _, onCleanup) => {
     if (!page) return
     const measure = (size: number) => { available.value = Math.max(minimum, Math.min(maximum, size - boardMinimum)) }
-    measure(page.clientWidth)
     const observer = new ResizeObserver(([entry]) => measure(entry.contentRect.width))
     observer.observe(page)
     onCleanup(() => observer.disconnect())
@@ -51,7 +49,7 @@ export function usePanelSize(panel: Ref<HTMLElement | undefined>) {
       requested = true
       void loadPreference()
     }
-  }, { flush: 'post' })
+  }, { immediate: true, flush: 'post' })
 
   function set(value: number) {
     preferred.value = Math.max(minimum, Math.min(available.value, Math.round(value)))
@@ -59,7 +57,8 @@ export function usePanelSize(panel: Ref<HTMLElement | undefined>) {
   }
 
   function direction() {
-    return panel.value && getComputedStyle(panel.value).direction === 'rtl' ? -1 : 1
+    const page = surface()
+    return page && getComputedStyle(page).direction === 'rtl' ? -1 : 1
   }
 
   function start(event: PointerEvent) {

@@ -5,8 +5,11 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
 
 const origin = 'http://localhost:' + process.env.KANBAN_FIRE_PORT
+const apiOrigin = 'http://127.0.0.1:' + (process.env.KANBAN_FIRE_HTTP_PORT ?? process.env.KANBAN_FIRE_PORT)
 const { board, issues } = JSON.parse(await readFile(process.env.KANBAN_FIRE_FIXTURE, 'utf8'))
+const { after: release } = JSON.parse(await readFile(new URL('../.run/visual.json', import.meta.url), 'utf8'))
 const artifacts = process.env.KANBAN_FIRE_EVIDENCE
+const phase = process.env.KANBAN_BENCH_BASELINE ? 'before' : 'after'
 let browser
 
 beforeAll(async () => {
@@ -120,7 +123,7 @@ test('keyboard pickup previews a destination and Escape restores the handle with
 
 test('keyboard drop keeps the destination position after Work commits and restores handle focus', async () => {
   const write = async (path, data) => {
-    const response = await fetch('http://127.0.0.1:' + process.env.KANBAN_FIRE_PORT + '/api/v1/work/boards' + path, {
+    const response = await fetch(apiOrigin + '/api/v1/work/boards' + path, {
       method: 'POST', headers: { authorization: 'Bearer ' + process.env.KANBAN_FIRE_OWNER, 'content-type': 'application/json' },
       body: JSON.stringify(data),
     })
@@ -175,9 +178,9 @@ test('touch drag at 390 px scrolls across columns and keeps the card picked up',
   } finally { await context.close() }
 }, 25_000)
 
-test('keeps drag frames within 20 ms p95 while scrolling a 5,000-issue board on Fire', async () => {
+test.each([['stress', board], ['release', release.main]])('%s drag stays within 16 ms of main-thread frame work', async (name, boardId) => {
   expect(issues).toBe(5000)
-  const { context, page, source, handle, viewport, lift } = await open()
+  const { context, page, source, handle, viewport, lift } = await open({ boardId })
   const cdp = await context.newCDPSession(page)
   const complete = new Promise(resolve => cdp.once('Tracing.tracingComplete', resolve))
   try {
@@ -198,6 +201,7 @@ test('keeps drag frames within 20 ms p95 while scrolling a 5,000-issue board on 
       const samples = await viewport.evaluate(async node => {
         const frames = []
         let previous = await new Promise(requestAnimationFrame)
+        performance.mark('kanban-drag-sample-start')
         let peak = 0
         for (let i = 0; i < 90; i++) {
           const time = await new Promise(requestAnimationFrame)
@@ -205,6 +209,7 @@ test('keeps drag frames within 20 ms p95 while scrolling a 5,000-issue board on 
           previous = time
           peak = Math.max(peak, node.querySelectorAll('[data-card-id]').length)
         }
+        performance.mark('kanban-drag-sample-end')
         frames.sort((a, b) => a - b)
         return { frames, peak, p95: frames[Math.ceil(frames.length * .95) - 1] }
       })
@@ -222,10 +227,22 @@ test('keeps drag frames within 20 ms p95 while scrolling a 5,000-issue board on 
         if (part.eof) break
       }
       await cdp.send('IO.close', { handle: stream })
-      await writeFile(join(artifacts, 'fire-drag-trace.json'), trace)
+      await writeFile(join(artifacts, `drag-${phase}-${name}-trace.json`), trace)
+      if (metrics) {
+        const { traceEvents } = JSON.parse(trace)
+        const start = traceEvents.find(event => event.name === 'kanban-drag-sample-start')
+        const end = traceEvents.find(event => event.name === 'kanban-drag-sample-end')
+        const work = traceEvents.filter(event => event.name === 'ProxyMain::BeginMainFrame'
+          && event.ph === 'X' && event.tid === start.tid && event.pid === start.pid
+          && event.ts >= start.ts && event.ts <= end.ts).map(event => event.dur / 1000).sort((a, b) => a - b)
+        metrics.mainFrameSamples = work.length
+        metrics.mainFrameP95 = work[Math.ceil(work.length * .95) - 1]
+      }
     }
-    await writeFile(join(artifacts, 'fire-drag-frame-times.json'), JSON.stringify(metrics, null, 2))
+    await writeFile(join(artifacts, `drag-${phase}-${name}.json`), JSON.stringify(metrics, null, 2))
     expect(metrics.peak).toBeLessThanOrEqual(150)
     expect(metrics.p95).toBeLessThanOrEqual(20)
+    expect(metrics.mainFrameSamples).toBeGreaterThan(0)
+    expect(metrics.mainFrameP95).toBeLessThanOrEqual(16)
   } finally { await context.close() }
 }, 40_000)

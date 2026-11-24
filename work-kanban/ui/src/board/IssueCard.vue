@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
-import Avatar from 'primevue/avatar'
-import Button from 'primevue/button'
-import Tag from 'primevue/tag'
 import { computed } from 'vue'
 import ExtensionElement from '../extensions/ExtensionElement.vue'
 import { badgeSlots, badgeSummary } from '../extensions/placements'
 import { principalRef, type PresentationContext } from '../presentation/context'
+import { Glyph } from '../presentation/glyphs'
+import IssueAssignee from '../presentation/IssueAssignee.vue'
+import IssuePriority from '../presentation/IssuePriority.vue'
+import IssueType from '../presentation/IssueType.vue'
 import { titleOf, type ItemSummary } from '../presentation/query'
 import type { WorkExtension } from '../work/types'
 
@@ -20,61 +20,56 @@ const props = defineProps<{
   pending: boolean
   compact?: boolean
   person?: string
+  parent?: ItemSummary
   moveHelp?: string
 }>()
 const emit = defineEmits<{
-  open: [], menu: [event: MouseEvent], focus: [],
+  open: [], menu: [event: MouseEvent], focus: [], prefetch: [], cancelPrefetch: [],
   pointer: [event: PointerEvent], pickup: [event: KeyboardEvent],
 }>()
 const summary = computed(() => titleOf(props.item))
 const badges = computed(() => badgeSlots(props.placements, props.item.type).visible)
 const priority = computed(() => typeof props.item.values.priority === 'string' ? props.item.values.priority : undefined)
 const assignee = computed(() => principalRef(props.item.values.assignee))
-const assigneeLabel = computed(() => props.person || 'Assigned')
-const initials = computed(() => props.person?.trim().split(/\s+/).slice(0, 2).map(word => Array.from(word)[0]).join(''))
-const icons: Record<string, string> = {
-  epic: 'tabler:bolt', story: 'tabler:bookmark', task: 'tabler:square-check', bug: 'tabler:bug', sub_task: 'tabler:subtask',
-}
-const priorities: Record<string, string> = {
-  highest: 'tabler:chevrons-up', high: 'tabler:chevron-up', medium: 'tabler:minus',
-  low: 'tabler:chevron-down', lowest: 'tabler:chevrons-down',
-}
+const labels = computed(() => {
+  const values = props.item.values.labels
+  return Array.isArray(values) ? values.filter(label => typeof label === 'string') : []
+})
 </script>
 
 <template>
   <article class="kanban-card kx-card" :data-key="item.key" :data-card-id="item.id"
-    :data-compact="compact || undefined" :aria-busy="pending || undefined">
+    :data-compact="compact || undefined" :aria-busy="pending || undefined"
+    @pointerenter="emit('prefetch')" @pointerleave="emit('cancelPrefetch')">
     <button type="button" class="kanban-card-title kx-focus-outline" :tabindex="tabIndex" :aria-label="item.key + ' ' + summary"
-      :title="summary" @focus="emit('focus')" @click="emit('open')">
-      <span class="kx-card-name" dir="auto">{{ summary }}</span>
+      :title="summary" @focus="emit('focus'); emit('prefetch')" @blur="emit('cancelPrefetch')" @click="emit('open')">
+      <span dir="auto">{{ summary }}</span>
     </button>
     <div class="kanban-card-meta">
-      <div class="kanban-card-identity">
-        <Icon :icon="icons[item.type] ?? 'tabler:point'" role="img" :aria-label="context.typeLabels[item.type] ?? item.type" />
-        <span class="kanban-card-key">{{ item.key }}</span>
-        <Tag v-if="priority" class="kx-tag-sm kanban-card-priority" role="img"
-          :aria-label="'Priority: ' + (context.priorityLabels[priority] ?? priority)"
-          :title="'Priority: ' + (context.priorityLabels[priority] ?? priority)"
-          :severity="priority === 'highest' ? 'danger' : priority === 'high' ? 'warn' : 'secondary'">
-          <Icon :icon="priorities[priority] ?? 'tabler:flag'" aria-hidden="true" />
-        </Tag>
-      </div>
-      <div v-if="badges.length" class="kanban-card-badges">
+      <IssueType :type="item.type" :label="context.typeLabels[item.type]" />
+      <span class="kanban-card-key">{{ item.key }}</span>
+      <IssuePriority v-if="priority" :priority="priority" :label="context.priorityLabels[priority]" />
+      <div v-if="badges.length || labels.length || parent" class="kanban-card-badges">
+        <span v-if="parent" class="kanban-card-chip kx-tag-sm kx-tone-violet" data-parent
+          :title="'Parent: ' + parent.key + ' ' + titleOf(parent)">
+          <span>{{ parent.key }}</span>
+        </span>
+        <span v-else-if="labels.length" class="kanban-card-chip kx-tag-sm kx-tone-neutral" :title="'Labels: ' + labels.join(', ')">
+          <span>{{ labels[0] }}</span><b v-if="labels.length > 1">+{{ labels.length - 1 }}</b>
+        </span>
         <ExtensionElement v-for="badge in badges" :key="badge.id" :placement="badge" :input="{ item: badgeSummary(item) }" />
       </div>
-      <div class="kanban-card-assignment">
-        <span v-if="typeof item.values.story_points === 'number'" class="kanban-points" :aria-label="item.values.story_points + ' points'">
-          {{ item.values.story_points }}
-        </span>
-        <Avatar v-if="assignee" class="kanban-assignee" shape="circle" :label="initials" :title="assigneeLabel" role="img" :aria-label="assigneeLabel">
-          <template v-if="!initials" #icon><Icon icon="tabler:user" aria-hidden="true" /></template>
-        </Avatar>
-        <Button v-if="writable" class="kanban-card-menu" text rounded size="small" severity="secondary"
-          :aria-label="'Move ' + item.key" :aria-describedby="moveHelp" aria-haspopup="menu" :disabled="pending"
-          @pointerdown="emit('pointer', $event)" @keydown="emit('pickup', $event)" @click="emit('menu', $event)">
-          <template #icon><Icon icon="tabler:grip-vertical" aria-hidden="true" /></template>
-        </Button>
-      </div>
+      <span v-if="typeof item.values.story_points === 'number'" class="kanban-points"
+        :title="item.values.story_points + ' story points'" :aria-label="item.values.story_points + ' story points'">
+        {{ item.values.story_points }}
+      </span>
+      <IssueAssignee v-if="assignee" :id="assignee.id" :name="person" />
     </div>
+    <button v-if="writable" type="button" class="kx-iconbtn kx-focus-outline kanban-card-menu" :tabindex="tabIndex"
+      :aria-label="'Move ' + item.key" :aria-describedby="moveHelp" aria-haspopup="menu" :disabled="pending"
+      title="Drag to move, or click for move options"
+      @pointerdown="emit('pointer', $event)" @keydown="emit('pickup', $event)" @click="emit('menu', $event)">
+      <Glyph name="tabler:grip-vertical" />
+    </button>
   </article>
 </template>

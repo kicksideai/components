@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { nextTick, onMounted, onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue'
+import { nextTick, onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue'
 import type { ItemSummary } from '../presentation/query'
 import type { BoardColumn } from '../presentation/usePages'
 import { moveIntent, type MoveIntent } from './window'
@@ -29,10 +29,12 @@ export type MoveResult =
 
 interface Options {
   viewport: Ref<HTMLElement | undefined>
+  active: () => boolean
   columns: () => readonly BoardColumn[]
   columnElement: (index: number) => HTMLElement | null | undefined
   columnStride: () => number
   rowStride: () => number
+  rowGap: () => number
   canMove: (id: string) => boolean
   hold: (columns: string[]) => void
   move: (intent: MoveIntent) => Promise<MoveResult>
@@ -120,22 +122,28 @@ export function useBoardMove(options: Options) {
     const rect = viewport.getBoundingClientRect()
     down.overBoard = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
     if (!down.overBoard) return
-    const along = down.rtl ? rect.right - x - viewport.scrollLeft : x - rect.left + viewport.scrollLeft
+    const oldX = viewport.scrollLeft
+    const along = down.rtl ? rect.right - x - oldX : x - rect.left + oldX
     const index = clamp(Math.floor(along / options.columnStride()), 0, options.columns().length - 1)
     const target = options.columns()[index]
     const scroll = options.columnElement(index)?.querySelector<HTMLElement>('.kanban-column-body')
-    const track = scroll?.firstElementChild
-    if (!target || !scroll || !track) return
+    if (!target || !scroll) return
+    const scrollRect = scroll.getBoundingClientRect()
+    const oldY = scroll.scrollTop
     const stride = options.rowStride()
     const maximum = target.items.length - Number(target.id === current.source.column)
-    let offset = y - track.getBoundingClientRect().top
+    let offset = y - scrollRect.top - options.rowGap() + oldY
     const prior = current.target.column === target.id ? current.target.row : undefined
     if (prior !== undefined && offset >= prior * stride) {
       offset = Math.max(prior * stride, offset - stride)
     }
     setTarget({ column: target.id, row: clamp(Math.floor(offset / stride + .5), 0, maximum) })
-    return { viewport, scroll, dx: edgeSpeed(x, rect.left, rect.right),
-      dy: edgeSpeed(y, scroll.getBoundingClientRect().top, rect.bottom) }
+    const dx = edgeSpeed(x, rect.left, rect.right)
+    const dy = edgeSpeed(y, scrollRect.top, rect.bottom)
+    const maxX = dx ? viewport.scrollWidth - viewport.clientWidth : 0
+    const nextX = dx ? clamp(oldX + dx, down.rtl ? -maxX : 0, down.rtl ? 0 : maxX) : oldX
+    const nextY = dy ? clamp(oldY + dy, 0, scroll.scrollHeight - scroll.clientHeight) : oldY
+    return { viewport, scroll, oldX, oldY, nextX, nextY }
   }
   function tick() {
     frame = 0
@@ -145,11 +153,10 @@ export function useBoardMove(options: Options) {
     const scroll = pointerTarget(down, current)
     followPointer(down)
     if (!scroll) return
-    const oldX = scroll.viewport.scrollLeft
-    const oldY = scroll.scroll.scrollTop
-    if (scroll.dx) scroll.viewport.scrollLeft += scroll.dx
-    if (scroll.dy) scroll.scroll.scrollTop += scroll.dy
-    if (oldX !== scroll.viewport.scrollLeft || oldY !== scroll.scroll.scrollTop) frame = requestAnimationFrame(tick)
+    const { oldX, oldY, nextX, nextY } = scroll
+    if (oldX !== nextX) scroll.viewport.scrollLeft = nextX
+    if (oldY !== nextY) scroll.scroll.scrollTop = nextY
+    if (oldX !== nextX || oldY !== nextY) frame = requestAnimationFrame(tick)
   }
   function followPointer(down: Pointer) {
     pointLift({
@@ -317,21 +324,27 @@ export function useBoardMove(options: Options) {
     if (pick.value && !moving.value) void cancel(false)
     else if (pointer) releasePointer()
   }
-  onMounted(() => {
-    owner = options.viewport.value?.ownerDocument.defaultView
-    owner?.addEventListener('pointermove', pointerMove, { passive: true })
-    owner?.addEventListener('pointerup', pointerEnd)
-    owner?.addEventListener('pointercancel', pointerEnd)
-    owner?.addEventListener('keydown', escape, true)
-    owner?.addEventListener('blur', blur)
-  })
+  watch([options.viewport, options.active], ([element, active], _, cleanup) => {
+    const window = element?.ownerDocument.defaultView
+    if (!active || !window) return
+    owner = window
+    window.addEventListener('pointermove', pointerMove, { passive: true })
+    window.addEventListener('pointerup', pointerEnd)
+    window.addEventListener('pointercancel', pointerEnd)
+    window.addEventListener('keydown', escape, true)
+    window.addEventListener('blur', blur)
+    cleanup(() => {
+      window.removeEventListener('pointermove', pointerMove)
+      window.removeEventListener('pointerup', pointerEnd)
+      window.removeEventListener('pointercancel', pointerEnd)
+      window.removeEventListener('keydown', escape, true)
+      window.removeEventListener('blur', blur)
+      releasePointer()
+      if (pick.value && !moving.value) void cancel(false)
+    })
+  }, { flush: 'post' })
   onScopeDispose(() => {
     disposed = true
-    owner?.removeEventListener('pointermove', pointerMove)
-    owner?.removeEventListener('pointerup', pointerEnd)
-    owner?.removeEventListener('pointercancel', pointerEnd)
-    owner?.removeEventListener('keydown', escape, true)
-    owner?.removeEventListener('blur', blur)
     releasePointer()
     animation?.cancel()
     options.hold([])

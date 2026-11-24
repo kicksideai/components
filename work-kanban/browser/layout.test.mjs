@@ -31,7 +31,7 @@ async function openBoard(page, scheme) {
   const close = button(shell, 'Close onboarding')
   if (await close.isVisible()) await close.click()
   const dark = () => app.evaluate(element => {
-    const toolbar = element.shadowRoot.querySelector('.kanban-toolbar')
+    const toolbar = element.shadowRoot.querySelector('.kanban-head')
     const probe = document.createElement('span')
     probe.style.color = 'var(--p-content-background)'
     toolbar.append(probe)
@@ -73,17 +73,17 @@ async function measure(app) {
       return { ...box(el), icon: icon && { ...box(icon), rgb: rgb(getComputedStyle(icon).color) } }
     }
     const viewport = node('.kanban-board-viewport')
-    const toolbar = node('.kanban-toolbar')
+    const head = node('.kanban-head')
     const drawer = node('.kanban-issue-header')
     return {
-      toolbar: { ...box(toolbar), visible: getComputedStyle(toolbar).visibility === 'visible' },
+      head: { ...box(head), visible: getComputedStyle(head).visibility === 'visible' },
       picker: box(node('.kanban-board-picker')),
       tabStrip: { ...box(node('.kanban-tabs')), scrollWidth: node('.kanban-tabs').scrollWidth },
       tabs: all('.kanban-tabs [role="tab"]').map(box),
-      controls: [...toolbar.querySelectorAll('.kanban-filter-trigger, .kanban-toolbar-controls > button')].map(control),
-      filterLabel: node('.kanban-filter-label').getClientRects().length > 0,
-      createLabel: Array.from(toolbar.querySelectorAll('.kanban-toolbar-action span'))
-        .filter(el => el.getClientRects().length).map(el => el.textContent.trim()).filter(Boolean),
+      controls: [...head.querySelectorAll('.kx-head-actions button')].map(control),
+      header: box(head),
+      refresh: control(node('.kanban-head [aria-label="Refresh issues"]')),
+      createLabel: node('.kanban-head .kx-head-actions > button:last-of-type').textContent.trim(),
       viewport: { ...box(viewport), clientWidth: viewport.clientWidth, scrollWidth: viewport.scrollWidth, scroll: viewport.scrollLeft },
       columns: all('.kanban-column').map(el => ({ state: el.dataset.state, ...box(el) })),
       keys: all('.kanban-card-key').map(el => {
@@ -98,16 +98,20 @@ async function measure(app) {
 
 function checkRow(result) {
   expect.soft(result.tabs[0].right).toBeLessThanOrEqual(result.tabStrip.right + 1)
-  for (const control of [...result.tabs, ...result.controls]) {
-    expect.soft(control.y).toBeCloseTo(result.picker.y)
-    expect.soft(control.height).toBe(result.picker.height)
+  expect.soft(result.header.y + result.header.height).toBeLessThanOrEqual(result.tabStrip.y + 1)
+  expect.soft(result.tabStrip.x).toBe(result.header.x)
+  expect.soft(result.tabStrip.right).toBe(result.header.right)
+  expect.soft(result.controls.length).toBeGreaterThan(1)
+  for (const control of result.controls) {
+    expect.soft(control.height).toBe(result.refresh.height)
+    expect.soft(control.y + control.height / 2).toBeCloseTo(result.refresh.y + result.refresh.height / 2)
   }
 }
 
-function checkBoard(result) {
+function checkBoard(result, width) {
   expect.soft(result.columns.length).toBeGreaterThan(0)
-  expect.soft(Math.min(...result.columns.map(column => column.width))).toBeGreaterThanOrEqual(260)
-  expect.soft(result.viewport.scrollWidth).toBeGreaterThan(result.viewport.clientWidth)
+  expect.soft(Math.min(...result.columns.map(column => column.width))).toBeGreaterThanOrEqual(width === 390 ? 260 : 216)
+  if (width === 390) expect.soft(result.viewport.scrollWidth).toBeGreaterThan(result.viewport.clientWidth)
   expect.soft(result.keys.length).toBeGreaterThan(0)
   expect.soft(result.keys.filter(key => key.textWidth > key.width + 0.5)).toEqual([])
 }
@@ -125,7 +129,7 @@ function contrast(foreground, background) {
 }
 
 test.each([[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']])(
-  'keeps one toolbar row, readable keys and standard issue actions at %i px in %s', async (width, scheme) => {
+  'keeps native header and tabs, readable keys and standard issue actions at %i px in %s', async (width, scheme) => {
     const context = await browser.newContext({
       viewport: { width, height: width === 390 ? 844 : 900 }, colorScheme: scheme, reducedMotion: 'reduce',
     })
@@ -146,28 +150,22 @@ test.each([[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']])(
       await page.mouse.move(0, 0)
       await page.screenshot({ path: file('drawer', 'png') })
       await writeFile(file('metrics', 'json'), JSON.stringify({ closed, opened }, null, 2))
-      expect.soft(opened.toolbar.visible).toBe(true)
-      expect.soft(opened.toolbar.height).toBe(closed.toolbar.height)
+      expect.soft(opened.head.visible).toBe(true)
+      expect.soft(opened.head.height).toBe(closed.head.height)
       expect.soft(opened.picker.x).toBe(closed.picker.x)
       expect.soft(opened.tabs[0].x).toBe(closed.tabs[0].x)
       for (const result of [closed, opened]) {
         checkRow(result)
-        checkBoard(result)
+        checkBoard(result, width)
       }
-      expect.soft(opened.filterLabel).toBe(false)
-      expect.soft(opened.createLabel).toContain('Create')
-      if (width === 1440) {
-        expect.soft(closed.filterLabel).toBe(true)
-        expect.soft(closed.createLabel).toContain('Create issue')
-      } else {
-        expect.soft(opened.drawer.y).toBe(opened.toolbar.y + opened.toolbar.height)
-        expect.soft(opened.tabStrip.scrollWidth).toBeGreaterThan(opened.tabStrip.width)
-      }
+      expect.soft(opened.createLabel).toBe('Create issue')
+      expect.soft(closed.createLabel).toBe('Create issue')
+      if (width === 390) expect.soft(opened.drawer.y).toBeCloseTo(opened.tabStrip.y + opened.tabStrip.height)
       expect.soft(opened.drawer.buttons).toHaveLength(3)
       for (const action of opened.drawer.buttons) {
-        const refresh = opened.controls[2]
-        expect.soft(action.height).toBe(closed.controls[2].height)
-        expect.soft(action.width).toBe(closed.controls[2].width)
+        const refresh = opened.refresh
+        expect.soft(action.height).toBe(closed.refresh.height)
+        expect.soft(action.width).toBe(closed.refresh.width)
         expect.soft(action.icon?.width).toBe(refresh.icon?.width)
         expect.soft(action.icon?.rgb).toEqual(refresh.icon?.rgb)
         if (action.icon) expect.soft(contrast(action.icon.rgb, opened.drawer.rgb)).toBeGreaterThanOrEqual(4.5)
@@ -186,7 +184,7 @@ test.each([[1440, 'light'], [1440, 'dark'], [390, 'light'], [390, 'dark']])(
   }, 65_000,
 )
 
-test.each([1440, 390])('reveals a deep-linked issue in an offscreen column at %i px', async width => {
+test.each([1120, 390])('reveals a deep-linked issue in an offscreen column at %i px', async width => {
   const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: 'reduce' })
   const page = await context.newPage()
   try {
