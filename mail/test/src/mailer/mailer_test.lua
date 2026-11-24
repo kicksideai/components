@@ -418,8 +418,10 @@ return {
                 test.eq(stored.failed_html, result.html)
                 test.eq(stored.failed_text, result.text)
                 test.eq(stored.subject, result.subject)
-                test.eq(request.to, result.to)
-                test.eq(request.cc, result.cc)
+                test.eq(1, #result.to)
+                test.eq(request.to[1], result.to[1])
+                test.eq(1, #result.cc)
+                test.eq(request.cc[1], result.cc[1])
                 test.is_nil(persisted(row.message_id).failed_html)
                 test.is_nil(persisted(row.message_id).failed_text)
 
