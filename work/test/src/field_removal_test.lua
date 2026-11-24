@@ -27,12 +27,13 @@ local function configure(enabled: boolean): { [string]: unknown }
     return { declaration = {}, plugin_configs = { [PLUGIN] = { extra = enabled } } }
 end
 
-local function migration_choices(plan: { [string]: unknown }, choice: string, item_type: string?): { [string]: string }
+local function migration_choices(plan: { [string]: unknown }, choice: string, item_type: string?, count: integer): { [string]: string }
     local out = {}
     for _, change in ipairs(plan.refused) do
         test.eq(change.class, "refused")
         test.eq(change.what, "field.remove")
         test.eq(change.item_type, item_type)
+        test.eq(change.count, count)
         test.not_nil(change.path)
         out[change.path] = choice
     end
@@ -75,7 +76,7 @@ local function define()
             test.eq(assert(steps.get(board, item)).item.values[REMAINING], 30)
 
             request.expected_generation = generation
-            request.resolutions = migration_choices(plan.body.data, "keep", "task")
+            request.resolutions = migration_choices(plan.body.data, "keep", "task", 2)
             local kept = admin.http("POST", base .. "/apply_schema", request)
             test.eq(kept.status, 200)
             test.eq(kept.body.data.generation, generation)
@@ -94,7 +95,7 @@ local function define()
             test.eq(assert(steps.get(board, item)).item.values[ORIGINAL], 90)
             test.eq(assert(steps.get(board, item)).item.values[REMAINING], 30)
 
-            request.resolutions = migration_choices(plan.body.data, "drop", "task")
+            request.resolutions = migration_choices(plan.body.data, "drop", "task", 2)
             request.key = "drop-estimates"
             local dropped = admin.http("POST", base .. "/apply_schema", request)
             test.eq(dropped.status, 200)
@@ -137,7 +138,7 @@ local function define()
             test.eq(plan.body.data.class, "refused")
             test.eq(#plan.body.data.refused, 1)
             local archived = admin.http("POST", base .. "/apply_schema", { declaration = change, expected_generation = 1,
-                resolutions = migration_choices(plan.body.data, "archive", "task") })
+                resolutions = migration_choices(plan.body.data, "archive", "task", 1) })
             test.eq(archived.status, 200)
             test.is_nil(assert(steps.get(board, item)).item.values.flag)
             test.eq(admin.http("POST", base .. "/apply_schema", { declaration = { item_types = { task } } }).status, 200)
@@ -151,6 +152,7 @@ local function define()
             test.eq(#plan.body.data.refused, 1)
             test.eq(plan.body.data.refused[1].code, "flag")
             test.is_nil(plan.body.data.refused[1].item_type)
+            test.eq(plan.body.data.refused[1].count, 1)
             test.eq(admin.http("POST", base .. "/apply_schema", { declaration = change }).status, 400)
             test.eq(assert(steps.get(board, item)).item.values.flag, false)
         end)

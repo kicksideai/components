@@ -146,6 +146,15 @@ it('keeps a refused field in the draft and shows Work’s removal reason', async
   expect(w.findAll('.work-field-row')).toHaveLength(6)
   expect(settings.apply).not.toHaveBeenCalled()
 })
+it('removes a field holding values from the draft so the review can ask what happens to them', async () => {
+  const w = await render()
+  vi.mocked(settings.plan).mockResolvedValue({ generation: 2, class: 'refused', changes: [],
+    refused: [{ code: 'title', class: 'refused', what: 'field.remove', path: 'fields/title', resolution: 'keep', count: 3 }] })
+  await showFields(w)
+  await getButton(w.findAll('.work-field-row')[0], 'Remove field').trigger('click'); await flushPromises()
+  expect(w.findAll('.work-field-row')).toHaveLength(5)
+  expect(w.text()).not.toContain('Items still hold values in this field.')
+})
 it('discards invalid text and permits a fresh review after correcting the draft', async () => {
   const w = await render()
   await showFields(w)
@@ -457,4 +466,52 @@ it('shows the schema refusal when stored items still use an uninstalled plugin',
   const review = w.get('dialog[aria-label="Review changes"]')
   expect(review.text()).toContain('Items still hold values in this field.')
   expect(getButton(review, 'Apply changes').attributes('disabled')).toBeDefined()
+})
+
+it('asks what happens to saved values before removing a populated field and keeps them by default', async () => {
+  const removal = { code: 'priority', what: 'field.remove', path: 'item_types/task/fields/priority', item_type: 'task', count: 3 }
+  vi.mocked(settings.plan)
+    .mockResolvedValueOnce({ generation: 1, class: 'refused', changes: [], refused: [{ ...removal, class: 'refused', resolution: 'keep' }], migration: 'Choose how to handle saved values.' })
+    .mockResolvedValueOnce({ generation: 2, class: 'semantic', changes: [{ ...removal, class: 'semantic', resolution: 'archive' }], refused: [] })
+    .mockResolvedValueOnce({ generation: 2, class: 'semantic', changes: [{ ...removal, class: 'semantic', resolution: 'drop' }], refused: [] })
+  const w = await render(); await edit(w)
+  await getButton(w.get('.system-section-head .kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
+  const dialog = () => w.get('dialog[aria-label="Review changes"]')
+  const panel = () => dialog().get('[aria-label="Fields with saved values"]')
+  expect(panel().text()).toContain('Priority · Task')
+  expect(panel().text()).toContain('3 items on this board hold values in this field; Task items lose it.')
+  expect(panel().get('input[type="radio"][value="keep"]').element).toHaveProperty('checked', true)
+  expect(dialog().text()).not.toContain('Blocked changes')
+  expect(getButton(dialog(), 'Apply changes').attributes('disabled')).toBeDefined()
+  expect(vi.mocked(settings.plan).mock.calls[0][1].resolutions).toEqual({})
+
+  await panel().get('input[type="radio"][value="archive"]').setValue(true); await flushPromises()
+  const archived = vi.mocked(settings.plan).mock.calls[1][1]
+  expect(archived.resolutions).toEqual({ [removal.path]: 'archive' })
+  expect(archived.expected_generation).toBe(schema().generation)
+  expect(panel().text()).toContain('Saved values stay stored and return if the field is added back.')
+  await getButton(dialog(), 'Apply changes').trigger('click'); await flushPromises()
+  expect(vi.mocked(settings.apply).mock.calls[0][1].resolutions).toEqual({ [removal.path]: 'archive' })
+})
+
+it('requires an explicit confirmation before deleting saved values and forgets choices when the draft changes', async () => {
+  const removal = { code: 'priority', what: 'field.remove', path: 'item_types/task/fields/priority', item_type: 'task', count: 1 }
+  vi.mocked(settings.plan)
+    .mockResolvedValueOnce({ generation: 1, class: 'refused', changes: [], refused: [{ ...removal, class: 'refused', resolution: 'keep' }] })
+    .mockResolvedValueOnce({ generation: 2, class: 'semantic', changes: [{ ...removal, class: 'semantic', resolution: 'drop' }], refused: [] })
+  const w = await render(); await edit(w)
+  await getButton(w.get('.system-section-head .kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
+  const dialog = () => w.get('dialog[aria-label="Review changes"]')
+  await dialog().get('input[type="radio"][value="drop"]').setValue(true); await flushPromises()
+  expect(vi.mocked(settings.plan).mock.calls[1][1].resolutions).toEqual({ [removal.path]: 'drop' })
+  expect(dialog().text()).toContain('1 item on this board holds a value in this field')
+  expect(getButton(dialog(), 'Apply changes').attributes('disabled')).toBeDefined()
+  await dialog().get('.work-field-removal-confirm input[type="checkbox"]').setValue(true); await flushPromises()
+  expect(getButton(dialog(), 'Apply changes').attributes('disabled')).toBeUndefined()
+
+  await getButton(dialog(), 'Keep editing').trigger('click'); await flushPromises()
+  await w.find('form input[aria-label="Field code"]').setValue('label'); await flushPromises()
+  vi.mocked(settings.plan).mockResolvedValueOnce(reviewed)
+  await getButton(w.get('.system-section-head .kx-head-actions'), 'Review changes').trigger('click'); await flushPromises()
+  expect(vi.mocked(settings.plan).mock.calls[2][1].resolutions).toEqual({})
 })
