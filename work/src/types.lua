@@ -263,7 +263,9 @@ type Model = {
     relations: { [string]: Relation }, processes: { [string]: Process },
 }
 
-type SchemaChange = { code: string, class: string, what: string, detail: string?, to: string?, count: integer? }
+type SchemaChange = { code: string, class: string, what: string, detail: string?, to: string?, count: integer?,
+    path: string?, item_type: string?, resolution: string? }
+type FieldRemoval = { path: string, field: Field, item_type: string? }
 -- states counts the items holding each state, by item type.
 type Usage = { fields: { [integer]: integer }, items: integer, types: { [string]: integer }, links: { [string]: integer }, states: { [string]: { [string]: integer } } }
 type StateUsageTarget = { item_type: string, state: string }
@@ -386,7 +388,7 @@ return { SearchResults = SearchResults, StageBindingRequest = StageBindingReques
     TransitionDefinitions = TransitionDefinitions, TransitionProof = TransitionProof,
     TransitionAdoptionSpec = TransitionAdoptionSpec, TransitionAdoptionCohort = TransitionAdoptionCohort,
     TransitionAdoptionReview = TransitionAdoptionReview, TransitionAdoptionResult = TransitionAdoptionResult,
-    Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets,
+    Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets, FieldRemoval = FieldRemoval,
     Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink,
     CommentRow = CommentRow, CommentPosition = CommentPosition, LinkPosition = LinkPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
 

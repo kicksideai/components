@@ -19,6 +19,17 @@ entries:
     - kickside.work.events:prefix.claimed
     actions: threads.output.publish
     effect: allow
+- name: schema_drop_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:apply_schema
+  policy:
+    resources: kickside.work.events:item.changed
+    actions: threads.output.publish
+    effect: allow
 - name: apply_output_publish
   kind: security.policy
   meta:
