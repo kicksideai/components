@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.51](https://github.com/kicksideai/components/compare/work-v0.1.50...work-v0.1.51) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** reconcile plugin projections on Hub updates ([#448](https://github.com/kicksideai/components/issues/448)) ([f100eb6](https://github.com/kicksideai/components/commit/f100eb63cb9d82377eaedbc49ab600b1e2980fc4))
+
 ## [0.1.50](https://github.com/kicksideai/components/compare/work-v0.1.49...work-v0.1.50) (2026-11-24)
 
 
