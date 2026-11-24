@@ -96,7 +96,11 @@ type DraftPreview = {subject: string?, html: string?, text: string?, errors: {Dr
     dependent_messages: {string}, preview_id: string?, inline_assets: InlineAssets?, library_assets: {AssetRef}?}
 type LibraryPageRequest = ResourceFilter & {limit: integer?, cursor: string?}
 type LibraryRowSummary = ResourceKey & {state: string, revision: integer, used_by: {messages: integer?, recent_sources: integer?}?}
-type LibraryPage = {items: {LibraryRowSummary}, next_cursor: string?}
+type LibraryListRow = LibraryRowSummary & {
+    title: string, description: string, origin: string?, origin_label: string?,
+    base: string?, author: string?, updated_at: integer?,
+}
+type LibraryPage = {items: {LibraryListRow}, next_cursor: string?}
 type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?, note: string?, from: ResourceKey?}
 type LibraryRow = {
     asset_upload_id: string?, filename: string?, content_type: string?, size_bytes: integer?, width: integer?, height: integer?,

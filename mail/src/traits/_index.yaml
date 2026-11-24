@@ -124,7 +124,7 @@ entries:
       title: List Mail Library
       llm_alias: MailLibraryList
       llm_description: >-
-        Find messages, shared base frames, reusable parts and images by kind, name or title, and state. Returns compact
+        Find messages, shared base frames, reusable parts and images by kind, state, and text in their metadata or source. Returns compact
         rows with the stable name, revision and known usage counts. Pass next_cursor as cursor with the same
         filters for the next page. Read a row with MailLibraryRead. Invalid filters and denied access are tool errors.
       input_schema:
@@ -132,7 +132,7 @@ entries:
         additionalProperties: false
         properties:
           kind: &resource_kind {type: string, enum: [message, base, part, asset]}
-          q: {type: string, description: Case-insensitive substring of the stable name or display title.}
+          q: {type: string, description: "Case-insensitive substring of the stable name, title, description, subject, or body source."}
           state: &resource_state {type: string, enum: [original, customized, created]}
           limit: {type: integer, minimum: 1, maximum: 100, default: 25}
           cursor: {type: string}
@@ -149,6 +149,13 @@ entries:
                 kind: *resource_kind
                 name: &resource_name {type: string, pattern: '^[a-z0-9][a-z0-9_-]*$'}
                 state: *resource_state
+                title: {type: string}
+                description: {type: string}
+                origin: {type: string}
+                origin_label: {type: string}
+                base: {type: string}
+                author: {type: string}
+                updated_at: {type: integer}
                 revision: &resource_revision {type: integer, minimum: 0}
                 used_by:
                   type: object

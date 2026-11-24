@@ -187,13 +187,18 @@ function M.get(key: types.ResourceKey): (types.Resource?, error?)
     return nil, M.error(errors.NOT_FOUND, "mail_resource_not_found", "Mail library resource was not found", key)
 end
 
-local function matches_name(item: types.Resource, query: string?): boolean
-    if not query or query == "" then return true end
-    local q = query:lower()
-    return item.name:lower():find(q, 1, true) ~= nil or item.title:lower():find(q, 1, true) ~= nil
+local function contains(value: string?, q: string): boolean
+    return value ~= nil and value:lower():find(q, 1, true) ~= nil
+end
+
+local function matches(item: types.Resource, q: string?): boolean
+    return not q or q == "" or contains(item.name, q) or contains(item.title, q)
+        or contains(item.description, q) or contains(item.subject, q)
+        or contains(item.html, q) or contains(item.text, q)
 end
 
 function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
+    local q = filter.q and filter.q:lower()
     return database.read(function(db: sql.DB): ({types.Resource}?, error?)
         local originals, err = M.originals()
         if err then return nil, err end
@@ -205,7 +210,7 @@ function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
             for _, row in ipairs(rows) do
                 local origin_err = M.match_origin(row, originals[M.key(row)])
                 if origin_err then return nil, origin_err end
-                if matches_name(row, filter.q) then selected[#selected + 1] = row end
+                if matches(row, q) then selected[#selected + 1] = row end
             end
             return selected, nil
         end
@@ -214,7 +219,7 @@ function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
         local selected = {}
         for _, item in pairs(items) do
             if (not filter.kind or item.kind == filter.kind) and (not filter.state or item.state == filter.state)
-                and (not filter.base or item.base == filter.base) and matches_name(item, filter.q) then
+                and (not filter.base or item.base == filter.base) and matches(item, q) then
                 selected[#selected + 1] = item
             end
         end

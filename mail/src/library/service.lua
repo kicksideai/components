@@ -399,7 +399,7 @@ function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, erro
     if type(input) ~= "table" or (input.q ~= nil and type(input.q) ~= "string")
         or (input.kind and input.kind ~= "base" and input.kind ~= "message" and input.kind ~= "part" and input.kind ~= "asset")
         or (input.state and input.state ~= "original" and input.state ~= "customized" and input.state ~= "created") then
-        return nil, resources.error(errors.INVALID, "invalid_mail_filter", "Provide a valid resource kind, state and name query")
+        return nil, resources.error(errors.INVALID, "invalid_mail_filter", "Provide a valid resource kind, state and search query")
     end
     local limit, cursor, page_err = keyset.args(input)
     if page_err then return nil, page_err end
@@ -408,20 +408,38 @@ function M.list_page(input: types.LibraryPageRequest): (types.LibraryPage?, erro
     local page, next_cursor = keyset.page(items, function(row: unknown): string
         return resources.key(row :: types.ResourceKey)
     end, limit :: integer, cursor)
-    local rows: {types.LibraryRowSummary} = {}
+    local rows: {types.LibraryListRow} = {}
     local asset_usage: {[string]: {string}}?
+    local base_counts: {[string]: integer}?
     for i, value in ipairs(page) do
         local item = value :: types.Resource
-        if item.kind == "asset" and not asset_usage then
-            local asset_err
-            asset_usage, asset_err = sampled_asset_usage()
-            if asset_err then return nil, asset_err end
+        local usage: types.UsedBy?
+        if item.kind == "base" then
+            if not base_counts then
+                local messages, read_err = resources.list({kind = "message"})
+                if read_err then return nil, read_err end
+                base_counts = {}
+                for _, message in ipairs(messages) do
+                    local base = message.base :: string
+                    base_counts[base] = (base_counts[base] or 0) + 1
+                end
+            end
+        else
+            if item.kind == "asset" and not asset_usage then
+                local asset_err
+                asset_usage, asset_err = sampled_asset_usage()
+                if asset_err then return nil, asset_err end
+            end
+            local usage_err
+            usage, usage_err = used_by(item, asset_usage)
+            if usage_err then return nil, usage_err end
         end
-        local usage, usage_err = used_by(item, asset_usage)
-        if usage_err then return nil, usage_err end
-        rows[i] = {kind = item.kind, name = item.name, state = item.state, revision = item.revision,
-            used_by = usage and {messages = usage.messages and #usage.messages or nil,
-                recent_sources = usage.recent_senders and #usage.recent_senders or nil} or nil}
+        rows[i] = {kind = item.kind, name = item.name, title = item.title, description = item.description,
+            state = item.state, revision = item.revision, origin = item.origin, origin_label = item.origin_label,
+            base = item.base, author = item.author, updated_at = item.updated_at,
+            used_by = base_counts and item.kind == "base" and {messages = base_counts[item.name] or 0}
+                or usage and {messages = usage.messages and #usage.messages or nil,
+                    recent_sources = usage.recent_senders and #usage.recent_senders or nil} or nil}
     end
     return {items = rows, next_cursor = next_cursor}, nil
 end

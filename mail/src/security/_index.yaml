@@ -289,6 +289,7 @@ entries:
     policy:
       resources:
         - kickside.mail.library:list
+        - kickside.mail.library:list_page
         - kickside.mail.library:get
         - kickside.mail.library:create
         - kickside.mail.library:update
