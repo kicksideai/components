@@ -2,6 +2,8 @@
 local types = require("types")
 local client = require("client")
 local ctx = require("ctx")
+local funcs = require("funcs")
+local message = require("message")
 
 local function list_templates(): (types.ToolTemplateList?, error?)
     local mailer, err = client.open()
@@ -27,11 +29,28 @@ local function preview(input: types.PreviewRequest): (types.PreviewResult?, erro
     return (mailer :: types.Mailer):preview(input)
 end
 
+local function workflow_label(ref: unknown): (string, error?)
+    if type(ref) ~= "table" then return "", nil end
+    local title = ref.title
+    if message.origin_text(title) then return title :: string, nil end
+    if type(ref.id) ~= "string" or ref.id == "" then return "", nil end
+    local result, err = funcs.call("kickside.workflows.agent:flows_read", {
+        action = "catalog", catalog_id = "flows:" .. ref.id,
+    })
+    if err then
+        if err:kind() == errors.NOT_FOUND or err:kind() == errors.PERMISSION_DENIED then return "", nil end
+        return "", err
+    end
+    local item = result and result.item
+    if type(item) == "table" and message.origin_text(item.title) then return item.title :: string, nil end
+    return "", nil
+end
+
 local function send(input: types.SendRequest): (types.SendResult?, error?)
     local run = ctx.get("run_context")
     if type(input) == "table" and type(run) == "table" and type(run.run_id) == "string" and run.run_id ~= "" then
-        local ref = run.flow_ref
-        local label = type(ref) == "table" and type(ref.id) == "string" and ref.id or run.run_id
+        local label, err = workflow_label(run.flow_ref)
+        if err then return nil, err end
         input.origin = {kind = "workflow", id = run.run_id, label = label}
     end
     return client.send(input)

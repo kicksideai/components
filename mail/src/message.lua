@@ -186,14 +186,14 @@ end
 
 local ORIGIN_KINDS = {workflow = true, automation = true, agent = true, module = true, test = true}
 
-local function origin_text(value: unknown): boolean
+function M.origin_text(value: unknown): boolean
     return type(value) == "string" and #value <= 256 and utf8.len(value) ~= nil
         and value:find("%S") ~= nil and value:find("%c") == nil
 end
 
 local function origin_error(value: unknown): error?
     if type(value) ~= "table" or type(value.kind) ~= "string" or not ORIGIN_KINDS[value.kind]
-        or not origin_text(value.id) or not origin_text(value.label) then
+        or not M.origin_text(value.id) or (value.label ~= "" and not M.origin_text(value.label)) then
         return invalid("invalid_mail_origin", "Origin requires a supported kind, ID and label")
     end
     for key in pairs(value) do

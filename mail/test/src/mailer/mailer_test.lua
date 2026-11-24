@@ -845,13 +845,22 @@ return {
                 test.is_nil(row.driver_id)
 
                 local executor = assert(sender:with_context({
-                    run_context = {run_id = "example-run", flow_ref = {kind = "flow", id = "example-flow", version = 1}},
+                    run_context = {run_id = "example-run", flow_ref = {kind = "flow", id = "example-flow", version = 1,
+                        title = "Example workflow"}},
                 }))
                 local workflow = assert(executor:call(TOOL_NS .. "mail_send", body()))
                 local entry = terminal(sender, workflow)
                 test.eq("workflow", entry.origin.kind)
                 test.eq("example-run", entry.origin.id)
-                test.eq("example-flow", entry.origin.label)
+                test.eq("Example workflow", entry.origin.label)
+
+                local unresolved = assert(sender:with_context({
+                    run_context = {run_id = "unresolved-run", flow_ref = {kind = "flow", id = "unknown-workflow", version = 1}},
+                }))
+                local without_title = terminal(sender, assert(unresolved:call(TOOL_NS .. "mail_send", body())))
+                test.eq("workflow", without_title.origin.kind)
+                test.eq("unresolved-run", without_title.origin.id)
+                test.eq("", without_title.origin.label)
             end)
 
             test.it("finds recent senders and filters activity by the message name", function()
