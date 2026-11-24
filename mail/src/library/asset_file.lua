@@ -11,7 +11,7 @@ local function invalid(): error
         details = {code = "invalid_mail_asset"}})
 end
 
-local function read(input: {ref: types.AssetRef, bytes: boolean}): (types.AssetPart?, error?)
+local function read(input: types.AssetReadRequest): (types.AssetPart?, error?)
     local ref = input.ref
     if ref.upload_id then
         if ref.original then return nil, invalid() end

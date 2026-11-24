@@ -581,9 +581,17 @@ return {
                 template.vars.subject = string.rep("é", 256)
                 local value, err = invoke(sender, "send", template)
                 refusal(value, err, errors.INVALID, "subject_too_long")
+                local amplifying = assert(funcs.call("kickside.mail.library:create", {
+                    kind = "message", name = "rendered-text-boundary", from = {kind = "message", name = "notice"},
+                    text = "{{ block body() }}" .. string.rep("{{ vars.message }}", 65) .. "{{ end }}",
+                }))
+                template.template = amplifying.name
                 template.vars.subject = "Status"
-                template.vars.message = string.rep("a", 262145)
+                template.vars.message = string.rep("a", 4096)
                 value, err = invoke(sender, "send", template)
+                assert(funcs.call("kickside.mail.library:delete", {
+                    kind = amplifying.kind, name = amplifying.name, expected_revision = amplifying.revision,
+                }))
                 refusal(value, err, errors.INVALID, "text_too_large")
             end)
 
@@ -920,6 +928,31 @@ return {
                 test.eq("workflow", without_title.origin.kind)
                 test.eq("unresolved-run", without_title.origin.id)
                 test.eq("", without_title.origin.label)
+            end)
+
+            test.it("queues workflow mail when the title catalog fails", function()
+                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "from_address", "mail@example.org").success)
+                local executor = assert(sender:with_context({
+                    mail_test_catalog_error = true,
+                    run_context = {run_id = "catalog-failure", flow_ref = {kind = "flow", id = "example-flow", version = 1}},
+                }))
+                local _, catalog_err = executor:call("kickside.workflows.agent:flows_read",
+                    {action = "catalog", catalog_id = "flows:example-flow"})
+                test.eq(errors.UNAVAILABLE, assert(catalog_err):kind())
+                local queued, err = executor:call(TOOL_NS .. "mail_send", body())
+                test.is_nil(err, tostring(err))
+                local delivered = terminal(sender, assert(queued))
+                test.eq("sent", delivered.status)
+                test.eq("catalog-failure", delivered.origin.id)
+                test.eq("", delivered.origin.label)
+            end)
+
+            test.it("shares malformed preview refusals between Mailer and the library", function()
+                local native, native_err = invoke(editor, "preview", 5)
+                local library, library_err = editor:call("kickside.mail.library:render", 5)
+                refusal(native, native_err, errors.INVALID, "invalid_template")
+                refusal(library, library_err, errors.INVALID, "invalid_template")
             end)
 
             test.it("finds recent senders and filters activity by the message name", function()

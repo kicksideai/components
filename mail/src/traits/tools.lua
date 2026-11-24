@@ -3,6 +3,7 @@ local types = require("types")
 local client = require("client")
 local ctx = require("ctx")
 local funcs = require("funcs")
+local logger = require("logger")
 local message = require("message")
 
 local function list_templates(): (types.ToolTemplateList?, error?)
@@ -29,29 +30,29 @@ local function preview(input: types.PreviewRequest): (types.PreviewResult?, erro
     return (mailer :: types.Mailer):preview(input)
 end
 
-local function workflow_label(ref: unknown): (string, error?)
-    if type(ref) ~= "table" then return "", nil end
+local function workflow_label(ref: unknown): string
+    if type(ref) ~= "table" then return "" end
     local title = ref.title
-    if message.origin_text(title) then return title :: string, nil end
-    if type(ref.id) ~= "string" or ref.id == "" then return "", nil end
+    if message.origin_text(title) then return title :: string end
+    if type(ref.id) ~= "string" or ref.id == "" then return "" end
     local result, err = funcs.call("kickside.workflows.agent:flows_read", {
         action = "catalog", catalog_id = "flows:" .. ref.id,
     })
     if err then
-        if err:kind() == errors.NOT_FOUND or err:kind() == errors.PERMISSION_DENIED then return "", nil end
-        return "", err
+        if err:kind() ~= errors.NOT_FOUND and err:kind() ~= errors.PERMISSION_DENIED then
+            logger:warn("Mail workflow title lookup failed", {error = tostring(err)})
+        end
+        return ""
     end
     local item = result and result.item
-    if type(item) == "table" and message.origin_text(item.title) then return item.title :: string, nil end
-    return "", nil
+    if type(item) == "table" and message.origin_text(item.title) then return item.title :: string end
+    return ""
 end
 
 local function send(input: types.SendRequest): (types.SendResult?, error?)
     local run = ctx.get("run_context")
     if type(input) == "table" and type(run) == "table" and type(run.run_id) == "string" and run.run_id ~= "" then
-        local label, err = workflow_label(run.flow_ref)
-        if err then return nil, err end
-        input.origin = {kind = "workflow", id = run.run_id, label = label}
+        input.origin = {kind = "workflow", id = run.run_id, label = workflow_label(run.flow_ref)}
     end
     return client.send(input)
 end

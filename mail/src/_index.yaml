@@ -53,6 +53,7 @@ entries:
       - { entry: kickside.mail.migrations:08_activity_failed_at, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:09_library_history, path: ".meta.target_db" }
       - { entry: kickside.mail.migrations:10_asset_usage, path: ".meta.target_db" }
+      - { entry: kickside.mail.migrations:11_library_page_indexes, path: ".meta.target_db" }
       - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
   - name: library_editor_grant
     kind: ns.requirement

@@ -98,7 +98,7 @@ local function deliver(input: types.JobInput): (types.Record?, error?)
             options.rearm = time.unix(next_at // 1000, (next_at % 1000) * 1000000):utc():format("2006-01-02T15:04:05.000Z07:00")
         end
     end
-    local completion, commit_err = database.transaction(function(tx: sql.Transaction, _dialect: string): (types.Record?, error?)
+    local completion, commit_err = database.transaction(function(tx: sql.Transaction, _dialect: string): (types.JobCompletion?, error?)
         local done, err = jobs.complete_tx(tx, job.id, lease, options)
         if err then return nil, err end
         local changed
@@ -112,11 +112,11 @@ local function deliver(input: types.JobInput): (types.Record?, error?)
             return nil, errors.new({kind = errors.CONFLICT, message = "The delivery log changed during settlement",
                 retryable = false, details = {code = "delivery_state_changed"}})
         end
-        return done :: types.Record, nil
+        return done :: types.JobCompletion, nil
     end)
     if commit_err then return nil, commit_err end
     if not next_at then realtime.message(row.id, delivered and "sent" or "failed") end
-    local release_err = lease_release.notify(job.id, job.execution_seq, completion.owner_locator :: table)
+    local release_err = lease_release.notify(job.id, job.execution_seq, completion.owner_locator)
     if release_err then logger:error("Mail lease release notification failed", {error = tostring(release_err)}) end
     if next_at then
         local _, nudge_err = jobs.nudge_workers()

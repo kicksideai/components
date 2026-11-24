@@ -151,11 +151,11 @@ local run = test.run_cases(function()
             local image_tag = '<img src="{{ assets["sample-mark"] }}" alt="Sample">'
             local part = define("part", "assets-fixture-part", image_tag)
             owned[2] = part
-            call("create", part)
+            local saved_part = call("create", part)
             local base = define("base", "assets-fixture-base", image_tag ..
                 '{{ include "/part/assets-fixture-part" }}{{ block body() }}{{ end }}')
             owned[3] = base
-            call("create", base)
+            local saved_base = call("create", base)
             local msg = define("message", "assets-fixture-message", "{{ block body() }}" .. image_tag .. "{{ end }}")
             msg.base, msg.subject = base.name, "Fixture"
             owned[4] = msg
@@ -191,6 +191,43 @@ local run = test.run_cases(function()
             local _, err = editor:call(LIBRARY .. "delete", {kind = "asset", name = image.name, expected_revision = added.revision})
             test.eq("mail_resource_in_use", assert(err):details().code)
             test.eq(msg.name, err:details().messages[1])
+            call("delete", {kind = "message", name = msg.name, expected_revision = saved.revision})
+            local blocked = select(2, editor:call(LIBRARY .. "delete", {kind = "asset", name = image.name, expected_revision = added.revision}))
+            test.eq("mail_resource_in_use", assert(blocked):details().code)
+            call("delete", {kind = "base", name = base.name, expected_revision = saved_base.revision})
+            call("delete", {kind = "part", name = part.name, expected_revision = saved_part.revision})
+            assert(editor:call(LIBRARY .. "delete", {kind = "asset", name = image.name, expected_revision = added.revision}))
+        end)
+
+        test.it("counts CID attributes and protects conditional asset references", function()
+            local image = {kind = "asset", name = "conditional-mark", upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            local added = call("create", image)
+            local msg = define("message", "conditional-asset",
+                '{{ block body() }}<!-- <img src="cid:mail-library-conditional-mark"> -->' ..
+                '<p>cid:mail-library-conditional-mark</p>' ..
+                '{{ if isset(show) }}<img SRC={{ assets["conditional-mark"] }} alt="Sample">{{ end }}{{ end }}')
+            msg.base, msg.subject = "plain", "Conditional asset"
+            msg.text = "{{ block body() }}Plain text{{ end }}"
+            msg.schema.properties.show = {type = "boolean"}
+            owned[2] = msg
+            local saved = call("create", msg)
+            local sample = call("render_draft", {message = msg.name})
+            test.is_nil(sample.inline_assets and sample.inline_assets["mail-library-conditional-mark"])
+            test.eq(0, #call("get", image).used_by.messages)
+            local live = call("render", {template = msg.name, vars = {show = true}})
+            test.not_nil(live.inline_assets["mail-library-conditional-mark"])
+            local result, err = editor:call(LIBRARY .. "delete", {kind = "asset", name = image.name, expected_revision = added.revision})
+            test.is_nil(result)
+            test.eq("mail_resource_in_use", assert(err):details().code)
+            test.eq(msg.name, err:details().resources[1].name)
+            msg.html = "{{ block body() }}Plain HTML{{ end }}"
+            msg.expected_revision = saved.revision
+            saved = call("update", msg)
+            local historic, historic_err = editor:call(LIBRARY .. "delete",
+                {kind = "asset", name = image.name, expected_revision = added.revision})
+            test.is_nil(historic)
+            test.eq("mail_resource_in_use", assert(historic_err):details().code)
             call("delete", {kind = "message", name = msg.name, expected_revision = saved.revision})
             assert(editor:call(LIBRARY .. "delete", {kind = "asset", name = image.name, expected_revision = added.revision}))
         end)

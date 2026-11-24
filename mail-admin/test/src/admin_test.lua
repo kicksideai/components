@@ -82,6 +82,11 @@ local function cases()
             test.is_true(#response.body > 1000, "the served bundle is the built component")
         end)
 
+        test.it("declares selectable module access", function()
+            local policy = assert(registry.get("kickside.mail.admin.security:module_access"))
+            test.eq(policy.meta.intent, "module_access")
+        end)
+
         test.it("lets members load the bundle and shows the tab only to library editors", function()
             local actor, scope = member({"app:user"})
             test.is_true(allows(actor, scope, "access", "kickside.mail.admin:admin"))

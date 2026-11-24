@@ -52,7 +52,10 @@ local function require_preview(input: unknown): (types.Record?, error?)
 end
 
 function M.list(input: types.LibraryPageRequest): (unknown, error?)
-    return call(LIBRARY .. "list_page", input)
+    local value, err = call(LIBRARY .. "list_page", input)
+    if err then return nil, err end
+    local page = value :: types.LibraryPage
+    return {items = page.items, next_cursor = page.next_cursor}, nil
 end
 
 function M.read(input: types.ResourceKey): (unknown, error?)

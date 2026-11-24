@@ -6,6 +6,7 @@ entries:
   kind: security.policy
   meta:
     title: KickSide Mail administration
+    intent: module_access
     surface: kickside.mail.admin
     includes:
     - kickside.mail.admin.security:member_endpoints

@@ -67,6 +67,7 @@ function M.body(req: http.Request, optional: boolean?): (types.Record?, error?)
     local raw, read_err = req:body()
     if read_err then return nil, read_err end
     if optional and (raw == nil or raw == "") then return {}, nil end
+    if type(raw) == "string" and #raw > 3 * 1024 * 1024 then return nil, M.invalid("The request exceeds 3 MiB") end
     if type(raw) ~= "string" or not raw:match("^%s*{") then return nil, M.invalid("A JSON object is required") end
     local value, err = json.decode(raw)
     if err or type(value) ~= "table" then return nil, M.invalid("A valid JSON object is required") end

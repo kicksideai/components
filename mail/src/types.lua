@@ -13,6 +13,7 @@ type Asset = {source: string, filename: string?, content_type: string?, size: in
     filesystem: string?, path: string?, upload_id: string?}
 type AssetPart = {filename: string, content_type: string, size: integer, content: string?}
 type AssetRef = {name: string, content_id: string, original: string?, upload_id: string?}
+type AssetReadRequest = {ref: AssetRef, bytes: boolean}
 type InlineAssets = {[string]: string}
 type Attachment = {filename: string, content_type: string, content: string, disposition: string, content_id: string?}
 type Origin = {kind: string, id: string, label: string}
@@ -35,7 +36,7 @@ type DirectoryPrincipal = PrincipalRef & {label: string}
 type PrincipalDirectory = {resolve: (PrincipalDirectory, {refs: {PrincipalRef}}) -> ({principals: {DirectoryPrincipal}}?, error?)}
 type Capabilities = {send: boolean, edit_library: boolean, administer_delivery: boolean}
 type ListRequest = {status: string?, template: string?, since: integer?, q: string?, limit: integer, cursor: string?}
-type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean, total: integer?, failed_today: integer?}
+type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean, total: integer?, total_is_lower_bound: boolean?, failed_today: integer?}
 type MessageError = {kind: string, code: string, message: string, provider_detail: string?}
 type LogMessage = Addresses & {
     message_id: string, status: string, created_at: integer, attempts: integer,
@@ -63,7 +64,9 @@ type Job = {id: string, lease_token: string, execution_seq: integer}
 type JobInput = {job: Job, payload: {message_id: string}}
 type Lease = {token: string, execution_seq: integer}
 type ActorRow = {actor_id: string, actor_context: string}
-type OwnerInput = {change: {kind: string?, job_id: string?, owner_locator: {kind: string, id: string}?}?}
+type OwnerLocator = {kind: string, id: string}
+type JobCompletion = {owner_locator: OwnerLocator?}
+type OwnerInput = {change: {kind: string?, job_id: string?, owner_locator: OwnerLocator?}?}
 type BlockedAsset = {component_id: string, error: error}
 type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, needs_continue: boolean?,
     error: error?, blocked: {BlockedAsset}?}
@@ -84,6 +87,7 @@ type Resource = {
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
 type AssetUsage = {[string]: {string}}
+type AssetUsageFilter = {dialect: string, assets: {string}, messages: {string}}
 type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}
 type Original = {resource: Resource, entries: {[string]: string}}
 type ResourceMap = {[string]: Resource}
@@ -104,15 +108,17 @@ type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, 
 type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
 type EditPreview = DraftRequest & {create: ResourceCreate?}
 type DraftIssue = {code: string, engine_message: string?, message: string, resource: ResourceKey, face: string, candidate_resources: {ResourceKey}}
+type PreviewWarning = {code: string, message: string, bytes: integer, threshold_bytes: integer}
 type DraftPreview = {subject: string?, html: string?, text: string?, errors: {DraftIssue},
-    dependent_messages: {string}, preview_id: string?, inline_assets: InlineAssets?, library_assets: {AssetRef}?}
+    dependent_messages: {string}, preview_id: string?, inline_assets: InlineAssets?, warnings: {PreviewWarning}?, library_assets: {AssetRef}?}
 type LibraryPageRequest = ResourceFilter & {limit: integer?, cursor: string?}
 type LibraryRowSummary = ResourceKey & {state: string, revision: integer, used_by: {messages: integer?, recent_sources: integer?}?}
 type LibraryListRow = LibraryRowSummary & {
     title: string, description: string, origin: string?, origin_label: string?,
     base: string?, author: string?, updated_at: integer?,
 }
-type LibraryPage = {items: {LibraryListRow}, next_cursor: string?}
+type LibraryDeclaration = ResourceKey & {base: string?, selected: integer}
+type LibraryPage = {items: {LibraryListRow}, next_cursor: string?, total: integer}
 type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?,
     note: string?, from: ResourceKey?, asset_deadline: integer?}
 type LibraryRow = {
@@ -125,8 +131,8 @@ type LibraryRow = {
 type JetEntry = {id: string, kind: string, meta: Record, data: Record}
 type TemplateRequest = {template: string}
 type PreviewRequest = {template: string, vars: JsonObject, attachments: {AttachmentRef}?}
-type PreviewResult = {subject: string, html: string, text: string, inline_assets: InlineAssets?}
-type Rendered = {subject: string, html: string?, text: string?, library_assets: {AssetRef}?, inline_assets: InlineAssets?}
+type PreviewResult = {subject: string, html: string, text: string, inline_assets: InlineAssets?, warnings: {PreviewWarning}?}
+type Rendered = {subject: string, html: string?, text: string?, library_assets: {AssetRef}?, inline_assets: InlineAssets?, warnings: {PreviewWarning}?}
 type RenderGlobals = {assets: {Resource}?, site: {title: string, url: string}, sender: {name: string}}
 type TemplateParts = {subject: string, html: string, text: string}
 type VariableSchema = {type: string, properties: JsonObject, additionalProperties: boolean?}
@@ -191,18 +197,18 @@ return {
     Executor = Executor, TransactionWork = TransactionWork, TransportResult = TransportResult,
     MessageRef = MessageRef, ListRequest = ListRequest, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, Admission = Admission, AdmissionResult = AdmissionResult,
-    Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, OwnerResult = OwnerResult,
-    BlockedAsset = BlockedAsset,
+    Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,
+    OwnerResult = OwnerResult, BlockedAsset = BlockedAsset,
     ResourceKey = ResourceKey, ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
-    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,
+    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, AssetUsageFilter = AssetUsageFilter, UsedBy = UsedBy,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
-    Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
+    Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetReadRequest = AssetReadRequest, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
     TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
-    PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
+    PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, PreviewWarning = PreviewWarning, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,
     ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, SchemaIssue = SchemaIssue,
     Driver = Driver, Availability = Availability, DriverSetting = DriverSetting, DriverSummary = DriverSummary,

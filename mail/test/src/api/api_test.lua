@@ -54,9 +54,9 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail HTTP", function()
-        local owned, activity_rows, configured
+        local owned, activity_rows, activity_sender, configured
         test.before_each(function()
-            owned, activity_rows, configured = {}, {}, false
+            owned, activity_rows, activity_sender, configured = {}, {}, nil, false
         end)
         local function own(item)
             owned[#owned + 1] = {kind = item.kind, name = item.name}
@@ -83,8 +83,11 @@ return {run = test.run_cases(function()
         end
         test.after_each(function()
             library_fixtures.remove(owned)
-            if #activity_rows > 0 then
+            if #activity_rows > 0 or activity_sender then
                 local db = assert(sql.get("app:db"))
+                if activity_sender then
+                    assert(db:execute("DELETE FROM mail_message WHERE sender=$1", {activity_sender}))
+                end
                 for _, id in ipairs(activity_rows) do
                     assert(db:execute("DELETE FROM mail_message WHERE id=$1", {id}))
                 end
@@ -255,6 +258,31 @@ return {run = test.run_cases(function()
             test.is_true(bases.items[1].used_by.messages >= 1)
         end)
 
+        test.it("returns an exact total and one order across stored and packaged library pages", function()
+            local editor = session("editor")
+            for _, name in ipairs({"zz-paging", "aa-paging"}) do
+                data(editor, "POST", "/library", own(fixture("part", name, "Pagination entry")), 201)
+            end
+            local route = "/library?kind=part&view=summary&limit=2"
+            local all = data(editor, "GET", "/library?kind=part").items
+            local offset, cursor = 1, nil
+            repeat
+                local page = data(editor, "GET", route .. (cursor and "&cursor=" .. cursor or ""))
+                test.eq(#all, page.total)
+                for _, item in ipairs(page.items) do
+                    test.eq(all[offset].name, item.name)
+                    test.is_nil(item.html)
+                    offset = offset + 1
+                end
+                cursor = page.next_cursor
+            until not cursor or offset > #all
+            test.eq(#all + 1, offset)
+            test.is_nil(cursor)
+            local absent = data(editor, "GET", route .. "&q=not-a-matching-resource")
+            test.eq(0, absent.total)
+            test.eq(0, #absent.items)
+        end)
+
         test.it("searches activity subjects and recipients with unpaged totals and today's failures", function()
             local admin = session("delivery")
             local first = failed(admin.id, "Status Needle", "reader@example.org")
@@ -276,6 +304,34 @@ return {run = test.run_cases(function()
             local empty = data(admin, "GET", "/activity?q=unmatched-string")
             test.eq(0, empty.total)
             test.eq(page.failed_today, empty.failed_today)
+        end)
+
+        test.it("reports bounded Activity totals and preserves tied message cursors", function()
+            local sender = session("sender")
+            activity_sender = sender.id
+            local older = failed(sender.id, "Window boundary", "reader@example.org", 1)
+            local first = failed(sender.id, "Window boundary", "reader@example.org", 10002)
+            local second = failed(sender.id, "Window boundary", "reader@example.org", 10002)
+            local db = assert(sql.get("app:db"))
+            assert(db:execute([[WITH RECURSIVE sequence(n) AS (
+                SELECT 2 UNION ALL SELECT n+1 FROM sequence WHERE n<10001
+            )
+            INSERT INTO mail_message (id,created_at,finished_at,sender,recipients,subject,from_address,attachments,driver_id,status)
+            SELECT 'window-' || n,n,n,$1,'{"to":["reader@example.org"]}','Digest','mail@example.org','[]','fixture','failed'
+            FROM sequence]], {sender.id}))
+            assert(db:release())
+            local list = data(sender, "GET", "/activity?limit=1")
+            test.eq(10000, list.total)
+            test.is_true(list.total_is_lower_bound)
+            local search = data(sender, "GET", "/activity?q=Window%20boundary&limit=1")
+            test.eq(2, search.total)
+            test.is_true(search.total_is_lower_bound)
+            test.is_true(search.has_more)
+            local next_page = data(sender, "GET", "/activity?q=Window%20boundary&limit=1&cursor=" .. search.next_cursor)
+            test.is_false(next_page.has_more)
+            local seen = {[search.items[1].message_id] = true, [next_page.items[1].message_id] = true}
+            test.is_true(seen[first] and seen[second])
+            test.is_nil(seen[older])
         end)
 
         test.it("encodes empty sample and schema maps as JSON objects", function()
@@ -469,6 +525,86 @@ return {run = test.run_cases(function()
             test.not_nil(preview.inline_assets["mail-library-logo"]:match("^data:image/png;base64,"))
             test.eq(403, (request(sender, "GET", "/library/asset/logo")))
             test.eq(403, (request(sender, "POST", "/library", {kind = "asset", name = "proof"})))
+        end)
+
+        test.it("refuses malformed draft shapes and library filters consistently", function()
+            local editor = session("editor")
+            for _, body in ipairs({
+                {message = "notice", resource = 12},
+                {message = "notice", resource = false},
+                {message = "notice", resources = {12}},
+                {message = {}, resources = {}},
+            }) do
+                local status, result = request(editor, "POST", "/library/preview", body)
+                test.eq(400, status, json.encode(result))
+                test.is_true(result.code == "invalid_mail_draft" or result.code == "invalid_mail_resources",
+                    json.encode(result))
+            end
+            for _, view in ipairs({"", "&view=summary"}) do
+                local status, result = request(editor, "GET", "/library?kind=unknown" .. view)
+                test.eq(400, status)
+                test.eq("invalid_mail_filter", result.code)
+            end
+            for _, view in ipairs({"", "&view=summary"}) do
+                local status, result = request(editor, "GET", "/library?q=%00" .. view)
+                test.eq(400, status)
+                test.eq("invalid_mail_filter", result.code)
+            end
+            local status, result = request(editor, "PUT", "/library/part/header", {kind = "part", name = "footer"})
+            test.eq(400, status)
+            test.eq("invalid_request", result.code)
+            status, result = request(editor, "POST", "/library/preview", "notice")
+            test.eq(400, status)
+            test.eq("invalid_request", result.code)
+        end)
+
+        test.it("checks source, name, schema and note byte limits", function()
+            local editor = session("editor")
+            for _, case in ipairs({
+                {field = "name", value = string.rep("n", 129)},
+                {field = "html", value = string.rep("h", 65537)},
+                {field = "text", value = string.rep("t", 65537)},
+                {field = "schema", value = {type = "object", properties = {}, description = string.rep("s", 32768)}},
+                {field = "note", value = string.rep("n", 4097), code = "invalid_revision_note"},
+            }) do
+                local part = own(fixture("part", "rejected-library-size", "Fixture"))
+                part[case.field] = case.value
+                local status, err = request(editor, "POST", "/library", part)
+                test.eq(400, status, case.field)
+                test.eq(case.code or "invalid_mail_resource", err.code)
+            end
+            local exact = own(fixture("part", string.rep("p", 128), string.rep("h", 65536)))
+            exact.note = string.rep("n", 4096)
+            local created = data(editor, "POST", "/library", exact, 201)
+            test.eq(65536, #created.html)
+            test.eq(128, #created.name)
+            local status, err = request(editor, "POST", "/library/preview",
+                {message = "notice", vars = {message = string.rep("p", 3 * 1024 * 1024)}})
+            test.eq(400, status)
+            test.eq("invalid_request", err.code)
+        end)
+
+        test.it("warns about Gmail clipping and enforces the same render budget in preview and save", function()
+            local editor = session("editor")
+            local vars = {subject = "Render budget", message = string.rep("'", 22 * 1024)}
+            local preview = data(editor, "POST", "/library/preview", {message = "notice", vars = vars})
+            test.is_true(#preview.html > 102 * 1024)
+            test.eq("gmail_html_clipping", preview.warnings[1].code)
+            vars.message = string.rep("'", 54 * 1024)
+            local status, refused = request(editor, "POST", "/library/preview", {message = "notice", vars = vars})
+            test.eq(400, status)
+            test.eq("html_too_large", refused.code)
+            test.eq("html", refused.details.face)
+            local resource = own({kind = "message", name = "render-budget-copy",
+                from = {kind = "message", name = "notice"}, samples = vars})
+            status, refused = request(editor, "POST", "/library", resource)
+            test.eq(400, status)
+            test.eq("html_too_large", refused.code)
+            test.eq(404, (request(editor, "GET", "/library/message/" .. resource.name)))
+            vars.message = string.rep("x", 64 * 1024)
+            status, refused = request(editor, "POST", "/library/preview", {message = "notice", vars = vars})
+            test.eq(400, status)
+            test.eq("invalid_template_vars", refused.code)
         end)
 
         test.it("names the candidate sources when a draft message include fails", function()

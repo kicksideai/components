@@ -86,10 +86,14 @@ entries:
     security: *catalog_security
   - name: preview
     kind: function.lua
-    source: file://send.lua
+    source: file://preview.lua
     method: preview
-    modules: *mailer_modules
-    imports: *mailer_imports
+    imports:
+      types: kickside.mail:types
+      client: kickside.mail:client
+      message: kickside.mail:message
+      render: kickside.mail.views:render
+      attachments: kickside.mail.service:attachments
     security:
       policies:
         - kickside.mail.security:site_url

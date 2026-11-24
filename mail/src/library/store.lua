@@ -97,15 +97,133 @@ function M.find(db: types.Executor, filter: types.ResourceFilter): ({types.Resou
     return resources, nil
 end
 
+function M.summary(db: sql.DB, declarations: {types.LibraryDeclaration}, filter: types.ResourceFilter, after: types.ResourceKey?,
+    limit: integer): (types.LibraryPage?, error?)
+    local dialect, dialect_err = db:type()
+    if dialect_err then return nil, dialect_err end
+    local postgres = dialect == "postgres"
+    local declaration_json, encode_err = json.encode(declarations)
+    if encode_err then return nil, encode_err end
+    local args: {unknown} = {declaration_json}
+    local function bind(value: unknown): string
+        args[#args + 1] = value
+        return "$" .. #args
+    end
+    local declared = postgres
+        and [[SELECT * FROM jsonb_to_recordset($1::jsonb) AS d(kind text,name text,base text,selected integer)]]
+        or [[SELECT json_extract(value,'$.kind') AS kind, json_extract(value,'$.name') AS name,
+            json_extract(value,'$.base') AS base, json_extract(value,'$.selected') AS selected FROM json_each($1)]]
+    local template_filters: {string} = {}
+    local asset_filters: {string} = {}
+    local function apply(filters: {string}, predicate: string)
+        filters[#filters + 1] = predicate
+    end
+    local templates = filter.state ~= "original" and filter.kind ~= "asset"
+    local assets = filter.state ~= "original" and not filter.base and (not filter.kind or filter.kind == "asset")
+    if templates and filter.kind then apply(template_filters, "l.kind=" .. bind(filter.kind)) end
+    if filter.state == "created" or filter.state == "customized" then
+        if templates then apply(template_filters, "l.state=" .. bind(filter.state)) end
+        if assets then apply(asset_filters, filter.state == "created" and "a.origin IS NULL" or "a.origin IS NOT NULL") end
+    end
+    if templates and filter.base then apply(template_filters, "l.kind='message' AND l.base=" .. bind(filter.base)) end
+    if (templates or assets) and filter.q and filter.q ~= "" then
+        local needle = bind(filter.q:lower())
+        local function search(fields: {string}): string
+            local predicates: {string} = {}
+            for _, field in ipairs(fields) do
+                predicates[#predicates + 1] = (postgres and "strpos" or "instr") .. "(lower(" .. field .. ")," .. needle .. ")>0"
+            end
+            return "(" .. table.concat(predicates, " OR ") .. ")"
+        end
+        apply(template_filters, search({"l.name","l.title","l.description","l.html","l.text","l.subject"}))
+        apply(asset_filters, search({"a.name","a.title","a.description"}))
+    end
+    local function conditions(filters: {string}): string
+        return #filters == 0 and "" or " AND " .. table.concat(filters, " AND ")
+    end
+    local sources: {string} = {}
+    local collate = postgres and ' COLLATE "C"' or ""
+    if templates then
+        sources[#sources + 1] = [[SELECT l.kind]] .. collate .. [[ AS kind,l.name]] .. collate .. [[ AS name,
+            l.title,l.description,l.base,l.state,l.origin,l.revision,l.author,l.updated_at FROM mail_library l WHERE 1=1]]
+            .. conditions(template_filters)
+    end
+    if assets then
+        sources[#sources + 1] = [[SELECT 'asset' AS kind,a.name]] .. collate .. [[ AS name,
+            a.title,a.description,NULL AS base,CASE WHEN a.origin IS NULL THEN 'created' ELSE 'customized' END AS state,
+            a.origin,a.revision,a.author,a.updated_at FROM mail_library_asset a WHERE a.upload_id IS NOT NULL]]
+            .. conditions(asset_filters)
+    end
+    local available = [[NOT EXISTS (SELECT 1 FROM mail_library l WHERE l.kind=d.kind AND l.name=d.name)
+        AND (d.kind<>'asset' OR NOT EXISTS
+            (SELECT 1 FROM mail_library_asset a WHERE a.name=d.name AND a.upload_id IS NOT NULL))]]
+    if not filter.state or filter.state == "original" then
+        sources[#sources + 1] = [[SELECT d.kind]] .. collate .. [[ AS kind,d.name]] .. collate .. [[ AS name,
+            NULL AS title,NULL AS description,d.base,'original' AS state,NULL AS origin,CAST(NULL AS BIGINT) AS revision,
+            NULL AS author,CAST(NULL AS BIGINT) AS updated_at FROM declared d WHERE d.selected=1 AND ]] .. available
+    end
+    if #sources == 0 then return {items = {}, total = 0}, nil end
+    local seek = ""
+    if after then seek = " WHERE (kind,name)>(" .. bind(after.kind) .. "," .. bind(after.name) .. ")" end
+    local page_limit = bind(limit + 1)
+    local pages: {string} = {}
+    for _, source in ipairs(sources) do
+        pages[#pages + 1] = "SELECT * FROM (SELECT * FROM (" .. source .. ") AS candidate" .. seek
+            .. " ORDER BY kind,name LIMIT " .. page_limit .. ") AS branch"
+    end
+    local array_size = postgres and "jsonb_array_length(a.used_by_json::jsonb)" or "json_array_length(a.used_by_json)"
+    local query = "WITH declared AS (" .. declared .. "), matched AS ("
+        .. table.concat(sources, " UNION ALL ") .. "), summary AS (SELECT COUNT(*) AS total FROM matched)"
+        .. ", page AS (SELECT * FROM (" .. table.concat(pages, " UNION ALL ")
+        .. ") AS candidates ORDER BY kind,name LIMIT " .. page_limit .. ")"
+        .. [[ SELECT page.*,summary.total,
+        CASE WHEN page.state='original' THEN COALESCE((SELECT MAX(r.revision) FROM mail_library_revision r
+            WHERE r.kind=page.kind AND r.name=page.name AND r.state='original'),0) ELSE page.revision END AS effective_revision,
+        CASE page.kind WHEN 'base' THEN
+            (SELECT COUNT(*) FROM mail_library WHERE kind='message' AND base=page.name)
+            + (SELECT COUNT(*) FROM declared d WHERE d.kind='message' AND d.base=page.name AND ]] .. available .. [[)
+        WHEN 'asset' THEN COALESCE((SELECT ]] .. array_size .. [[ FROM mail_library_asset a WHERE a.name=page.name),0)
+        END AS use_count
+        FROM summary LEFT JOIN page ON 1=1 ORDER BY page.kind,page.name]]
+    local found, read_err = db:query(query, args)
+    if read_err then return nil, read_err end
+    local page: types.LibraryPage = {items = {}, total = found[1].total :: integer}
+    for i, row in ipairs(found) do
+        if not row.kind then break end
+        if i > limit then
+            local last = page.items[limit]
+            page.next_cursor = last.kind .. "/" .. last.name
+            break
+        end
+        page.items[i] = {kind = row.kind :: string, name = row.name :: string, title = (row.title or "") :: string,
+            description = (row.description or "") :: string, base = row.base :: string?, state = row.state :: string,
+            origin = row.origin :: string?, revision = row.effective_revision :: integer, author = row.author :: string?,
+            updated_at = row.updated_at :: integer?, used_by = row.use_count and {messages = row.use_count :: integer} or nil}
+    end
+    return page, nil
+end
+
 function M.read(key: types.ResourceKey): (types.Resource?, error?)
     return database.read(function(db: sql.DB): (types.Resource?, error?) return M.get(db, key) end)
 end
 
-function M.asset_usage(db: types.Executor, name: string?): (types.AssetUsage?, error?)
-    local select_usage = "SELECT name,used_by_json FROM mail_library_asset"
+function M.asset_usage(db: types.Executor, name: string?, affected: types.AssetUsageFilter?): (types.AssetUsage?, error?)
+    local select_usage = "SELECT a.name,a.used_by_json FROM mail_library_asset a"
     local rows, err
     if name then
-        rows, err = db:query(select_usage .. " WHERE name=$1", {name})
+        rows, err = db:query(select_usage .. " WHERE a.name=$1", {name})
+    elseif affected then
+        local names, names_err = json.encode(affected.assets)
+        if names_err then return nil, names_err end
+        local messages, messages_err = json.encode(affected.messages)
+        if messages_err then return nil, messages_err end
+        local filter = affected.dialect == "postgres" and [[a.name IN (SELECT jsonb_array_elements_text($1::jsonb))
+            OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(a.used_by_json::jsonb) AS used(name)
+                WHERE used.name IN (SELECT jsonb_array_elements_text($2::jsonb)))]]
+            or [[a.name IN (SELECT value FROM json_each($1))
+            OR EXISTS (SELECT 1 FROM json_each(a.used_by_json) AS used
+                WHERE used.value IN (SELECT value FROM json_each($2)))]]
+        rows, err = db:query(select_usage .. " WHERE " .. filter, {names, messages})
     else
         rows, err = db:query(select_usage)
     end
@@ -119,34 +237,49 @@ function M.asset_usage(db: types.Executor, name: string?): (types.AssetUsage?, e
     return usage, nil
 end
 
-function M.save_asset_usage(tx: sql.Transaction, assets: {types.Resource}, usage: types.AssetUsage,
+function M.save_asset_usage(tx: sql.Transaction, dialect: string, assets: {types.Resource}, usage: types.AssetUsage,
     changed: {[string]: boolean}?): error?
-    local previous, read_err = M.asset_usage(tx)
+    local affected: types.AssetUsageFilter?
+    local affected_assets: {[string]: boolean} = {}
+    if changed then
+        affected = {dialect = dialect, assets = {}, messages = {}}
+        for name in pairs(usage) do affected_assets[name] = true end
+        for key in pairs(changed) do
+            local message = key:match("^message/(.+)$")
+            local asset = key:match("^asset/(.+)$")
+            if message then affected.messages[#affected.messages + 1] = message end
+            if asset then affected_assets[asset] = true end
+        end
+        for name in pairs(affected_assets) do affected.assets[#affected.assets + 1] = name end
+    end
+    local previous, read_err = M.asset_usage(tx, nil, affected)
     if read_err then return read_err end
     for _, asset in ipairs(assets) do
-        local names = usage[asset.name] or {}
         local prior = previous[asset.name]
-        if changed and prior then
-            for _, name in ipairs(prior) do
-                if not changed["message/" .. name] then names[#names + 1] = name end
+        if not changed or prior or affected_assets[asset.name] then
+            local names = usage[asset.name] or {}
+            if changed and prior then
+                for _, name in ipairs(prior) do
+                    if not changed["message/" .. name] then names[#names + 1] = name end
+                end
             end
+            table.sort(names)
+            usage[asset.name] = names
+            local encoded, encode_err = json.encode(names)
+            if encode_err then return encode_err end
+            local _, err
+            if prior then
+                _, err = tx:execute([[UPDATE mail_library_asset SET used_by_json=$1
+                    WHERE name=$2 AND used_by_json IS DISTINCT FROM $1]], {encoded, asset.name})
+            else
+                -- Packaged assets have no upload, so usage does not shadow their declarations.
+                _, err = tx:execute([[INSERT INTO mail_library_asset
+                    (name,title,description,origin,author,created_at,updated_at,used_by_json)
+                    VALUES ($1,$2,$3,$4,'system:kickside.mail.library',0,0,$5)]],
+                    {asset.name, asset.title, asset.description, asset.origin or sql.NULL, encoded})
+            end
+            if err then return err end
         end
-        table.sort(names)
-        usage[asset.name] = names
-        local encoded, encode_err = json.encode(names)
-        if encode_err then return encode_err end
-        local _, err
-        if prior then
-            _, err = tx:execute([[UPDATE mail_library_asset SET used_by_json=$1
-                WHERE name=$2 AND used_by_json IS DISTINCT FROM $1]], {encoded, asset.name})
-        else
-            -- Packaged assets have no upload, so usage does not shadow their declarations.
-            _, err = tx:execute([[INSERT INTO mail_library_asset
-                (name,title,description,origin,author,created_at,updated_at,used_by_json)
-                VALUES ($1,$2,$3,$4,'system:kickside.mail.library',0,0,$5)]],
-                {asset.name, asset.title, asset.description, asset.origin or sql.NULL, encoded})
-        end
-        if err then return err end
     end
     return nil
 end

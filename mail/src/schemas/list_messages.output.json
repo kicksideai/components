@@ -194,7 +194,8 @@
         ]
       }
     },
-    "total": {"type": "integer", "minimum": 0, "description": "Visible messages matching the filter across all pages."},
+    "total": {"type": "integer", "minimum": 0, "description": "Visible messages matching the filters, or a lower bound when total_is_lower_bound is true."},
+    "total_is_lower_bound": {"type": "boolean", "description": "The count or search reaches its retained-message window."},
     "failed_today": {"type": "integer", "minimum": 0, "description": "Visible messages that failed today in UTC across all filters."},
     "has_more": {
       "type": "boolean"

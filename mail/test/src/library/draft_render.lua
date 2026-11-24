@@ -13,4 +13,4 @@ local function with_sets<T>(html: string, text: string,
     end)
 end
 
-return {with_sets = with_sets, face_error = render.face_error, faces = render.faces}
+return {with_sets = with_sets, face_error = render.face_error, render_face = render.render_face, faces = render.faces}
