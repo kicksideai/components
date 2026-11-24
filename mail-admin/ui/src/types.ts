@@ -9,8 +9,7 @@ export type JsonObject = { [key: string]: Json }
 
 export interface VariableSchema {
   type: 'object'
-  // Mail encodes an empty object as an empty JSON array.
-  properties: Record<string, JsonObject> | []
+  properties: Record<string, JsonObject>
   required?: string[]
   additionalProperties?: boolean
 }
@@ -43,9 +42,12 @@ export interface ResourceContent {
   base?: string
   subject?: string
   schema: VariableSchema
-  samples: JsonObject | []
+  samples: JsonObject
   asset?: Asset
 }
+
+// The version a module ships, on a customized shipped resource.
+export interface OriginalSource { html: string; text: string; subject?: string; base?: string; schema: VariableSchema; samples: JsonObject }
 
 export interface Resource extends ResourceContent {
   state: ResourceState
@@ -57,6 +59,7 @@ export interface Resource extends ResourceContent {
   created_at?: number
   updated_at?: number
   used_by?: UsedBy
+  original?: OriginalSource
 }
 
 // A body-free library row from `view=summary`.

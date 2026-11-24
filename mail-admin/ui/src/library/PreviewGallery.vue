@@ -8,14 +8,15 @@ import { library as libraryApi } from '../api'
 import { useMail } from '../context'
 import { describe } from '../copy'
 import { emailDocument } from '../editor/render'
-import { faceLabels, problemOf } from '../editor/problems'
+import ProblemNote from '../editor/ProblemNote.vue'
+import { problemOf, type Problem } from '../editor/problems'
 
 // Every message rendered with its sample values through the current library, at phone width.
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const { library, go } = useMail()
 
-interface Tile { name: string; title: string; state: 'loading' | 'ready' | 'failed'; subject?: string; document?: string; problem?: string }
+interface Tile { name: string; title: string; state: 'loading' | 'ready' | 'failed'; subject?: string; document?: string; problem?: Problem; failure?: string }
 const tiles = ref<Tile[]>([])
 let generation = 0
 
@@ -28,9 +29,8 @@ async function render(tile: Tile, run: number) {
     tile.state = 'ready'
   } catch (failure) {
     if (run !== generation) return
-    const found = problemOf(failure)
-    const owner = found?.resource && found.resource.name !== tile.name ? (library.find(found.resource.kind, found.resource.name)?.title ?? found.resource.name) + ', ' : ''
-    tile.problem = found ? `${owner}${found.face ? faceLabels[found.face] + ': ' : ''}${found.message}` : describe(failure, 'This message could not be rendered.')
+    tile.problem = problemOf(failure)
+    tile.failure = tile.problem ? '' : describe(failure, 'This message could not be rendered.')
     tile.state = 'failed'
   }
 }
@@ -72,7 +72,10 @@ const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'm
         </button>
         <div class="mail-gallery-frame">
           <p v-if="tile.state === 'loading'" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Rendering…</p>
-          <p v-else-if="tile.state === 'failed'" class="mail-gallery-problem" role="status"><Icon icon="tabler:alert-triangle" aria-hidden="true" />{{ tile.problem }}</p>
+          <div v-else-if="tile.state === 'failed'" class="mail-gallery-problem">
+            <ProblemNote v-if="tile.problem" :problem="tile.problem" :draft="{ kind: 'message', name: tile.name }" />
+            <p v-else role="alert">{{ tile.failure }}</p>
+          </div>
           <iframe v-else sandbox="" :srcdoc="tile.document" :title="tile.title + ' preview'" tabindex="-1" />
         </div>
       </li>

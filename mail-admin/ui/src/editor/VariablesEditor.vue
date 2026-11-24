@@ -6,7 +6,6 @@ import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import { properties, samples } from '../content'
 import type { Json, JsonObject, ResourceContent } from '../types'
 import { faceLabels, type Problem } from './problems'
 
@@ -28,8 +27,8 @@ function text(value: Json | undefined): string {
 }
 function rowsOf(draft: ResourceContent): Row[] {
   const required = new Set(draft.schema.required ?? [])
-  const values = samples(draft)
-  return Object.entries(properties(draft.schema)).map(([name, schema]) => ({
+  const values = draft.samples
+  return Object.entries(draft.schema.properties).map(([name, schema]) => ({
     id: next++, name, schema,
     type: (types.some(type => type.value === schema.type) ? schema.type : 'string') as Kind,
     required: required.has(name),

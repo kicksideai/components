@@ -3,8 +3,11 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { html } from '@codemirror/lang-html'
 import { liquid } from '@codemirror/lang-liquid'
 import { HighlightStyle, bracketMatching, syntaxHighlighting } from '@codemirror/language'
-import { EditorState, type Extension } from '@codemirror/state'
-import { EditorView, drawSelection, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from '@codemirror/view'
+import { EditorState, RangeSetBuilder, type Extension } from '@codemirror/state'
+import {
+  Decoration, EditorView, ViewPlugin, drawSelection, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers,
+  type DecorationSet, type ViewUpdate,
+} from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 
 // Template tags `{{ … }}` share Liquid's delimiters, so the Liquid grammar over HTML highlights
@@ -37,6 +40,26 @@ const theme = EditorView.theme({
   '.cm-matchingBracket': { backgroundColor: 'color-mix(in srgb, var(--p-primary-color) 18%, transparent)', outline: 'none' },
 })
 
+// Long lines wrap; a wrapped continuation lines up under its line's own indentation, two characters further in,
+// so nested markup keeps its shape.
+function hangingIndent(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>()
+  for (const { from, to } of view.visibleRanges) {
+    for (let position = from; position <= to;) {
+      const line = view.state.doc.lineAt(position)
+      const indent = (/^[ \t]*/.exec(line.text)?.[0] ?? '').replace(/\t/g, '  ').length + 2
+      builder.add(line.from, line.from, Decoration.line({ attributes: { style: `padding-left: calc(${indent}ch + 6px); text-indent: -${indent}ch` } }))
+      position = line.to + 1
+    }
+  }
+  return builder.finish()
+}
+const wrappedIndent = ViewPlugin.fromClass(class {
+  decorations: DecorationSet
+  constructor(view: EditorView) { this.decorations = hangingIndent(view) }
+  update(update: ViewUpdate) { if (update.docChanged || update.viewportChanged) this.decorations = hangingIndent(update.view) }
+}, { decorations: plugin => plugin.decorations })
+
 export interface EditorOptions {
   doc: string
   label: string
@@ -53,7 +76,7 @@ export function language(): Extension {
 export function baseExtensions(label: string, readOnly: boolean): Extension[] {
   return [
     lineNumbers(), highlightActiveLineGutter(), drawSelection(), highlightActiveLine(), bracketMatching(),
-    syntaxHighlighting(highlight), theme, language(),
+    syntaxHighlighting(highlight), theme, language(), EditorView.lineWrapping, wrappedIndent,
     EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly),
     EditorView.contentAttributes.of({ 'aria-label': label, 'aria-multiline': 'true', role: 'textbox' }),
   ]

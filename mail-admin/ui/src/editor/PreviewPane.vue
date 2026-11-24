@@ -5,11 +5,12 @@ import { Icon } from '@iconify/vue'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
-import { library as libraryApi } from '../api'
+import { isDraftWorkspaceBlocked, library as libraryApi } from '../api'
 import { useMail } from '../context'
 import { describe } from '../copy'
 import type { DraftRender, ResourceContent } from '../types'
-import { faceLabels, problemOf, type Problem } from './problems'
+import ProblemNote from './ProblemNote.vue'
+import { problemOf, type Problem } from './problems'
 import { emailDocument } from './render'
 
 // The message preview beside the editor: the unsaved draft rendered by the server with sample values.
@@ -43,9 +44,17 @@ let timer: ReturnType<typeof setTimeout> | undefined
 
 // One preview request at a time: a change made while one renders is previewed when it returns.
 let inFlight = false, again = false
+// A request cut off by a page unload leaves Mail's draft workspace occupied, so no preview starts while the page
+// is leaving. A preview already in flight is never cancelled: it finishes and a stale result is dropped.
+let unloading = false
+const leave = () => { unloading = true; clearTimeout(timer) }
+window.addEventListener('pagehide', leave)
+window.addEventListener('beforeunload', leave)
+onBeforeUnmount(() => { window.removeEventListener('pagehide', leave); window.removeEventListener('beforeunload', leave) })
+const blocked = ref(false)
 async function render() {
   const name = message.value
-  if (!name) return
+  if (!name || unloading) return
   if (inFlight) { again = true; return }
   inFlight = true
   const current = begin()
@@ -54,11 +63,13 @@ async function render() {
     const result = await libraryApi.preview(name, [props.draft])
     if (!current()) return
     rendered.value = result
+    blocked.value = false
     problem.value = undefined
     failure.value = ''
   } catch (error) {
     if (!current()) return
-    const found = problemOf(error)
+    blocked.value = isDraftWorkspaceBlocked(error)
+    const found = blocked.value ? undefined : problemOf(error)
     problem.value = found ? { ...found, previewOf: name } : undefined
     failure.value = problem.value ? '' : describe(error, 'The preview could not be rendered.')
   } finally {
@@ -81,17 +92,6 @@ const from = computed(() => {
   const sender = delivery.value?.from
   if (!sender) return ''
   return sender.name ? `${sender.name} <${sender.address}>` : sender.address
-})
-const problemText = computed(() => {
-  const issue = problem.value
-  if (!issue) return ''
-  const resource = issue.resource
-  const title = resource ? library.find(resource.kind, resource.name)?.title ?? resource.name : ''
-  if (resource && props.draft.kind !== 'message' && resource.kind === 'message' && resource.name === issue.previewOf) {
-    return `${title} does not render with your changes. ${issue.message}`
-  }
-  const owner = resource && (resource.kind !== props.draft.kind || resource.name !== props.draft.name) ? title + ', ' : ''
-  return `${owner}${issue.face ? faceLabels[issue.face] + ': ' : ''}${issue.message}`
 })
 </script>
 
@@ -120,10 +120,10 @@ const problemText = computed(() => {
         <pre v-else class="mail-preview-text">{{ rendered.text }}</pre>
       </template>
     </div>
-    <p v-if="problem" class="mail-preview-foot mail-preview-problem" role="status">
-      <Icon icon="tabler:alert-triangle" aria-hidden="true" />
-      <span>{{ rendered ? 'Showing the last version that rendered.' : 'The draft does not render yet.' }} {{ problemText }}</span>
-    </p>
+    <div v-if="problem" class="mail-preview-foot mail-preview-problem">
+      <ProblemNote :problem="problem" :draft="draft" :last-good="!!rendered" />
+    </div>
+    <p v-else-if="blocked" class="mail-preview-foot mail-preview-problem" role="alert"><Icon icon="tabler:plug-connected-x" aria-hidden="true" /><span>{{ failure }}</span></p>
     <p v-else-if="failure" class="mail-preview-foot mail-preview-problem" role="alert"><Icon icon="tabler:alert-triangle" aria-hidden="true" /><span>{{ failure }}</span></p>
     <p v-else class="mail-preview-foot"><Icon icon="tabler:info-circle" aria-hidden="true" />
       {{ draft.kind === 'message' ? 'Filled with the sample values from Variables.' : 'Your unsaved version around a real message, filled with its sample values.' }}</p>

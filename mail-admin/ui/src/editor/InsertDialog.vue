@@ -7,11 +7,12 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import SelectButton from 'primevue/selectbutton'
 import { library as libraryApi } from '../api'
-import { assetSnippet, bodySlot, includeSnippet, properties, variableSnippet } from '../content'
+import { assetSnippet, bodySlot, includeSnippet, variableSnippet } from '../content'
 import { useMail } from '../context'
 import { describe, kindIcons } from '../copy'
 import type { ResourceContent } from '../types'
 import type { Face } from './problems'
+import AssetTile from '../library/AssetTile.vue'
 
 // Insert is a dialog, like New: popup menus lose real pointer clicks inside the shadow root.
 const props = defineProps<{ visible: boolean; draft: ResourceContent; face: Face }>()
@@ -33,7 +34,7 @@ const globalValues = [
   { name: 'sender.name', hint: 'The person sending the message' }, { name: 'message.subject', hint: 'This message’s subject' },
 ]
 const variables = computed(() => {
-  const own = Object.entries(properties(props.draft.schema)).map(([name, schema]) => ({
+  const own = Object.entries(props.draft.schema.properties).map(([name, schema]) => ({
     text: props.draft.kind === 'part' ? `{{ .${name} }}` : variableSnippet(name),
     name, hint: typeof schema.description === 'string' ? schema.description : '',
   }))
@@ -125,8 +126,9 @@ const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'm
         <ul v-else class="mail-list mail-insert-list">
           <li v-for="item in images" :key="item.name">
             <button type="button" class="mail-row-link" :disabled="!!busy" @click="chooseImage(item.name, item.title)">
-              <Icon :icon="busy === item.name ? 'tabler:loader-2' : kindIcons.asset" :class="{ spin: busy === item.name }" aria-hidden="true" />
+              <AssetTile :name="item.name" :revision="item.revision" />
               <span class="mail-list-main"><span>{{ item.title }}</span><span class="mail-sub mail-mono-block">{{ item.name }}</span></span>
+              <Icon v-if="busy === item.name" icon="tabler:loader-2" class="spin" aria-hidden="true" />
             </button>
           </li>
         </ul>

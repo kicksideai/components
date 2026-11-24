@@ -22,7 +22,7 @@ import AssetTile from './AssetTile.vue'
 import ResourceSource from './ResourceSource.vue'
 
 const props = defineProps<{ asset?: string }>()
-const { library, go, upload } = useMail()
+const { go, upload } = useMail()
 
 const query = ref(''), search = ref('')
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -62,10 +62,6 @@ function size(row: Resource): string {
   const box = asset.width && asset.height ? `${asset.width} × ${asset.height} · ` : ''
   return box + bytes(asset.size)
 }
-function usedBy(row: Resource): string {
-  const count = library.find('asset', row.name)?.used_by?.messages ?? 0
-  return count ? plural(count, 'message') : '—'
-}
 function open(row: Resource) { go({ name: 'library', section: 'assets', asset: row.name }) }
 </script>
 
@@ -99,7 +95,7 @@ function open(row: Resource) { go({ name: 'library', section: 'assets', asset: r
     <p v-if="!rows.length" class="mail-muted mail-nomatch" role="status">Nothing matches. Try another name.</p>
     <DataTable v-else :value="rows" data-key="name" class="mail-table" row-hover :pt="{ table: { 'aria-label': 'Assets' } }" @row-click="event => open(event.data)">
       <Column header="Image" header-class="mail-col-thumb" body-class="mail-col-thumb">
-        <template #body="{ data }"><AssetTile :asset="data.asset" /></template>
+        <template #body="{ data }"><AssetTile :name="data.name" :revision="data.revision" :asset="data.asset" /></template>
       </Column>
       <Column header="Name" header-class="mail-col-name" body-class="mail-col-name">
         <template #body="{ data }">
@@ -112,9 +108,6 @@ function open(row: Resource) { go({ name: 'library', section: 'assets', asset: r
       </Column>
       <Column header="Source" header-class="mail-col-source" body-class="mail-col-source">
         <template #body="{ data }"><ResourceSource :resource="data" /></template>
-      </Column>
-      <Column header="Used by" header-class="mail-col-used" body-class="mail-col-used">
-        <template #body="{ data }">{{ usedBy(data) }}</template>
       </Column>
       <Column header="Updated" header-class="mail-col-updated" body-class="mail-col-updated">
         <template #body="{ data }"><span class="mail-muted">{{ data.state === 'original' ? '—' : shortDate(data.updated_at) }}</span></template>

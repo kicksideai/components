@@ -16,6 +16,7 @@ import { problemOf } from '../editor/problems'
 import { useLibraryChanges } from '../realtime'
 import type { DraftRender, Resource, Revision } from '../types'
 import RefusalDialog, { type Refusal } from './RefusalDialog.vue'
+import AssetTile from './AssetTile.vue'
 import ResourceSource from './ResourceSource.vue'
 import UploadAsset from './UploadAsset.vue'
 
@@ -141,6 +142,7 @@ const preview = computed(() => shown.value?.html ? emailDocument(shown.value.htm
             <template #icon><Icon icon="tabler:trash" aria-hidden="true" /></template>
           </Button>
         </div>
+        <div class="mail-asset-hero"><AssetTile :name="asset.name" :revision="asset.revision" :asset="asset.asset" large :alt="asset.title" /></div>
         <dl class="mail-facts mail-card">
           <dt>Reference</dt>
           <dd class="mail-reference"><span class="mail-mono-block">{{ reference }}</span>

@@ -5,7 +5,6 @@ import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import { properties, samples } from '../content'
 import { useMail } from '../context'
 import { kindLabels } from '../copy'
 import type { ResourceContent } from '../types'
@@ -26,9 +25,9 @@ const changes = computed(() => {
   if (a.subject !== b.subject) list.push('Subject')
   if (a.html !== b.html) list.push('HTML')
   if (a.text !== b.text) list.push('Plain text')
-  if (JSON.stringify(properties(a.schema)) !== JSON.stringify(properties(b.schema)) || JSON.stringify(a.schema.required ?? []) !== JSON.stringify(b.schema.required ?? []))
+  if (JSON.stringify(a.schema.properties) !== JSON.stringify(b.schema.properties) || JSON.stringify(a.schema.required ?? []) !== JSON.stringify(b.schema.required ?? []))
     list.push(b.kind === 'message' ? 'Variables' : 'Inputs')
-  if (JSON.stringify(samples(a)) !== JSON.stringify(samples(b))) list.push('Sample values')
+  if (JSON.stringify(a.samples) !== JSON.stringify(b.samples)) list.push('Sample values')
   return list
 })
 const consequence = computed(() => props.draft.kind === 'message'

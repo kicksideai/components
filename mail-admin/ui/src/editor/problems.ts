@@ -15,6 +15,8 @@ export interface Problem {
   previewOf?: string
   // Each failing message with the engine's message for it.
   reasons?: { name: string; message: string }[]
+  // The resources the failed render used: its message, base and changed resources.
+  candidates?: ResourceKey[]
 }
 
 const faces: readonly Face[] = ['html', 'text', 'subject', 'variables', 'samples']
@@ -46,8 +48,10 @@ export function problemOf(error: unknown): Problem | undefined {
     const item = entry as Record<string, unknown>
     return isKey(item.resource) && typeof item.message === 'string' ? [{ name: item.resource.name, message: item.message }] : []
   }) : []
+  const candidates = Array.isArray(details.candidate_resources) ? details.candidate_resources.filter(isKey) : []
   return { message: error.message, face, resource: isKey(details.resource) ? details.resource : undefined,
-    dependents: dependents.length ? dependents : undefined, reasons: reasons.length ? reasons : undefined }
+    dependents: dependents.length ? dependents : undefined, reasons: reasons.length ? reasons : undefined,
+    candidates: candidates.length ? candidates : undefined }
 }
 
 export const faceLabels: Record<Face, string> = {

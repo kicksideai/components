@@ -131,9 +131,14 @@ const customizedNotice = computed(() => {
   if (item?.state !== 'customized') return ''
   return `Customized by ${personLabel(item.author_label, item.author)} ${onDate(item.updated_at)} from the version included with ${item.origin_label}.`
 })
-// The included version is in History once the resource has been reset at least once.
-const originalVersion = computed(() => revisions.value.find(revision => revision.state === 'original'))
-watch(() => resource.value?.state, state => { if (state === 'customized' && !revisions.value.length) void loadHistory() }, { immediate: true })
+// The version the module ships, as Mail reports it on a customized resource.
+const originalVersion = computed<Revision | undefined>(() => {
+  const item = resource.value
+  if (!item?.original) return undefined
+  const { kind, name, title, description } = item
+  return { kind, name, revision: -1, version: 0, action: 'reset', state: 'original', author: '', created_at: 0,
+    content: { kind, name, title, description, ...item.original } }
+})
 
 // Problems: the live preview's, then the last refused save's. Save is blocked while one stands.
 const previewProblem = ref<Problem>()
@@ -247,8 +252,10 @@ async function reset() {
 
 const shown = ref<Revision>()
 const showCompare = ref(false)
-function showVersion(revision: Revision, compare = false) {
+const showIncluded = ref(false)
+function showVersion(revision: Revision, compare = false, included = false) {
   showCompare.value = compare
+  showIncluded.value = included
   shown.value = revision
 }
 async function restore(revision: Revision) {
@@ -369,7 +376,7 @@ watch(() => props.section, section => { if (section === 'history' && !revisions.
       <div v-if="customizedNotice && section === 'content'" class="kx-notice mail-customized">
         <Icon icon="tabler:pencil" aria-hidden="true" />
         <span class="mail-customized-text">{{ customizedNotice }}</span>
-        <Button v-if="originalVersion" label="Compare with original" severity="secondary" outlined size="small" @click="showVersion(originalVersion, true)">
+        <Button v-if="originalVersion" label="Compare with original" severity="secondary" outlined size="small" @click="showVersion(originalVersion, true, true)">
           <template #icon><Icon icon="tabler:arrows-diff" aria-hidden="true" /></template>
         </Button>
         <Button label="Reset to original" severity="secondary" outlined size="small" :loading="busy === 'reset'" :disabled="busy !== undefined || dirty" @click="reset">
@@ -390,7 +397,7 @@ watch(() => props.section, section => { if (section === 'history' && !revisions.
   </template>
   <ReviewDialog v-if="resource && draft" :visible="reviewing" :saved="draftOf(resource)" :draft="draft" :busy="saving" :error="reviewError"
     :dependents="dependents" @close="reviewing = false" @save="save" />
-  <VersionDialog v-if="resource" :revision="shown" :current="resource" :compare="showCompare" :busy="typeof busy === 'number'"
-    @close="shown = undefined" @restore="restore" />
+  <VersionDialog v-if="resource" :revision="shown" :current="resource" :compare="showCompare" :included="showIncluded"
+    :busy="typeof busy === 'number' || busy === 'reset'" @close="shown = undefined" @restore="restore" @reset="shown = undefined; reset()" />
   <RefusalDialog :refusal="refusal" @close="refusal = undefined" />
 </template>

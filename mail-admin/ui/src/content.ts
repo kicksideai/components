@@ -1,13 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import type { Json, JsonObject, ResourceContent, TemplateKind, VariableSchema } from './types'
-
-export function properties(schema: VariableSchema): Record<string, JsonObject> {
-  return Array.isArray(schema.properties) ? {} : schema.properties
-}
-
-export function samples(content: Pick<ResourceContent, 'samples'>): JsonObject {
-  return Array.isArray(content.samples) ? {} : content.samples
-}
+import type { Json, ResourceContent, TemplateKind, VariableSchema } from './types'
 
 export function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
@@ -19,7 +11,7 @@ export function draftOf(content: ResourceContent): ResourceContent {
   return {
     kind: copy.kind, name: copy.name, title: copy.title, description: copy.description,
     html: copy.html, text: copy.text, base: copy.base, subject: copy.subject,
-    schema: { ...copy.schema, properties: properties(copy.schema) }, samples: samples(copy),
+    schema: copy.schema, samples: copy.samples,
   }
 }
 
@@ -56,8 +48,8 @@ function literal(value: Json): string | undefined {
 // An include of a part with each declared input filled from the part's sample or default.
 export function includeSnippet(part: ResourceContent): string {
   const pairs: string[] = []
-  const values = samples(part)
-  for (const [name, schema] of Object.entries(properties(part.schema))) {
+  const values = part.samples
+  for (const [name, schema] of Object.entries(part.schema.properties)) {
     const value = literal(values[name] ?? schema.default ?? (schema.type === 'string' ? '' : null))
     if (value !== undefined) pairs.push(`${JSON.stringify(name)}, ${value}`)
   }

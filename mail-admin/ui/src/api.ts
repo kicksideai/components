@@ -110,3 +110,9 @@ export function isDenied(error: unknown): boolean {
 export function isMissing(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 404 || error.kind === 'NOT_FOUND')
 }
+
+// Mail renders drafts in one shared workspace. A render cut off mid-way leaves it occupied, and Mail answers
+// 409 naming the occupied entry for every later preview and save until the service restarts.
+export function isDraftWorkspaceBlocked(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409 && typeof error.details?.entry_id === 'string'
+}

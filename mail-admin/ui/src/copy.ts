@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { ApiError, errorCode } from './api'
+import { ApiError, errorCode, isDraftWorkspaceBlocked } from './api'
 import type { MessageStatus, Origin, PrincipalLabel, ResourceKind, RevisionAction } from './types'
 
 export const kindLabels: Record<ResourceKind, string> = { message: 'Message', base: 'Base template', part: 'Part', asset: 'Image' }
@@ -99,7 +99,10 @@ const errorCopy: Record<string, string> = {
   mail_resource_in_use: 'Messages still use this resource. Remove it from them first.',
 }
 
+export const draftWorkspaceBlocked = 'Previews and saves are unavailable until the mail service restarts. Ask an administrator to restart it; your draft stays here.'
+
 export function describe(error: unknown, fallback: string): string {
+  if (isDraftWorkspaceBlocked(error)) return draftWorkspaceBlocked
   if (!(error instanceof ApiError) || error.status === undefined) return `${fallback} Check your connection and try again.`
   const code = errorCode(error)
   if (code && errorCopy[code]) return errorCopy[code]
