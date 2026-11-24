@@ -93,8 +93,14 @@ function M.failure(kind: string, code: string, message: string, retryable: boole
             provider_detail = provider_detail}})
 end
 
+function M.authorization_refused(status: number, provider_detail: string?): error
+    return M.failure(errors.PERMISSION_DENIED, "authorization_refused",
+        "The mail service refused authorization", false, status, nil, provider_detail)
+end
+
 function M.status_error(status: number, rejected_status: number, retry_after_ms: number?, provider_detail: string?): error
-    if status == 401 or status == 403 then
+    if status == 403 then return M.authorization_refused(status, provider_detail) end
+    if status == 401 then
         return M.failure(errors.PERMISSION_DENIED, "credentials_invalid", "The mail service refused authorization", false, status, nil, provider_detail)
     end
     if status == 400 or status == rejected_status then
