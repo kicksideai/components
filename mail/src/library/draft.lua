@@ -18,14 +18,13 @@ local function add_set(changes: registry.Changes, id: string, escape: string): e
     return err
 end
 
-local function cleanup(): (boolean?, error?)
-    local overlay, open_err = registry.overlay(jet.owner)
-    if open_err then return nil, open_err end
+local function clear(overlay: registry.Snapshot): (boolean?, error?)
     local entries, err = overlay:entries()
     if err then return nil, err end
+    if #entries == 0 then return false, nil end
     local ids = {}
     for _, entry in ipairs(entries) do
-        if entry.id:sub(1, #jet.draft_namespace) == jet.draft_namespace then ids[#ids + 1] = entry.id end
+        ids[#ids + 1] = entry.id
     end
     local changes = overlay:changes()
     local _, stage_err = changes:delete(ids)
@@ -35,9 +34,21 @@ local function cleanup(): (boolean?, error?)
     return true, nil
 end
 
+function M.clear_workspace(): (boolean?, error?)
+    local overlay, err = registry.overlay(jet.draft_owner)
+    if err then return nil, err end
+    return clear(overlay)
+end
+
 local function open(items: types.ResourceMap, checked: {types.ResourceContent}): error?
-    local overlay, err = registry.overlay(jet.owner)
+    local overlay, err = registry.overlay(jet.draft_owner)
     if err then return err end
+    local cleared, clear_err = clear(overlay)
+    if clear_err then return clear_err end
+    if cleared then
+        overlay, err = registry.overlay(jet.draft_owner)
+        if err then return err end
+    end
     local changes = overlay:changes()
     local html_err = add_set(changes, HTML, "html")
     if html_err then return html_err end
@@ -69,7 +80,7 @@ local function with_draft<T>(items: types.ResourceMap, checked: {types.ResourceC
     local open_err = open(items, checked)
     if open_err then return nil, open_err end
     local value, err = render.with_sets(HTML, TEXT, run)
-    local final_err = error_envelope.cleanup(cleanup, err, "Cannot close the mail draft sets")
+    local final_err = error_envelope.cleanup(M.clear_workspace, err, "Cannot close the mail draft sets")
     if final_err then return nil, final_err end
     return value, nil
 end

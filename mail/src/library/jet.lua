@@ -5,6 +5,7 @@ local M = {
     html = "kickside.mail.views:templates",
     text = "kickside.mail.views:text_templates",
     owner = "kickside.mail.library:projection",
+    draft_owner = "kickside.mail.library:draft_workspace",
     live_namespace = "kickside.mail.projection:",
     draft_namespace = "kickside.mail.draft:",
 }

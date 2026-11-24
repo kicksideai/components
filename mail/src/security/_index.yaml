@@ -326,7 +326,7 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail.library:projection]
+      resources: [kickside.mail.library:projection, kickside.mail.library:draft_workspace]
       actions: [registry.overlay.get, registry.overlay.apply]
       effect: allow
   - name: overlay_projection

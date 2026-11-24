@@ -26,6 +26,22 @@ entries:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       jet: kickside.mail.library:jet
+  - name: draft_render
+    kind: library.lua
+    source: file://draft_render.lua
+    modules: [ctx]
+    imports:
+      render: kickside.mail.views:render
+      types: kickside.mail:types
+  - name: draft_workspace_test
+    kind: function.lua
+    meta: { type: test, suite: mail_draft_workspace }
+    source: file://draft_workspace_test.lua
+    method: run
+    modules: [funcs, registry, security, time]
+    imports:
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
   - name: assets_test
     kind: function.lua
     meta: { type: test, suite: mail_assets }

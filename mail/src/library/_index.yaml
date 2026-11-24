@@ -65,6 +65,7 @@ entries:
       store: kickside.mail.library:store
       resources: kickside.mail.library:resources
       jet: kickside.mail.library:jet
+      draft: kickside.mail.library:draft
   - name: reconcile
     kind: function.lua
     meta:

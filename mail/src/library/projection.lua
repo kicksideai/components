@@ -6,6 +6,7 @@ local database = require("database")
 local store = require("store")
 local resources = require("resources")
 local jet = require("jet")
+local draft = require("draft")
 
 local M = {}
 
@@ -40,6 +41,8 @@ end
 local function reconcile(tx: sql.Transaction, dialect: string): (boolean?, error?)
     local lock_err = store.lock(tx, dialect)
     if lock_err then return nil, lock_err end
+    local _, clear_err = draft.clear_workspace()
+    if clear_err then return nil, clear_err end
     local entries, err = desired(tx)
     if err then return nil, err end
 

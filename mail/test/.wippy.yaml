@@ -18,6 +18,7 @@ workspace:
     kickside/users: ../../../kickside/platform/users
     kickside/doc2md: ../../../converters/doc2md
 override:
+  kickside.mail.library:draft:imports.render: app.mail_library:draft_render
   kickside.mail.security:send_access:groups: [app:mail_senders]
   kickside.core.jobs:policy:meta.proc.max_execution: 3s
   kickside.core.jobs:lease_release_signal:imports.hint: kickside.mail.harness:lease_hint
