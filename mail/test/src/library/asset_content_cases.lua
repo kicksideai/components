@@ -92,7 +92,7 @@ local function register(support)
     test.it("delivers personal uploads for the scoped sender without harness method grants", function()
         state.configured = true
         settings.settings("app.mail_harness:capture", "mail@example.org")
-        local member = settings.session("upload_sender", true)
+        local member = settings.session("upload_sender")
         local setup = assert(funcs.new():with_actor(member.actor):with_scope(assert(security.named_scope("wippy.security:process"))))
         local registration = assert(setup:call("kickside.component.binding:register_component_func", {
             component_id = upload_types.component_id_for_owner(member.id), impl_id = upload_types.IMPL,
@@ -109,13 +109,13 @@ local function register(support)
             text = "Attachment fixture", attachments = {{upload_id = ref}}}
         local sent, err = fixtures.mailer(sender, "send", request)
         assert(sent, tostring(err))
-        local other = settings.session("sender", true)
+        local other = settings.session("sender")
         local stranger = assert(funcs.new():with_actor(other.actor):with_scope(other.scope))
         local result, denied = fixtures.mailer(stranger, "send", request)
         test.is_nil(result)
         test.eq(errors.PERMISSION_DENIED, assert(denied):kind())
         terminal(sender, sent.message_id)
-        local admin = settings.session("delivery_sender", true)
+        local admin = settings.session("delivery_sender")
         local executor = assert(funcs.new():with_actor(admin.actor):with_scope(admin.scope))
         local completed = assert(fixtures.mailer(executor, "get_message", sent.message_id))
         test.eq("sent", completed.status, completed.last_error and completed.last_error.code)
@@ -127,7 +127,7 @@ local function register(support)
         local image = {kind = "asset", name = "restricted-editor-image", upload_id = upload("image/gif", gif())}
         state.owned[1] = image
         call("add_asset", image)
-        local person = settings.session("editor")
+        local person = settings.session("editor", nil, true)
         test.neq("allow", person.scope:evaluate(person.actor, "contract.open", "kickside.uploads:content_provider"))
         test.neq("allow", person.scope:evaluate(person.actor, "fs.get", "app:uploads"))
         local reader = assert(funcs.new():with_actor(person.actor):with_scope(person.scope))
@@ -137,16 +137,17 @@ local function register(support)
         test.eq(gif(), result.bytes)
     end)
 
-    test.it("reads adopted bytes as Mail with the public Uploads capability", function()
+    test.it("reads adopted bytes through the product byte reader as an editor", function()
         local image = {kind = "asset", name = "service-reader-image", upload_id = upload("image/gif", gif())}
         state.owned[1] = image
         local adopted = call("add_asset", image)
-        local person = settings.session("editor")
+        local person = settings.session("editor", nil, true)
         local reader = assert(funcs.new():with_actor(person.actor):with_scope(person.scope))
-        local result, read_err = reader:call("app.mail_library:service_content", adopted.asset.upload_id)
+        local result, read_err = reader:call("kickside.mail.read:read_asset_file",
+            {ref = {upload_id = adopted.asset.upload_id}, bytes = true})
         assert(result, tostring(read_err))
-        test.eq(content.library_component_id(), result.component_id)
-        test.eq(gif(), result.bytes)
+        test.eq("image/gif", result.content_type)
+        test.eq(gif(), result.content)
     end)
 
     test.it("finds references in base, part and message output once and guards deletion", function()

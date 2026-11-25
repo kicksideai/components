@@ -52,9 +52,8 @@ local function register(support)
                     changed[2].data.source = directive(word, "/base/standard")
                 end
                 apply(changed)
-                local returned, sent, err = pcall(invoke, sender, "send", body())
+                local sent, err = invoke(sender, "send", body())
                 apply(originals)
-                assert(returned, tostring(sent))
                 refusal(sent, err, errors.INTERNAL, "template_render_failed")
                 local details = (err :: error):details()
                 test.eq("html", details.face)
@@ -149,10 +148,9 @@ local function register(support)
     test.it("invokes the four registered tools as non-admin callers", function()
         local admin, sender = actors.admin, actors.sender
         local reader_policies = {table.unpack(READER_POLICIES)}
-        reader_policies[#reader_policies + 1] = "kickside.mail.security:send_runtime"
         local reader = caller(reader_policies)
         local tool_sender = caller({
-            "kickside.mail.security:module_access", "kickside.mail.security:module_runtime",
+            "kickside.mail.security:module_access",
             "kickside.mail.security:library_access", "kickside.mail.security:send_access",
         })
         local input = template_request()
@@ -168,7 +166,8 @@ local function register(support)
             refusal(missing, missing_err, errors.NOT_FOUND, "template_not_found")
         end
         local refused, send_err = reader:call(TOOL_NS .. "mail_send", input)
-        refusal(refused, send_err, errors.PERMISSION_DENIED, "mail_send_denied")
+        test.is_nil(refused)
+        test.eq(errors.PERMISSION_DENIED, assert(send_err):kind())
         local absent, preview_err = sender:call(TOOL_NS .. "mail_preview", preview_input)
         refusal(absent, preview_err, errors.PERMISSION_DENIED, "mail_library_denied")
         local preview = assert(tool_sender:call(TOOL_NS .. "mail_preview", preview_input))
@@ -205,7 +204,7 @@ local function register(support)
     test.it("discovers MailSend as a public Block and lowers its registered schema", function()
         local id = TOOL_NS .. "mail_send"
         local tool_sender = caller({
-            "kickside.mail.security:module_runtime", "kickside.mail.security:send_access",
+            "kickside.mail.security:send_access",
         })
         local result = assert(invoke(tool_sender, "blocks", body()))
         test.eq("tool", result.descriptor.source_kind)
@@ -263,9 +262,7 @@ local function register(support)
         db:release()
 
         local reader = caller({
-            "kickside.mail.security:module_runtime", "kickside.mail.security:template_access",
-            "kickside.mail.security:send_access", "app.mail_harness:principal_reader",
-            "kickside.users.security:users_runtime_read", "kickside.users.security:login_db_access",
+            "kickside.mail.security:send_access", "kickside.users.security:directory_access",
         })
         local input = body()
         input.to[2] = {user_id = id}

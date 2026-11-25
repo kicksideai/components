@@ -441,6 +441,10 @@ entries:
     policy:
       resources:
         - kickside.mail.traits:email_design
+        - kickside.mail.traits:mail_readonly
+        - kickside.mail.traits:mail_list_templates
+        - kickside.mail.traits:mail_get_template
+        - kickside.mail.traits:mail_preview
         - kickside.mail.traits:library_list
         - kickside.mail.traits:library_read
         - kickside.mail.traits:library_preview

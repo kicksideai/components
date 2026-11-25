@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local json = require("json")
+local security = require("security")
 
 local failures = {
     refused = "dial tcp: connect: connection refused",
@@ -12,7 +13,20 @@ local failures = {
 
 return {
     request = function(method, url, options)
-        assert(method == "POST" and url == "https://provider.example.org/messages")
+        assert(method == "POST")
+        if url == "https://delivery.example.invalid/messages" then
+            assert(security.can("http_client.request", url), "Example URL must be admitted by the transport scope")
+            local message = assert(json.decode(options.body))
+            if message.subject == "Rejected by the relay" then
+                return {status_code = 422, body = "{}", headers = {}}, nil
+            end
+            local part = message.attachments and message.attachments[1]
+            return {status_code = 200, body = json.encode({id = json.encode({
+                subject = message.subject, content_id = part and part.content_id,
+                encoded_attachment = part and #part.content_base64 > 0,
+            })}), headers = {}}, nil
+        end
+        assert(url == "https://provider.example.org/messages")
         local timeout = assert(tonumber(options.timeout:match("^(%d+)ns$")))
         assert(timeout > 0 and timeout <= 3000000000)
         local input = assert(json.decode(options.body))

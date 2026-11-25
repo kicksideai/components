@@ -28,19 +28,17 @@ local function probe(id: string)
     return true, nil
 end
 
-local function invoke(operation, message, policy_ids, groups)
+local function invoke(operation, message, group)
+    local groups = {"app:user", group or "app.mail_api:driver_only"}
     local actor = assert(security.new_actor("mail-harness-transport-caller", {security_groups = groups}))
-    local policies = {assert(security.policy("app.mail_harness:caller"))}
-    for _, id in ipairs(policy_ids) do policies[#policies + 1] = assert(security.policy(id)) end
-    local scope = assert(security.new_scope(policies))
+    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
+    local scope = assert(security.named_scope(materialized.scope_name)):with(assert(security.policy("app.mail_harness:caller")))
     local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
     return executor:call("app.mail_harness:probe", {operation = operation, message = message})
 end
 
 local function catalog()
-    local current = assert(invoke("delivery_status", nil, {
-        "kickside.mail.security:module_runtime", "kickside.mail.security:log_admin",
-    }))
+    local current = assert(invoke("delivery_status"))
     local catalog = {}
     for _, status in ipairs(current.transports) do catalog[status.id] = status end
     return catalog
@@ -127,13 +125,9 @@ local function define_tests()
 
         test.it("reports the stored driver revision so a settings write can check it", function()
             local selected = change_driver(ADMITTED)
-            local current = invoke("delivery_status", nil, {
-                "kickside.mail.security:module_runtime", "kickside.mail.security:log_admin",
-            })
+            local current = invoke("delivery_status")
             local cleared = change_driver()
-            local unset = invoke("delivery_status", nil, {
-                "kickside.mail.security:module_runtime", "kickside.mail.security:log_admin",
-            })
+            local unset = invoke("delivery_status")
             test.is_true(selected.success, selected.error :: string?)
             test.is_true(selected.revision > 0)
             test.eq(selected.revision, current.driver_revision)
@@ -142,17 +136,20 @@ local function define_tests()
         end)
 
         test.it("rejects a refused ID in the driver setting", function()
+        assert(change_driver(ADMITTED).success)
+        local before = assert(invoke("delivery_status"))
             local result = change_driver(REFUSED)
             test.is_false(result.success)
-            test.is_true(type(result.error) == "string" and result.error:find("%S") ~= nil)
+        local after = assert(invoke("delivery_status"))
+        test.eq(ADMITTED, after.driver.id)
+        test.eq(before.driver_revision, after.driver_revision)
+        assert(change_driver().success)
         end)
 
         test.it("accepts the empty default to clear the driver selection", function()
             assert(change_driver(ADMITTED).success)
             local cleared = change_driver("")
-            local status = invoke("delivery_status", nil, {
-                "kickside.mail.security:module_runtime", "kickside.mail.security:log_admin",
-            })
+            local status = invoke("delivery_status")
             assert(change_driver().success)
             test.is_true(cleared.success, cleared.error :: string?)
             test.is_false(status.ready)
@@ -164,9 +161,7 @@ local function define_tests()
             apply(nil, {LATE_POLICY})
             local sent, err
             if selected.success then
-                sent, err = invoke("send", {to = {"reader@example.org"}, subject = "Transport admission", text = "Ready"}, {
-                    "kickside.mail.security:module_runtime", "kickside.mail.security:send_access",
-                }, {"app:mail_senders"})
+                sent, err = invoke("send", {to = {"reader@example.org"}, subject = "Transport admission", text = "Ready"}, "app:mail_senders")
                 assert(change_driver().success)
             end
             test.is_true(selected.success, selected.error :: string?)

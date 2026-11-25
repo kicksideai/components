@@ -36,8 +36,7 @@ local function register(support)
         part.html = "{{ missing_value }}"
         local _, body = request(editor, "POST", "/library/preview", {message = message.name, resource = part})
         test.eq(message.name, body.details.resource.name)
-        test.eq("Mail could not render this template.", body.error)
-        test.not_nil(body.details.engine_message:match("^template render failed: template rendering failed: Jet Runtime Error"))
+        test.eq("template_render_failed", body.code)
         test.not_nil(body.details.engine_message:find("missing_value", 1, true))
         local candidates = body.details.candidate_resources
         test.eq(3, #candidates)
@@ -50,8 +49,7 @@ local function register(support)
         return '{{ ' .. word .. ' "/' .. kind .. '/' .. name .. '" }}'
     end
 
-    local function cycle_failure(reason, details, label, diagnostic)
-        test.eq("Mail could not render this template.", reason, label)
+    local function cycle_failure(details, label, diagnostic)
         test.eq("html", details.face, label)
         test.not_nil(details.engine_message:find(diagnostic or "template dependency cycle", 1, true), details.engine_message)
     end
@@ -61,7 +59,7 @@ local function register(support)
         test.eq(400, status, method .. " " .. path .. ": " .. raw)
         test.eq(errors.INVALID, body.kind, raw)
         test.eq("template_render_failed", body.code, raw)
-        cycle_failure(body.error, body.details, path, diagnostic)
+        cycle_failure(body.details, path, diagnostic)
     end
 
     local function review_cycle(editor, draft, diagnostic)
@@ -69,7 +67,7 @@ local function register(support)
         test.is_nil(result.preview_id)
         local issue = assert(result.errors[1])
         test.eq("template_render_failed", issue.code)
-        cycle_failure(issue.message, issue, "review", diagnostic)
+        cycle_failure(issue, "review", diagnostic)
     end
 
     local function tool_cycle(editor, tool, payload, diagnostic)
@@ -77,7 +75,7 @@ local function register(support)
         assert(not err, tostring(err))
         test.eq(false, result.success, tool)
         test.eq("template_render_failed", result.code, tool)
-        cycle_failure(result.error, tool == "library_preview" and result.errors[1] or result, tool, diagnostic)
+        cycle_failure(tool == "library_preview" and result.errors[1] or result, tool, diagnostic)
         test.is_nil(result.preview_id, tool)
     end
 
@@ -90,7 +88,9 @@ local function register(support)
 
     local function seed_history(editor, item, invalid_html)
         local actor = assert(security.new_actor(editor.id, {user_id = editor.id, security_groups = {"app:mail_editors"}}))
-        local scope = assert(security.named_scope("app.mail_library:projection_editor"))
+        local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set",
+            {groups = {"app.mail_library:projection_fixture"}}))
+        local scope = assert(security.named_scope(materialized.scope_name))
         local definition = assert(contract.get("kickside.core:threads"))
         local threads = assert(definition:with_actor(actor):with_scope(scope):open())
         local thread = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")

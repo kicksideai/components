@@ -141,13 +141,14 @@ local function register(support)
         local first = failed(sender.id, "Window boundary", "reader@example.org", start + 10002)
         local second = failed(sender.id, "Window boundary", "reader@example.org", start + 10002)
         local db = assert(sql.get("app:db"))
-        assert(db:execute([[WITH RECURSIVE sequence(n) AS (
+        assert(db:execute([[WITH RECURSIVE fixture AS (SELECT CAST($1 AS BIGINT) AS first_at, CAST($2 AS TEXT) AS sender),
+        sequence(n) AS (
             SELECT 2 UNION ALL SELECT n+1 FROM sequence WHERE n<10001
         )
         INSERT INTO mail_message (id,created_at,finished_at,sender,recipients,subject,from_address,attachments,driver_id,status)
-        SELECT 'window-' || n,CAST($1 AS BIGINT)+n,CAST($1 AS BIGINT)+n,$2,
+        SELECT 'window-' || fixture.sender || '-' || n,fixture.first_at+n,fixture.first_at+n,fixture.sender,
             '{"to":["reader@example.org"]}','Digest','mail@example.org','[]','fixture','failed'
-        FROM sequence]], {start, sender.id}))
+        FROM sequence, fixture]], {start, sender.id}))
         assert(db:release())
         local list = data(admin, "GET", "/activity?limit=1")
         test.eq(10000, list.total)

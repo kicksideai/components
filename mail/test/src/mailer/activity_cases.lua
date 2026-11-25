@@ -84,8 +84,7 @@ local function register(support)
     test.it("lists and reads only the sender's messages unless the viewer holds log administration", function()
         local admin, sender, log_admin = actors.admin, actors.sender, actors.log_admin
         capture_with(admin)
-        local other = caller({"kickside.mail.security:send_access",
-            "kickside.mail.security:module_runtime", "kickside.mail.security:template_access"})
+        local other = caller({"kickside.mail.security:send_access"})
         local one = assert(invoke(sender, "send", body()))
         local two = assert(invoke(sender, "send", body()))
         local three = assert(invoke(other, "send", body()))

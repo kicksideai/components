@@ -51,7 +51,7 @@ return {run = test.run_cases(function()
             local component_id = content.library_component_id()
             local now = time.now():add(time.HOUR):unix_nano() // 1000000
             local teardown = open("kickside.contract:deletable", component_id, now)
-            local who = api_fixtures.session("upload_editor", true)
+            local who = api_fixtures.session("upload_editor")
             local owner = upload_types.component_id_for_owner(who.id)
             local setup = assert(funcs.new():with_actor(who.actor):with_scope(assert(security.named_scope("wippy.security:process"))))
             local registered = assert(setup:call("kickside.component.binding:register_component_func",
@@ -74,6 +74,8 @@ return {run = test.run_cases(function()
             local saved = assert(fixtures.call(editor, "create", message))
             fixtures.await_live(saved.seq)
             fixtures.await_sync_idle()
+            local original_due = assert(rows("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {upload.uuid})[1]).due_at
+            local expected_due = math.min(original_due or now, now)
             for _ = 1, 2 do
                 test.is_true(assert(teardown:delete({})).success)
                 for _, name in ipairs({"mail_library", "mail_library_asset", "mail_library_history", "mail_library_reference",
@@ -82,13 +84,18 @@ return {run = test.run_cases(function()
                 end
                 test.eq(0, #assert(assert(registry.overlay("kickside.mail.render:live")):entries()))
                 local ledger = rows("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {upload.uuid})
-                test.is_true(ledger[1] and ledger[1].due_at <= now)
+                test.eq(expected_due, assert(ledger[1]).due_at)
             end
             test.is_true(storage:exists(upload.storage_path))
             local deleted, delete_err = component.system_delete(component_id)
-            assert(deleted or (delete_err:details() or {}).cleanup_pending, tostring(delete_err))
+            test.is_false(deleted)
+            test.eq(errors.CONFLICT, assert(delete_err):kind())
+            test.is_true(delete_err:details().cleanup_pending)
+            local threads = assert(assert(contract.get("kickside.core:threads")):open())
             fixtures.await(function()
-                return #rows("SELECT id FROM kickside_thread WHERE id=$1", {component_id}) == 0
+                local thread, err = threads:find({thread_id = component_id})
+                if err then assert(errors.is(err, errors.NOT_FOUND), tostring(err)) end
+                return thread == nil
             end, "Component deletion did not purge the library thread")
             local retention = assert(funcs.new():with_context({mail_test_now = now}))
             local swept = assert(retention:call("kickside.mail.jobs:owner", {}))

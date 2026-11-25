@@ -60,8 +60,6 @@ entries:
     method: invoke_mailer
     modules: *fixtures_modules
     imports: *fixtures_imports
-    security:
-      policies: [kickside.mail.security:module_runtime]
   - name: invoke_access
     kind: security.policy
     groups: [app.mail_api:editor, app.mail_api:editor_sender, app.mail_api:sender, app.mail_api:upload_sender,
@@ -108,6 +106,7 @@ entries:
     imports:
       fixtures: app.mail_library:fixtures
       prune: kickside.core.retention:prune
+      api_fixtures: app.mail_api:fixtures
   - name: draft_render
     kind: library.lua
     source: file://draft_render.lua
@@ -124,6 +123,7 @@ entries:
     imports:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
   - name: assets_test
     kind: function.lua
     meta: { type: test, suite: mail_assets }
@@ -206,11 +206,11 @@ entries:
     imports:
       thread_events: kickside.mail.read:thread_events
       asset_interleave: app.mail_library:asset_interleave
-  - name: reap_fault
+  - name: upload_storage
     kind: library.lua
-    source: file://reap_fault.lua
+    source: file://upload_storage.lua
     imports:
-      uploads: kickside.mail.command:uploads
+      storage: kickside.uploads.binding:storage_adapter_default
       asset_interleave: app.mail_library:asset_interleave
   - name: projection_fault
     kind: library.lua
@@ -219,25 +219,6 @@ entries:
     imports:
       live: kickside.mail.render:live
       database: kickside.mail.persist:db
-  - name: service_content
-    kind: function.lua
-    source: *assets_source
-    method: service_content
-    modules: *assets_modules
-    imports: *assets_imports
-    security:
-      actor: {id: "system:kickside.mail.retention"}
-      groups: [kickside.mail.security:asset_service]
-      policies:
-        - kickside.mail.security:asset_provider_calls
-        - kickside.mail.security:mail_db
-  - name: service_content_call
-    kind: security.policy
-    groups: [app.mail_api:editor]
-    policy:
-      resources: [app.mail_library:service_content]
-      actions: [funcs.call]
-      effect: allow
   - name: acl_test
     kind: function.lua
     meta: { type: test, suite: mail_library_acl }
@@ -247,6 +228,7 @@ entries:
     imports:
       autoinit: kickside.component:autoinit
       fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
       test: wippy.test:test
   - name: projection_test
     kind: function.lua
@@ -260,33 +242,31 @@ entries:
       originals: kickside.mail.render:originals
       autoinit: kickside.component:autoinit
       test: wippy.test:test
-  - name: projection_editor
+  - name: projection_fixture
     kind: security.scope
-  - name: projection_editor_composition
+  - name: projection_fixture_composition
     kind: registry.entry
     meta: {type: kickside.security.group_composition}
-    group_id: app.mail_library:projection_editor
-    groups: [app:user]
+    group_id: app.mail_library:projection_fixture
     policies:
-      - kickside.core.jobs.security:module_access
       - kickside.core.security:module_access
+      - kickside.core.jobs.security:module_access
       - kickside.component.security:module_access
-      - kickside.mail.security:library_threads
-      - kickside.mail.security:library_component_read
-      - kickside.mail.security:library_component_registry
-      - app.mail_library:projection_editor_context
-      - app.mail_library:projection_editor_notifications
-  - name: projection_editor_context
+      - app.mail_library:fixture_threads
+      - app.mail_harness:fixture_db
+      - app.mail_library:fixture_projection_context
+  - name: fixture_projection_context
     kind: security.policy
     policy:
       resources: [security]
       actions: [contract.security, funcs.security]
       effect: allow
-  - name: projection_editor_notifications
+  - name: fixture_threads
     kind: security.policy
     policy:
-      resources: [kickside.core.retention:notify, kickside.core.threads:emit_update, kickside.core.threads:cursor_waiter_signal]
-      actions: [funcs.call]
+      resources: [kickside.core:threads, kickside.core:threads_binding, find, append_events, catch_up_projection,
+        pause_projection, resume_projection, find_event_by_external, list_events, get_access_context]
+      actions: [contract.get, contract.open, contract.call]
       effect: allow
   - name: binding_declaration_test
     kind: function.lua

@@ -5,7 +5,7 @@ entries:
   - name: fixtures
     kind: library.lua
     source: file://fixtures.lua
-    modules: [contract, funcs, security, sql, uuid]
+    modules: [contract, funcs, http_client, json, security, sql, system, uuid]
   - name: api_test
     kind: function.lua
     meta: { type: test, suite: mail_api }
@@ -75,8 +75,6 @@ entries:
     group_id: app.mail_api:sender
     policies:
       - kickside.mail.security:send_access
-      - kickside.mail.security:module_runtime
-      - kickside.mail.security:member_endpoints
   - name: upload_sender
     kind: security.scope
   - name: upload_sender_composition
@@ -84,7 +82,7 @@ entries:
     meta: {type: kickside.security.group_composition}
     group_id: app.mail_api:upload_sender
     groups: [app.mail_api:sender]
-    policies: [app:uploads_storage_access]
+    policies: [kickside.uploads.security:module_access]
   - name: upload_editor
     kind: security.scope
   - name: upload_editor_composition
@@ -92,7 +90,7 @@ entries:
     meta: {type: kickside.security.group_composition}
     group_id: app.mail_api:upload_editor
     groups: [app.mail_api:editor]
-    policies: [app:uploads_storage_access]
+    policies: [kickside.uploads.security:module_access]
   - name: upload_editor_sender
     kind: security.scope
   - name: upload_editor_sender_composition
@@ -122,10 +120,6 @@ entries:
     policies:
       - app.mail_api:bundled_template_catalog
       - kickside.mail.security:library_access
-      - kickside.mail.security:library_runtime
-      - kickside.mail.security:library_endpoints
-      - kickside.mail.security:module_runtime
-      - kickside.mail.security:member_endpoints
   - name: editor_sender
     kind: security.scope
   - name: editor_sender_composition
@@ -134,10 +128,6 @@ entries:
     group_id: app.mail_api:editor_sender
     policies:
       - kickside.mail.security:library_access
-      - kickside.mail.security:library_runtime
-      - kickside.mail.security:library_endpoints
-      - kickside.mail.security:module_runtime
-      - kickside.mail.security:member_endpoints
       - kickside.mail.security:send_access
   - name: log_reader
     kind: security.scope
@@ -169,9 +159,6 @@ entries:
     policies:
       - kickside.mail.security:driver_admin
       - kickside.mail.security:log_admin
-      - kickside.mail.security:delivery_endpoints
-      - kickside.mail.security:module_runtime
-      - kickside.mail.security:member_endpoints
   - name: delivery_sender
     kind: security.scope
   - name: delivery_sender_composition
@@ -181,12 +168,32 @@ entries:
     policies:
       - kickside.mail.security:driver_admin
       - kickside.mail.security:log_admin
-      - kickside.mail.security:delivery_endpoints
-      - kickside.mail.security:module_runtime
-      - kickside.mail.security:member_endpoints
       - kickside.mail.security:send_access
   - name: settings_admin
     kind: security.scope
+  - name: users_admin
+    kind: security.scope
+  - name: users_admin_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:users_admin
+    policies:
+      - kickside.users.security:module_access
+      - kickside.security.security:module_access
+      - app.mail_api:users_scope_catalog
+      - app.mail_api:users_scope_context
+  - name: users_scope_catalog
+    kind: security.policy
+    policy:
+      resources: [kickside.contract:security_scopes, kickside.security.api:security_scopes_binding, list]
+      actions: [registry.get, contract.get, contract.open, contract.call]
+      effect: allow
+  - name: users_scope_context
+    kind: security.policy
+    policy:
+      resources: [security]
+      actions: [contract.security]
+      effect: allow
   - name: settings_admin_composition
     kind: registry.entry
     meta: { type: kickside.security.group_composition }

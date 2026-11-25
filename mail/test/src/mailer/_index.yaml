@@ -72,7 +72,7 @@ entries:
   - name: http_client
     kind: library.lua
     source: file://http_client.lua
-    modules: [json]
+    modules: [json, security]
   - name: transport_probe_call
     kind: security.policy
     policy:
@@ -127,6 +127,7 @@ entries:
       compiler: kickside.workflows.compiler:compiler
       jobs: kickside.core.jobs:jobs
       database: kickside.mail.persist:db
+      api_fixtures: app.mail_api:fixtures
       admission_cases: app.mail_harness:admission_cases
       delivery_retry_cases: app.mail_harness:delivery_retry_cases
       activity_cases: app.mail_harness:activity_cases
@@ -134,6 +135,7 @@ entries:
       automation_cases: app.mail_harness:automation_cases
       settings_cases: app.mail_harness:settings_cases
       template_cases: app.mail_harness:template_cases
+      driver_example_cases: app.mail_harness:driver_example_cases
   - name: admission_cases
     kind: library.lua
     source: file://admission_cases.lua
@@ -161,8 +163,19 @@ entries:
     imports:
       jobs: kickside.core.jobs:jobs
       database: kickside.mail.persist:db
-      jobs_cancel: kickside.core.jobs.persist:lifecycle_cancel
       policy: kickside.mail.domain:policy
+      api_fixtures: app.mail_api:fixtures
+  - name: interrupted_delivery
+    kind: function.lua
+    meta: {type: kickside.core.jobs.worker}
+    source: file://delivery_retention_cases.lua
+    method: interrupted_delivery
+    modules: [funcs, sql, time, uuid]
+    imports:
+      jobs: kickside.core.jobs:jobs
+      database: kickside.mail.persist:db
+      policy: kickside.mail.domain:policy
+      api_fixtures: app.mail_api:fixtures
   - name: automation_cases
     kind: library.lua
     source: file://automation_cases.lua
@@ -198,15 +211,18 @@ entries:
       resources: [app.templates:reminder_template]
       actions: [registry.get, registry.find]
       effect: allow
+  - name: principal_search
+    kind: security.scope
+  - name: principal_search_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_harness:principal_search
+    policies: [kickside.users.security:directory_access, app.mail_harness:principal_reader]
   - name: principal_reader
     kind: security.policy
     policy:
-      resources:
-        - get_user
-        - kickside.users:user_provisioning
-        - kickside.users:provisioning_binding
-        - kickside.users.provisioning:provisioning_get_user
-      actions: [registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+      resources: [get_user]
+      actions: [contract.call]
       effect: allow
   - name: settings_editor
     kind: security.scope
@@ -246,6 +262,7 @@ entries:
       compiler: kickside.workflows.compiler:compiler
       jobs: kickside.core.jobs:jobs
       database: kickside.mail.persist:db
+      api_fixtures: app.mail_api:fixtures
       admission_cases: app.mail_harness:admission_cases
       delivery_retry_cases: app.mail_harness:delivery_retry_cases
       activity_cases: app.mail_harness:activity_cases
@@ -253,6 +270,7 @@ entries:
       automation_cases: app.mail_harness:automation_cases
       settings_cases: app.mail_harness:settings_cases
       template_cases: app.mail_harness:template_cases
+      driver_example_cases: app.mail_harness:driver_example_cases
   - name: port_declaration_test
     kind: function.lua
     meta: { type: test, suite: mailer }
@@ -282,3 +300,7 @@ entries:
     kind: library.lua
     source: file://delivery_wait.lua
     modules: [channel, events, time]
+  - name: driver_example_cases
+    kind: library.lua
+    source: file://driver_example_cases.lua
+    modules: [contract, json]

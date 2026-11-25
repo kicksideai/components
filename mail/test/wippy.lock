@@ -2,6 +2,8 @@ directories:
     modules: .wippy
     src: .
 modules:
+    - name: example/mail-relay
+      version: 0.0.0
     - name: kickside/automation
       version: 0.2.45
     - name: kickside/blocks

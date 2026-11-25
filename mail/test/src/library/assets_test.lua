@@ -25,7 +25,7 @@ local asset_content_cases = require("asset_content_cases")
 local asset_delivery_cases = require("asset_delivery_cases")
 
 local function setup_actor(role)
-    local member = settings.session(role, true)
+    local member = settings.session(role)
     local exec = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
     return member.id, exec, member.actor
 end
@@ -262,13 +262,4 @@ local expiry = test.run_cases(function()
     end)
 end)
 
-local function service_content(upload_id)
-    assert(security.actor():id() == "system:kickside.mail.retention")
-    local provider, info, err = content.upload_info(upload_id)
-    if err then return nil, err end
-    local file, read_err = content.upload_bytes(provider, info.size, 1024)
-    if read_err then return nil, read_err end
-    return {component_id = info.source_ref.component_id, bytes = file.content}
-end
-
-return {run = run, expiry = expiry, service_content = service_content}
+return {run = run, expiry = expiry}

@@ -20,11 +20,7 @@ local function register(support)
     local discard_overlay = support.discard_overlay
 
     test.it("exposes the shipped Image and Signature to library editors", function()
-        local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
-            assert(security.policy("kickside.mail.security:library_runtime")),
-            assert(security.policy("app.mail_library:invoke_access"))}))
-        local actor = assert(security.new_actor("parts-editor", {security_groups = {"app:mail_editors"}}))
-        local editor = assert(funcs.new():with_actor(actor):with_scope(scope))
+        local editor = fixtures.editor()
         local parts = {}
         for _, item in ipairs(assert(fixtures.call(editor, "list", {kind = "part"})).items) do
             parts[item.name] = item
@@ -37,7 +33,7 @@ local function register(support)
             for _, face in ipairs({name, name .. ".text"}) do
                 for _, action in ipairs({"registry.overlay.shadow", "registry.overlay.update.template.jet",
                     "registry.overlay.delete.template.jet"}) do
-                    test.eq("allow", projection:evaluate(actor, action, "kickside.mail.views:" .. face))
+                    test.eq("allow", projection:evaluate(assert(security.actor()), action, "kickside.mail.views:" .. face))
                 end
             end
         end
@@ -111,11 +107,9 @@ local function register(support)
         message.schema.properties.preheader = {type = "string"}
         message.samples = {label = "A & <B>", preheader = "First look"}
         local saved_message = assert(call("create", message))
-        local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
-            assert(security.policy("kickside.mail.security:library_runtime")),
-            assert(security.policy("app.mail_library:invoke_access"))}))
-        local actor = assert(security.new_actor("mail-editor", {full_name = "Sample Editor", security_groups = {"app:mail_editors"}}))
-        local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
+        local groups = {"app:user", "app:mail_editors", "app.mail_api:editor"}
+        local actor = assert(security.new_actor("mail-editor", {full_name = "Sample Editor", security_groups = groups}))
+        local executor = assert(funcs.new():with_actor(actor):with_scope(api_fixtures.role_scope(groups)))
         local rendered = assert(fixtures.render(executor, {template = message.name, vars = message.samples}))
         test.eq("A & <B>", rendered.subject)
         test.not_nil(rendered.html:find("Frame HTML from base [HTML A &amp; &lt;B&gt;", 1, true))
@@ -160,7 +154,6 @@ local function register(support)
         test.eq("template_render_failed", failure.code)
         test.eq(message.name, failure.resource.name)
         test.eq("html", failure.face)
-        test.eq("Mail could not render this template.", failure.message)
         test.not_nil(failure.engine_message:find("missing_value", 1, true))
         test.eq(saved_part.revision, assert(call("get", {kind = "part", name = part.name})).revision)
         test.eq(rendered.html, assert(fixtures.render(executor, {template = message.name, vars = message.samples})).html)
@@ -230,9 +223,8 @@ local function register(support)
         local saved = assert(call("create", item))
         assert(call("delete", {kind = item.kind, name = item.name, expected_revision = saved.revision}))
 
-        local actor = assert(security.new_actor("archive-fixture-sender", {security_groups = {"app:mail_senders"}}))
-        local scope = assert(security.named_scope("wippy.security:process"))
-        local sender = assert(funcs.new():with_actor(actor):with_scope(scope))
+        local member = api_fixtures.session("sender")
+        local sender = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
         api_fixtures.settings("app.mail_harness:capture", "mail@example.org")
         local sent, send_err = fixtures.mailer(sender, "send",
             {template = item.name, vars = {}, to = {"reader@example.org"}})

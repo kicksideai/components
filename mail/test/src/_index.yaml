@@ -92,6 +92,7 @@ entries:
       - { name: "kickside.uploads:database_resource", value: "app:db" }
       - { name: "kickside.uploads:storage_id", value: "app:uploads" }
       - { name: "kickside.uploads:storage_runtime_policy", value: "app:uploads_storage_access" }
+      - { name: "kickside.uploads:storage_adapter", value: "app.mail_library:upload_storage" }
       - { name: "kickside.uploads:env_storage", value: "app:env_storage" }
       - { name: "kickside.uploads:api_router", value: "app:api" }
       - { name: "kickside.uploads:ui_server", value: "app:gateway" }
@@ -101,7 +102,7 @@ entries:
       - { name: "kickside.core:target_db", value: "app:db" }
       - { name: "kickside.core.lifecycle:process_host", value: "app:processes" }
       - { name: "kickside.core.lifecycle:user_lifecycle_grant", value: { subject_id: "app:user", subject_type: group, access_mask: 2 } }
-      - { name: "kickside.core.lifecycle:admin_lifecycle_grant", value: { subject_id: "app:user", subject_type: group, access_mask: 3 } }
+      - { name: "kickside.core.lifecycle:admin_lifecycle_grant", value: { subject_id: "app.mail_api:users_admin", subject_type: group, access_mask: 3 } }
       - { name: "kickside.core.retention:process_host", value: "app:processes" }
       - { name: "kickside.core.threads:process_host", value: "app:processes" }
       - { name: "kickside.core.retention:api_router", value: "app:api" }
@@ -120,8 +121,8 @@ entries:
       - { name: "kickside.users:ui_server", value: "app:gateway" }
       - { name: "kickside.users:target_db", value: "app:db" }
       - { name: "kickside.users:user_security_scope", value: "app:user" }
-      - { name: "kickside.users:admin_security_scope", value: "app:user" }
-      - { name: "kickside.users:login_role_resource", value: "app:*" }
+      - { name: "kickside.users:admin_security_scope", value: "app.mail_api:users_admin" }
+      - { name: "kickside.users:login_role_resource", value: ["app:user", "app:mail_senders", "app:mail_editors", "app.mail_api:users_admin"] }
       - { name: "kickside.security:target_db", value: "app:db" }
       - { name: "kickside.security:process_host", value: "app:processes" }
       - { name: "kickside.security:api_router", value: "app:api" }
@@ -192,10 +193,15 @@ entries:
       - { name: "kickside.mail:clock", value: "app.mail_harness:owner_clock" }
       - { name: "kickside.mail:thread_reader", value: "app.mail_library:source_fault" }
       - { name: "kickside.mail:thread_writer", value: "app.mail_library:append_fault" }
-      - { name: "kickside.mail:upload_reaper", value: "app.mail_library:reap_fault" }
       - { name: "kickside.mail:live_registry", value: "app.mail_library:projection_fault" }
       - { name: "kickside.mail:draft_renderer", value: "app.mail_library:draft_render" }
       - { name: "kickside.mail:http_transport", value: "app.mail_harness:http_client" }
+  - name: dep.driver_example
+    kind: ns.dependency
+    component: example/mail-relay
+    version: "*"
+    parameters:
+      - {name: "example.mail.relay.security:user_security_scope", value: "app:user"}
   - name: dep.workflows
     kind: ns.dependency
     component: kickside/workflows

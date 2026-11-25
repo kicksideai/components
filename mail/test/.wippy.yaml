@@ -3,6 +3,7 @@ version: "1.0"
 workspace:
   replacements:
     kickside/mail: ..
+    example/mail-relay: ./driver-example
     kickside/automation: ../../../kickside/platform/automation
     kickside/workflows: ../../../kickside/platform/workflows
     kickside/blocks: ../../../kickside/platform/blocks

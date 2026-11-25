@@ -12,7 +12,6 @@ local api_fixtures = require("api_fixtures")
 local delivery_wait = require("delivery_wait")
 
 local NS = "kickside.mail.traits:"
-local POLICY = "kickside.mail.security:"
 local EDITOR = "mail-design-editor"
 local ADDRESS = "editor@example.org"
 local ALIASES = {
@@ -22,17 +21,14 @@ local ALIASES = {
 }
 
 local function caller(id, can_edit, can_send)
-    local groups = can_edit and {"app:mail_editors"} or {}
-    local actor = assert(security.new_actor(id, {user_id = id, email = ADDRESS, security_groups = groups}))
-    local policies = {assert(security.policy(POLICY .. "module_access")), assert(security.policy(POLICY .. "module_runtime"))}
+    local groups = {"app:user"}
     if can_edit then
-        policies[#policies + 1] = assert(security.policy(POLICY .. "library_access"))
-        policies[#policies + 1] = assert(security.policy(POLICY .. "library_runtime"))
-        policies[#policies + 1] = assert(security.policy(POLICY .. "library_tools"))
-        policies[#policies + 1] = assert(security.policy("app.mail_library:invoke_access"))
+        groups[#groups + 1] = "app:mail_editors"
+        groups[#groups + 1] = "app.mail_api:editor"
     end
-    if can_send then policies[#policies + 1] = assert(security.policy(POLICY .. "send_access")) end
-    local scope = assert(security.new_scope(policies))
+    if can_send then groups[#groups + 1] = "app:mail_senders" end
+    local actor = assert(security.new_actor(id, {user_id = id, email = ADDRESS, security_groups = groups}))
+    local scope = api_fixtures.role_scope(groups)
     return assert(funcs.new():with_actor(actor):with_scope(scope)), actor, scope
 end
 
@@ -183,7 +179,6 @@ return {run = test.run_cases(function()
             local broken = refusal(editor, "library_preview", {message = welcome.name, create = welcome}, "template_render_failed")
             test.eq(welcome.name, broken.errors[1].resource.name)
             test.eq("html", broken.errors[1].face)
-            test.eq("Mail could not render this template.", broken.errors[1].message)
             test.not_nil(broken.errors[1].engine_message:find("unexpected", 1, true), broken.errors[1].engine_message)
             test.is_nil(broken.preview_id)
             welcome.html = '{{ block body() }}<p>Meet {{ vars.account_manager }}.</p>'

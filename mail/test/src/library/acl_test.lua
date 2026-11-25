@@ -2,17 +2,14 @@
 local autoinit = require("autoinit")
 local funcs = require("funcs")
 local fixtures = require("fixtures")
+local api_fixtures = require("api_fixtures")
 local security = require("security")
 local test = require("test")
 local uuid = require("uuid")
 
 local function reader(id, capability)
-    local actor = assert(security.new_actor(id, {user_id = id}))
-    local policies = {assert(security.policy("kickside.mail.security:library_runtime")),
-                assert(security.policy("app.mail_library:invoke_access"))}
-    if capability then policies[#policies + 1] = assert(security.policy("kickside.mail.security:library_access")) end
-    local scope = assert(security.new_scope(policies))
-    return assert(funcs.new():with_actor(actor):with_scope(scope))
+    local member = api_fixtures.session(capability and "library_capability_only" or "sender", id)
+    return assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
 end
 
 local function read_notice(executor)

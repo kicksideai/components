@@ -153,7 +153,7 @@ local function diagnostic(err: error, item: types.ResourceContent, changed: {typ
     if item.base then add({kind = "base", name = item.base}) end
     for _, candidate in ipairs(changed) do add(candidate) end
     details.candidate_resources = candidates
-    return errors.new({kind = err:kind(), retryable = false, message = err:message(), details = details})
+    return error_envelope.wrap(err, "Cannot evaluate the Mail draft", details)
 end
 
 local function render_message(item: types.ResourceContent, vars: types.JsonObject, values: types.RenderGlobals,

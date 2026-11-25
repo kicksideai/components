@@ -79,12 +79,6 @@ entries:
     meta: {value_kind: library.lua, description: Adapter used to append and catch up library events.}
     targets:
       - {entry: kickside.mail.command:library, path: .imports.threads}
-  - name: upload_reaper
-    kind: ns.requirement
-    default: kickside.mail.command:uploads
-    meta: {value_kind: library.lua, description: Adapter used to reap uploads during library retention.}
-    targets:
-      - {entry: kickside.mail.command:retention, path: .imports.uploads}
   - name: live_registry
     kind: ns.requirement
     default: kickside.mail.render:live

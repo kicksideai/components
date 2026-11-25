@@ -26,7 +26,9 @@ end
 
 local function editor(id)
     local actor = assert(security.new_actor(id, {user_id = id, security_groups = {"app:mail_editors"}}))
-    local scope = assert(security.named_scope("app.mail_library:projection_editor"))
+    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set",
+        {groups = {"app.mail_library:projection_fixture"}}))
+    local scope = assert(security.named_scope(materialized.scope_name))
     local definition = assert(contract.get("kickside.core:threads"))
     return assert(definition:with_actor(actor):with_scope(scope):open())
 end

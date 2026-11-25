@@ -12,6 +12,7 @@ local time = require("time")
 local uuid = require("uuid")
 local jobs = require("jobs")
 local database = require("database")
+local api_fixtures = require("api_fixtures")
 local admission_cases = require("admission_cases")
 local delivery_retry_cases = require("delivery_retry_cases")
 local activity_cases = require("activity_cases")
@@ -19,13 +20,14 @@ local delivery_retention_cases = require("delivery_retention_cases")
 local automation_cases = require("automation_cases")
 local settings_cases = require("settings_cases")
 local template_cases = require("template_cases")
+local driver_example_cases = require("driver_example_cases")
 
 local TOOL_NS = "kickside.mail.traits:"
 local READER_POLICIES = {
     "kickside.mail.security:library_access",
     "kickside.mail.security:module_access",
-    "kickside.mail.security:module_runtime",
-    "kickside.mail.security:template_access",
+
+
 }
 
 local function now_ms(): integer
@@ -89,21 +91,31 @@ local function probe(input)
     return mailer[input.operation](mailer, input.message)
 end
 
+local GROUP_BY_POLICY = {
+    ["kickside.mail.security:send_access"] = "app:mail_senders",
+    ["kickside.mail.security:library_access"] = "app.mail_api:library_capability_only",
+    ["kickside.mail.security:log_admin"] = "app.mail_api:log_reader",
+    ["kickside.mail.security:driver_admin"] = "app.mail_api:driver_only",
+    ["kickside.users.security:directory_access"] = "app.mail_harness:principal_search",
+}
+
 local function caller(policy_ids, id, named_group)
-    local policies = {assert(security.policy("app.mail_harness:caller"))}
     local groups = {"app:user"}
+    local fixture_policies = {"app.mail_harness:caller"}
     if named_group then groups[#groups + 1] = named_group end
     for _, policy_id in ipairs(policy_ids) do
-        policies[#policies + 1] = assert(security.policy(policy_id))
-        if policy_id == "kickside.mail.security:send_access" then
-            groups[#groups + 1] = "app:mail_senders"
-            policies[#policies + 1] = assert(security.policy("kickside.mail.security:send_runtime"))
-        elseif policy_id == "kickside.mail.security:library_access" then
-            groups[#groups + 1] = "app:mail_editors"
-            policies[#policies + 1] = assert(security.policy("kickside.mail.security:library_runtime"))
-            policies[#policies + 1] = assert(security.policy("app.mail_library:invoke_access"))
+        local group = GROUP_BY_POLICY[policy_id]
+        if group then
+            groups[#groups + 1] = group
+            if policy_id == "kickside.mail.security:library_access" then
+                groups[#groups + 1] = "app:mail_editors"
+            end
+        elseif policy_id ~= "kickside.mail.security:module_access" then
+            assert(policy_id:match("^app%.mail_harness:"), "Expected a public Mail capability")
+            fixture_policies[#fixture_policies + 1] = policy_id
         end
     end
+
     id = id or uuid.v4()
     local db = assert(sql.get("app:db"))
     assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
@@ -114,12 +126,9 @@ local function caller(policy_ids, id, named_group)
     end
     assert(db:release())
     local actor = assert(security.new_actor(id, {security_groups = groups}))
-    local scope
-    if named_group then
-        local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
-        scope = assert(security.named_scope(materialized.scope_name))
-    else
-        scope = assert(security.new_scope(policies))
+    local scope = api_fixtures.role_scope(groups)
+    for _, policy in ipairs(fixture_policies) do
+        scope = scope:with(assert(security.policy(policy)))
     end
     return assert(funcs.new():with_actor(actor):with_scope(scope)), id
 end
@@ -233,12 +242,12 @@ return {
             end)
             test.before_each(function()
                 actors.admin = caller({}, nil, "app.mail_harness:settings_editor")
-                actors.log_admin = caller({"kickside.mail.security:log_admin", "kickside.mail.security:module_runtime"})
-                actors.denied = caller({"kickside.mail.security:module_runtime"})
+                actors.log_admin = caller({"kickside.mail.security:log_admin"})
+                actors.denied = caller({})
                 actors.editor = caller(READER_POLICIES)
                 actors.sender, actors.sender_id = caller({
-                    "kickside.mail.security:module_runtime",
-                    "kickside.mail.security:template_access",
+
+
                     "kickside.mail.security:send_access",
                 })
                 for _, key in ipairs({"driver", "from_address", "from_name", "reply_to"}) do
@@ -252,10 +261,6 @@ return {
                     for _, row in ipairs(state.settlement_rows) do
                         local _, mail_err = tx:execute("DELETE FROM mail_message WHERE id=$1", {row.id})
                         if mail_err then return nil, mail_err end
-                        if row.job_id then
-                            local _, job_err = tx:execute("DELETE FROM kickside_job WHERE id=$1", {row.job_id})
-                            if job_err then return nil, job_err end
-                        end
                     end
                     return true, nil
                 end))
@@ -292,6 +297,7 @@ return {
             automation_cases.register(cases)
             settings_cases.register(cases)
             template_cases.register(cases)
+            driver_example_cases.register(cases)
 
         end)
     end),

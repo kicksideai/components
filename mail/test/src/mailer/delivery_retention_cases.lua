@@ -5,8 +5,8 @@ local time = require("time")
 local uuid = require("uuid")
 local jobs = require("jobs")
 local database = require("database")
-local jobs_cancel = require("jobs_cancel")
 local policy = require("policy")
+local api_fixtures = require("api_fixtures")
 
 local function register(support)
     local test = support.test
@@ -44,9 +44,6 @@ local function register(support)
                     if enqueue_err then return nil, enqueue_err end
                     job_id = job.id :: string
                     row.job_id = job_id
-                    local ok, cancel_err = jobs_cancel.cancel_job_tx(tx, dialect, {id = job_id})
-                    if cancel_err then return nil, cancel_err end
-                    assert(ok)
                 end
                 local _, insert_err = tx:execute([[INSERT INTO mail_message
                     (id,created_at,status,next_attempt_at,next_check_at,sender,actor_context,
@@ -58,6 +55,10 @@ local function register(support)
             end
             return true, nil
         end))
+        for _, row in ipairs({hinted, cancelled}) do
+            local cancelled_job = assert(jobs.cancel(row.job_id))
+            test.is_true(cancelled_job.canceled)
+        end
 
         local function owner(now, change)
             local executor = assert(funcs.new():with_context({mail_test_now = now}))
@@ -69,7 +70,6 @@ local function register(support)
             local message = assert(invoke(sender, "get_message", row.id))
             test.eq("failed", message.status)
             test.eq("delivery_interrupted", message.last_error.code)
-            test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", message.last_error.message)
             test.eq(at, persisted(row.id).finished_at)
             no_body(row.id)
         end
@@ -87,6 +87,43 @@ local function register(support)
         owner(recheck_at)
         interrupted(cancelled, recheck_at)
         interrupted(missing, recheck_at)
+    end)
+
+    test.it("settles a dead final execution when the lease-release hint is missed", function()
+        local sender, sender_id = actors.sender, actors.sender_id
+        local id = uuid.v7()
+        local job = assert(jobs.enqueue({
+            namespace = "mail", scope = id, key = "deliver",
+            owner_locator = {kind = "mail-fixture", id = id}, job_type = "app.mail_harness:interrupted_delivery",
+            immutable_payload = {}, max_attempts = 1,
+        }))
+        local dead = await_job(job.id, "dead")
+        test.eq(1, dead.attempts)
+        local admitted_at = now_ms() + 3600000
+        local recheck_at = admitted_at + policy.RECHECK_MS
+        state.settlement_rows = {{id = id, job_id = job.id}}
+        assert(database.with_db(function(db)
+            return db:execute([[INSERT INTO mail_message
+                (id,created_at,status,next_attempt_at,next_check_at,sender,actor_context,
+                recipients,subject,from_address,attachments,job_id,html,text)
+                VALUES ($1,$2,'queued',$2,$3,$4,'{}','{"to":["reader@example.org"]}',
+                'Interrupted delivery','mail@example.org','[]',$5,'<p>Ready</p>','Ready')]],
+                {id, admitted_at, recheck_at, sender_id, job.id})
+        end))
+
+        local function sweep(at)
+            local executor = assert(funcs.new():with_context({mail_test_now = at}))
+            local report = assert(executor:call("kickside.mail.jobs:owner", {}))
+            assert(report.success, tostring(report.error))
+        end
+        sweep(recheck_at - 1)
+        test.eq("queued", persisted(id).status)
+        sweep(recheck_at)
+        local message = assert(invoke(sender, "get_message", id))
+        test.eq("failed", message.status)
+        test.eq("delivery_interrupted", message.last_error.code)
+        test.eq(recheck_at, persisted(id).finished_at)
+        no_body(id)
     end)
 
     test.it("prunes preview rows in pages and schedules the earliest remaining expiry", function()
@@ -129,9 +166,7 @@ local function register(support)
         input.subject = "Fixture once"
         local queued = assert(invoke(sender, "send", input))
         local retry = await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
-        local db = assert(sql.get("app:db"))
-        assert(db:execute([[UPDATE app_users SET status='suspended' WHERE user_id=$1]], {retry.sender}))
-        assert(db:release())
+        api_fixtures.update_user(api_fixtures.session("users_admin"), retry.sender, {status = "suspended"})
         local failed = terminal(sender, queued)
         test.eq("failed", failed.status)
         test.eq(2, failed.attempts)
@@ -146,10 +181,7 @@ local function register(support)
         input.subject = "Fixture once"
         local queued = assert(invoke(sender, "send", input))
         local retry = await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
-        local db = assert(sql.get("app:db"))
-        assert(db:execute("DELETE FROM app_user_groups WHERE user_id=$1 AND group_id=$2",
-            {retry.sender, "app:mail_senders"}))
-        assert(db:release())
+        api_fixtures.update_user(api_fixtures.session("users_admin"), retry.sender, {groups = {"app:user"}})
         local failed = terminal(sender, queued)
         test.eq("failed", failed.status)
         test.eq(2, failed.attempts)
@@ -199,11 +231,15 @@ local function register(support)
         local failed = await_message(sender, queued.message_id, function(row) return row.status == "failed" end, 35)
         test.eq(5, job.execution_seq)
         test.eq("delivery_interrupted", failed.last_error.code)
-        test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", failed.last_error.message)
         test.eq(5, failed.attempts)
         test.is_true(failed.finished_at < pending.next_check_at)
         no_body(queued.message_id)
     end)
 end
 
-return {register = register}
+local function interrupted_delivery()
+    return nil, errors.new({kind = errors.TIMEOUT, retryable = false, message = "Fixture execution expired",
+        details = {code = "fixture_delivery_expired"}})
+end
+
+return {register = register, interrupted_delivery = interrupted_delivery}

@@ -3,6 +3,7 @@ local funcs = require("funcs")
 local security = require("security")
 local sql = require("sql")
 local fixtures = require("fixtures")
+local api_fixtures = require("api_fixtures")
 local prune = require("prune")
 
 local function register(support)
@@ -90,11 +91,7 @@ local function register(support)
     end)
 
     test.it("retains every unpruned event, including reset and restore", function()
-        local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
-            assert(security.policy("kickside.mail.security:library_runtime")),
-            assert(security.policy("app.mail_library:invoke_access"))}))
-        local actor = assert(security.new_actor("history-editor", {security_groups = {"app:mail_editors"}}))
-        local editor = assert(funcs.new():with_actor(actor):with_scope(scope))
+        local editor = fixtures.editor()
         local function read(method, input)
             if method == "update" then
                 input.preview_id = review({resources = {input}}, editor)
@@ -121,7 +118,7 @@ local function register(support)
         local history = read("read_history", key).items
         test.eq(initial_history + 2, #history)
         test.eq("Reset layout", history[1].note)
-        test.eq("history-editor", history[1].author)
+        test.eq(saved.author, history[1].author)
         local reset_detail = read("read_revision", {kind = key.kind, name = key.name, seq = history[1].seq})
         test.eq(initial.html, reset_detail.content.html)
         test.eq("First customization", history[2].note)
@@ -207,11 +204,8 @@ local function register(support)
     end)
 
     test.it("requires library access even when the caller can send", function()
-        local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:send_access")),
-            assert(security.policy("kickside.mail.security:library_runtime")),
-            assert(security.policy("app.mail_library:invoke_access"))}))
-        local actor = assert(security.new_actor("mail-sender", {full_name = "Sample Sender"}))
-        local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
+        local member = api_fixtures.session("sender")
+        local executor = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
         local listed, denial = fixtures.call(executor, "list", {})
         test.is_nil(listed)
         test.eq(errors.PERMISSION_DENIED, denial:kind())

@@ -4,6 +4,7 @@ local registry = require("registry")
 local security = require("security")
 local time = require("time")
 local fixtures = require("fixtures")
+local api_fixtures = require("api_fixtures")
 local test = require("test")
 
 local OWNER = "kickside.mail.render:scratch"
@@ -54,17 +55,15 @@ return {run = test.run_cases(function()
             local draft = {message = item.kind == "message" and item.name or "notice", create = item}
             local result = assert(fixtures.call(editor, "preview", draft))
             item.preview_id = assert(result.preview_id, result.errors[1] and result.errors[1].message)
-            return assert(fixtures.call(editor, "create", item))
+            local saved = assert(fixtures.call(editor, "create", item))
+            fixtures.await_live(saved.seq)
+            return saved
         end
 
         test.before_each(function()
             owned = {}
-            scope = assert(security.new_scope({
-                assert(security.policy("kickside.mail.security:library_access")),
-                assert(security.policy("kickside.mail.security:library_runtime")),
-                assert(security.policy("app.mail_library:invoke_access")),
-            }))
-            actor = assert(security.new_actor("workspace-editor", {security_groups = {"app:mail_editors"}}))
+            local member = api_fixtures.session("editor")
+            actor, scope = member.actor, member.scope
             editor = assert(funcs.new():with_actor(actor):with_scope(scope))
             initial = create(resource("message", MESSAGE, "Live body"))
             owned[1] = {kind = "message", name = MESSAGE}

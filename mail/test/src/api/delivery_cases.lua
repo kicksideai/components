@@ -79,7 +79,7 @@ local function register(support)
     test.it("lists the admitted transport status through the delivery endpoint", function()
         local admin = session("delivery")
         local listed = data(admin, "GET", "/delivery").transports
-        test.eq(3, #listed)
+        test.eq(4, #listed)
         local driver = listed[1]
         test.eq("app.mail_harness:capture", driver.id)
         test.eq("Capture", driver.title)

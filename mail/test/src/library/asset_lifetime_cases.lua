@@ -34,7 +34,7 @@ local function register(support)
             kind = "asset", name = name, seq = first.seq, expected_revision = latest.revision,
         }))
         interleave.await(restore_gate)
-        if reap_first then interleave.arm_reap(source.uuid) end
+        if reap_first then interleave.arm_reap(source.storage_path) end
         prune_through(first.seq)
 
         local function head()
