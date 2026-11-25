@@ -160,6 +160,21 @@ entries:
     meta: {type: kickside.security.group_composition}
     group_id: kickside.mail.security:jobs_consumer
     policies: [kickside.core.jobs.security:module_access]
+  - name: library_projection_wait
+    kind: security.policy
+    meta: {private: true}
+    groups: []
+    policy:
+      resources: [kickside.mail.command:catch_up]
+      actions: [funcs.call]
+      effect: allow
+  - name: core_consumer
+    kind: security.scope
+  - name: core_consumer_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: kickside.mail.security:core_consumer
+    policies: [kickside.core.security:module_access]
   - name: deferred_delivery
     kind: security.policy
     meta: { private: true }

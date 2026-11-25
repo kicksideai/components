@@ -93,8 +93,8 @@ local function catching_up(head: integer, projected: integer): error
 end
 
 local function result(threads_api: types.LibraryThreads, operation: string, requested: {types.LibraryEdit},
-    seq: integer): (types.LibrarySaveResult?, error?)
-    local complete, err = threads.catch_up(threads_api, seq)
+    seq: integer, deadline: string): (types.LibrarySaveResult?, error?)
+    local complete, err = threads.catch_up(seq, deadline)
     if err and not err:retryable() and not errors.is(err, errors.CONFLICT) then return nil, err end
     if not complete then
         local mark, mark_err = database.with_db(live_repo.get)
@@ -168,7 +168,7 @@ function M.replay_asset(key: types.ResourceKey, operation: string, command_id: s
     if open_err then return nil, open_err end
     local seq, err = threads.replay(api :: types.LibraryThreads, actor:id(), operation, command_id, events.ASSET_ADDED, signature, 1)
     if err or not seq then return nil, err end
-    local saved, result_err = result(api :: types.LibraryThreads, operation, {{key = key}}, seq)
+    local saved, result_err = result(api :: types.LibraryThreads, operation, {{key = key}}, seq, threads.wait_deadline())
     if result_err then return nil, result_err end
     return single(saved :: types.LibrarySaveResult)
 end
@@ -176,6 +176,7 @@ end
 function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.LibraryWriteOptions): (types.LibrarySaveResult?, error?)
     local invalid = edit_rules.validate(edits, operation)
     if invalid then return nil, invalid end
+    local deadline = threads.wait_deadline()
     local command_id, id_err = edit_rules.command_id(opts.command_id or uuid.v4())
     if id_err then return nil, id_err end
     local actor, actor_err = security.actor()
@@ -209,14 +210,14 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
     if opts.command_id then
         local seq, replay_err = replay()
         if replay_err then return nil, replay_err end
-        if seq then return result(api, operation, edits, seq) end
+        if seq then return result(api, operation, edits, seq, deadline) end
     end
     local cursor, head_err = thread_events.head(api)
     if head_err then return nil, head_err end
     local mark, mark_err = database.with_db(live_repo.get)
     if mark_err then return nil, mark_err end
     if mark.projected_seq < cursor.event_count then
-        local ready, catch_err = threads.catch_up(api, cursor.event_count)
+        local ready, catch_err = threads.catch_up(cursor.event_count, deadline)
         if catch_err and not errors.is(catch_err, errors.CONFLICT) then return nil, catch_err end
         if not ready then return nil, catching_up(cursor.event_count, mark.projected_seq :: integer) end
     end
@@ -249,7 +250,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
         if opts.command_id then
             local seq, replay_err = replay()
             if replay_err then return nil, replay_err end
-            if seq then return result(api, operation, edits, seq) end
+            if seq then return result(api, operation, edits, seq, deadline) end
         end
         return nil, plan_err
     end
@@ -262,7 +263,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
         if not err or batch[1].body.asset or errors.is(err, errors.CONFLICT) or details.cause ~= nil then
             local seq, replay_err = replay()
             if replay_err then return nil, replay_err end
-            if seq then return result(api, operation, edits, seq) end
+            if seq then return result(api, operation, edits, seq, deadline) end
         end
         if err then
             local upload = batch[1].body.asset
@@ -275,7 +276,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
             return nil, conflict(api, err, edits, batch)
         end
     end
-    return result(api, operation, edits, receipt.max_seq :: integer)
+    return result(api, operation, edits, receipt.max_seq :: integer, deadline)
 end
 
 function M.one(edit: types.LibraryEdit, operation: string, opts: types.LibraryWriteOptions?): (types.Resource?, error?)

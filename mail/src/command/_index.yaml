@@ -40,11 +40,25 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://threads.lua
-    modules: [uuid, time, json]
+    modules: [funcs, uuid, time, json]
     imports:
       events: kickside.mail.domain:events
       types: kickside.mail:types
       thread_events: kickside.mail.read:thread_events
+  - name: catch_up
+    kind: function.lua
+    meta: {private: true, comment: Wait for this library's projection under the editing caller.}
+    source: file://catch_up.lua
+    method: run
+    imports:
+      types: kickside.mail:types
+      thread_events: kickside.mail.read:thread_events
+    security:
+      policies:
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:library_threads
+        - kickside.mail.security:library_threads_caller
+      groups: [kickside.mail.security:core_consumer, kickside.mail.security:jobs_consumer]
   - name: live
     kind: library.lua
     meta: {private: true}

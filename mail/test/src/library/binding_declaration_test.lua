@@ -62,6 +62,36 @@ local function cases()
         end
     end)
 
+    test.it("limits the public Core composition to one private projection waiter", function()
+        local id = "kickside.mail.security:core_consumer"
+        local composition = assert(registry.get(id .. "_composition"))
+        test.eq(id, composition.data.group_id)
+        test.eq(1, #composition.data.policies)
+        test.eq("kickside.core.security:module_access", composition.data.policies[1])
+        test.is_nil(composition.data.groups)
+
+        local wait = "kickside.mail.command:catch_up"
+        local seen = 0
+        for _, entry in ipairs(assert(registry.find({[".kind"] = "function.lua"}))) do
+            local frame = entry.data.security
+            if frame then
+                for _, group in ipairs(frame.groups or {}) do
+                    if group == id then
+                        test.eq(wait, entry.id)
+                        test.is_true(entry.meta.private)
+                        test.is_nil(frame.actor)
+                        seen = seen + 1
+                    end
+                end
+            end
+        end
+        test.eq(1, seen)
+        local member = assert(registry.get("kickside.mail.security:library_projection_wait"))
+        test.eq(wait, member.data.policy.resources[1])
+        test.eq(1, #member.data.policy.resources)
+        test.eq(0, #(member.data.groups or {}))
+    end)
+
     test.it("declares closed schemas for every library input event and a component-owned fold", function()
         local binding = assert(registry.get("kickside.mail.binding:library"))
         test.eq("tabler:mail", binding.meta.icon)

@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local funcs = require("funcs")
 local uuid = require("uuid")
 local time = require("time")
 local json = require("json")
@@ -41,14 +42,14 @@ function M.append(threads: types.LibraryThreads, author: string, op: string, com
     return threads:append_events({thread_id = thread_events.library_thread_id(), expect = expect, events = batch})
 end
 
-function M.catch_up(threads: types.LibraryThreads, target: integer): (boolean?, error?)
+function M.wait_deadline(): string
+    return time.now():add(5 * time.SECOND):format(time.RFC3339)
+end
+
+function M.catch_up(target: integer, deadline: string): (boolean?, error?)
     if target == 0 then return true, nil end
-    local result, err = threads:catch_up_projection({
-        thread_id = thread_events.library_thread_id(), kind = "kickside.mail:library_tables", target_seq = target,
-        deadline = time.now():add(5 * time.SECOND):format(time.RFC3339),
-    })
-    if err then return nil, err end
-    return result.done, nil
+    local done, err = funcs.call("kickside.mail.command:catch_up", {target = target, deadline = deadline})
+    return done :: boolean?, err
 end
 
 return M

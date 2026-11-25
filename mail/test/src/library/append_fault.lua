@@ -4,6 +4,7 @@ local threads = require("threads")
 local interleave = require("asset_interleave")
 
 return {
+    wait_deadline = threads.wait_deadline,
     catch_up = function(...)
         if ctx.get("mail_test_catch_up_denied") then
             return nil, errors.new({kind = errors.PERMISSION_DENIED, retryable = false, message = "Test catch-up refused",
