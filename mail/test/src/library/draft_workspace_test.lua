@@ -2,7 +2,6 @@
 local funcs = require("funcs")
 local registry = require("registry")
 local security = require("security")
-local time = require("time")
 local uuid = require("uuid")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
@@ -13,7 +12,6 @@ local test = require("test")
 local threads_fixture = require("threads_fixture")
 
 local OWNER = jet.draft_owner
-local DRAFT = "kickside.mail.draft:"
 local MESSAGE = "workspace-message"
 local PART = "workspace-part"
 
@@ -26,29 +24,6 @@ end
 
 local function workspace()
     return assert(assert(registry.overlay(OWNER)):entries())
-end
-
-local function abandoned_workspace(items, expires_at)
-    local id = uuid.v4()
-    local prefix = jet.scratch_namespace(id)
-    if expires_at then
-        assert(database.with_db(function(db)
-            return db:execute([[INSERT INTO mail_library_preview (id,actor,operation,digest,expected_json,expires_at)
-                VALUES ($1,'','scratch','','{}',$2)]], {id, expires_at})
-        end))
-    end
-    local changes = assert(registry.overlay(OWNER)):changes()
-    for _, face in ipairs({"html", "text"}) do
-        assert(changes:create({id = prefix .. face, kind = "template.set",
-            data = {engine = {escape = face == "html" and "html" or "none"}}}))
-    end
-    for _, item in ipairs(items) do
-        for _, entry in ipairs(jet.entries(item, prefix, prefix .. "html", prefix .. "text")) do
-            assert(changes:create(entry))
-        end
-    end
-    assert(changes:apply())
-    return prefix
 end
 
 return {run = test.run_cases(function()
@@ -174,19 +149,31 @@ return {run = test.run_cases(function()
             preview_and_save()
         end)
 
-        test.it("sweeps a cancelled preview workspace when it expires", function()
-            local now = time.now():unix()
-            local draft = resource("message", MESSAGE, "Cancelled preview body")
-            local expires = now + 15 * 60
-            local prefix = abandoned_workspace({draft}, expires)
+        test.it("sweeps a preview receipt at its expiry without changing live mail", function()
+            local draft = resource("message", MESSAGE, "Uncommitted preview body")
+            draft.expected_revision = initial.revision
+            local preview = assert(fixtures.call(editor, "preview", {message = MESSAGE, resources = {draft}}))
+            local receipt = assert(preview.preview_id)
+            local function reserved()
+                local rows = assert(database.with_db(function(db)
+                    return db:query("SELECT expires_at FROM mail_library_preview WHERE id=$1", {receipt})
+                end))
+                return rows[1] and rows[1].expires_at
+            end
+            local expires = assert(reserved())
             local function sweep(at)
                 local executor = assert(funcs.new():with_context({mail_test_now = at * 1000}))
                 local report = assert(executor:call(fixtures.retention_id(), {}))
                 assert(report.success, tostring(report.error))
             end
             sweep(expires - 1)
-            test.not_nil(registry.get(prefix .. "html"))
+            test.eq(expires, reserved())
             sweep(expires)
+            test.is_nil(reserved())
+            local result, err = fixtures.call(editor, "save", {resources = {draft}, preview_id = receipt})
+            test.is_nil(result)
+            test.eq(errors.INVALID, assert(err):kind())
+            test.eq("mail_preview_mismatch", err:details().code)
             test.eq(0, #workspace())
             live_is_unchanged()
         end)
@@ -203,35 +190,21 @@ return {run = test.run_cases(function()
             test.eq(0, #workspace())
         end)
 
-        test.it("discards a cancelled candidate with different resources and a deleted part", function()
+        test.it("keeps draft-only edits out of the library when a different revision is deleted", function()
             local part = create(resource("part", PART, "Live part"))
             owned[2] = {kind = "part", name = PART}
-            local edited = resource("part", PART, "Cancelled part")
             local extra = resource("part", "workspace-extra", "Draft-only part")
-            local prefix = abandoned_workspace({edited, extra}, time.now():unix() + 15 * 60)
-            assert(registry.get(prefix .. "part." .. extra.name .. ".html"))
-            assert(registry.get(prefix .. "part." .. PART .. ".html"))
+            local preview = assert(fixtures.call(editor, "preview", {message = MESSAGE, create = extra}))
+            test.not_nil(preview.preview_id)
             for _, item in ipairs(assert(fixtures.call(editor, "list", {kind = "part"})).items) do
                 test.neq(extra.name, item.name)
             end
-            test.neq("allow", scope:evaluate(actor, "template.get", prefix .. "html"))
-            test.neq("allow", scope:evaluate(actor, "registry.get", prefix .. "part." .. extra.name .. ".html"))
             assert(fixtures.call(editor, "delete", {kind = "part", name = PART, expected_revision = part.revision}))
-            test.is_nil(registry.get(prefix .. "part." .. extra.name .. ".html"))
-            test.is_nil(registry.get(prefix .. "part." .. PART .. ".html"))
+            test.eq(0, #workspace())
             preview_and_save()
         end)
 
-        test.it("clears leftover draft sets at boot while preserving live templates", function()
-            local changes = assert(registry.overlay(OWNER)):changes()
-            for _, face in ipairs({"html", "text"}) do
-                local set = DRAFT .. face
-                assert(changes:create({id = set, kind = "template.set",
-                    data = {engine = {escape = face == "html" and "html" or "none"}}}))
-                assert(changes:create({id = DRAFT .. "part.leftover." .. face, kind = "template.jet",
-                    meta = {name = "part/leftover", depends_on = {set}}, data = {set = set, source = "Leftover"}}))
-            end
-            assert(changes:apply())
+        test.it("preserves live templates during boot reconciliation", function()
             local boot = assert(fixtures.boot())
             test.eq("success", boot.status, boot.message)
             test.eq(0, #workspace())

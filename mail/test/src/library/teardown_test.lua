@@ -30,34 +30,10 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail library teardown", function()
-        local lifecycle, lifecycle_scope, deleting
+        local lifecycle, lifecycle_scope
         test.before_all(function()
             lifecycle = assert(security.new_actor("system:lifecycle", {system = true, groups = {"system", "lifecycle"}}))
             lifecycle_scope = assert(security.named_scope("wippy.security:process"))
-        end)
-
-        test.after_all(function()
-            if not deleting then return end
-            local component_id = fixtures.library_component_id()
-            local thread_definition = assert(contract.get("kickside.core:threads"))
-            local threads = assert(thread_definition:with_actor(lifecycle):with_scope(lifecycle_scope):open())
-            local binding = assert(registry.get(KIND))
-            local declared = binding.meta.provision
-            local restored, restore_err = threads:create({id = component_id, impl_id = KIND,
-                thread_class = binding.meta.thread.class, title = binding.meta.title, icon = binding.meta.icon})
-            assert(restored, "Restore Mail library thread: " .. tostring(restore_err))
-            test.eq(component_id, restored.thread_id)
-            local component_definition = assert(contract.get("kickside.component:component_service"))
-            local owner = assert(component_definition:with_actor(lifecycle):with_scope(lifecycle_scope):open())
-            for _, grant in ipairs(declared.grants) do
-                local granted = assert(owner:grant_subtree({root_component_id = component_id,
-                    subject = {subject_id = grant.subject_id, subject_type = grant.subject_type},
-                    access_mask = grant.access_mask}))
-                assert(granted.success, tostring(granted.error))
-            end
-            local boot = assert(fixtures.boot())
-            assert(boot.status == "success", tostring(boot.message))
-            fixtures.await_current_live()
         end)
 
         test.it("describes the library through its component status binding", function()
@@ -103,7 +79,6 @@ return {run = test.run_cases(function()
             local owner = assert(definition:with_actor(lifecycle):with_scope(lifecycle_scope):open())
             local deletion = assert(owner:delete({component_id = component_id}))
             test.is_true(deletion.success, tostring(deletion.error))
-            deleting = true
             test.is_true(deletion.cleanup_pending)
             local job_id = assert(deletion.job_id)
             fixtures.await(function()

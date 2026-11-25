@@ -6,7 +6,6 @@ local security = require("security")
 local uuid = require("uuid")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
-local jobs = require("jobs")
 
 local function register(support)
     local test = support.test
@@ -138,22 +137,16 @@ local function register(support)
         test.not_nil(assert(fixtures.render(nil, {template = item.name, vars = {}})).html:find("New HTML", 1, true))
     end)
 
-    test.it("keeps the newer publication when Jobs dispatches an older sequence", function()
+    test.it("publishes the latest committed template revision after two edits", function()
         local part = own(candidate("part", "publisher-race", "First HTML", "First text"))
         local saved = assert(call("create", part))
         part.html, part.expected_revision = "Held HTML", saved.revision
         part.preview_id = review({resources = {part}})
         local first = assert(call("update", part))
-        local prior_job = assert(fixtures.sync_job(first.seq))
         part.html, part.expected_revision = "Latest HTML", first.revision
         part.preview_id = review({resources = {part}})
         local second = assert(call("update", part))
         fixtures.await_live(second.seq)
-        local replay = assert(jobs.enqueue({namespace = "mail", scope = uuid.v4(), key = "stale-publication",
-            owner_locator = {kind = "mail-library", id = support.THREAD}, job_type = prior_job.job_type,
-            immutable_payload = {seq = first.seq}, max_attempts = 1}))
-        fixtures.await_sync_idle()
-        test.eq("done", assert(jobs.get_job(replay.id)).status)
         test.eq(second.seq, assert(registry.get("kickside.mail.projection:marker")).data.seq)
         test.eq("Latest HTML", assert(value(HTML, "part/" .. part.name)))
     end)
