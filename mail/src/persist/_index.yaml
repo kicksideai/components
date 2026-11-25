@@ -49,7 +49,6 @@ entries:
     imports:
       database: kickside.mail.persist:db
       types: kickside.mail:types
-      resource: kickside.mail.domain:resource
   - name: preview_repo
     kind: library.lua
     meta: { private: true }

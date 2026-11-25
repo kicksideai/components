@@ -166,7 +166,7 @@ local function require_access(mask: integer, mode: string): error?
     local err = component_envelope.error_of(result, "get_access_context")
     if err and err:kind() == errors.PERMISSION_DENIED then
         return error_envelope.wrap(err, "Mail library component " .. mode:upper() .. " access is required",
-            {code = "mail_library_" .. mode .. "_denied"})
+            {code = mode == "read" and "mail_library_read_denied" or "mail_library_write_denied"})
     end
     return err
 end
@@ -304,17 +304,8 @@ function M.page(input: types.LibraryPageRequest): (types.LibraryPage?, error?)
         end
         if row.kind == "message" then names[#names + 1] = row.name end
     end
-    if #names > 0 then
-        local since, since_err = recent_since()
-        if since_err then return nil, since_err end
-        local counts, counts_err = database.with_db(function(ex: database.Executor): ({[string]: integer}?, error?)
-            return messages.recent_sender_counts(ex, names, since :: integer)
-        end)
-        if counts_err then return nil, counts_err end
-        for _, row in ipairs(page.items) do
-            if row.kind == "message" then row.used_by = {recent_sources = counts[row.name] or 0} end
-        end
-    end
+    local usage_err = usage.add_recent_sources(page.items :: {types.LibraryListRow}, names)
+    if usage_err then return nil, usage_err end
     return page, nil
 end
 

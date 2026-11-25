@@ -113,4 +113,18 @@ function M.used_by(item: types.Resource): (types.UsedBy?, error?)
     return nil, nil
 end
 
+function M.add_recent_sources(items: {types.LibraryListRow}, names: {string}): error?
+    if #names == 0 then return nil end
+    local since, since_err = recent_since()
+    if since_err then return since_err end
+    local counts, counts_err = database.with_db(function(ex: database.Executor): ({[string]: integer}?, error?)
+        return messages.recent_sender_counts(ex, names, since :: integer)
+    end)
+    if counts_err then return counts_err end
+    for _, row in ipairs(items) do
+        if row.kind == "message" then row.used_by = {recent_sources = counts[row.name] or 0} end
+    end
+    return nil
+end
+
 return M
