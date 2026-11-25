@@ -194,7 +194,6 @@ entries:
       - { name: "kickside.mail:thread_reader", value: "app.mail_library:source_fault" }
       - { name: "kickside.mail:thread_writer", value: "app.mail_library:append_fault" }
       - { name: "kickside.mail:live_registry", value: "app.mail_library:projection_fault" }
-      - { name: "kickside.mail:draft_renderer", value: "app.mail_library:draft_render" }
       - { name: "kickside.mail:http_transport", value: "app.mail_harness:http_client" }
   - name: dep.driver_example
     kind: ns.dependency

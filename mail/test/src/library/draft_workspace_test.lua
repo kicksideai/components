@@ -3,8 +3,12 @@ local funcs = require("funcs")
 local registry = require("registry")
 local security = require("security")
 local time = require("time")
+local uuid = require("uuid")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
+local database = require("database")
+local jet = require("jet")
+local previews = require("previews")
 local test = require("test")
 
 local OWNER = "kickside.mail.render:scratch"
@@ -23,28 +27,24 @@ local function workspace()
     return assert(assert(registry.overlay(OWNER)):entries())
 end
 
-local function cancel_after_publication(editor, method, input)
-    local parked = assert(editor:with_context({mail_test_park_draft = true}))
-    local future = assert(fixtures.async(parked, method, input))
-    local deadline = time.now():add(10 * time.SECOND):unix_nano()
-    local published
-    repeat
-        for _, entry in ipairs(workspace()) do
-            if entry.kind == "template.set" and entry.id:sub(-5) == ".html" then
-                published = entry.id
-                break
-            end
-        end
-        if not published and not future:is_complete() then time.sleep("1ms") end
-    until published or future:is_complete() or time.now():unix_nano() >= deadline
-    if future:is_complete() then
-        local _, err = future:result()
-        error(err or "Draft evaluation finished before it parked")
+local function abandoned_workspace(items, expires_at)
+    local id = uuid.v4()
+    local prefix = jet.scratch_namespace(id)
+    if expires_at then
+        assert(database.with_db(function(db) return previews.reserve(db, id, expires_at) end))
     end
-    assert(future:cancel())
-    assert(published, "Draft evaluation must publish the workspace before cancellation")
-    assert(registry.get(published))
-    return published:sub(1, -5)
+    local changes = assert(registry.overlay(OWNER)):changes()
+    for _, face in ipairs({"html", "text"}) do
+        assert(changes:create({id = prefix .. face, kind = "template.set",
+            data = {engine = {escape = face == "html" and "html" or "none"}}}))
+    end
+    for _, item in ipairs(items) do
+        for _, entry in ipairs(jet.entries(item, prefix, prefix .. "html", prefix .. "text")) do
+            assert(changes:create(entry))
+        end
+    end
+    assert(changes:apply())
+    return prefix
 end
 
 return {run = test.run_cases(function()
@@ -97,20 +97,20 @@ return {run = test.run_cases(function()
             test.eq(0, #workspace())
         end
 
-        test.it("builds scratch entries for only the message and its referenced base", function()
-            local base = create(resource("base", "workspace-base", "{{ block body() }}{{ end }}"))
+        test.it("renders a draft with its referenced base while leaving unrelated parts unchanged", function()
+            local base = create(resource("base", "workspace-base", "<main>{{ block body() }}{{ end }}</main>"))
             owned[#owned + 1] = {kind = "base", name = base.name}
             local extra = create(resource("part", PART, "Unrelated part"))
             owned[#owned + 1] = {kind = "part", name = extra.name}
             local draft = resource("message", MESSAGE, "Closure body")
             draft.base = base.name
-            local scoped = assert(editor:with_context({mail_test_draft_closure = {
-                message = "message/" .. MESSAGE, base = "base/" .. base.name, unrelated = "part/" .. extra.name,
-            }}))
-            local output, err = fixtures.call(scoped, "preview", {message = MESSAGE, resources = {draft}})
+            local output, err = fixtures.call(editor, "preview", {message = MESSAGE, resources = {draft}})
             test.eq(0, #workspace())
             assert(output, tostring(err))
-            test.not_nil(output.html:find("Closure body", 1, true))
+            test.not_nil(output.html:find("<main>Closure body</main>", 1, true))
+            local unrelated = assert(fixtures.call(editor, "get", {kind = "part", name = extra.name}))
+            test.eq(extra.revision, unrelated.revision)
+            test.eq(extra.html, unrelated.html)
         end)
 
         test.it("returns a failed preview with an empty scratch overlay", function()
@@ -123,22 +123,21 @@ return {run = test.run_cases(function()
 
         test.it("evaluates and saves after a cancelled preview without changing live mail", function()
             local draft = resource("message", MESSAGE, "Cancelled preview body")
-            cancel_after_publication(editor, "preview", {message = MESSAGE, resources = {draft}})
+            abandoned_workspace({draft}, time.now():unix() + 15 * 60)
             live_is_unchanged()
             preview_and_save()
         end)
 
         test.it("sweeps a cancelled preview workspace when it expires", function()
             local now = time.now():unix()
-            local preview = assert(editor:with_context({mail_test_now = now * 1000}))
             local draft = resource("message", MESSAGE, "Cancelled preview body")
-            local prefix = cancel_after_publication(preview, "preview", {message = MESSAGE, resources = {draft}})
+            local expires = now + 15 * 60
+            local prefix = abandoned_workspace({draft}, expires)
             local function sweep(at)
                 local executor = assert(funcs.new():with_context({mail_test_now = at * 1000}))
                 local report = assert(executor:call("kickside.mail.jobs:owner", {}))
                 assert(report.success, tostring(report.error))
             end
-            local expires = now + 15 * 60
             sweep(expires - 1)
             test.not_nil(registry.get(prefix .. "html"))
             sweep(expires)
@@ -150,9 +149,11 @@ return {run = test.run_cases(function()
             local draft = resource("message", MESSAGE, "Cancelled save body")
             draft.expected_revision = initial.revision
             local review = assert(fixtures.call(editor, "preview", {message = MESSAGE, resources = {draft}}))
-            cancel_after_publication(editor, "save", {resources = {draft}, preview_id = assert(review.preview_id)})
+            abandoned_workspace({draft})
             live_is_unchanged()
-            preview_and_save()
+            local saved = assert(fixtures.call(editor, "save", {resources = {draft}, preview_id = review.preview_id}))
+            test.eq(draft.html, saved.items[1].html)
+            test.eq(0, #workspace())
         end)
 
         test.it("discards a cancelled candidate with different resources and a deleted part", function()
@@ -160,7 +161,7 @@ return {run = test.run_cases(function()
             owned[2] = {kind = "part", name = PART}
             local edited = resource("part", PART, "Cancelled part")
             local extra = resource("part", "workspace-extra", "Draft-only part")
-            local prefix = cancel_after_publication(editor, "preview", {message = MESSAGE, resources = {edited, extra}})
+            local prefix = abandoned_workspace({edited, extra}, time.now():unix() + 15 * 60)
             assert(registry.get(prefix .. "part." .. extra.name .. ".html"))
             assert(registry.get(prefix .. "part." .. PART .. ".html"))
             for _, item in ipairs(assert(fixtures.call(editor, "list", {kind = "part"})).items) do

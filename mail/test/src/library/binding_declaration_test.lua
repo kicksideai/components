@@ -30,6 +30,11 @@ local function cases()
         end
     end)
 
+    test.it("uses Mail's renderer directly for scratch evaluation", function()
+        local declaration = assert(registry.get("kickside.mail.render:scratch"))
+        test.eq("kickside.mail.render:render", declaration.data.imports.render)
+    end)
+
     test.it("provisions library editors solely through the installed host grant", function()
         local binding = assert(registry.get("kickside.mail.binding:library"))
         local grants = {}

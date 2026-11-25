@@ -107,23 +107,19 @@ entries:
       fixtures: app.mail_library:fixtures
       prune: kickside.core.retention:prune
       api_fixtures: app.mail_api:fixtures
-  - name: draft_render
-    kind: library.lua
-    source: file://draft_render.lua
-    modules: [ctx, registry]
-    imports:
-      render: kickside.mail.render:render
-      types: kickside.mail:types
   - name: draft_workspace_test
     kind: function.lua
     meta: { type: test, suite: mail_draft_workspace }
     source: file://draft_workspace_test.lua
     method: run
-    modules: [funcs, registry, security, time]
+    modules: [funcs, registry, security, time, uuid]
     imports:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       api_fixtures: app.mail_api:fixtures
+      database: kickside.mail.persist:db
+      jet: kickside.mail.domain:jet
+      previews: kickside.mail.persist:preview_repo
   - name: assets_test
     kind: function.lua
     meta: { type: test, suite: mail_assets }
