@@ -6,6 +6,7 @@ local uuid = require("uuid")
 local jobs = require("jobs")
 local database = require("database")
 local jobs_cancel = require("jobs_cancel")
+local policy = require("policy")
 
 local function register(support)
     local test = support.test

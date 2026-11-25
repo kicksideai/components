@@ -162,6 +162,7 @@ entries:
       jobs: kickside.core.jobs:jobs
       database: kickside.mail.persist:db
       jobs_cancel: kickside.core.jobs.persist:lifecycle_cancel
+      policy: kickside.mail.domain:policy
   - name: automation_cases
     kind: library.lua
     source: file://automation_cases.lua
