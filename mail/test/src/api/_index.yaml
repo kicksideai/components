@@ -19,6 +19,22 @@ entries:
       fixtures: app.mail_api:fixtures
   - name: sender
     kind: security.scope
+  - name: module_only
+    kind: security.scope
+  - name: module_only_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:module_only
+    policies: [kickside.mail.security:module_access]
+  - name: outside
+    kind: security.scope
+  - name: outside_policy
+    kind: security.policy
+    groups: [app.mail_api:outside]
+    policy:
+      resources: [app.mail_api:outside]
+      actions: [registry.get]
+      effect: allow
   - name: sender_composition
     kind: registry.entry
     meta: { type: kickside.security.group_composition }
@@ -27,7 +43,6 @@ entries:
       - kickside.mail.security:send_access
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints
-      - kickside.mail.security:send_endpoints
   - name: bundled_template_catalog
     kind: security.policy
     policy:

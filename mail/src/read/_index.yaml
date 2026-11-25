@@ -32,7 +32,7 @@ entries:
       policies:
         - kickside.mail.security:packaged_assets
         - kickside.mail.security:asset_provider_calls
-        - kickside.mail.security:outbox_db
+        - kickside.mail.security:mail_db
   - name: thread_events
     kind: library.lua
     meta: {private: true}

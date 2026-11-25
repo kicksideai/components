@@ -44,7 +44,7 @@ entries:
     targets:
       - { entry: kickside.mail:db_config, path: ".meta.db_id" }
       - { entry: kickside.mail.migrations:01_mail, path: ".meta.target_db" }
-      - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
+      - { entry: kickside.mail.security:mail_db, path: ".policy.resources" }
       - { entry: kickside.mail.security:projection_db, path: ".policy.resources" }
   - name: library_editor_grant
     kind: ns.requirement

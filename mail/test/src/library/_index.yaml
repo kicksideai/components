@@ -174,7 +174,7 @@ entries:
       groups: [kickside.mail.security:asset_service]
       policies:
         - kickside.mail.security:asset_provider_calls
-        - kickside.mail.security:outbox_db
+        - kickside.mail.security:mail_db
   - name: service_content_call
     kind: security.policy
     groups: [app.mail_api:editor]

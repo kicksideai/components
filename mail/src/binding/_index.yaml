@@ -53,8 +53,8 @@ entries:
       writer: kickside.mail.command:library
     security:
       policies:
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
         - kickside.mail.security:live_sets
         - kickside.mail.security:live_entries
         - kickside.mail.security:live_marker_delete
@@ -77,12 +77,13 @@ entries:
     security: &library_read_frame
       policies:
         - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry
         - kickside.mail.security:library_history_threads
         - kickside.mail.security:library_threads_caller
-        - kickside.mail.security:library_thread_config
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.core.security:module_access
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
         - kickside.mail.security:template_access
         - kickside.mail.security:settings_read
   - name: library_get
@@ -115,12 +116,13 @@ entries:
     security: &library_asset_frame
       policies:
         - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry
         - kickside.mail.security:library_history_threads
         - kickside.mail.security:library_threads_caller
-        - kickside.mail.security:library_thread_config
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.core.security:module_access
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
         - kickside.mail.security:template_access
         - kickside.mail.security:asset_bytes
   - name: library_preview
@@ -132,19 +134,20 @@ entries:
     security: &library_preview_frame
       policies:
         - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry
         - kickside.mail.security:library_history_threads
         - kickside.mail.security:library_threads_caller
-        - kickside.mail.security:library_thread_config
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.core.security:module_access
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
         - kickside.mail.security:template_access
         - kickside.mail.security:live_marker_read
         - kickside.mail.security:site_url
         - kickside.mail.security:settings_read
-        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:scratch_sets
         - kickside.mail.security:overlay_originals
-        - kickside.mail.security:overlay_drafts
+        - kickside.mail.security:scratch_entries
         - kickside.mail.security:asset_bytes
         - kickside.core.retention:notify_access
   - name: library_create
@@ -156,23 +159,26 @@ entries:
     security: &library_write_frame
       policies:
         - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
         - kickside.mail.security:template_access
         - kickside.mail.security:realtime_calls
         - kickside.mail.security:realtime_topics
         - kickside.mail.security:site_url
         - kickside.mail.security:settings_read
-        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:scratch_sets
         - kickside.mail.security:library_threads
         - kickside.mail.security:library_threads_caller
-        - kickside.mail.security:library_thread_wake
+        - kickside.core.security:module_runtime
+        - kickside.core.jobs.security:module_access
+        - kickside.core.jobs.security:module_runtime
         - kickside.mail.security:job_notify
         - kickside.core.jobs.persist:pool_nudge_access
-        - kickside.mail.security:library_thread_config
+        - kickside.core.security:module_access
         - kickside.mail.security:overlay_originals
-        - kickside.mail.security:overlay_drafts
+        - kickside.mail.security:scratch_entries
         - kickside.mail.security:asset_adoption
         - kickside.mail.security:asset_adoption_action
         - kickside.core.retention:notify_access
@@ -246,10 +252,12 @@ entries:
         - kickside.mail.security:transport_calls
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
         - kickside.mail.security:deferred_delivery
         - kickside.mail.security:job_notify
+        - kickside.core.jobs.security:module_access
+        - kickside.core.jobs.security:module_runtime
         - kickside.core.retention:notify_access
       groups: [kickside.mail.security:transports]
   - name: mailer_resend
@@ -264,7 +272,7 @@ entries:
     method: get_message
     imports: *mailer_imports
     security: &mailer_activity_frame
-      policies: [kickside.mail.security:outbox_db, kickside.mail.security:outbox_config]
+      policies: [kickside.mail.security:mail_db, kickside.mail.security:mail_config]
   - name: mailer_list_messages
     kind: function.lua
     source: *mailer_source
@@ -279,9 +287,10 @@ entries:
     security: &mailer_catalog_frame
       policies:
         - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
         - kickside.mail.security:template_access
         - kickside.mail.security:live_marker_read
   - name: mailer_get_template
@@ -298,11 +307,12 @@ entries:
     security:
       policies:
         - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry
         - kickside.mail.security:site_url
         - kickside.mail.security:settings_read
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
         - kickside.mail.security:template_access
         - kickside.mail.security:live_marker_read
         - kickside.mail.security:asset_bytes

@@ -91,6 +91,7 @@ local function caller(policy_ids, id)
         policies[#policies + 1] = assert(security.policy(policy_id))
         if policy_id == "kickside.mail.security:send_access" then
             groups[#groups + 1] = "app:mail_senders"
+            policies[#policies + 1] = assert(security.policy("kickside.mail.security:send_runtime"))
         elseif policy_id == "kickside.mail.security:library_access" then
             groups[#groups + 1] = "app:mail_editors"
             policies[#policies + 1] = assert(security.policy("kickside.mail.security:library_runtime"))
@@ -1335,7 +1336,9 @@ return {
             end)
 
             test.it("invokes the four registered tools as non-admin callers", function()
-                local reader = caller(READER_POLICIES)
+                local reader_policies = {table.unpack(READER_POLICIES)}
+                reader_policies[#reader_policies + 1] = "kickside.mail.security:send_runtime"
+                local reader = caller(reader_policies)
                 local tool_sender = caller({
                     "kickside.mail.security:module_access", "kickside.mail.security:module_runtime",
                     "kickside.mail.security:library_access", "kickside.mail.security:send_access",

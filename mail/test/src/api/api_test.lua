@@ -177,6 +177,32 @@ return {run = test.run_cases(function()
             test.eq(errors.PERMISSION_DENIED, assert(err):kind())
         end)
 
+        test.it("authorizes exactly the endpoints in each Mail capability bundle", function()
+            local roles = {
+                {who = session("module_only"), allowed = {capabilities = true}},
+                {who = session("outside"), allowed = {}},
+                {who = session(), allowed = {capabilities = true}},
+                {who = session("sender"), allowed = {capabilities = true}},
+                {who = session("log_reader"), allowed = {capabilities = true}},
+                {who = session("editor"), allowed = {capabilities = true, library = true}},
+                {who = session("delivery"), allowed = {capabilities = true, activity = true, delivery = true}},
+            }
+            local endpoints = assert(registry.find({[".kind"] = "http.endpoint"}))
+            for _, endpoint in ipairs(endpoints) do
+                if endpoint.id:match("^kickside%.mail%.api:") then
+                    local path = endpoint.data.path:sub(#"/mail" + 1):gsub("{kind}", "message")
+                        :gsub("{name}", "notice"):gsub("{id}", ZERO)
+                    local section = path:match("^/([^/]+)")
+                    for _, role in ipairs(roles) do
+                        if not role.allowed[section] or section == "capabilities" then
+                            local status = request(role.who, endpoint.data.method, path, {})
+                            test.eq(role.allowed[section] and 200 or 403, status, endpoint.id)
+                        end
+                    end
+                end
+            end
+        end)
+
         test.it("paginates the library without a view parameter", function()
             local editor = session("editor")
             local page = data(editor, "GET", "/library?kind=base&limit=1")
@@ -857,7 +883,8 @@ return {run = test.run_cases(function()
                 assert(security.policy("app:member_database")),
                 assert(security.policy("kickside.mail.security:library_component_read")),
                 assert(security.policy("kickside.mail.security:library_component_registry")),
-                assert(security.policy("kickside.mail.security:library_thread_config")),
+                assert(security.policy("kickside.core.security:module_access")),
+                assert(security.policy("kickside.component.security:module_access")),
                 assert(security.policy("app.mail_library:projection_editor_context")),
                 assert(security.policy("app.mail_library:projection_editor_notifications")),
             }))

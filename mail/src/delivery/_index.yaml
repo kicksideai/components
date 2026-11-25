@@ -27,8 +27,10 @@ entries:
         - kickside.mail.security:transport_calls
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.core.jobs.security:module_access
+        - kickside.core.jobs.security:module_runtime
         - kickside.mail.security:job_notify
       groups: [kickside.mail.security:transports]
   - name: read_attachments

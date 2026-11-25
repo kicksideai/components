@@ -83,8 +83,8 @@ entries:
         - kickside.mail.security:template_access
         - kickside.mail.security:site_url
         - kickside.mail.security:settings_read
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
   - name: globals_test
     kind: function.lua
     meta: {type: test, suite: mail_templates}

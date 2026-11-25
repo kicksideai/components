@@ -8,10 +8,10 @@ entries:
       title: Mail
       surface: kickside.mail
       intent: module_access
-      includes: [kickside.mail.security:module_runtime]
+      includes: [kickside.mail.security:module_runtime, kickside.mail.security:member_endpoints]
     groups: []
     policy:
-      resources: [kickside.mail.sink:send_email, kickside.mail.traits:mail, kickside.mail.traits:mail_readonly, kickside.mail.traits:email_design]
+      resources: [kickside.mail.sink:send_email]
       actions: [registry.get, registry.find]
       effect: allow
   - name: module_runtime
@@ -33,10 +33,6 @@ entries:
         - delivery_status
         - send_delivery_test
         - write
-        - kickside.mail.traits:mail_send
-        - kickside.mail.traits:mail_list_templates
-        - kickside.mail.traits:mail_get_template
-        - kickside.mail.traits:mail_preview
         - kickside.mail.sink:writable
         - kickside.mail.sink:write
       actions: [registry.get, registry.find, contract.get, contract.open, contract.call, contract.implementations, contract.security, funcs.call, funcs.security]
@@ -47,11 +43,25 @@ entries:
       title: Send mail
       surface: kickside.mail
       intent: tool_access
-      includes: [kickside.mail.security:module_runtime]
+      includes: [kickside.mail.security:module_runtime, kickside.mail.security:send_runtime]
     groups: []
     policy:
       resources: [kickside.mail:mailer]
       actions: [access]
+      effect: allow
+  - name: send_runtime
+    kind: security.policy
+    meta: {private: true}
+    groups: []
+    policy:
+      resources:
+        - kickside.mail.traits:mail
+        - kickside.mail.traits:mail_readonly
+        - kickside.mail.traits:mail_send
+        - kickside.mail.traits:mail_list_templates
+        - kickside.mail.traits:mail_get_template
+        - kickside.mail.traits:mail_preview
+      actions: [registry.get, registry.find, funcs.call]
       effect: allow
   - name: log_admin
     kind: security.policy
@@ -65,7 +75,7 @@ entries:
       resources: [kickside.mail:mailer]
       actions: [mail.log.admin]
       effect: allow
-  - name: outbox_db
+  - name: mail_db
     kind: security.policy
     meta: { private: true }
     policy:
@@ -98,7 +108,7 @@ entries:
     meta: {private: true}
     policy:
       resources: [kickside.core:threads, kickside.core:threads_binding, find, find_event_by_external, append_events,
-        list_events, catch_up_projection, prune_boundary]
+        list_events, catch_up_projection]
       actions: [contract.get, contract.open, contract.call]
       effect: allow
   - name: library_history_threads
@@ -115,7 +125,7 @@ entries:
       resources: [kickside.core:threads, kickside.core:threads_binding, find_event_by_external, prune_boundary]
       actions: [contract.get, contract.open, contract.call]
       effect: allow
-  - name: library_prune_boundary
+  - name: library_threads_read
     kind: security.policy
     meta: {private: true, service_only: true}
     policy:
@@ -129,29 +139,18 @@ entries:
       resources: [security]
       actions: [contract.security]
       effect: allow
-  - name: library_thread_wake
-    kind: security.policy
-    meta: {private: true}
-    policy:
-      resources:
-        - kickside.core.threads:emit_update
-        - kickside.core.threads:cursor_waiter_signal
-      actions: [funcs.call]
-      effect: allow
-  - name: outbox_config
+  - name: mail_config
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail:db_config, kickside.mail.delivery:deliver, kickside.core.jobs:db_config, kickside.core.jobs:policy]
+      resources: [kickside.mail:db_config, kickside.mail.delivery:deliver]
       actions: [registry.get]
       effect: allow
   - name: job_notify
     kind: security.policy
     meta: { private: true }
     policy:
-      resources:
-        - kickside.core.jobs.policy:settings_overrides
-        - kickside.core.jobs:nudge_workers
+      resources: [kickside.core.jobs:nudge_workers]
       actions: [funcs.call]
       effect: allow
   - name: deferred_delivery
@@ -201,12 +200,12 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.settings:settings, kickside.settings:settings_binding, kickside.settings:get_namespace, get_namespace]
-      actions: [registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+      resources: [kickside.settings:settings, kickside.settings:settings_binding, get_namespace]
+      actions: [registry.get, contract.get, contract.open, contract.call]
       effect: allow
   - name: settings_admin_read
     kind: security.policy
-    meta: { private: true }
+    meta: {private: true}
     policy:
       resources: [kickside.settings.api:list_settings.endpoint]
       actions: [access]
@@ -237,12 +236,11 @@ entries:
   - name: user_security_scope
     kind: ns.requirement
     default: kickside.security.groups:members
-    meta: { value_kind: security.scope }
+    meta: {value_kind: security.scope, description: Application group with member access to Mail.}
     targets:
       - { entry: "kickside.mail.security:module_access", path: ".groups +=" }
       - { entry: "kickside.mail.security:module_runtime", path: ".groups +=" }
       - { entry: "kickside.mail.security:member_endpoints", path: ".groups +=" }
-      - { entry: "kickside.mail.security:capabilities_endpoint", path: ".groups +=" }
   - name: asset_adoption
     kind: security.policy
     meta: {private: true, service_only: true}
@@ -336,7 +334,7 @@ entries:
     kind: security.policy
     meta: {private: true}
     policy:
-      resources: [kickside.component:db_config, kickside.mail.binding:library]
+      resources: [kickside.mail.binding:library]
       actions: [registry.get]
       effect: allow
   - name: library_access
@@ -395,7 +393,7 @@ entries:
         - kickside.mail.traits:send_test
       actions: [registry.get, registry.find, funcs.call]
       effect: allow
-  - name: overlay_owner
+  - name: scratch_sets
     kind: security.policy
     meta: { private: true }
     policy:
@@ -438,13 +436,6 @@ entries:
       resources: [kickside.mail.projection:marker]
       actions: [registry.overlay.delete.registry.entry]
       effect: allow
-  - name: library_thread_config
-    kind: security.policy
-    meta: {private: true}
-    policy:
-      resources: [kickside.core:db_config]
-      actions: [registry.get]
-      effect: allow
   - name: overlay_originals
     kind: security.policy
     meta: { private: true }
@@ -473,7 +464,7 @@ entries:
         - kickside.mail.views:notice.subject
       actions: [registry.overlay.shadow, registry.overlay.update.template.jet, registry.overlay.delete.template.jet]
       effect: allow
-  - name: overlay_drafts
+  - name: scratch_entries
     kind: security.policy
     meta: { private: true }
     policy:
@@ -502,38 +493,13 @@ entries:
       resources: [resolve]
       actions: [contract.call]
       effect: allow
-  - name: capabilities_endpoint
+  - name: member_endpoints
     kind: security.policy
-    meta: { private: true }
+    meta: {private: true}
     groups: []
     policy:
       resources: [kickside.mail.api:capabilities.endpoint]
-      actions: [access, registry.get]
-      effect: allow
-  - name: member_endpoints
-    kind: security.policy
-    meta: { private: true }
-    policy:
-      resources:
-        - kickside.mail.api:library_list.endpoint
-        - kickside.mail.api:library_get.endpoint
-        - kickside.mail.api:library_asset_content.endpoint
-        - kickside.mail.api:library_create.endpoint
-        - kickside.mail.api:library_update.endpoint
-        - kickside.mail.api:library_save.endpoint
-        - kickside.mail.api:library_set_base.endpoint
-        - kickside.mail.api:library_reset.endpoint
-        - kickside.mail.api:library_delete.endpoint
-        - kickside.mail.api:library_history.endpoint
-        - kickside.mail.api:library_restore.endpoint
-        - kickside.mail.api:library_preview.endpoint
-        - kickside.mail.api:library_send_test.endpoint
-        - kickside.mail.api:activity_list.endpoint
-        - kickside.mail.api:activity_get.endpoint
-        - kickside.mail.api:activity_resend.endpoint
-        - kickside.mail.api:delivery_status.endpoint
-        - kickside.mail.api:delivery_send_test.endpoint
-      actions: [registry.get]
+      actions: [access]
       effect: allow
   - name: library_endpoints
     kind: security.policy
@@ -573,8 +539,8 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.contract:realtime, kickside.realtime:realtime_binding, kickside.realtime:broadcast, broadcast]
-      actions: [registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+      resources: [kickside.contract:realtime, kickside.realtime:realtime_binding, broadcast]
+      actions: [registry.get, contract.get, contract.open, contract.call]
       effect: allow
   - name: realtime_topics
     kind: security.policy
