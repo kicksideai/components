@@ -46,7 +46,11 @@ local function capture(message)
             return nil, errors.new({kind = errors.PERMISSION_DENIED, retryable = false, message = "Test authorization refused",
                 details = {code = "credentials_invalid"}})
         end
-        if behavior ~= "once" or attempts == 1 then
+        if behavior == "pin" and attempts == 1 then
+            return nil, errors.new({kind = errors.RATE_LIMITED, retryable = true, message = "Test rate limit",
+                details = {code = "rate_limited", retry_after_ms = 60000}})
+        end
+        if (behavior ~= "once" and behavior ~= "pin") or attempts == 1 then
             return nil, errors.new({kind = errors.RATE_LIMITED, retryable = true, message = "Test rate limit",
                 details = {code = "rate_limited"}})
         end
@@ -60,6 +64,7 @@ local function capture(message)
         attachments = attachments,
         subject = message.subject, html = message.html, text = message.text,
         to = message.to, cc = message.cc, bcc = message.bcc, idempotency_key = message.idempotency_key,
+        deadline = message.deadline,
     }))}
 end
 
@@ -74,6 +79,12 @@ return {
         response.transport_metadata = "fixture detail"
         return response
     end,
-    second = function(message) return result("second", message) end,
+    second = function(message)
+        if message.subject == "Fixture ambiguous" then
+            return nil, errors.new({kind = errors.TIMEOUT, retryable = true, message = "Test response timeout",
+                details = {code = "provider_transport_failed"}})
+        end
+        return result("second", message)
+    end,
     available = function() return {available = true} end,
 }

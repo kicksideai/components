@@ -62,7 +62,7 @@ local function insert(input: types.Admission): (types.AdmissionResult?, error?)
         if reference_err then return nil, reference_err end
         local job, queue_err = jobs.enqueue_tx(tx, dialect, {
             namespace = "mail", scope = id, key = "deliver",
-            owner_locator = {kind = "mail-message", id = id}, job_type = "kickside.mail.outbox:deliver",
+            owner_locator = {kind = "mail-message", id = id}, job_type = "kickside.mail.delivery:deliver",
             immutable_payload = {message_id = id}, max_attempts = 1,
         })
         if queue_err then return nil, queue_err end

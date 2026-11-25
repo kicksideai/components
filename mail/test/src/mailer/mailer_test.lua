@@ -559,20 +559,53 @@ return {
                 test.eq(admin_row.sender, admin_row.origin.id)
             end)
 
-            test.it("uses the active driver at delivery even after a different driver rearmed the job", function()
+            test.it("keeps the first delivery driver after the active driver changes", function()
                 capture_with(admin)
                 local input = body()
-                input.subject = "Fixture exhaust"
+                input.subject = "Fixture pin"
+                input.cc = {"cc@example.org"}
+                input.bcc = {"bcc@example.org"}
                 local queued = assert(invoke(sender, "send", input))
-                local retry = await_message(log_admin, queued.message_id, function(row) return row.last_error ~= nil end)
+                local retry = await_message(log_admin, queued.message_id, function(row)
+                    return row.status ~= "queued" or row.last_error ~= nil
+                end)
                 test.eq("capture", retry.driver_id)
+                test.eq(1, retry.attempts)
                 assert(change(admin, "driver", "second").success)
-                local sent = terminal(sender, queued)
+                local job_id = persisted(queued.message_id).job_id
+                test.is_true(assert(jobs.wake_job(job_id, {control = true})).woken)
+                local sent = terminal(log_admin, queued)
                 test.eq("sent", sent.status)
                 test.eq(2, sent.attempts)
-                sent = assert(invoke(log_admin, "get_message", queued.message_id))
-                test.eq("second", sent.driver_id)
-                test.eq("second|mail@example.org||", sent.provider_message_id)
+                test.eq("capture", sent.driver_id)
+                test.eq(queued.message_id, assert(json.decode(sent.provider_message_id)).idempotency_key)
+            end)
+
+            test.it("records an ambiguous non-idempotent delivery without retrying", function()
+                capture_with(admin)
+                assert(change(admin, "driver", "second").success)
+                local input = body()
+                input.subject = "Fixture ambiguous"
+                local queued = assert(invoke(sender, "send", input))
+                local failed = await_message(log_admin, queued.message_id, function(row)
+                    return row.status ~= "queued" or row.last_error ~= nil
+                end)
+                test.eq("failed", failed.status)
+                test.eq(1, failed.attempts)
+                test.eq("delivery_uncertain", failed.last_error.code)
+                test.is_nil(failed.next_attempt_at)
+                test.eq("done", await_job(persisted(queued.message_id).job_id, "done").status)
+            end)
+
+            test.it("passes the Jobs execution deadline to the transport", function()
+                capture_with(admin)
+                local earliest = time.now()
+                local sent = terminal(log_admin, assert(invoke(sender, "send", body())))
+                local received = assert(json.decode(sent.provider_message_id))
+                test.eq("string", type(received.deadline))
+                local deadline = assert(time.parse(time.RFC3339, received.deadline))
+                test.is_true(deadline:after(earliest))
+                test.is_true(deadline:before(time.now():add("1m")))
             end)
 
             test.it("rejects excess recipients before calling Users", function()
@@ -586,7 +619,7 @@ return {
                 test.eq(2, err:details().maximum)
             end)
 
-            test.it("refuses excess recipients before queuing and after a driver change", function()
+            test.it("refuses excess recipients before queuing", function()
                 capture_with(admin)
                 assert(change(admin, "driver", "second").success)
                 local input = body()
@@ -600,15 +633,6 @@ return {
                 test.eq("max_recipients", err:details().limit)
                 test.eq(2, err:details().maximum)
                 test.eq(before, query(count_sql, {input.subject})[1].n)
-                assert(change(admin, "driver", "capture").success)
-                input.subject = "Fixture exhaust"
-                local queued = assert(invoke(sender, "send", input))
-                await_message(sender, queued.message_id, function(row) return row.last_error ~= nil end)
-                assert(change(admin, "driver", "second").success)
-                local failed = terminal(sender, queued)
-                test.eq("failed", failed.status)
-                test.eq(2, failed.attempts)
-                test.eq("too_many_recipients", failed.last_error.code)
             end)
 
             test.it("bounds raw and rendered subjects and bodies before queuing", function()
@@ -734,7 +758,7 @@ return {
                             local job, enqueue_err = jobs.enqueue_tx(tx, dialect, {
                                 namespace = "mail", scope = row.id, key = "deliver",
                                 owner_locator = {kind = "mail-message", id = row.id},
-                                job_type = "kickside.mail.outbox:deliver",
+                                job_type = "kickside.mail.delivery:deliver",
                                 immutable_payload = {message_id = row.id}, parked = true,
                             })
                             if enqueue_err then return nil, enqueue_err end
@@ -757,7 +781,7 @@ return {
 
                 local function owner(now, change)
                     local executor = assert(funcs.new():with_context({mail_test_now = now}))
-                    local result = assert(executor:call("kickside.mail.outbox:owner", {change = change}))
+                    local result = assert(executor:call("kickside.mail.jobs:owner", {change = change}))
                     assert(result.success, tostring(result.error))
                     return result
                 end
@@ -783,6 +807,39 @@ return {
                 owner(recheck_at)
                 interrupted(cancelled, recheck_at)
                 interrupted(missing, recheck_at)
+            end)
+
+            test.it("prunes preview rows in pages and schedules the earliest remaining expiry", function()
+                local now = (now_ms() // 1000 + 300) * 1000
+                local fixture = "retention-preview-" .. uuid.v4()
+                assert(database.with_tx(function(tx)
+                    for i = 1, policy.BATCH + 2 do
+                        local expiry = now // 1000 + (i > policy.BATCH + 1 and 1 or 0)
+                        local _, err = tx:execute([[INSERT INTO mail_library_preview (id,actor,operation,digest,expected_json,expires_at)
+                            VALUES ($1,$2,'update','fixture','{}',$3)]], {uuid.v4(), fixture, expiry})
+                        if err then return nil, err end
+                    end
+                    return true, nil
+                end))
+                local function count()
+                    return query("SELECT COUNT(*) AS n FROM mail_library_preview WHERE actor=$1", {fixture})[1].n
+                end
+                local function sweep(at)
+                    local executor = assert(funcs.new():with_context({mail_test_now = at}))
+                    local report = assert(executor:call("kickside.mail.jobs:owner", {}))
+                    assert(report.success, tostring(report.error))
+                    return report
+                end
+                local page = sweep(now)
+                test.eq(2, count(), "rows left after the first page")
+                test.eq(now, page.deadline_ms, "remaining expired row")
+                test.is_true(page.needs_continue)
+                local next_page = sweep(now)
+                test.eq(1, count(), "rows left after the second page")
+                test.eq(now + 1000, next_page.deadline_ms, "remaining future row")
+                test.is_false(next_page.needs_continue)
+                sweep(now + 1000)
+                test.eq(0, count())
             end)
 
             test.it("refuses another delivery attempt after the sender becomes inactive", function()

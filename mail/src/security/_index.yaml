@@ -76,7 +76,7 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail:db_config, kickside.mail.outbox:deliver, kickside.core.jobs:db_config, kickside.core.jobs:policy]
+      resources: [kickside.mail:db_config, kickside.mail.delivery:deliver, kickside.core.jobs:db_config, kickside.core.jobs:policy]
       actions: [registry.get]
       effect: allow
   - name: job_notify
@@ -86,14 +86,13 @@ entries:
       resources:
         - kickside.core.jobs.policy:settings_overrides
         - kickside.core.jobs:nudge_workers
-        - kickside.core.jobs:lease_release_signal
       actions: [funcs.call]
       effect: allow
   - name: deferred_delivery
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail.outbox:deliver]
+      resources: [kickside.mail.delivery:deliver]
       actions: [kickside.execution.defer]
       effect: allow
   - name: driver_admin

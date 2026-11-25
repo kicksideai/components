@@ -1,0 +1,72 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local attachments = require("attachments")
+local delivery = require("delivery")
+local drivers = require("drivers")
+local identity = require("identity")
+local message = require("message")
+local outbox = require("outbox")
+local settings = require("settings")
+local types = require("types")
+
+local function prepare(row: types.MessageRow, driver: types.Driver, deadline: string): (types.TransportRequest?, error?)
+    local content, err = delivery.content(row)
+    if err then return nil, err end
+    local payload = content :: types.DeliveryContent
+    local addresses = payload.addresses
+    local limit_err = message.recipients_error(addresses, driver.max_recipients)
+    if limit_err then return nil, limit_err end
+    local execution, identity_err = identity.from_row(row.sender, row.actor_context)
+    if identity_err then return nil, identity_err :: error end
+    local request: types.TransportRequest = {
+        from = {address = row.from_address, name = row.from_name},
+        to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = row.reply_to,
+        subject = row.subject, html = row.html, text = row.text, idempotency_key = row.id, deadline = deadline,
+    }
+    local size = message.delivery_size(request)
+    local files, read_err = identity.run_as(execution, "kickside.mail.delivery:read_attachments", {
+        refs = payload.attachments, message_bytes = size, max_message_bytes = driver.max_message_bytes,
+    }, {deferred_owner = "kickside.mail.delivery:deliver"})
+    if read_err then return nil, read_err :: error end
+    local completed, assets_err = attachments.complete({library_assets = payload.assets, message_bytes = size,
+        max_message_bytes = driver.max_message_bytes}, files :: {types.Attachment})
+    if assets_err then return nil, assets_err end
+    request.attachments = completed
+    return request :: types.TransportRequest?, nil
+end
+
+local function send(row: types.MessageRow, driver: types.Driver, lease: types.Lease, deadline: string):
+    (types.TransportResult?, error?, boolean)
+    local request, prepare_err = prepare(row, driver, deadline)
+    if prepare_err then return nil, prepare_err, true end
+    local transport, open_err = drivers.transport(driver)
+    if open_err then return nil, open_err, true end
+    local inactive = outbox.check_lease(row.job_id, lease)
+    if inactive then return nil, inactive, true end
+    local delivered, err = (transport :: types.Transport):send(request :: types.TransportRequest)
+    return delivered, err, driver.idempotent == true
+end
+
+local function run(input: types.JobInput): (types.Record?, error?)
+    local job = input.job
+    local lease = {token = job.lease_token, execution_seq = job.execution_seq}
+    local values, settings_err = settings.mail()
+    local active_driver = values and values.driver
+    local row, row_err = outbox.start(input.payload.message_id, job.id, lease,
+        active_driver ~= "" and active_driver or nil)
+    if row_err then return nil, row_err end
+    local delivered: types.TransportResult?
+    local delivery_err: error?
+    local safe_to_retry = true
+    if row.driver_id or not settings_err then
+        local driver
+        driver, delivery_err = drivers.resolve(row.driver_id)
+        if driver then delivered, delivery_err, safe_to_retry = send(row, driver, lease, job.deadline) end
+    else
+        delivery_err = settings_err
+    end
+    local completion, err = outbox.settle(row, lease, delivered, delivery_err, safe_to_retry)
+    if err then return nil, err end
+    return {self_completed = true, completion = completion}, nil
+end
+
+return {run = run}

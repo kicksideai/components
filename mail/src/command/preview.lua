@@ -86,6 +86,14 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
     local appearance, globals_err = settings.appearance()
     if globals_err then return nil, globals_err end
     local values = globals.data(appearance :: types.Appearance)
+    local id = uuid.v4()
+    local expires_at = time.now():unix() + 15 * 60
+    -- The reservation survives cancellation during scratch rendering.
+    local _, reserve_err = database.with_db(function(ex: types.Executor): (boolean?, error?)
+        return preview_repo.reserve(ex, id, expires_at)
+    end)
+    if reserve_err then return nil, reserve_err end
+    notify.retention()
     local rendered, render_err = database.with_tx(function(tx: types.Transaction, dialect: string): (types.Rendered | types.DraftPreview | nil, error?)
         local _, lock_err = library_repo.lock(tx, dialect)
         if lock_err then return nil, lock_err end
@@ -161,21 +169,36 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         end
 
         local vars = input.vars or item.samples
+        local reserved, expiry_err = preview_repo.get(tx, id)
+        if expiry_err then return nil, expiry_err end
+        if not reserved or reserved.expires_at <= time.now():unix() then
+            return nil, resources.error(errors.INVALID, "mail_preview_expired", "Start a new preview")
+        end
         local _, clear_err = scratch.clear_workspace()
         if clear_err then return nil, clear_err end
         if not bind then
-            return scratch.render(items, item, vars, candidates, values, input.attachments)
+            local result, draft_err = scratch.render(id, items, item, vars, candidates, values, input.attachments)
+            if draft_err then return nil, draft_err end
+            local _, discard_err = preview_repo.discard(tx, id)
+            if discard_err then return nil, discard_err end
+            return result, nil
         end
-        local result, draft_err = scratch.preview(items, item, vars, candidates, dependants, values, input.attachments)
+        local result, draft_err = scratch.preview(id, items, item, vars, candidates, dependants, values, input.attachments)
         if draft_err then return nil, draft_err end
-        if #result.errors == 0 then
-            local hash, hash_err = digest.preview(operation :: string, candidates, expected, batch[1].restore)
-            if hash_err then return nil, hash_err end
-            local id, insert_err = preview_repo.insert(tx, {id = uuid.v4(), actor = author :: string,
-                operation = operation :: string, digest = hash :: string, expected = expected, expires_at = time.now():unix() + 15 * 60})
-            if insert_err then return nil, insert_err end
-            result.preview_id = id
+        if #result.errors ~= 0 then
+            local _, discard_err = preview_repo.discard(tx, id)
+            if discard_err then return nil, discard_err end
+            return result, nil
         end
+        local hash, hash_err = digest.preview(operation :: string, candidates, expected, batch[1].restore)
+        if hash_err then return nil, hash_err end
+        local completed, complete_err = preview_repo.complete(tx, {id = id, actor = author :: string,
+            operation = operation :: string, digest = hash :: string, expected = expected, expires_at = expires_at})
+        if complete_err then return nil, complete_err end
+        if not completed then
+            return nil, resources.error(errors.CONFLICT, "mail_preview_expired", "Start a new preview")
+        end
+        result.preview_id = id
         return result, nil
     end)
     if render_err then return nil, render_err end
@@ -187,7 +210,6 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         output.warnings = renderer.warnings(output.html)
     end
     output.library_assets = nil
-    if output.preview_id then notify.retention() end
     return rendered, nil
 end
 

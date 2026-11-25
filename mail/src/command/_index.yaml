@@ -92,13 +92,35 @@ entries:
       jobs: kickside.core.jobs:jobs
   - name: retention
     kind: library.lua
+    meta: { private: true }
     source: file://retention.lua
     imports:
       types: kickside.mail:types
       asset_file_repo: kickside.mail.persist:asset_file_repo
       database: kickside.mail.persist:db
+      library_repo: kickside.mail.persist:library_repo
+      message_repo: kickside.mail.persist:message_repo
+      preview_repo: kickside.mail.persist:preview_repo
       content: kickside.mail.read:content
+      scratch: kickside.mail.render:scratch
+      jobs: kickside.core.jobs:jobs
+      policy: kickside.mail.domain:policy
+      outbox: kickside.mail.command:outbox
       uploads: kickside.mail.command:uploads
+  - name: outbox
+    kind: library.lua
+    meta: { private: true }
+    source: file://outbox.lua
+    modules: [time]
+    imports:
+      types: kickside.mail:types
+      asset_file_repo: kickside.mail.persist:asset_file_repo
+      database: kickside.mail.persist:db
+      message_repo: kickside.mail.persist:message_repo
+      policy: kickside.mail.domain:policy
+      redact: kickside.mail.domain:redact
+      jobs: kickside.core.jobs:jobs
+      notify: kickside.mail.command:notify
   - name: send
     kind: library.lua
     meta: {private: true}

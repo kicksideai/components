@@ -2,6 +2,31 @@
 version: "1.0"
 namespace: kickside.mail.jobs
 entries:
+  - name: owner
+    kind: function.lua
+    meta: { private: true, type: kickside.retention.owner }
+    source: file://owner.lua
+    method: run
+    modules: [time]
+    imports:
+      config: kickside.mail.domain:config
+      policy: kickside.mail.domain:policy
+      retention: kickside.mail.command:retention
+      settings: kickside.mail.read:settings
+      types: kickside.mail:types
+    security:
+      actor: { id: "system:kickside.mail.retention" }
+      policies:
+        - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_topics
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:asset_reap_call
+        - kickside.mail.security:asset_reap_action
+        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:overlay_drafts
+        - kickside.uploads.security:uploads_resource_access
   - name: reconcile
     kind: function.lua
     meta:
@@ -14,6 +39,7 @@ entries:
     imports:
       library: kickside.mail.command:library
     security:
+      actor: { id: "system:kickside.mail.library" }
       policies:
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config

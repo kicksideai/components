@@ -43,14 +43,30 @@ local function remove(overlay: registry.Snapshot, ids: {string}): (boolean?, err
     return true, nil
 end
 
-function M.clear_workspace(): (boolean?, error?)
+local function clear_workspace(previews: {[string]: boolean}?): (boolean?, error?)
     local overlay, err = registry.overlay(jet.draft_owner)
     if err then return nil, err end
     local entries, list_err = overlay:entries()
     if list_err then return nil, list_err end
     local ids: {string} = {}
-    for _, entry in ipairs(entries) do ids[#ids + 1] = entry.id end
+    for _, entry in ipairs(entries) do
+        local boundary = entry.id:find(".", #jet.draft_namespace + 1, true)
+        if not previews or (boundary and previews[entry.id:sub(1, boundary)]) then
+            ids[#ids + 1] = entry.id
+        end
+    end
     return remove(overlay, ids)
+end
+
+function M.clear_workspace(): (boolean?, error?)
+    return clear_workspace(nil)
+end
+
+function M.clear_expired(ids: {string}): (boolean?, error?)
+    if #ids == 0 then return true, nil end
+    local previews: {[string]: boolean} = {}
+    for _, id in ipairs(ids) do previews[jet.scratch_namespace(id)] = true end
+    return clear_workspace(previews)
 end
 
 local function open(selected: {types.ResourceContent}, checked: {types.ResourceContent},
@@ -91,9 +107,9 @@ local function open(selected: {types.ResourceContent}, checked: {types.ResourceC
     return ids, nil
 end
 
-local function with_draft<T>(selected: {types.ResourceContent}, checked: {types.ResourceContent},
+local function with_draft<T>(id: string, selected: {types.ResourceContent}, checked: {types.ResourceContent},
     run: (types.TemplateSet, types.TemplateSet) -> (T?, error?)): (T?, error?)
-    local namespace = jet.scratch_namespace(uuid.v4())
+    local namespace = jet.scratch_namespace(id)
     local html_id, text_id = namespace .. "html", namespace .. "text"
     local ids, open_err = open(selected, checked, namespace, html_id, text_id)
     if open_err then
@@ -196,7 +212,7 @@ function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidates
     dependants: {types.Resource}, values: types.RenderGlobals): (boolean?, error?)
     values.assets = asset_refs.from_items(items)
     local selected = closure(items, nil, candidates, dependants)
-    return with_draft(selected, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (boolean?, error?)
+    return with_draft(uuid.v4(), selected, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (boolean?, error?)
         local result, candidate_error, dependent_error = check(candidates, dependants, values, html, text)
         if candidate_error then return nil, candidate_error end
         if not dependent_error then return true, nil end
@@ -213,11 +229,11 @@ function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidates
     end)
 end
 
-function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, candidates: {types.ResourceContent},
+function M.preview(id: string, items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, candidates: {types.ResourceContent},
     dependants: {types.Resource}, values: types.RenderGlobals, attachments: {types.AttachmentRef}?): (types.DraftPreview?, error?)
     values.assets = asset_refs.from_items(items)
     local selected = closure(items, item, candidates, dependants)
-    return with_draft(selected, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview?, error?)
+    return with_draft(id, selected, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview?, error?)
         local result = check(candidates, dependants, values, html, text)
         local rendered, err = render_message(item, vars, values, html, text, attachments)
         if err then
@@ -238,12 +254,12 @@ function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.J
     end)
 end
 
-function M.render(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject,
+function M.render(id: string, items: types.ResourceMap, item: types.Resource, vars: types.JsonObject,
     candidates: {types.ResourceContent}, values: types.RenderGlobals,
     attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     values.assets = asset_refs.from_items(items)
     local selected = closure(items, item, candidates)
-    return with_draft(selected, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
+    return with_draft(id, selected, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
         local result, err = render_message(item, vars, values, html, text, attachments)
         if err then return nil, diagnostic(err, item, candidates) end
         return result, nil

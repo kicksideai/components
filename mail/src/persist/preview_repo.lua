@@ -4,13 +4,26 @@ local json = require("json")
 
 local M = {}
 
-function M.insert(ex: types.Executor, row: types.PreviewRow): (string?, error?)
+function M.reserve(ex: types.Executor, id: string, expires_at: integer): (boolean?, error?)
+    local _, err = ex:execute([[INSERT INTO mail_library_preview (id,actor,operation,digest,expected_json,expires_at)
+        VALUES ($1,'','scratch','','{}',$2)]], {id, expires_at})
+    if err then return nil, err end
+    return true, nil
+end
+
+function M.complete(tx: types.Transaction, row: types.PreviewRow): (boolean?, error?)
     local expected, encode_err = json.encode(row.expected)
     if encode_err then return nil, encode_err end
-    local _, err = ex:execute([[INSERT INTO mail_library_preview (id,actor,operation,digest,expected_json,expires_at)
-        VALUES ($1,$2,$3,$4,$5,$6)]], {row.id, row.actor, row.operation, row.digest, expected, row.expires_at})
+    local result, err = tx:execute([[UPDATE mail_library_preview SET actor=$1,operation=$2,digest=$3,expected_json=$4
+        WHERE id=$5 AND operation='scratch']], {row.actor, row.operation, row.digest, expected, row.id})
     if err then return nil, err end
-    return row.id, nil
+    return result.rows_affected == 1, nil
+end
+
+function M.discard(tx: types.Transaction, id: string): (boolean?, error?)
+    local _, err = tx:execute("DELETE FROM mail_library_preview WHERE id=$1 AND operation='scratch'", {id})
+    if err then return nil, err end
+    return true, nil
 end
 
 function M.get(ex: types.Executor, id: string): (types.PreviewRow?, error?)
@@ -25,12 +38,14 @@ function M.get(ex: types.Executor, id: string): (types.PreviewRow?, error?)
         digest = row.digest :: string, expected = expected :: {[string]: integer}, expires_at = row.expires_at :: integer}, nil
 end
 
-function M.prune(tx: types.Transaction, now: integer, limit: integer): (integer?, error?)
-    local result, err = tx:execute([[DELETE FROM mail_library_preview WHERE id IN (
+function M.prune(tx: types.Transaction, now: integer, limit: integer): ({string}?, error?)
+    local rows, err = tx:query([[DELETE FROM mail_library_preview WHERE id IN (
         SELECT id FROM mail_library_preview WHERE expires_at<=$1 ORDER BY expires_at,id LIMIT $2
-    )]], {now, limit})
+    ) RETURNING id]], {now, limit})
     if err then return nil, err end
-    return result.rows_affected, nil
+    local ids: {string} = {}
+    for index, row in ipairs(rows) do ids[index] = row.id :: string end
+    return ids, nil
 end
 
 function M.next_expiry(ex: types.Executor): (integer?, error?)

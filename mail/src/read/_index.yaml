@@ -98,6 +98,9 @@ entries:
     source: &delivery_source file://delivery.lua
     imports: &delivery_imports
       types: kickside.mail:types
+      database: kickside.mail.persist:db
+      message_reader: kickside.mail.persist:message_reader
+      asset_file_repo: kickside.mail.persist:asset_file_repo
       settings: kickside.mail.read:settings
       drivers: kickside.mail:drivers_registry
       config: kickside.mail.domain:config

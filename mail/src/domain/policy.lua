@@ -15,16 +15,19 @@ local RETRYABLE = {
     [errors.TIMEOUT] = true,
 }
 
+function M.ambiguous(err: error): boolean
+    local details = err:details()
+    local code = details and details.code
+    return err:kind() == errors.TIMEOUT or code == "provider_transport_failed"
+        or code == "send_in_progress" or code == "delivery_uncertain"
+end
+
 function M.retry_at(err: error, attempts: integer, now: integer, idempotent: boolean): integer?
     if attempts >= M.MAX_ATTEMPTS or not err:retryable() then return nil end
     local details = err:details()
-    local kind = err:kind()
     local code = details and details.code
-    if not RETRYABLE[kind] and code ~= "send_in_progress" then return nil end
-    if not idempotent and (kind == errors.TIMEOUT or code == "provider_transport_failed"
-        or code == "send_in_progress" or code == "delivery_uncertain") then
-        return nil
-    end
+    if not RETRYABLE[err:kind()] and code ~= "send_in_progress" then return nil end
+    if not idempotent and M.ambiguous(err) then return nil end
     local delay = math.min(CAP_MS, BASE_MS * 2 ^ (attempts - 1))
     local hint = details and details.retry_after_ms
     if type(hint) == "number" and hint >= 0 and hint < math.huge then

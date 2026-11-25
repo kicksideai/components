@@ -27,7 +27,7 @@ type SendRequest = {
 type Addresses = {to: {string}, cc: {string}?, bcc: {string}?}
 type TransportRequest = Addresses & {
     from: Mailbox, reply_to: string?, subject: string, html: string?, text: string?,
-    attachments: {Attachment}?, idempotency_key: string?,
+    attachments: {Attachment}?, idempotency_key: string?, deadline: string?,
 }
 type TransportResult = {provider_message_id: string?}
 type SendResult = {message_id: string, status: string}
@@ -71,14 +71,15 @@ type Outcome = {delivered: TransportResult?, cause: MessageError?}
 type DueRow = {id: string, job_id: string, next_check_at: integer}
 type Deadlines = {check_at: integer?, finished_at: integer?}
 type MessageContent = {addresses: Addresses, attachments: {AttachmentRef}}
+type DeliveryContent = MessageContent & {assets: {AssetRef}}
 type ResendSource = {row: MessageRow, content: MessageContent, assets: {AssetRef}}
 type MessagePage = {items: {MessageRow}, has_more: boolean, total: integer, total_is_lower_bound: boolean?, failed_today: integer}
-type Job = {id: string, lease_token: string, execution_seq: integer}
+type Job = {id: string, lease_token: string, execution_seq: integer, deadline: string}
 type JobInput = {job: Job, payload: {message_id: string}}
 type Lease = {token: string, execution_seq: integer}
 type ActorRow = {actor_id: string, actor_context: string}
 type OwnerLocator = {kind: string, id: string}
-type JobCompletion = {owner_locator: OwnerLocator?}
+type JobCompletion = {run_history_settled: boolean}
 type OwnerInput = {change: {kind: string?, job_id: string?, owner_locator: OwnerLocator?}?}
 type BlockedAsset = {component_id: string, error: error}
 type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, needs_continue: boolean?,
@@ -178,7 +179,8 @@ type TemplateSet = {
 }
 type SchemaIssue = {schema_path: string, instance_path: string}
 type Driver = {id: string, label: string, icon: string, description: string, binding: string,
-    settings_ns: string, available_func: string, settings_view: string?, max_recipients: integer?, max_message_bytes: integer?}
+    settings_ns: string, available_func: string, settings_view: string?, max_recipients: integer?, max_message_bytes: integer?,
+    idempotent: boolean?}
 type Availability = {available: boolean, code: string?, reason: string?}
 type DriverSetting = {namespace: string, key: string, value_type: string, is_secret: boolean, has_value: boolean?,
     value: unknown, default: unknown, title: string?, description: string, order: number?, editable: boolean, schema: unknown}
@@ -259,7 +261,8 @@ return {
     MessageRef = MessageRef, ListRequest = ListRequest, ListQuery = ListQuery, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, ResendSource = ResendSource, Admission = Admission, AdmissionResult = AdmissionResult,
     MessageInsert = MessageInsert, KeyRow = KeyRow, InsertOutcome = InsertOutcome, Outcome = Outcome,
-    DueRow = DueRow, Deadlines = Deadlines, MessageContent = MessageContent, MessagePage = MessagePage, SenderPage = SenderPage,
+    DueRow = DueRow, Deadlines = Deadlines, MessageContent = MessageContent, DeliveryContent = DeliveryContent,
+    MessagePage = MessagePage, SenderPage = SenderPage,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,
     OwnerResult = OwnerResult, BlockedAsset = BlockedAsset, ComponentAccessContract = ComponentAccessContract,
     ResourceKey = ResourceKey, ResourceReferences = ResourceReferences, ReferenceClosure = ReferenceClosure, PreviewRow = PreviewRow,

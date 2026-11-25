@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.delivery
+entries:
+  - name: deliver
+    kind: function.lua
+    meta: { private: true, type: kickside.core.jobs.worker }
+    source: file://worker.lua
+    method: run
+    imports:
+      attachments: kickside.mail.command:attachments
+      delivery: kickside.mail.read:delivery
+      drivers: kickside.mail:drivers_registry
+      identity: kickside.execution:execution_identity
+      message: kickside.mail.domain:message
+      outbox: kickside.mail.command:outbox
+      settings: kickside.mail.read:settings
+      types: kickside.mail:types
+    security:
+      actor: { id: "system:kickside.mail.delivery" }
+      policies:
+        - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_topics
+        - kickside.mail.security:deferred_delivery
+        - kickside.mail.security:asset_bytes
+        - kickside.mail.security:driver_dispatch
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:settings_admin_read
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:job_notify
+  - name: read_attachments
+    kind: function.lua
+    meta: { private: true }
+    source: file://read_attachments.lua
+    method: read
+    imports:
+      attachments: kickside.mail.command:attachments

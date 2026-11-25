@@ -6,6 +6,19 @@ local drivers = require("drivers")
 local config = require("config")
 local settings_types = require("settings_types")
 local definitions = require("settings_defs")
+local database = require("database")
+local message_reader = require("message_reader")
+local asset_file_repo = require("asset_file_repo")
+
+local function content(row: types.MessageRow): (types.DeliveryContent?, error?)
+    local decoded, err = message_reader.content(row)
+    if err then return nil, err end
+    return database.with_db(function(ex: types.Executor): (types.DeliveryContent?, error?)
+        local assets, read_err = asset_file_repo.refs(ex, row.id)
+        if read_err then return nil, read_err end
+        return {addresses = decoded.addresses, attachments = decoded.attachments, assets = assets :: {types.AssetRef}}, nil
+    end)
+end
 
 local function transports(installed: {[string]: types.Driver}): ({types.TransportStatus}?, error?)
     local result: {types.TransportStatus} = {}
@@ -95,4 +108,4 @@ local function driver_settings(namespace: string): ({types.DriverSetting}?, erro
     return result, nil
 end
 
-return {status = status, driver_settings = driver_settings}
+return {content = content, status = status, driver_settings = driver_settings}

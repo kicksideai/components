@@ -306,7 +306,7 @@ return {run = test.run_cases(function()
             test.eq("mail_preview_expired", err:details().code)
 
             local owner = assert(funcs.new():with_context(after_expiry))
-            local swept = assert(owner:call("kickside.mail.outbox:owner", {}))
+            local swept = assert(owner:call("kickside.mail.jobs:owner", {}))
             test.is_true(swept.success)
             db = assert(sql.get("app:db"))
             local rows = assert(db:query("SELECT id FROM mail_library_preview WHERE id=$1", {preview.preview_id}))

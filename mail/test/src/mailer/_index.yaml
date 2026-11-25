@@ -16,6 +16,7 @@ entries:
     kind: registry.entry
     meta: { type: "kickside.mail:driver" }
     id: second
+    idempotent: false
     max_recipients: 2
     max_message_bytes: 100000
     label: Second
@@ -28,6 +29,7 @@ entries:
     kind: registry.entry
     meta: { type: "kickside.mail:driver" }
     id: capture
+    idempotent: true
     label: Capture
     icon: lucide:mail
     description: Return the rendered message and recipient fields for assertions.

@@ -127,6 +127,24 @@ return {run = test.run_cases(function()
             preview_and_save()
         end)
 
+        test.it("sweeps a cancelled preview workspace when it expires", function()
+            local now = time.now():unix()
+            local preview = assert(editor:with_context({mail_test_now = now * 1000}))
+            local draft = resource("message", MESSAGE, "Cancelled preview body")
+            local prefix = cancel_after_publication(preview, "preview", {message = MESSAGE, resources = {draft}})
+            local function sweep(at)
+                local executor = assert(funcs.new():with_context({mail_test_now = at * 1000}))
+                local report = assert(executor:call("kickside.mail.jobs:owner", {}))
+                assert(report.success, tostring(report.error))
+            end
+            local expires = now + 15 * 60
+            sweep(expires - 1)
+            test.not_nil(registry.get(prefix .. "html"))
+            sweep(expires)
+            test.eq(0, #workspace())
+            live_is_unchanged()
+        end)
+
         test.it("evaluates and saves after cancelled save validation without committing the edit", function()
             local draft = resource("message", MESSAGE, "Cancelled save body")
             draft.expected_revision = initial.revision

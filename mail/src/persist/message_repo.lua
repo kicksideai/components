@@ -36,7 +36,7 @@ function M.set_job(tx: sql.Transaction, id: string, job_id: string): (boolean?, 
 end
 
 function M.start(ex: types.Executor, id: string, job_id: string, binding_id: string?): (types.MessageRow?, error?)
-    local rows, err = ex:query([[UPDATE mail_message SET attempts=attempts+1, driver_id=$1
+    local rows, err = ex:query([[UPDATE mail_message SET attempts=attempts+1, driver_id=COALESCE(driver_id,$1)
         WHERE id=$2 AND job_id=$3 AND status='queued' RETURNING *]], {binding_id or sql.NULL, id, job_id})
     if err then return nil, err end
     return rows[1] :: types.MessageRow?, nil
