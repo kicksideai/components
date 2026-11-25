@@ -13,6 +13,7 @@ entries:
     source: file://render.lua
     modules: [templates, html]
     imports:
+      error_envelope: kickside.contract:error_envelope
       types: kickside.mail:types
       globals: kickside.mail.render:globals
       vars: kickside.mail.domain:vars

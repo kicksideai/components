@@ -52,6 +52,7 @@ entries:
     source: file://digest.lua
     imports:
       types: kickside.mail:types
+      error_envelope: kickside.contract:error_envelope
       canonical_json: kickside.contract:canonical_json
   - name: jet
     kind: library.lua

@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
+local error_envelope = require("error_envelope")
 local templates = require("templates")
 local html = require("html")
 local globals = require("globals")
@@ -60,7 +61,7 @@ local function open_set(id: string, face: string): (types.TemplateSet?, error?)
     details.code = details.code or "template_set_unavailable"
     details.face = face
     details.template_set = id
-    return nil, errors.new({kind = err:kind(), retryable = err:retryable() == true, message = err:message(), details = details})
+    return nil, error_envelope.wrap(err, "Cannot open the Mail template set", details)
 end
 
 function M.with_sets<T>(html_id: string, text_id: string,

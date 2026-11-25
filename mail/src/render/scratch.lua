@@ -114,10 +114,8 @@ local function with_draft<T>(id: string, selected: {types.ResourceContent}, chec
     local ids, open_err = open(selected, checked, namespace, html_id, text_id)
     if open_err then
         if open_err:kind() ~= errors.CONFLICT then return nil, open_err end
-        local details = open_err:details() or {}
-        details.code = "mail_draft_workspace_unavailable"
-        return nil, errors.new({kind = errors.CONFLICT, retryable = open_err:retryable() == true,
-            message = "The draft workspace is unavailable.", details = details})
+        return nil, error_envelope.wrap(open_err, "The draft workspace is unavailable.",
+            {code = "mail_draft_workspace_unavailable"})
     end
     local value, err = render.with_sets(html_id, text_id, run)
     local final_err = error_envelope.cleanup(function()
@@ -130,11 +128,13 @@ local function with_draft<T>(id: string, selected: {types.ResourceContent}, chec
 end
 
 local function invalid(err: error): error
-    return errors.new({kind = errors.INVALID, retryable = false, message = err:message(), details = err:details()})
+    local details = err:details() or {}
+    details.cause = error_envelope.encode(err)
+    return errors.new({kind = errors.INVALID, retryable = false, message = err:message(), details = details})
 end
 
 local function diagnostic(err: error, item: types.ResourceContent, changed: {types.ResourceContent}): error
-    local details = err:details()
+    local details = err:details() or {}
     local candidates: {types.ResourceKey} = {}
     local seen: {[string]: boolean} = {}
     local function add(key: types.ResourceKey)
@@ -147,7 +147,7 @@ local function diagnostic(err: error, item: types.ResourceContent, changed: {typ
     if item.base then add({kind = "base", name = item.base}) end
     for _, candidate in ipairs(changed) do add(candidate) end
     details.candidate_resources = candidates
-    return errors.new({kind = err:kind(), retryable = false, message = err:message(), details = details})
+    return error_envelope.wrap(err, "Cannot validate the Mail draft", details)
 end
 
 local function render_message(item: types.ResourceContent, vars: types.JsonObject, values: types.RenderGlobals,
