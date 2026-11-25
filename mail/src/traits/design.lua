@@ -6,6 +6,9 @@ local tool_result = require("tool_result")
 local M = {}
 local REFUSALS = {
     mail_revision_conflict = true,
+    mail_command_id_conflict = true,
+    mail_library_changed = true,
+    mail_library_catching_up = true,
     mail_preview_required = true,
     mail_preview_mismatch = true,
     mail_preview_stale = true,
@@ -22,7 +25,8 @@ local function refusal(err: error): (types.Record?, error?)
 end
 
 local function summary(item: types.Resource): types.LibraryRowSummary
-    return {kind = item.kind, name = item.name, revision = item.revision, state = item.state}
+    return {kind = item.kind, name = item.name, revision = item.revision, state = item.state,
+        seq = item.seq, committed = item.committed, projected = item.projected}
 end
 
 local function write_result(item: types.Resource?, err: error?): (types.Record | types.LibraryRowSummary | nil, error?)
@@ -36,7 +40,7 @@ function M.list(input: types.LibraryPageRequest): (unknown, error?)
     local page, err = library:list(input)
     if err then return nil, err end
     local result = page :: types.LibraryPage
-    return {items = result.items, next_cursor = result.next_cursor}, nil
+    return {items = result.items, next_cursor = result.next_cursor, library_seq = result.library_seq}, nil
 end
 
 function M.read(input: types.ResourceKey): (unknown, error?)
@@ -67,8 +71,12 @@ function M.save(input: types.ResourceSave): (unknown, error?)
     local saved, err = library:save(input)
     if err then return refusal(err) end
     local rows: {types.LibraryRowSummary} = {}
-    for i, item in ipairs((saved :: types.LibrarySaveResult).items) do rows[i] = summary(item) end
-    return {items = rows}, nil
+    local receipt = saved :: types.LibrarySaveResult
+    if receipt.items then
+        for i, item in ipairs(receipt.items) do rows[i] = summary(item) end
+    end
+    return {items = receipt.items and rows or nil, seq = receipt.seq,
+        committed = receipt.committed, projected = receipt.projected}, nil
 end
 
 function M.create(input: types.ResourceCreate): (unknown, error?)

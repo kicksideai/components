@@ -6,6 +6,7 @@
     "preview_id"
   ],
   "properties": {
+    "command_id": {"type": "string", "format": "uuid"},
     "resources": {
       "type": "array",
       "minItems": 1,

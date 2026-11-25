@@ -103,7 +103,7 @@ type Resource = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema: VariableSchema, samples: JsonObject,
     asset: Asset?, original: OriginalSource?, state: string, origin: string?, origin_label: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?, used_by: UsedBy?,
-    archived: boolean?,
+    archived: boolean?, seq: integer?, projected: boolean?, committed: boolean?,
 }
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
@@ -117,13 +117,13 @@ type LibraryWorkspace = {
     ex: Executor, items: ResourceMap, originals: OriginalMap,
     loaded: {[string]: boolean},
 }
-type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?, preview_id: string?}
-type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?, preview_id: string?}
-type ResourceCreate = ResourceKey & {note: string?, preview_id: string?, from: ResourceKey?, title: string?, description: string?,
+type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
+type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
+type ResourceCreate = ResourceKey & {note: string?, preview_id: string?, command_id: string?, from: ResourceKey?, title: string?, description: string?,
     html: string?, text: string?, base: string?, subject: string?, schema: VariableSchema?, samples: JsonObject?}
 type AssetWrite = {name: string, upload_id: string, expected_revision: integer?, width: integer?, height: integer?, note: string?,
     title: string?, description: string?}
-type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?, preview_id: string?}
+type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
 type ResourceRestore = ResourceRevision & {revision: integer}
 type RevisionChange = {action: string, state: string, restored_from: integer?, note: string?}
 type LibraryWrite = {item: Resource, released: {Record}}
@@ -133,23 +133,24 @@ type LibraryHistoryRequest = ResourceKey & {limit: integer?, cursor: string?}
 type LibraryRevisionRequest = ResourceKey & {revision: integer}
 type LibraryHistoryPage = {items: {Revision}, next_cursor: string?}
 type LibraryAssetRequest = {name: string, revision: integer?}
-type LibrarySaveResult = {items: {Resource}}
+type LibrarySaveResult = {items: {Resource}?, seq: integer?, projected: boolean?, committed: boolean?}
+type LibraryWriteOptions = {preview_id: string?, command_id: string?, identity_op: string?}
 type OriginalRevisions = {[string]: {[string]: integer}}
 type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, resources: {ResourceEdit}?, message: string, vars: JsonObject?}
-type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
+type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?, command_id: string?}
 type EditPreview = DraftRequest & {create: ResourceCreate?, set_base: ResourceBaseEdit?, reset: ResourceRevision?, restore: ResourceRestore?}
 type DraftIssue = {code: string, engine_message: string?, message: string, resource: ResourceKey, face: string, candidate_resources: {ResourceKey}}
 type PreviewWarning = {code: string, message: string, bytes: integer, threshold_bytes: integer}
 type DraftPreview = {subject: string?, html: string?, text: string?, errors: {DraftIssue},
     dependent_messages: {string}, preview_id: string?, inline_assets: InlineAssets?, warnings: {PreviewWarning}?, library_assets: {AssetRef}?}
 type LibraryPageRequest = ResourceFilter & {limit: integer?, cursor: string?}
-type LibraryRowSummary = ResourceKey & {state: string, revision: integer, used_by: {messages: integer?, recent_sources: integer?}?}
+type LibraryRowSummary = ResourceKey & {state: string, revision: integer, seq: integer?, committed: boolean?, projected: boolean?, used_by: {messages: integer?, recent_sources: integer?}?}
 type LibraryListRow = LibraryRowSummary & {
     title: string, description: string, origin: string?, origin_label: string?,
     base: string?, author: string?, updated_at: integer?, asset: Asset?,
 }
 type LibraryDeclaration = ResourceKey & {base: string?, selected: integer}
-type LibraryPage = {items: {LibraryListRow}, next_cursor: string?, total: integer}
+type LibraryPage = {items: {LibraryListRow}, next_cursor: string?, total: integer, library_seq: integer?}
 type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?,
     note: string?, from: ResourceKey?, asset_deadline: integer?}
 type LibraryRow = {
@@ -157,18 +158,34 @@ type LibraryRow = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema_json: string, samples_json: string, state: string,
     origin: string?, origin_label: string?, revision: integer, author: string, created_at: integer, updated_at: integer, note: string?,
-    version: integer, action: string, restored_from: integer?,
+    version: integer, action: string, restored_from: integer?, last_seq: integer?,
 }
 type EventContent = {title: string, description: string, html: string, text: string, subject: string?,
     schema: VariableSchema, samples: JsonObject}
 type EventAsset = {upload_id: string, filename: string, content_type: string, size: integer}
 type LibraryEventBody = {
-    key: ResourceKey, revision: integer, author: string, note: string?, change: string,
+    key: ResourceKey, revision: integer, author: string, note: string?, change: string, command_hash: string?,
     content: EventContent?, base: string?, state: string?, origin: string?, origin_label: string?,
     preview_id: string?, from: ResourceKey?, previous_base: string?, from_seq: integer?, from_version: integer?,
     asset: EventAsset?, title: string?, description: string?,
 }
-type LibraryEvent = {type: string, body: LibraryEventBody, subject: string}
+type ThreadExternal = {external_source: string, external_id: string, external_version: string}
+type ThreadLookup = ThreadExternal & {thread_id: string, event_type: string}
+type ThreadEvent = {seq: integer, body: string, subject_version: integer, created_at: string}
+type ThreadHead = {event_count: integer, subject_version: integer?}
+type ThreadExpect = {head: integer, subject: string?, version: integer?}
+type LibraryEvent = {type: string, body: LibraryEventBody, subject: string, external: ThreadExternal?}
+type ThreadAppend = {duplicates: integer, max_seq: integer}
+type LibraryThreads = {
+    find: (LibraryThreads, {thread_id: string, subject: string?}) -> (ThreadHead?, error?),
+    find_event_by_external: (LibraryThreads, ThreadLookup) -> ({event: ThreadEvent?}?, error?),
+    list_events: (LibraryThreads, {thread_id: string, from_seq: integer, to_seq: integer, limit: integer}) ->
+        ({events: {ThreadEvent}, source_gap: boolean?}?, error?),
+    prune_boundary: (LibraryThreads, {thread_id: string}) -> ({max_pruned_seq: integer}?, error?),
+    append_events: (LibraryThreads, {thread_id: string, expect: ThreadExpect, events: {LibraryEvent}}) -> (ThreadAppend?, error?),
+    catch_up_projection: (LibraryThreads, {thread_id: string, kind: string, target_seq: integer, deadline: string}) ->
+        ({done: boolean}?, error?),
+}
 type PrefetchedLibraryEvent = {type: string, body: LibraryEventBody, seq: integer, created_at: string}
 type ProjectionInput = {thread_id: string, range: {from_seq: integer, to_seq: integer}, events: {PrefetchedLibraryEvent}}
 type ProjectedResource = Resource & {last_seq: integer}

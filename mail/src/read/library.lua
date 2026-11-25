@@ -20,6 +20,9 @@ local component_envelope = require("component_envelope")
 local error_envelope = require("error_envelope")
 local config = require("config")
 
+local live = require("live")
+local live_repo = require("live_repo")
+
 local M = {}
 local RECENT_SENDER_LIMIT = 100
 
@@ -121,23 +124,33 @@ function M.load(db: types.Executor): (types.ResourceMap?, error?, types.Original
     return items, merge_err, originals
 end
 
+local function lookup_in(ex: types.Executor, key: types.ResourceKey, declared: types.Original?): (types.Resource?, error?)
+    local item, read_err = library_reader.get(ex, key)
+    if read_err then return nil, read_err end
+    if item and item.state ~= "original" then return item, match_origin(item, declared) end
+    if not declared then
+        return nil, resource.error(errors.NOT_FOUND, "mail_resource_not_found", "Mail library resource was not found", key)
+    end
+    if item then
+        declared.resource.revision, declared.resource.seq = item.revision, item.seq
+    elseif key.kind ~= "asset" then
+        local position, err = library_reader.subject_position(ex, key)
+        if err then return nil, err end
+        declared.resource.revision, declared.resource.seq = position.revision, position.seq
+    end
+    return declared.resource, nil
+end
+
 function M.lookup(key: types.ResourceKey): (types.Resource?, error?, types.Original?)
     local bad_key = resource.check_key(key)
     if bad_key then return nil, bad_key end
     local originals, err = originals_reader.list()
     if err then return nil, err end
-    local item, read_err = database.with_db(function(ex: types.Executor): (types.Resource?, error?)
-        return library_reader.get(ex, key)
-    end)
-    if read_err then return nil, read_err end
     local declared = originals[resource.subject(key)]
-    if item and item.state == "original" then
-        if declared then declared.resource.revision = item.revision end
-    elseif item then
-        return item, match_origin(item, declared), declared
-    end
-    if declared then return declared.resource, nil, declared end
-    return nil, resource.error(errors.NOT_FOUND, "mail_resource_not_found", "Mail library resource was not found", key)
+    local item, read_err = database.with_db(function(ex: types.Executor): (types.Resource?, error?)
+        return lookup_in(ex, key, declared)
+    end)
+    return item, read_err, declared
 end
 
 local function summary_page(filter: types.ResourceFilter, after: types.ResourceKey?, limit: integer): (types.LibraryPage?, error?)
@@ -151,6 +164,8 @@ local function summary_page(filter: types.ResourceFilter, after: types.ResourceK
         declarations[#declarations + 1] = {kind = item.kind, name = item.name, base = item.base, selected = selected and 1 or 0}
     end
     return database.with_db(function(db: types.DB, dialect: string): (types.LibraryPage?, error?)
+        local mark, mark_err = live_repo.get(db)
+        if mark_err then return nil, mark_err end
         local page, read_err = summary(db, dialect, declarations, originals :: types.OriginalMap, filter, after, limit)
         if read_err then return nil, read_err end
         for _, row in ipairs(page.items) do
@@ -164,6 +179,7 @@ local function summary_page(filter: types.ResourceFilter, after: types.ResourceK
                 if origin_err then return nil, origin_err end
             end
         end
+        page.library_seq = mark.projected_seq
         return page, nil
     end)
 end
@@ -226,18 +242,45 @@ function M.require_write(): error?
     return require_access(component_types.ACCESS.WRITE, "write")
 end
 
+local function fence(ex: types.Executor, snapshot_seq: integer?): error?
+    local mark, err = live_repo.get(ex)
+    if err then return err end
+    return live.fence(mark.template_seq :: integer, snapshot_seq)
+end
+
+function M.require_live(): error?
+    local _, err = database.with_db(function(ex: types.Executor): (boolean?, error?)
+        return true, fence(ex)
+    end)
+    return err
+end
+
 function M.live_message(name: unknown): (types.Resource?, error?)
     if type(name) ~= "string" or not name:find("%S") then
         return nil, resource.error(errors.INVALID, "invalid_template", "A mail template name is required")
     end
-    local item, err = M.lookup({kind = "message", name = name})
-    if err and err:kind() == errors.NOT_FOUND then
-        return nil, resource.error(errors.NOT_FOUND, "template_not_found", "Mail template is not declared: " .. name)
-    end
-    if item and item.archived then
-        return nil, resource.error(errors.NOT_FOUND, "mail_template_archived", "This mail template is archived", item)
-    end
-    return item, err
+    local key = {kind = "message", name = name}
+    local invalid = resource.check_key(key)
+    if invalid then return nil, invalid end
+    local originals, err = originals_reader.list()
+    if err then return nil, err end
+    return database.with_db(function(ex: types.Executor): (types.Resource?, error?)
+        local before, mark_err = live_repo.get(ex)
+        if mark_err then return nil, mark_err end
+        local item, lookup_err = lookup_in(ex, key, originals[resource.subject(key)])
+        if lookup_err then
+            if errors.is(lookup_err, errors.NOT_FOUND) then
+                return nil, resource.error(errors.NOT_FOUND, "template_not_found", "Mail template is not declared: " .. name)
+            end
+            return nil, lookup_err
+        end
+        if item.archived then
+            return nil, resource.error(errors.NOT_FOUND, "mail_template_archived", "This mail template is archived", item)
+        end
+        local fenced = fence(ex, before.template_seq :: integer)
+        if fenced then return nil, fenced end
+        return item, nil
+    end)
 end
 
 local function recent_since(): (integer?, error?)

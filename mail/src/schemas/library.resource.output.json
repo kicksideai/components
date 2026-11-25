@@ -1,18 +1,13 @@
 {
   "type": "object",
-  "required": [
-    "kind",
-    "name",
-    "title",
-    "description",
-    "html",
-    "text",
-    "schema",
-    "samples",
-    "state",
-    "revision"
+  "anyOf": [
+    {"required": ["kind", "name", "title", "description", "html", "text", "schema", "samples", "state", "revision"]},
+    {"required": ["seq", "committed", "projected"]}
   ],
   "properties": {
+    "seq": {"type": "integer", "minimum": 1},
+    "committed": {"const": true},
+    "projected": {"type": "boolean"},
     "kind": {
       "type": "string",
       "enum": [

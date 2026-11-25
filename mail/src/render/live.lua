@@ -6,6 +6,27 @@ local resource = require("resource")
 local jet = require("jet")
 
 local M = {}
+local MARKER = "kickside.mail.projection:marker"
+
+function M.published(entries: {types.JetEntry}): integer?
+    for _, entry in ipairs(entries) do
+        if entry.id == MARKER then return entry.data.seq :: integer? end
+    end
+    return nil
+end
+
+function M.open(): (registry.Snapshot?, error?)
+    return registry.overlay(jet.owner)
+end
+
+function M.fence(seq: integer, snapshot_seq: integer?): error?
+    local marker, err = registry.get(MARKER)
+    if err and not errors.is(err, errors.NOT_FOUND) then return err end
+    local published = marker and marker.data.seq
+    if published == seq and (snapshot_seq == nil or snapshot_seq == seq) then return nil end
+    return errors.new({kind = errors.UNAVAILABLE, retryable = true, message = "Mail library templates are publishing",
+        details = {code = "mail_library_publishing", template_seq = seq, published = published or -1}})
+end
 
 function M.editable(declared: types.Original): error?
     for _, id in pairs(declared.entries) do
@@ -31,28 +52,24 @@ local function desired(rows: {types.Resource}, originals: types.OriginalMap): ({
     return entries, nil
 end
 
-function M.publish(rows: {types.Resource}, originals: types.OriginalMap): (boolean?, error?)
+function M.publish(overlay: registry.Snapshot, existing: {types.JetEntry}, rows: {types.Resource},
+    originals: types.OriginalMap, seq: integer): (boolean?, error?)
     local entries, err = desired(rows, originals)
     if err then return nil, err end
 
-    local overlay, open_err = registry.overlay(jet.owner)
-    if open_err then return nil, open_err end
-    local existing, list_err = overlay:entries()
-    if list_err then return nil, list_err end
     local changes = overlay:changes()
-    local count = 0
     for _, old in ipairs(existing) do
-        local entry = entries[old.id]
-        if not entry then
-            local _, stage_err = changes:delete(old.id)
-            if stage_err then return nil, stage_err end
-            count = count + 1
-        elseif old.meta.name ~= entry.meta.name or old.data.set ~= entry.data.set or old.data.source ~= entry.data.source then
-            local _, stage_err = changes:update(entry)
-            if stage_err then return nil, stage_err end
-            count = count + 1
+        if old.id ~= MARKER then
+            local entry = entries[old.id]
+            if not entry then
+                local _, stage_err = changes:delete(old.id)
+                if stage_err then return nil, stage_err end
+            elseif old.meta.name ~= entry.meta.name or old.data.set ~= entry.data.set or old.data.source ~= entry.data.source then
+                local _, stage_err = changes:update(entry)
+                if stage_err then return nil, stage_err end
+            end
+            entries[old.id] = nil
         end
-        entries[old.id] = nil
     end
     for id, entry in pairs(entries) do
         local _, stage_err
@@ -62,12 +79,17 @@ function M.publish(rows: {types.Resource}, originals: types.OriginalMap): (boole
             _, stage_err = changes:update(entry)
         end
         if stage_err then return nil, stage_err end
-        count = count + 1
     end
-    if count ~= 0 then
-        local _, apply_err = changes:apply()
-        if apply_err then return nil, apply_err end
+    local marker = {id = MARKER, kind = "registry.entry", meta = {type = "kickside.mail:live_marker"}, data = {seq = seq}}
+    local _, stage_err
+    if M.published(existing) == nil then
+        _, stage_err = changes:create(marker)
+    else
+        _, stage_err = changes:update(marker)
     end
+    if stage_err then return nil, stage_err end
+    local _, apply_err = changes:apply()
+    if apply_err then return nil, apply_err end
     return true, nil
 end
 

@@ -74,6 +74,7 @@ local run = test.run_cases(function()
                 input.preview_id = assert(preview.preview_id, preview.errors[1] and preview.errors[1].message)
             end
             local result, err = fixtures.call(editor, method, input)
+            if type(result) == "table" and method ~= "get" then fixtures.await_live(result.seq) end
             return assert(result, tostring(err))
         end
         local function upload(mime, bytes)

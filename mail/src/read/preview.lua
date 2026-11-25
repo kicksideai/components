@@ -33,6 +33,8 @@ local function template(name: unknown, vars: unknown, refs: {types.AttachmentRef
 end
 
 local function body(subject: string, text: string?, html: string?, refs: {types.AttachmentRef}?): (types.Rendered?, error?)
+    local fenced = library.require_live()
+    if fenced then return nil, fenced end
     local values, err = render_values()
     if err then return nil, err end
     return render.body(subject, text, html, values :: types.RenderGlobals, refs)

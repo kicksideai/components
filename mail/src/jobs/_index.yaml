@@ -27,6 +27,27 @@ entries:
         - kickside.mail.security:overlay_owner
         - kickside.mail.security:overlay_drafts
         - kickside.uploads.security:uploads_resource_access
+  - name: library_sync
+    kind: function.lua
+    meta: {private: true, type: kickside.core.jobs.worker}
+    source: file://library_sync.lua
+    method: run
+    imports:
+      live: kickside.mail.command:live
+      notify: kickside.mail.command:notify
+    security:
+      actor: {id: "system:kickside.mail.library"}
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:live_sets
+        - kickside.mail.security:live_entries
+        - kickside.mail.security:live_marker_write
+        - kickside.mail.security:overlay_originals
+        - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_topics
+        - kickside.core.retention:notify_access
   - name: reconcile
     kind: function.lua
     meta:
@@ -37,7 +58,8 @@ entries:
     source: file://reconcile.lua
     method: boot
     imports:
-      library: kickside.mail.command:library
+      live: kickside.mail.command:live
+      scratch: kickside.mail.render:scratch
     security:
       actor: { id: "system:kickside.mail.library" }
       policies:
@@ -45,7 +67,11 @@ entries:
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
         - kickside.mail.security:overlay_owner
-        - kickside.mail.security:overlay_projection
+        - kickside.mail.security:live_sets
+        - kickside.mail.security:live_entries
+        - kickside.mail.security:live_marker_write
+        - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_topics
         - kickside.mail.security:overlay_originals
         - kickside.mail.security:overlay_drafts
         - kickside.mail.security:site_url

@@ -20,13 +20,13 @@ local M = {
 function M.create(input: types.ResourceCreate): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceCreate
     if fields.kind == "asset" then return assets.adopt((input :: unknown) :: types.AssetWrite, "create") end
-    return writer.one(edits.create(input), "create", fields.preview_id)
+    return writer.one(edits.create(input), "create", {preview_id = fields.preview_id, command_id = fields.command_id})
 end
 
 function M.update(input: types.ResourceEdit): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceEdit
     if fields.kind == "asset" then return assets.adopt((input :: unknown) :: types.AssetWrite, "update") end
-    return writer.one(edits.update(input), "update", fields.preview_id)
+    return writer.one(edits.update(input), "update", {preview_id = fields.preview_id, command_id = fields.command_id})
 end
 
 function M.save(input: types.ResourceSave): (types.LibrarySaveResult?, error?)
@@ -34,28 +34,28 @@ function M.save(input: types.ResourceSave): (types.LibrarySaveResult?, error?)
     if denied then return nil, denied end
     local batch, err = edits.save(input)
     if err then return nil, err end
-    local items, write_err = writer.apply("update", batch :: {types.LibraryEdit}, input.preview_id)
-    if write_err then return nil, write_err end
-    return {items = items :: {types.Resource}}, nil
+    return writer.apply("update", batch :: {types.LibraryEdit},
+        {preview_id = input.preview_id, command_id = input.command_id, identity_op = "save"})
 end
 
 function M.set_base(input: types.ResourceBaseEdit): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceBaseEdit
-    return writer.one(edits.set_base(input), "set_base", fields.preview_id)
+    return writer.one(edits.set_base(input), "set_base", {preview_id = fields.preview_id, command_id = fields.command_id})
 end
 
 function M.reset(input: types.ResourceRevision): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceRevision
-    return writer.one(edits.revision(input), "reset", fields.preview_id)
+    return writer.one(edits.revision(input), "reset", {preview_id = fields.preview_id, command_id = fields.command_id})
 end
 
 function M.restore(input: types.ResourceRestore): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceRestore
-    return writer.one(edits.restore(input), "restore", fields.preview_id)
+    return writer.one(edits.restore(input), "restore", {preview_id = fields.preview_id, command_id = fields.command_id})
 end
 
 function M.delete(input: types.ResourceRevision): (boolean?, error?)
-    local _, err = writer.one(edits.revision(input), "delete")
+    local _, err = writer.apply("delete", {edits.revision(input)},
+        {command_id = type(input) == "table" and input.command_id or nil})
     if err then return nil, err end
     return true, nil
 end

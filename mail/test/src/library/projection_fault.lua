@@ -1,32 +1,36 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local ctx = require("ctx")
-local templates = require("templates")
+local registry = require("registry")
+local time = require("time")
 local live = require("live")
 local database = require("database")
-local types = require("types")
 
-local function publish(rows: {types.Resource}, originals: types.OriginalMap): (boolean?, error?)
-    if ctx.get("mail_test_projection_error") then
+local FLAG = "app.mail_library:publication_failure"
+
+local function record(seq, state)
+    assert(database.with_db(function(ex)
+        return ex:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
+            {"fixture.publisher_race", tostring(seq), "{}", state})
+    end))
+end
+
+local function publish(overlay, entries, rows, originals, seq)
+    local flag = registry.get(FLAG)
+    if flag and flag.data.enabled then
         return nil, errors.new({kind = errors.INTERNAL, message = "Injected publication failure",
             details = {code = "fixture_publication_error"}})
     end
-    return live.publish(rows, originals)
+    local held = flag and flag.data.hold_seq == seq
+    if held then
+        record(seq, "waiting")
+        local deadline = time.now():add(2 * time.SECOND):unix_nano()
+        repeat
+            time.sleep("10ms")
+            flag = registry.get(FLAG)
+        until not flag or flag.data.hold_seq ~= seq or time.now():unix_nano() >= deadline
+    end
+    local value, err = live.publish(overlay, entries, rows, originals, seq)
+    if held then record(seq, err and tostring(err:kind()) or "applied") end
+    return value, err
 end
 
-local function with_tx<T>(work: types.TransactionWork<T>): (T?, error?)
-    return database.with_tx(function(tx: types.Transaction, dialect: string): (T?, error?)
-        local value, err = work(tx, dialect)
-        if err then return nil, err end
-        local name = ctx.get("mail_test_commit_error")
-        if name and type(value) == "table" then
-            local set = assert(templates.get("kickside.mail.views:templates"))
-            local markup = assert(set:render("part/" .. name, {}))
-            assert(set:release())
-            assert(markup == "New HTML")
-            assert(tx:execute("INSERT INTO mail_test_commit_child (id) VALUES (1)"))
-        end
-        return value, nil
-    end)
-end
-
-return {publish = publish, with_tx = with_tx}
+return {open = live.open, published = live.published, publish = publish}

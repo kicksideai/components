@@ -71,6 +71,10 @@ local function apply(tx: types.Transaction, event: types.PrefetchedLibraryEvent)
         _, reason = uploads.activate(tx, effect.upsert_asset.upload_id, key.name, event.seq)
         if reason then return nil, reason end
     end
+    if key.kind ~= "asset" then
+        _, reason = library.snapshot_revision(tx, event, effect.history)
+        if reason then return nil, reason end
+    end
     _, reason = history.insert(tx, effect.history)
     if reason then return nil, reason end
     return effect, nil
@@ -105,7 +109,7 @@ local function project(tx: types.Transaction, dialect: string, input: types.Proj
         local _, enqueue_err = jobs.enqueue_tx(tx, dialect, {
             namespace = "kickside.mail", scope = "library", key = "library_sync:" .. last,
             owner_locator = {kind = "mail-library", id = input.thread_id},
-            job_type = "kickside.mail.jobs:library_sync", immutable_payload = {seq = last},
+            job_type = "kickside.mail.jobs:library_sync", immutable_payload = {seq = last, uploads_changed = uploads_changed},
             -- Explicit attempts keep Jobs from opening Settings inside this transaction.
             max_attempts = 3,
         })

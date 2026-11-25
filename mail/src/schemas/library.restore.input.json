@@ -10,6 +10,7 @@
   "anyOf": [
     {
       "properties": {
+    "command_id": {"type": "string", "format": "uuid"},
         "kind": {
           "const": "asset"
         }

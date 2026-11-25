@@ -1,9 +1,13 @@
 {
   "type": "object",
-  "required": [
-    "items"
+  "anyOf": [
+    {"required": ["items"]},
+    {"required": ["seq", "committed", "projected"]}
   ],
   "properties": {
+    "seq": {"type": "integer", "minimum": 1},
+    "committed": {"const": true},
+    "projected": {"type": "boolean"},
     "items": {
       "type": "array",
       "items": {

@@ -733,6 +733,9 @@ def foreign_private(m, ref, peers, key=None):
     ns, name = ref.split(":", 1)
     if m.own(ns) or ns in OVERLAY_NAMESPACES.get(m.root_ns, ()):
         return None
+    if m.root_ns == "kickside.mail" and key == "policies" and ref == "kickside.core.jobs.persist:pool_nudge_access":
+        # Threads append and catch-up use the public Jobs producer policy.
+        return None
     owner = owning_peer(ns, peers)
     if owner is not None:
         entry = owner.by_id.get(ref)

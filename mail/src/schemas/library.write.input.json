@@ -5,6 +5,7 @@
     "name"
   ],
   "properties": {
+    "command_id": {"type": "string", "format": "uuid"},
     "kind": {
       "type": "string",
       "enum": [

@@ -5,31 +5,47 @@ entries:
   - name: library
     kind: library.lua
     source: file://library.lua
-    modules: [security, time]
+    modules: [security, time, logger]
     imports:
       types: kickside.mail:types
       resource: kickside.mail.domain:resource
       edit: kickside.mail.domain:edit
-      digest: kickside.mail.domain:digest
-      references: kickside.mail.domain:references
       library_edits: kickside.mail.command:library_edits
       notify: kickside.mail.command:notify
       database: kickside.mail.persist:db
       library_reader: kickside.mail.persist:library_reader
       library_repo: kickside.mail.persist:library_repo
-      reference_repo: kickside.mail.persist:reference_repo
-      preview_repo: kickside.mail.persist:preview_repo
       library: kickside.mail.read:library
-      settings: kickside.mail.read:settings
-      originals: kickside.mail.render:originals
-      live: kickside.mail.render:live
-      scratch: kickside.mail.render:scratch
-      globals: kickside.mail.render:globals
       asset_file_repo: kickside.mail.persist:asset_file_repo
-      error_envelope: kickside.contract:error_envelope
+      thread_events: kickside.mail.read:thread_events
+      threads: kickside.mail.command:threads
+      canonical_json: kickside.contract:canonical_json
+      live_repo: kickside.mail.persist:live_repo
+  - name: threads
+    kind: library.lua
+    meta: {private: true}
+    source: file://threads.lua
+    modules: [uuid, time, json]
+    imports:
+      events: kickside.mail.domain:events
+      types: kickside.mail:types
+      thread_events: kickside.mail.read:thread_events
+  - name: live
+    kind: library.lua
+    meta: {private: true}
+    source: file://live.lua
+    imports:
+      database: kickside.mail.persist:db
+      live: kickside.mail.render:live
+      originals: kickside.mail.render:originals
+      library_reader: kickside.mail.persist:library_reader
+      live_repo: kickside.mail.persist:live_repo
+      notify: kickside.mail.command:notify
+      types: kickside.mail:types
   - name: library_edits
     kind: library.lua
     source: file://library_edits.lua
+    modules: [time]
     imports:
       types: kickside.mail:types
       resource: kickside.mail.domain:resource
@@ -39,6 +55,12 @@ entries:
       library_reader: kickside.mail.persist:library_reader
       originals: kickside.mail.render:originals
       live: kickside.mail.render:live
+      scratch: kickside.mail.render:scratch
+      globals: kickside.mail.render:globals
+      settings: kickside.mail.read:settings
+      digest: kickside.mail.domain:digest
+      preview_repo: kickside.mail.persist:preview_repo
+      live_repo: kickside.mail.persist:live_repo
   - name: assets
     kind: library.lua
     source: file://assets.lua

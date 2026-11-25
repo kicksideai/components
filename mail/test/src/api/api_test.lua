@@ -43,12 +43,16 @@ end
 
 local function create(who, item)
     item.preview_id = review(who, item.kind == "message" and item.name or "notice", {create = item})
-    return data(who, "POST", "/library", item, 201)
+    local saved = data(who, "POST", "/library", item, 201)
+    library_fixtures.await_live(saved.seq)
+    return saved
 end
 
 local function update(who, item, message)
     item.preview_id = review(who, message or (item.kind == "message" and item.name or "notice"), {resources = {item}})
-    return data(who, "PUT", "/library/" .. item.kind .. "/" .. item.name, item)
+    local saved = data(who, "PUT", "/library/" .. item.kind .. "/" .. item.name, item)
+    library_fixtures.await_live(saved.seq)
+    return saved
 end
 
 local function revision_write(who, operation, item, fields, message)
@@ -57,7 +61,9 @@ local function revision_write(who, operation, item, fields, message)
     local route = "/library/" .. item.kind .. "/" .. item.name .. "/" .. operation
     local draft = {[operation == "base" and "set_base" or operation] = fields}
     fields.preview_id = review(who, message or (item.kind == "message" and item.name or "notice"), draft)
-    return data(who, "POST", route, fields)
+    local saved = data(who, "POST", route, fields)
+    library_fixtures.await_live(saved.seq)
+    return saved
 end
 
 local function await_delivery(who, id)
@@ -624,13 +630,14 @@ return {run = test.run_cases(function()
 
         test.it("previews and lists assets with an unrelated scratch entry and clears it on reconciliation", function()
             local editor = session("editor")
-            local owner = "kickside.mail.render:live"
+            local owner = "kickside.mail.render:scratch"
             local id = "kickside.mail.draft:html"
             local overlay = assert(registry.overlay(owner))
             local changes = overlay:changes()
             assert(changes:create({id = id, kind = "template.set", data = {engine = {escape = "html"}}}))
             assert(changes:apply())
-            local preview = data(editor, "POST", "/library/preview", {message = "notice"})
+            local notice = data(editor, "GET", "/library/message/notice")
+            local preview = assert(library_fixtures.render(nil, {template = "notice", vars = notice.samples}))
             test.not_nil(preview.html)
             test.not_nil(registry.get(id))
             local summary, body, raw = request(editor, "GET", "/library?kind=asset")
@@ -996,6 +1003,7 @@ return {run = test.run_cases(function()
             local batch = {resources = {draft, base}, note = "Save both"}
             batch.preview_id = review(editor, msg.name, {resources = batch.resources})
             local result = data(editor, "POST", "/library/save", batch)
+            library_fixtures.await_live(result.seq)
             test.eq(2, #result.items)
             copy.expected_revision = copy.revision
             copy.title = "New copy name"

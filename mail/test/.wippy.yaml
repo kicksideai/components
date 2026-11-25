@@ -22,10 +22,38 @@ override:
     - {subject_id: "system:kickside.mail.retention", subject_type: user, access_mask: 1}
     - {subject_id: "wippy.test:runner", subject_type: user, access_mask: 3}
     - {subject_id: "app:mail_editors", subject_type: group, access_mask: 3}
-  kickside.mail.command:library:modules: [security]
+  kickside.mail.command:library:modules: [security, logger]
   kickside.mail.command:library:imports.time: kickside.mail.harness:owner_clock
-  kickside.mail.command:library:imports.live: app.mail_library:projection_fault
-  kickside.mail.command:library:imports.database: app.mail_library:projection_database
+  kickside.mail.command:library_edits:modules: []
+  kickside.mail.command:library_edits:imports.time: kickside.mail.harness:owner_clock
+  kickside.mail.jobs:library_sync:security.policies:
+    - kickside.mail.security:outbox_db
+    - kickside.mail.security:outbox_config
+    - kickside.mail.security:template_access
+    - kickside.mail.security:live_sets
+    - kickside.mail.security:live_entries
+    - kickside.mail.security:live_marker_write
+    - kickside.mail.security:overlay_originals
+    - kickside.mail.security:realtime_calls
+    - kickside.mail.security:realtime_topics
+    - kickside.core.retention:notify_access
+    - app.mail_library:publication_fault_read
+  kickside.mail.jobs:reconcile:security.policies:
+    - kickside.mail.security:outbox_db
+    - kickside.mail.security:outbox_config
+    - kickside.mail.security:template_access
+    - kickside.mail.security:overlay_owner
+    - kickside.mail.security:live_sets
+    - kickside.mail.security:live_entries
+    - kickside.mail.security:live_marker_write
+    - kickside.mail.security:realtime_calls
+    - kickside.mail.security:realtime_topics
+    - kickside.mail.security:overlay_originals
+    - kickside.mail.security:overlay_drafts
+    - kickside.mail.security:site_url
+    - kickside.mail.security:settings_read
+    - app.mail_library:publication_fault_read
+  kickside.mail.command:live:imports.live: app.mail_library:projection_fault
   kickside.mail.command:preview:modules: [security, uuid]
   kickside.mail.command:preview:imports.time: kickside.mail.harness:owner_clock
   kickside.mail.render:scratch:imports.render: app.mail_library:draft_render

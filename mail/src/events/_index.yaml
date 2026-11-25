@@ -20,6 +20,7 @@ entries:
         revision: &positive_integer {type: integer, minimum: 1}
         author: &author {type: string, minLength: 1, maxLength: 256}
         note: &note {type: string, maxLength: 500}
+        command_hash: &command_hash {type: string, minLength: 64, maxLength: 64}
         change: {const: created}
         content: &content
           type: object
@@ -60,6 +61,7 @@ entries:
         revision: *positive_integer
         author: *author
         note: *note
+        command_hash: *command_hash
         change: {const: edited}
         content: *content
         base: *name
@@ -92,6 +94,7 @@ entries:
         revision: *positive_integer
         author: *author
         note: *note
+        command_hash: *command_hash
         change: {const: base_changed}
         content: *content
         base: *name
@@ -121,6 +124,7 @@ entries:
         revision: *positive_integer
         author: *author
         note: *note
+        command_hash: *command_hash
         change: {const: reset}
         content: *content
         base: *name
@@ -144,6 +148,7 @@ entries:
         revision: *positive_integer
         author: *author
         note: *note
+        command_hash: *command_hash
         change: {const: restored}
         content: *content
         base: *name
@@ -168,6 +173,7 @@ entries:
         revision: *positive_integer
         author: *author
         note: *note
+        command_hash: *command_hash
         change: {const: archived}
   - name: resource.deleted
     kind: registry.entry
@@ -187,6 +193,7 @@ entries:
         revision: *positive_integer
         author: *author
         note: *note
+        command_hash: *command_hash
         change: {const: deleted}
   - name: asset.added
     kind: registry.entry
@@ -206,6 +213,7 @@ entries:
         revision: *positive_integer
         author: *author
         note: *note
+        command_hash: *command_hash
         change: {enum: [created, edited]}
         asset: &asset
           type: object
@@ -232,6 +240,7 @@ entries:
         revision: *positive_integer
         author: *author
         note: *note
+        command_hash: *command_hash
         change: {const: restored}
         asset: *asset
         title: *title
@@ -252,4 +261,5 @@ entries:
         revision: *positive_integer
         author: *author
         note: *note
+        command_hash: *command_hash
         change: {const: deleted}

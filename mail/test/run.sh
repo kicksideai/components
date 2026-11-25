@@ -6,6 +6,12 @@ mkdir -p .wippy
 exec 9>.wippy/harness.lock
 flock -n 9 || { echo 'A Mail harness is already running' >&2; exit 1; }
 
+# The template projection repository owns writes to the library table.
+if grep -Eil '(INSERT[[:space:]]+INTO|UPDATE|DELETE[[:space:]]+FROM)[[:space:]]+mail_library([[:space:]]|$)'     ../src/{command,persist,read,render,jobs}/*.lua | grep -Fvx '../src/persist/library_repo.lua'; then
+  echo 'Mail template table writes must go through the projection repository' >&2
+  exit 1
+fi
+
 export TMPDIR="${TMPDIR:-$PWD/.wippy/tmp}"
 mkdir -p "$TMPDIR"
 

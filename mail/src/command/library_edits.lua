@@ -7,6 +7,13 @@ local library_reader = require("library_reader")
 local references = require("references")
 local originals_reader = require("originals")
 local live = require("live")
+local time = require("time")
+local scratch = require("scratch")
+local globals = require("globals")
+local settings = require("settings")
+local digest = require("digest")
+local preview_repo = require("preview_repo")
+local live_repo = require("live_repo")
 
 local M = {}
 
@@ -23,7 +30,13 @@ function M.load(workspace: types.LibraryWorkspace, key: types.ResourceKey): erro
     if err then return err end
     local original = workspace.originals[id]
     if original and (not row or row.state == "original") then
-        original.resource.revision = row and row.revision or 0
+        if row then
+            original.resource.revision, original.resource.seq = row.revision, row.seq
+        elseif key.kind ~= "asset" then
+            local position, position_err = library_reader.subject_position(workspace.ex, key)
+            if position_err then return position_err end
+            original.resource.revision, original.resource.seq = position.revision, position.seq
+        end
         row = original.resource
     end
     workspace.items[id], workspace.loaded[id] = row, true
@@ -33,7 +46,10 @@ end
 function M.current_revision(workspace: types.LibraryWorkspace, key: types.ResourceKey): (integer?, error?)
     local item = workspace.items[resources.subject(key)]
     if item then return item.revision, nil end
-    return library_reader.deleted_revision(workspace.ex, key)
+    if key.kind == "asset" then return 0, nil end
+    local position, err = library_reader.subject_position(workspace.ex, key)
+    if err then return nil, err end
+    return position.revision, nil
 end
 
 function M.dependencies(workspace: types.LibraryWorkspace, roots: {types.ResourceContent}): error?
@@ -78,7 +94,7 @@ function M.dependants(workspace: types.LibraryWorkspace, keys: {types.ResourceKe
 end
 
 function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: string,
-    items: types.ResourceMap, originals: types.OriginalMap): (types.ResourceContent?, error?, integer?)
+    items: types.ResourceMap, originals: types.OriginalMap): (types.ResourceContent?, error?, integer?, integer?)
     local key = edit.key
     local id = resources.subject(key)
     local current, original = items[id], originals[id]
@@ -112,6 +128,7 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
     end
     local content = edit.content
     local restored_from: integer?
+    local restore_seq: integer?
     if operation == "create" and edit.from then
         local bad_from = resources.check_key(edit.from)
         if bad_from then return nil, bad_from end
@@ -132,6 +149,12 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
         end
         content = history[1].content
         restored_from = history[1].version
+        if key.kind ~= "asset" then
+            local seq, seq_err = library_reader.event_seq(ex, key, edit.restore)
+            if seq_err then return nil, seq_err end
+            if not seq then return nil, resources.error(errors.NOT_FOUND, "mail_revision_pruned", "Mail library revision is unavailable", key) end
+            restore_seq = seq
+        end
         if content.asset and content.asset.source == "original" then
             if not original then return nil, edit_rules.missing(key) end
             local invalid = resources.check_content(original.resource)
@@ -148,7 +171,7 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
     if err then return nil, err end
     local invalid = resources.check_content(normalized :: types.ResourceContent)
     if invalid then return nil, invalid end
-    return normalized, nil, restored_from
+    return normalized, nil, restored_from, restore_seq
 end
 
 function M.create(input: types.ResourceCreate): types.LibraryEdit
@@ -192,6 +215,138 @@ function M.save(input: types.ResourceSave): ({types.LibraryEdit}?, error?)
         edits[i] = edit
     end
     return edits, nil
+end
+
+local function mismatch(): error
+    return resources.error(errors.INVALID, "mail_preview_mismatch",
+        "Preview the exact proposed changes again, then use the new preview_id")
+end
+
+local function bound_preview(workspace: types.LibraryWorkspace, id: string?, author: string, operation: string,
+    edits: {types.LibraryEdit}): (types.PreviewRow?, error?)
+    if id == nil or id == "" then
+        return nil, resources.error(errors.INVALID, "mail_preview_required", "Preview these changes first, then pass the returned preview_id")
+    end
+    if type(id) ~= "string" then return nil, mismatch() end
+    local row, err = preview_repo.get(workspace.ex, id)
+    if err then return nil, err end
+    if not row or row.actor ~= author or row.operation ~= operation then return nil, mismatch() end
+    if row.expires_at <= time.now():unix() then
+        return nil, resources.error(errors.INVALID, "mail_preview_expired", "Preview the changes again to obtain a new preview_id")
+    end
+    local count = 0
+    for _ in pairs(row.expected) do count = count + 1 end
+    if count ~= #edits then return nil, mismatch() end
+    for _, edit in ipairs(edits) do
+        local subject = resources.subject(edit.key)
+        local expected = row.expected[subject]
+        if expected == nil or (operation ~= "create" and expected ~= edit.expected) then return nil, mismatch() end
+        local revision, revision_err = M.current_revision(workspace, edit.key)
+        if revision_err then return nil, revision_err end
+        if expected ~= revision or (operation ~= "create" and not workspace.items[subject]) then
+            return nil, errors.new({kind = errors.CONFLICT, retryable = false,
+                message = "The library changed after this preview. Review the changes again.",
+                details = {code = "mail_preview_stale", resource = {kind = edit.key.kind, name = edit.key.name}, revision = revision}})
+        end
+    end
+    return row, nil
+end
+
+local function validate_templates(workspace: types.LibraryWorkspace, keys: {types.ResourceKey},
+    candidates: {types.ResourceContent}, changed: {[string]: boolean}): error?
+    local dependent, err = M.dependants(workspace, keys, changed)
+    if err then return err end
+    local roots: {types.ResourceContent} = {}
+    for _, candidate in ipairs(candidates) do roots[#roots + 1] = candidate end
+    for _, item in ipairs(dependent) do roots[#roots + 1] = item end
+    local dependency_err = M.dependencies(workspace, roots)
+    if dependency_err then return dependency_err end
+    for _, candidate in ipairs(candidates) do
+        local base_err = edit_rules.base_exists(workspace.items, candidate)
+        if base_err then return base_err end
+    end
+    local appearance, globals_err = settings.appearance()
+    if globals_err then return globals_err end
+    local values = globals.data(appearance :: types.Appearance)
+    values.sender.name = ""
+    local _, clear_err = scratch.clear_workspace()
+    if clear_err then return clear_err end
+    local _, validation_err = scratch.validate(workspace.items, keys[1], candidates, dependent :: {types.Resource}, values)
+    return validation_err
+end
+
+function M.plan(ex: types.Executor, operation: string, edits: {types.LibraryEdit}, opts: types.LibraryWriteOptions,
+    author: string, signature: string, head: integer): ({types.LibraryEvent}?, error?)
+    local mark, state_err = live_repo.get(ex)
+    if state_err then return nil, state_err end
+    if mark.projected_seq < head then
+        return nil, errors.new({kind = errors.CONFLICT, retryable = true, message = "Mail library is catching up",
+            details = {code = "mail_library_catching_up"}})
+    end
+
+    local loaded, err = M.workspace(ex)
+    if err then return nil, err end
+    local workspace = loaded :: types.LibraryWorkspace
+    local items, originals = workspace.items, workspace.originals
+    local keys, revisions, changed = {}, {}, {}
+    for i, edit in ipairs(edits) do
+        keys[i], changed[resources.subject(edit.key)] = edit.key, true
+        local load_err = M.load(workspace, edit.key)
+        if load_err then return nil, load_err end
+        if edit.from then
+            local source_err = M.load(workspace, edit.from)
+            if source_err then return nil, source_err end
+        end
+        local revision, revision_err = M.current_revision(workspace, edit.key)
+        if revision_err then return nil, revision_err end
+        revisions[i] = revision
+    end
+    local binding: types.PreviewRow?
+    local key = keys[1]
+    if operation ~= "delete" then
+        local binding_err
+        binding, binding_err = bound_preview(workspace, opts.preview_id, author, operation, edits)
+        if binding_err then
+            if opts.identity_op == "save" and opts.command_id and (binding_err:details() or {}).code == "mail_preview_stale" then
+                for i, edit in ipairs(edits) do
+                    if edit.expected ~= revisions[i] then return nil, edit_rules.conflict(edit.key, revisions[i]) end
+                end
+            end
+            return nil, binding_err
+        end
+    end
+    local previous: types.ResourceMap = {}
+    local candidates: {types.ResourceContent} = {}
+    local restored: {[integer]: integer} = {}
+    local restore_seq: integer?
+    for i, edit in ipairs(edits) do
+        local id = resources.subject(edit.key)
+        local candidate, prepare_err, restored_from, source_seq = M.prepare(ex, edit, operation, items, originals)
+        if prepare_err then return nil, prepare_err end
+        previous[id], items[id] = items[id], candidate :: types.Resource
+        candidates[i], restored[i] = candidate, restored_from
+        restore_seq = source_seq or restore_seq
+    end
+    if binding then
+        local digest_value, digest_err = digest.preview(operation, candidates, binding.expected, edits[1].restore)
+        if digest_err then return nil, digest_err end
+        if digest_value ~= binding.digest then return nil, mismatch() end
+    end
+    if operation == "delete" and key.kind ~= "message" then
+        local sources, ref_err = library.referrers(ex, key, originals)
+        if ref_err then return nil, ref_err end
+        if #sources > 0 then
+            return nil, errors.new({kind = errors.CONFLICT, message = "Library resources use this mail resource",
+                details = {code = "mail_resource_in_use", resource = {kind = key.kind, name = key.name},
+                    messages = library.message_names(sources), resources = sources}})
+        end
+    end
+    if operation ~= "delete" or key.kind ~= "message" then
+        local validation_err = validate_templates(workspace, keys, candidates, changed)
+        if validation_err then return nil, validation_err end
+    end
+    return edit_rules.plan(operation, edits, revisions, previous, candidates, originals, restored, restore_seq,
+        author, opts.preview_id, signature)
 end
 
 return M

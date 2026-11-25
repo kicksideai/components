@@ -97,8 +97,25 @@ entries:
     kind: security.policy
     meta: {private: true}
     policy:
-      resources: [kickside.core:threads, find, append_events, list_events, catch_up_projection, prune_boundary]
+      resources: [kickside.core:threads, kickside.core:threads_binding, find, find_event_by_external, append_events,
+        list_events, catch_up_projection, prune_boundary]
       actions: [contract.get, contract.open, contract.call]
+      effect: allow
+  - name: library_threads_caller
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [security]
+      actions: [contract.security]
+      effect: allow
+  - name: library_thread_wake
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources:
+        - kickside.core.threads:emit_update
+        - kickside.core.threads:cursor_waiter_signal
+      actions: [funcs.call]
       effect: allow
   - name: outbox_config
     kind: security.policy
@@ -361,15 +378,44 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail.render:live, kickside.mail.render:scratch]
+      resources: [kickside.mail.render:scratch]
       actions: [registry.overlay.get, registry.overlay.apply]
       effect: allow
-  - name: overlay_projection
+  - name: live_sets
     kind: security.policy
-    meta: { private: true }
+    meta: {private: true}
     policy:
+      resources: [kickside.mail.render:live]
+      actions: [registry.overlay.get, registry.overlay.apply]
+      effect: allow
+  - name: live_entries
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      # Mail owns the generated live template IDs.
       resources: ["kickside.mail.projection:*"]
       actions: [registry.overlay.create.template.jet, registry.overlay.update.template.jet, registry.overlay.delete.template.jet]
+      effect: allow
+  - name: live_marker_write
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.mail.projection:marker]
+      actions: [registry.overlay.create.registry.entry, registry.overlay.update.registry.entry]
+      effect: allow
+  - name: live_marker_read
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.mail.projection:marker]
+      actions: [registry.get]
+      effect: allow
+  - name: library_thread_config
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.core:db_config]
+      actions: [registry.get]
       effect: allow
   - name: overlay_originals
     kind: security.policy

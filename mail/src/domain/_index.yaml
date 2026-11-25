@@ -60,7 +60,8 @@ entries:
   - name: edit
     kind: library.lua
     source: file://edit.lua
-    imports: {types: kickside.mail:types, resource: kickside.mail.domain:resource}
+    modules: [uuid]
+    imports: {events: kickside.mail.domain:events, types: kickside.mail:types, resource: kickside.mail.domain:resource}
   - name: events
     kind: library.lua
     meta: {private: true}

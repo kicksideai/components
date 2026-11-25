@@ -5,6 +5,7 @@
     "total"
   ],
   "properties": {
+    "library_seq": {"type": "integer", "minimum": 0},
     "items": {
       "type": "array",
       "items": {

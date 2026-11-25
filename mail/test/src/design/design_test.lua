@@ -45,6 +45,7 @@ end
 local function ok(executor, tool, args)
     local result = call(executor, tool, args)
     assert(result.success ~= false, tool .. ": " .. tostring(result.error))
+    fixtures.await_live(result.seq)
     return result
 end
 
@@ -134,7 +135,8 @@ return {run = test.run_cases(function()
             local block = assert(blocks.get({block_id = NS .. "library_list"}))
             assert(json.validate(block.output, page))
             local empty = ok(editor, "library_list", {q = "no matching title"})
-            test.eq('{"items":[]}', assert(json.encode(empty)))
+            test.eq(0, #empty.items)
+            test.not_nil(empty.library_seq)
             local next_page = ok(editor, "library_list", {kind = "base", cursor = page.next_cursor, limit = 1})
             test.neq(page.items[1].name, next_page.items[1].name)
             local stream = ok(editor, "library_list", {kind = "part", q = "butt"})

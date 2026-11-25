@@ -163,6 +163,7 @@ entries:
                     messages: {type: integer, minimum: 0}
                     recent_sources: {type: integer, minimum: 0, description: Number of observed sender and origin combinations.}
           next_cursor: {type: string}
+          library_seq: {type: integer, minimum: 0}
     source: &design_source file://design.lua
     method: list
     imports: &design_imports
@@ -385,7 +386,7 @@ entries:
       llm_description: >-
         Save all edited resources together. Pass the same content and order from a clean MailLibraryPreview,
         the revision last read for each resource as expected_revision, the returned preview_id and an optional
-        history note. A refusal has success=false, code and error. For a revision conflict read the current
+        history note. For an exact retry, reuse command_id and the same inputs. A receipt with projected=false confirms the write. A refusal has success=false, code and error. For a revision conflict read the current
         revision and reconcile your edits. For a draft error use resource, face, errors and dependent_messages
         to repair the content, then preview again. For a missing, expired or mismatched preview, preview again.
       input_schema:
@@ -393,6 +394,7 @@ entries:
         additionalProperties: false
         required: [resources, preview_id]
         properties:
+          command_id: {type: string, format: uuid}
           resources:
             type: array
             minItems: 1
@@ -405,8 +407,12 @@ entries:
         type: object
         anyOf:
           - {required: [items]}
+          - &write_receipt {required: [seq, committed, projected]}
           - *refusal_required
         properties:
+          seq: &write_seq {type: integer, minimum: 1}
+          committed: &write_committed {const: true}
+          projected: &write_projected {type: boolean}
           items: {type: array, items: *resource_summary}
           success: *refused
           code: *text
@@ -438,14 +444,19 @@ entries:
         additionalProperties: false
         required: [kind, name, preview_id]
         properties:
+          command_id: {type: string, format: uuid}
           <<: *create_fields
           preview_id: *preview_id
       output_schema: &revision_output
         type: object
         anyOf:
           - {required: [kind, name, state, revision]}
+          - *write_receipt
           - *refusal_required
         properties:
+          seq: *write_seq
+          committed: *write_committed
+          projected: *write_projected
           <<: *summary_fields
           success: *refused
           code: *text
@@ -518,6 +529,7 @@ entries:
               kind: {const: asset}
           - required: [preview_id]
         properties: &revision_request
+          command_id: {type: string, format: uuid}
           kind: *resource_kind
           name: *resource_name
           expected_revision: *resource_revision

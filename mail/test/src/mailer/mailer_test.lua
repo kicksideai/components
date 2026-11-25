@@ -655,6 +655,7 @@ return {
                 local preview = assert(library_fixtures.call(nil, "preview", {message = draft.name, create = draft}))
                 draft.preview_id = assert(preview.preview_id)
                 local amplifying = assert(library_fixtures.call(nil, "create", draft))
+                library_fixtures.await_live(amplifying.seq)
                 template.template = amplifying.name
                 template.vars.subject = "Status"
                 template.vars.message = string.rep("a", 4096)

@@ -21,10 +21,11 @@ entries:
   - name: fixtures
     kind: library.lua
     source: &fixtures_source file://fixtures.lua
-    modules: &fixtures_modules [contract, funcs]
+    modules: &fixtures_modules [contract, funcs, registry, time, json]
     imports: &fixtures_imports
       database: kickside.mail.persist:db
-      store: kickside.mail.command:library
+      repo: kickside.mail.persist:library_repo
+      files: kickside.mail.persist:asset_file_repo
       client: kickside.mail:client
   - name: invoke
     kind: function.lua
@@ -53,17 +54,27 @@ entries:
       resources: [app.mail_library:invoke, app.mail_library:foreign_list, app.mail_library:invoke_mailer]
       actions: [funcs.call]
       effect: allow
+  - name: publication_failure
+    kind: registry.entry
+    enabled: false
+  - name: publication_fault_read
+    kind: security.policy
+    policy:
+      resources: [app.mail_library:publication_failure]
+      actions: [registry.get]
+      effect: allow
   - name: library_test
     kind: function.lua
     meta: { type: test, suite: mail_library }
     source: file://library_test.lua
     method: run
-    modules: [funcs, registry, templates, security, sql]
+    modules: [contract, funcs, registry, templates, security, sql, uuid]
     imports:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       jet: kickside.mail.domain:jet
       api_fixtures: app.mail_api:fixtures
+      autoinit: kickside.component:autoinit
   - name: draft_render
     kind: library.lua
     source: file://draft_render.lua
@@ -105,17 +116,11 @@ entries:
     imports: *assets_imports
   - name: projection_fault
     kind: library.lua
-    source: &projection_fault_source file://projection_fault.lua
-    modules: &projection_fault_modules [ctx, templates]
-    imports: &projection_fault_imports
+    source: file://projection_fault.lua
+    modules: [registry, time]
+    imports:
       live: kickside.mail.render:live
       database: kickside.mail.persist:db
-      types: kickside.mail:types
-  - name: projection_database
-    kind: library.lua
-    source: *projection_fault_source
-    modules: *projection_fault_modules
-    imports: *projection_fault_imports
   - name: service_content
     kind: function.lua
     source: *assets_source

@@ -33,12 +33,23 @@ entries:
         - kickside.mail.security:packaged_assets
         - kickside.mail.security:asset_provider_calls
         - kickside.mail.security:outbox_db
+  - name: thread_events
+    kind: library.lua
+    meta: {private: true}
+    source: file://thread_events.lua
+    modules: [contract, security, json]
+    imports:
+      content: kickside.mail.read:content
+      types: kickside.mail:types
+      events: kickside.mail.domain:events
   - name: library
     kind: library.lua
     meta: {private: true}
     source: file://library.lua
     modules: [contract, time]
     imports:
+      live: kickside.mail.render:live
+      live_repo: kickside.mail.persist:live_repo
       types: kickside.mail:types
       client: kickside.mail:client
       component_types: kickside.component:types
