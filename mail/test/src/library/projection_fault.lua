@@ -15,8 +15,12 @@ end
 
 local function publish(overlay, entries, rows, originals, seq)
     local flag = registry.get(FLAG)
+    if flag and flag.data.permanent then
+        return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = "Injected permanent publication failure",
+            details = {code = "fixture_publication_error"}})
+    end
     if flag and flag.data.enabled then
-        return nil, errors.new({kind = errors.INTERNAL, message = "Injected publication failure",
+        return nil, errors.new({kind = errors.UNAVAILABLE, retryable = true, message = "Injected publication failure",
             details = {code = "fixture_publication_error"}})
     end
     local held = flag and flag.data.hold_seq == seq
@@ -33,4 +37,4 @@ local function publish(overlay, entries, rows, originals, seq)
     return value, err
 end
 
-return {open = live.open, published = live.published, publish = publish}
+return {open = live.open, marker = live.marker, published = live.published, publish = publish}

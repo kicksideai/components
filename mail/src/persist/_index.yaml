@@ -71,7 +71,7 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://live_repo.lua
-    imports: { types: kickside.mail:types, database: kickside.mail.persist:db }
+    imports: { types: kickside.mail:types, database: kickside.mail.persist:db, jobs: kickside.core.jobs:jobs }
   - name: library_projection
     kind: function.lua
     meta: {type: projection.worker, private: true, component_owned: true}
@@ -80,7 +80,6 @@ entries:
     modules: [time]
     imports:
       types: kickside.mail:types
-      jobs: kickside.core.jobs:jobs
       fold: kickside.mail.domain:fold
       db: kickside.mail.persist:db
       library_repo: kickside.mail.persist:library_repo

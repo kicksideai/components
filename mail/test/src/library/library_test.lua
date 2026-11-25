@@ -87,16 +87,16 @@ return {run = test.run_cases(function()
                 assert(changes:apply())
             end
         end)
-        publication_fault = function(enabled, hold_seq)
+        publication_fault = function(enabled, hold_seq, permanent)
             fault_enabled = enabled or hold_seq ~= nil
             local flag = assert(registry.get("app.mail_library:publication_failure"))
-            flag.data.enabled, flag.data.hold_seq = enabled, hold_seq
+            flag.data.enabled, flag.data.hold_seq, flag.data.permanent = enabled, hold_seq, permanent
             local changes = assert(registry.snapshot()):changes()
             assert(changes:update(flag))
             assert(changes:apply())
         end
 
-        test.it("keeps a save committed when publication fails and retries the job", function()
+        test.it("recovers sends through retention after all three publication attempts fail", function()
             api_fixtures.settings("kickside.mail.harness:capture", "mail@example.org")
             capture_configured = true
             local reader = api_fixtures.session("editor_sender")
@@ -124,10 +124,36 @@ return {run = test.run_cases(function()
             })
             test.is_nil(sent)
             test.eq("mail_library_publishing", assert(send_err):details().code)
-            fixtures.await_sync_failure(result.seq)
+            fixtures.await(function()
+                local job = fixtures.sync_job(result.seq)
+                return job and job.status == "dead" and job.attempts == 3
+            end, "Library sync did not exhaust three failed publications")
             publication_fault(false)
+            local pass = assert(funcs.call("kickside.mail.jobs:owner", {}))
+            test.is_true(pass.success, tostring(pass.error))
             fixtures.await_live(result.seq)
             test.not_nil(assert(fixtures.render(nil, {template = item.name, vars = {}})).html:find("New HTML", 1, true))
+            test.not_nil(assert(fixtures.mailer(sender, "send", {
+                template = item.name, vars = {}, to = {"reader@example.org"},
+            })).message_id)
+        end)
+
+        test.it("ends a publication job after one permanent failure", function()
+            local part = own(candidate("part", "permanent-publication-fault", "Original HTML", "Original text"))
+            local saved = assert(call("create", part))
+            part.html, part.expected_revision = "Changed HTML", saved.revision
+            part.preview_id = review({resources = {part}})
+            publication_fault(true, nil, true)
+            local updated = assert(fixtures.call(nil, "update", part))
+            fixtures.await(function()
+                local job = fixtures.sync_job(updated.seq)
+                return job and job.status == "dead"
+            end, "A permanent publication error did not settle the job")
+            test.eq(1, fixtures.sync_job(updated.seq).attempts)
+            publication_fault(false)
+            local pass = assert(funcs.call("kickside.mail.jobs:owner", {}))
+            test.is_true(pass.success, tostring(pass.error))
+            fixtures.await_live(updated.seq)
         end)
 
         test.it("fences committed content when the marker is lost until boot reconciliation", function()
@@ -148,6 +174,7 @@ return {run = test.run_cases(function()
             test.is_nil(rendered)
             test.eq("mail_library_publishing", assert(fenced):details().code)
             test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
+            fixtures.await_live(updated.seq)
             test.not_nil(assert(fixtures.render(nil, {template = item.name, vars = {}})).html:find("New HTML", 1, true))
         end)
 
@@ -432,6 +459,7 @@ return {run = test.run_cases(function()
             test.eq(errors.NOT_FOUND, missing_err:kind())
             test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
             test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
+            fixtures.await_current_live()
             test.eq(switched_render.html, assert(fixtures.render(executor, {template = message.name, vars = message.samples})).html)
             assert(call("delete", {kind = "message", name = message.name, expected_revision = switched.revision}))
             assert(call("delete", {kind = "base", name = base.name, expected_revision = saved_base.revision}))
@@ -507,20 +535,20 @@ return {run = test.run_cases(function()
             local data = {site = {title = "Example"}}
             test.eq("Customized Example", assert(value(HTML, "part/header", data)))
             test.eq("Custom text Example", assert(value(TEXT, "part/header", data)))
-            discard_overlay({key})
-
             local id = "kickside.mail.views:header"
-            local entry = assert(registry.get(id))
-            local declaration = assert(registry.get(original.origin))
-            originals = {assert(registry.get(id)), assert(registry.get(original.origin))}
+            local snapshot = assert(registry.snapshot())
+            local entry = assert(snapshot:get(id))
+            local declaration = assert(snapshot:get(original.origin))
+            originals = {assert(snapshot:get(id)), assert(snapshot:get(original.origin))}
             entry.data.source = "New original {{ site.title }}"
             declaration.data.template.html = entry.data.source
-            local snapshot = assert(registry.snapshot())
             local changes = snapshot:changes()
             assert(changes:update(entry))
             assert(changes:update(declaration))
             assert(changes:apply())
+            discard_overlay({key})
             test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
+            fixtures.await_live(saved.seq)
             test.eq("Customized Example", assert(value(HTML, "part/header", data)))
             local reset_request = {kind = key.kind, name = key.name, expected_revision = saved.revision}
             reset_request.preview_id = review({reset = reset_request})

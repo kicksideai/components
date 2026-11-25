@@ -39,10 +39,15 @@ function M.clear(): (boolean?, error?)
     return true, nil
 end
 
-function M.fence(seq: integer, snapshot_seq: integer?): error?
+function M.marker(): (integer?, error?)
     local marker, err = registry.get(MARKER)
-    if err and not errors.is(err, errors.NOT_FOUND) then return err end
-    local published = marker and marker.data.seq
+    if err and not errors.is(err, errors.NOT_FOUND) then return nil, err end
+    return marker and marker.data.seq :: integer?, nil
+end
+
+function M.fence(seq: integer, snapshot_seq: integer?): error?
+    local published, err = M.marker()
+    if err then return err end
     if published == seq and (snapshot_seq == nil or snapshot_seq == seq) then return nil end
     return errors.new({kind = errors.UNAVAILABLE, retryable = true, message = "Mail library templates are publishing",
         details = {code = "mail_library_publishing", template_seq = seq, published = published or -1}})

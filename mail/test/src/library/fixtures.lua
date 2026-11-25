@@ -28,7 +28,7 @@ local function await_current_live()
     local rows = assert(database.with_db(function(ex)
         return ex:query("SELECT template_seq FROM mail_library_live WHERE id=1")
     end))
-    await_live(rows[1] and rows[1].template_seq)
+    await_live(rows[1] and rows[1].template_seq or 0)
 end
 
 local function sync_job(seq)
@@ -89,6 +89,7 @@ local function remove(keys)
     assert(changes:apply())
     local boot = assert(funcs.call("kickside.mail.jobs:reconcile"))
     assert(boot.status == "success", boot.message)
+    await_current_live()
 end
 
 local INVOKE = "app.mail_library:invoke"

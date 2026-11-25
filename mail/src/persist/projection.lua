@@ -2,7 +2,6 @@
 local db = require("db")
 local fold = require("fold")
 local history = require("history_repo")
-local jobs = require("jobs")
 local library = require("library_repo")
 local live = require("live_repo")
 local reader = require("library_reader")
@@ -102,13 +101,8 @@ local function project(tx: db.Transaction, dialect: string, input: types.Project
     local _, advance_err = live.advance(tx, last, template :: integer)
     if advance_err then return nil, advance_err end
     if template > initial.template_seq or uploads_changed then
-        local _, enqueue_err = jobs.enqueue_tx(tx, dialect, {
-            namespace = "kickside.mail", scope = "library", key = "library_sync:" .. last,
-            owner_locator = {kind = "mail-library", id = input.thread_id},
-            job_type = "kickside.mail.jobs:library_sync", immutable_payload = {seq = last, uploads_changed = uploads_changed},
-            -- Explicit attempts keep Jobs from opening Settings inside this transaction.
-            max_attempts = 3,
-        })
+        local sync_seq = template > initial.template_seq and template or last
+        local _, enqueue_err = live.enqueue_sync(tx, dialect, input.thread_id, sync_seq)
         if enqueue_err then return nil, enqueue_err end
     end
     return last, nil

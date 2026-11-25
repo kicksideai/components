@@ -915,6 +915,7 @@ return {run = test.run_cases(function()
             assert(projection and projection.done, tostring(catch_err or (projection or {}).reason))
             local published = assert(funcs.call("kickside.mail.jobs:reconcile"))
             assert(published.status == "success", published.message)
+            library_fixtures.await_current_live()
             return receipt.max_seq - 1, item.revision + 2
         end
 

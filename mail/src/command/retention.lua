@@ -13,6 +13,7 @@ local scratch = require("scratch")
 local uploads = require("uploads")
 local upload_refs = require("upload_ref_repo")
 local history = require("history_repo")
+local live = require("live")
 local live_repo = require("live_repo")
 local thread_events = require("thread_events")
 local thread_commands = require("thread_commands")
@@ -133,6 +134,19 @@ local function prune_messages(now: integer, retention_ms: integer, preview_expir
 end
 
 function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): (types.OwnerResult?, error?)
+    local change = input.change
+    local locator = change and change.owner_locator
+    local check_library = true
+    if locator and locator.kind == "mail-library" and change.kind == "lease_released" and change.job_id then
+        local job, err = jobs.get_job(change.job_id)
+        if err then return nil, err end
+        -- Skip early failures and completion to avoid waking on every sync lease.
+        check_library = job ~= nil and job.status == "dead" and job.attempts == job.max_attempts
+    end
+    if check_library then
+        local _, err = live.reconcile()
+        if err then return nil, err end
+    end
     local reconcile_err = reconcile(now, input)
     if reconcile_err then return nil, reconcile_err end
     local threads, open_err = thread_events.open()

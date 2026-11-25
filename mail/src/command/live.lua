@@ -5,9 +5,32 @@ local originals = require("originals")
 local reader = require("library_reader")
 local state = require("live_repo")
 local notify = require("notify")
+local thread_events = require("thread_events")
 local types = require("types")
 
 local M = {}
+
+function M.reconcile(boot: boolean?): (boolean?, error?)
+    local published, marker_err = live.marker()
+    if marker_err then return nil, marker_err end
+    local current, read_err = database.with_db(state.get_existing)
+    if read_err then return nil, read_err end
+    if not current and not boot then return false, nil end
+    if published == (current and current.template_seq or 0) then return false, nil end
+    local queued, err = database.with_tx(function(tx: database.Transaction, dialect: string): (boolean?, error?)
+        local mark, lock_err = state.lock_existing(tx, dialect)
+        if lock_err then return nil, lock_err end
+        if not mark and not boot then return false, nil end
+        local seq = mark and mark.template_seq or 0
+        local marker, check_err = live.marker()
+        if check_err then return nil, check_err end
+        if marker == seq then return false, nil end
+        return state.enqueue_sync(tx, dialect, thread_events.library_thread_id(), seq)
+    end)
+    if err then return nil, err end
+    if queued then notify.nudge() end
+    return queued, nil
+end
 
 local function snapshot(ex: database.Executor): ({seq: integer, projected_seq: integer, rows: {types.Resource}}?, error?)
     local before, err = state.get(ex)

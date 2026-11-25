@@ -1,13 +1,32 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local database = require("database")
+local jobs = require("jobs")
 local types = require("types")
 
 local M = {}
 
-function M.get(ex: database.Executor): (types.LiveState?, error?)
+function M.enqueue_sync(tx: database.Transaction, dialect: string, thread_id: string, seq: integer): (boolean?, error?)
+    local job, err = jobs.enqueue_tx(tx, dialect, {
+        namespace = "kickside.mail", scope = "library", key = "library_sync:" .. seq,
+        owner_locator = {kind = "mail-library", id = thread_id},
+        job_type = "kickside.mail.jobs:library_sync", immutable_payload = {seq = seq},
+        -- Explicit attempts keep Jobs from opening Settings inside this transaction.
+        max_attempts = 3,
+    })
+    if err then return nil, err end
+    return job.existing ~= true, nil
+end
+
+function M.get_existing(ex: database.Executor): (types.LiveState?, error?)
     local rows, err = ex:query("SELECT projected_seq,template_seq FROM mail_library_live WHERE id=1")
     if err then return nil, err end
-    return rows[1] :: types.LiveState? or {projected_seq = 0, template_seq = 0}, nil
+    return rows[1] :: types.LiveState?, nil
+end
+
+function M.get(ex: database.Executor): (types.LiveState?, error?)
+    local row, err = M.get_existing(ex)
+    if err then return nil, err end
+    return row or {projected_seq = 0, template_seq = 0}, nil
 end
 
 function M.lock(tx: database.Transaction, dialect: string): (types.LiveState?, error?)

@@ -124,7 +124,7 @@ local function cases()
             for _, job in ipairs(pending_sync()) do
                 if assert(json.decode(job.payload)).seq == seq then count = count + 1 end
             end
-            test.eq(sync and 1 or 0, count)
+            test.eq(sync and 1 or 0, count, envelope.type .. " sync jobs for sequence " .. seq)
             return seq
         end
 

@@ -82,7 +82,7 @@ The library stores messages, base templates, parts, and image assets. Messages, 
 
 Each edit appends an event to the library component’s thread. Create, update, base change, reset, and restore events carry the resulting resource snapshot. Content across both faces and the description is limited to 512 KiB per resource. The projection updates the library, reference index, and History together. The resource revision is its subject version, and `seq` is its position on the shared library thread. Unedited packaged originals start at revision zero.
 
-The `library_sync` job publishes Jet sets from the committed projection. Mail supports single-node template publishing in this release. A render checks the live registry marker against the committed template sequence and returns retryable `mail_library_publishing` while publication is pending. The job retries failed publications. Committed edits remain available through the library read model after projection.
+The `library_sync` job publishes Jet sets from the committed projection. Mail supports single-node template publishing in this release. A render checks the live registry marker against the committed template sequence and returns retryable `mail_library_publishing` while publication is pending. Jobs retries transient publication failures. At boot and during retention, Mail compares the live marker with the committed template sequence and enqueues publication if it is behind. Committed edits remain available through the library read model after projection.
 
 A message selects its base as data. The base provides a `body()` block and the message supplies that block's content. Include a part by its absolute Jet name and pass its inputs as the context.
 
