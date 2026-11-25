@@ -6,6 +6,8 @@ local resource = require("resource")
 local originals_reader = require("originals")
 local library_reader = require("library_reader")
 local reference_repo = require("reference_repo")
+local history = require("history")
+local history_repo = require("history_repo")
 local references = require("references")
 local settings = require("settings")
 local policy = require("policy")
@@ -344,11 +346,16 @@ function M.asset_content(input: types.LibraryAssetRequest): (types.AssetContent?
     if revision == 0 and declared then
         item = declared.resource
     elseif revision ~= nil and revision ~= item.revision then
-        local previous, revision_err = M.revision({kind = key.kind, name = key.name, revision = revision})
+        local seq, seq_err = database.with_db(function(ex: types.Executor): (integer?, error?)
+            return history_repo.sequence(ex, key, revision)
+        end)
+        if seq_err then return nil, seq_err end
+        if not seq then
+            return nil, resource.error(errors.NOT_FOUND, "mail_revision_pruned", "Mail library revision is unavailable", key)
+        end
+        local previous, revision_err = history.restore_source(key, seq)
         if revision_err then return nil, revision_err end
-        local saved = previous :: types.Revision
-        item = (saved.content :: unknown) :: types.Resource
-        item.origin = declared and declared.resource.origin or nil
+        item = previous :: types.Resource
     end
     local ref = asset_refs.reference(item, asset_refs.cid(item.name))
     local file, read_err = content.asset_file(ref, true)
@@ -393,52 +400,6 @@ function M.page(input: types.LibraryPageRequest): (types.LibraryPage?, error?)
         end
     end
     return page, nil
-end
-
-local function history(input: types.ResourceKey, revision: integer?, before: integer?, limit: integer?): ({types.Revision}?, error?)
-    local denied = M.require_read()
-    if denied then return nil, denied end
-    local bad_key = resource.check_key(input)
-    if bad_key then return nil, bad_key end
-    local _, err = M.lookup(input)
-    if err then return nil, err end
-    return database.with_db(function(db: types.DB): ({types.Revision}?, error?)
-        return library_reader.history(db, input, revision, before, limit)
-    end)
-end
-
-function M.history_page(input: types.LibraryHistoryRequest): (types.LibraryHistoryPage?, error?)
-    local limit, cursor, page_err = keyset.args(input)
-    if page_err then return nil, page_err end
-    local before = cursor and math.tointeger(tonumber(cursor)) or nil
-    if cursor and (not before or before < 1) then
-        return nil, resource.error(errors.INVALID, "invalid_mail_filter", "Use the next cursor from a library history page")
-    end
-    local size = limit :: integer
-    local rows, err = history(input, nil, before, size + 1)
-    if err then return nil, err end
-    local items = rows :: {types.Revision}
-    local next_cursor: string?
-    if #items > size then
-        items[size + 1] = nil
-        next_cursor = tostring(items[size].revision)
-    end
-    return {items = items, next_cursor = next_cursor}, nil
-end
-
-function M.revision(input: types.LibraryRevisionRequest): (types.Revision?, error?)
-    local bad_key = resource.check_key(input)
-    if bad_key then return nil, bad_key end
-    local revision = input.revision
-    if type(revision) ~= "number" or not math.tointeger(revision) or revision < 1 then
-        return nil, resource.error(errors.INVALID, "invalid_mail_revision", "Provide a positive revision", input)
-    end
-    local rows, err = history(input, revision)
-    if err then return nil, err end
-    if not rows[1] then
-        return nil, resource.error(errors.NOT_FOUND, "mail_revision_not_found", "Mail library revision was not found", input)
-    end
-    return rows[1] :: types.Revision, nil
 end
 
 return M

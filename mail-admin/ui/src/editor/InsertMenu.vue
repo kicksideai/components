@@ -47,15 +47,15 @@ async function insertPart(name: string) {
   }
 }
 
-const image = ref<{ name: string; title: string; width?: number }>()
+const image = ref<{ name: string; title: string }>()
 const alt = ref('')
 const altId = useId()
 useReturnFocus(() => !!image.value)
 async function chooseImage(name: string, title: string) {
   error.value = ''
   try {
-    const asset = await libraryApi.get({ kind: 'asset', name })
-    image.value = { name, title, width: asset.asset?.width }
+    await libraryApi.get({ kind: 'asset', name })
+    image.value = { name, title }
     alt.value = title
   } catch (failure) {
     error.value = describe(failure, 'The image could not be read.')
@@ -63,7 +63,7 @@ async function chooseImage(name: string, title: string) {
 }
 function insertImage() {
   if (!image.value) return
-  emit('insert', assetSnippet(image.value.name, alt.value, image.value.width))
+  emit('insert', assetSnippet(image.value.name, alt.value))
   image.value = undefined
 }
 

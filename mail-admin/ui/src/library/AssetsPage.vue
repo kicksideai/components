@@ -66,8 +66,7 @@ const countLabel = computed(() => `${plural(rows.value.length, 'image')} · ${by
 function size(row: LibraryRow): string {
   const asset = row.asset
   if (!asset) return ''
-  const box = asset.width && asset.height ? `${asset.width} × ${asset.height} · ` : ''
-  return box + bytes(asset.size)
+  return bytes(asset.size)
 }
 function open(row: LibraryRow) { go({ name: 'library', section: 'assets', asset: row.name }) }
 </script>

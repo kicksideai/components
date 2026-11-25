@@ -16,7 +16,7 @@ export function resource(kind: ResourceKind, name: string, extra: Partial<Resour
 export function revision(item: Resource, number: number, extra: Partial<Revision> = {}): Revision {
   const { kind, name, title, description, html, text, subject, base, schema, samples } = item
   return {
-    kind, name, revision: number, version: number, action: 'edited', state: item.state,
+    kind, name, seq: number, version: number, action: 'edited', state: item.state,
     content: { kind, name, title, description, html, text, subject, base, schema, samples },
     author: 'user-1', author_label: { kind: 'user', id: 'user-1', label: 'Dana Lee' }, created_at: Date.UTC(2026, 10, 20, 9), ...extra,
   }

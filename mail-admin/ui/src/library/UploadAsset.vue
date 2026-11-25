@@ -24,7 +24,6 @@ useReturnFocus(() => props.visible)
 const accepted = ['image/png', 'image/jpeg', 'image/gif']
 const limit = 1024 * 1024
 const file = ref<File>()
-const dimensions = ref<{ width: number; height: number }>()
 const title = ref(''), name = ref(''), nameEdited = ref(false)
 const busy = ref(false)
 const phase = ref<'upload' | 'process' | 'save'>()
@@ -35,7 +34,7 @@ watch(() => props.visible, open => {
   if (!open) { signal.cancelled = true; return }
   signal = { cancelled: false }
   if (!props.replace) library.ensure('asset')
-  file.value = dimensions.value = undefined
+  file.value = undefined
   title.value = props.replace?.title ?? ''
   name.value = props.replace?.name ?? ''
   nameEdited.value = false
@@ -43,16 +42,7 @@ watch(() => props.visible, open => {
 })
 watch(title, value => { if (!props.replace && !nameEdited.value) name.value = slug(value) })
 
-function measure(chosen: File): Promise<{ width: number; height: number } | undefined> {
-  return new Promise(resolve => {
-    const url = URL.createObjectURL(chosen)
-    const image = new Image()
-    image.onload = () => { resolve({ width: image.naturalWidth, height: image.naturalHeight }); URL.revokeObjectURL(url) }
-    image.onerror = () => { resolve(undefined); URL.revokeObjectURL(url) }
-    image.src = url
-  })
-}
-async function choose(event: FileUploadSelectEvent) {
+function choose(event: FileUploadSelectEvent) {
   const chosen = (Array.isArray(event.files) ? event.files[0] : event.files) as File | undefined
   fileError.value = ''
   file.value = undefined
@@ -60,7 +50,6 @@ async function choose(event: FileUploadSelectEvent) {
   if (!accepted.includes(chosen.type)) { fileError.value = 'Use a PNG, JPEG or GIF image.'; return }
   if (chosen.size > limit) { fileError.value = 'Images must be 1 MB or smaller.'; return }
   file.value = chosen
-  dimensions.value = await measure(chosen)
   if (!props.replace && !title.value) title.value = chosen.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ')
 }
 
@@ -80,7 +69,7 @@ async function submit() {
   try {
     phase.value = 'upload'
     const upload = await uploads.add(file.value)
-    const body = { name: name.value, upload_id: upload, title: title.value.trim(), ...dimensions.value }
+    const body = { name: name.value, upload_id: upload, title: title.value.trim() }
     const adopt = () => props.replace ? libraryApi.replaceAsset(body, props.replace.revision) : libraryApi.addAsset(body)
     // Mail adopts the upload at once when the platform has finished it. While it is still processing, Mail says
     // so, and the page waits for the platform's completion signal before asking once more.
@@ -132,7 +121,7 @@ const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'm
             class="mail-file-row" :pt="{ input: { id: ids.file, 'aria-label': 'Image file' } }" @select="choose">
             <template #chooseicon><Icon icon="tabler:file-upload" aria-hidden="true" /></template>
             <template #filelabel>
-              <span class="mail-muted">{{ file ? `${file.name} · ${bytes(file.size)}${dimensions ? ` · ${dimensions.width} × ${dimensions.height}` : ''}` : 'No file chosen' }}</span>
+              <span class="mail-muted">{{ file ? `${file.name} · ${bytes(file.size)}` : 'No file chosen' }}</span>
             </template>
           </FileUpload>
           <small v-if="fileError" class="mail-field-error" role="alert">{{ fileError }}</small>

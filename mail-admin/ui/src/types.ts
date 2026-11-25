@@ -26,8 +26,6 @@ export interface Asset {
   filename?: string
   content_type?: string
   size?: number
-  width?: number
-  height?: number
   upload_id?: string
 }
 
@@ -89,21 +87,24 @@ export interface LibraryPage {
   library_seq?: number
 }
 
-export type RevisionAction = 'created' | 'edited' | 'base_changed' | 'reset' | 'restored' | 'previous_change'
+export type RevisionAction = 'created' | 'edited' | 'base_changed' | 'reset' | 'restored' | 'archived' | 'deleted'
 
-export interface Revision {
+export interface HistoryItem {
   kind: ResourceKind
   name: string
-  revision: number
+  seq: number
   version: number
   action: RevisionAction
-  state: ResourceState
   restored_from?: number
-  content: ResourceContent
   author: string
   author_label?: PrincipalLabel
   note?: string
   created_at: number
+}
+
+export interface Revision extends HistoryItem {
+  state: ResourceState
+  content: ResourceContent
 }
 
 export interface Items<T> { items: T[] }

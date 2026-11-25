@@ -230,7 +230,7 @@
         "kind",
         "name",
         "expected_revision",
-        "revision"
+        "seq"
       ],
       "properties": {
         "kind": {
@@ -253,7 +253,7 @@
         "note": {
           "type": "string"
         },
-        "revision": {
+        "seq": {
           "type": "integer",
           "minimum": 1
         }
@@ -376,14 +376,6 @@
               "type": "string"
             },
             "size": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "width": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "height": {
               "type": "integer",
               "minimum": 1
             }

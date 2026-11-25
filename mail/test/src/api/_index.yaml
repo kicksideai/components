@@ -15,6 +15,7 @@ entries:
     imports:
       test: wippy.test:test
       library_fixtures: app.mail_library:fixtures
+      autoinit: kickside.component:autoinit
       fixtures: app.mail_api:fixtures
   - name: sender
     kind: security.scope

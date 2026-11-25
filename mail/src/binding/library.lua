@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local library = require("library")
+local history = require("history")
 local types = require("types")
 local client = require("client")
 local writer = require("writer")
@@ -10,12 +11,22 @@ local preview = require("preview")
 local M = {
     list = library.page,
     get = library.get,
-    read_history = library.history_page,
-    read_revision = library.revision,
     asset_content = library.asset_content,
     preview = preview.preview,
     add_asset = assets.add,
 }
+
+function M.read_history(input: types.LibraryHistoryRequest): (types.LibraryHistoryPage?, error?)
+    local denied = library.require_read()
+    if denied then return nil, denied end
+    return history.page(input)
+end
+
+function M.read_revision(input: types.LibraryRevisionRequest): (types.Revision?, error?)
+    local denied = library.require_read()
+    if denied then return nil, denied end
+    return history.revision(input, type(input) == "table" and input.seq or nil)
+end
 
 function M.create(input: types.ResourceCreate): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceCreate

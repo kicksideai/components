@@ -11,6 +11,9 @@ local uuid = require("uuid")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
 local jet = require("jet")
+local prune = require("prune")
+
+local THREAD = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
 
 local HTML = "kickside.mail.views:templates"
 local TEXT = "kickside.mail.views:text_templates"
@@ -458,9 +461,9 @@ return {run = test.run_cases(function()
             test.is_true(archived.revision > saved.revision)
             local history = assert(call("read_history", item)).items
             test.eq("archived", history[1].action)
-            test.eq(archived.revision, history[1].revision)
+            test.eq(archived.seq, history[1].seq)
 
-            local restore = {kind = item.kind, name = item.name, expected_revision = archived.revision, revision = saved.revision}
+            local restore = {kind = item.kind, name = item.name, expected_revision = archived.revision, seq = saved.seq}
             restore.preview_id = review({message = item.name, restore = restore})
             local restored = assert(call("restore", restore))
             test.is_false(restored.archived)
@@ -504,7 +507,81 @@ return {run = test.run_cases(function()
             test.eq("New original Example", assert(value(HTML, "part/header", data)))
         end)
 
-        test.it("retains the newest 25 revisions, including reset and restore", function()
+        local function history_fixture(name)
+            local item = own(candidate("part", name, "Original history content", "Original history text"))
+            local first = assert(call("create", item))
+            local other = own(candidate("part", name .. "-other", "Other subject", "Other subject"))
+            assert(call("create", other))
+            item.html, item.expected_revision = "New history content", first.revision
+            item.preview_id = review({resources = {item}})
+            local newest = assert(call("update", item))
+            return first, newest
+        end
+
+        test.it("pages one History entry per event by descending sequence", function()
+            local first, newest = history_fixture("history-sequence")
+            local key = {kind = newest.kind, name = newest.name, limit = 1}
+            local current = assert(call("read_history", key))
+            local previous = assert(call("read_history", {
+                kind = key.kind, name = key.name, limit = 1, cursor = current.next_cursor,
+            }))
+            test.eq(1, #current.items)
+            test.eq(1, #previous.items)
+            test.eq(newest.seq, current.items[1].seq)
+            test.eq(tostring(newest.seq), current.next_cursor)
+            test.eq(first.seq, previous.items[1].seq)
+            test.eq(first.revision, previous.items[1].version)
+            test.is_nil(previous.next_cursor)
+        end)
+
+        test.it("restores content from an event sequence and records its source version", function()
+            local first, newest = history_fixture("history-restore-sequence")
+            local restore = {kind = first.kind, name = first.name, seq = first.seq, expected_revision = newest.revision}
+            local detail, detail_err = call("read_revision", {kind = first.kind, name = first.name, seq = first.seq})
+            assert(detail, tostring(detail_err))
+            test.eq(first.html, detail.content.html)
+            restore.preview_id = review({restore = restore})
+            local restored, restore_err = call("restore", restore)
+            assert(restored, tostring(restore_err))
+            test.eq(first.html, restored.html)
+            local history = assert(call("read_history", {kind = first.kind, name = first.name})).items
+            test.eq(restored.seq, history[1].seq)
+            test.eq("restored", history[1].action)
+            test.eq(first.revision, history[1].restored_from)
+        end)
+
+        test.it("prunes History through the Threads boundary and refuses an approved restore of a pruned event", function()
+            local first, newest = history_fixture("history-pruned-sequence")
+            local restore = {kind = first.kind, name = first.name, seq = first.seq, expected_revision = newest.revision}
+            local preview, preview_err = call("preview", {message = "notice", restore = restore})
+
+            local db = assert(sql.get("app:db"))
+            local before = assert(db:query("SELECT max_pruned_seq FROM kickside_thread WHERE id=$1", {THREAD}))
+            local result, prune_err = prune.prune_thread(db, THREAD, {
+                cutoff = "2099-01-01T00:00:00Z", max_total = first.seq - before[1].max_pruned_seq,
+            })
+            assert(db:release())
+            assert(result, tostring(prune_err))
+            test.eq(first.seq, result.max_pruned_seq)
+            local owner = assert(funcs.call("kickside.mail.jobs:owner", {}))
+            assert(owner.success, tostring(owner.error))
+            db = assert(sql.get("app:db"))
+            local rows = assert(db:query(
+                "SELECT seq FROM mail_library_history WHERE kind=$1 AND name=$2 ORDER BY seq",
+                {first.kind, first.name}))
+            assert(db:release())
+            test.eq(1, #rows)
+            test.eq(newest.seq, rows[1].seq)
+
+            assert(preview, tostring(preview_err))
+            restore.preview_id = assert(preview.preview_id)
+            local value, err = call("restore", restore)
+            test.is_nil(value)
+            test.eq(errors.NOT_FOUND, err:kind())
+            test.eq("mail_revision_pruned", err:details().code)
+        end)
+
+        test.it("retains every unpruned event, including reset and restore", function()
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
                 assert(security.policy("kickside.mail.security:library_runtime")),
                 assert(security.policy("app.mail_library:invoke_access"))}))
@@ -537,10 +614,11 @@ return {run = test.run_cases(function()
             test.eq(initial_history + 2, #history)
             test.eq("Reset layout", history[1].note)
             test.eq("history-editor", history[1].author)
-            test.eq(initial.html, history[1].content.html)
+            local reset_detail = read("read_revision", {kind = key.kind, name = key.name, seq = history[1].seq})
+            test.eq(initial.html, reset_detail.content.html)
             test.eq("First customization", history[2].note)
             test.is_true(history[1].created_at > 0)
-            local restore = {kind = key.kind, name = key.name, revision = first, expected_revision = reset.revision}
+            local restore = {kind = key.kind, name = key.name, seq = saved.seq, expected_revision = reset.revision}
             local restored = read("restore", restore)
             test.eq(edit.html, restored.html)
             test.eq("customized", restored.state)
@@ -553,11 +631,10 @@ return {run = test.run_cases(function()
                 restored = read("update", edit)
             end
             history = read("read_history", key).items
-            test.eq(25, #history)
+            test.eq(initial_history + 29, #history)
             test.eq(initial.revision + 29, history[1].version)
-            test.eq(initial.revision + 5, history[25].version)
-            test.eq(restored.revision, history[1].revision)
-            test.eq("Layout 2", history[25].content.title)
+            test.eq(initial.revision + 1, history[29].version)
+            test.eq(restored.seq, history[1].seq)
             read("reset", {kind = key.kind, name = key.name, expected_revision = restored.revision})
         end)
 

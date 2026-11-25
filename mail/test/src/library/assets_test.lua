@@ -77,7 +77,7 @@ local run = test.run_cases(function()
             end
             local result, err = fixtures.call(editor, method, input)
             if type(result) == "table" and input.kind ~= "asset" and method ~= "get" then fixtures.await_live(result.seq) end
-            return assert(result, tostring(err))
+            return assert(result, err and tostring(err) .. " " .. assert(json.encode(err:details() or {})))
         end
         local function upload(mime, bytes)
             local id = uuid.v4()
@@ -273,7 +273,7 @@ local run = test.run_cases(function()
             local source = upload("image/gif", gif())
             owned[1] = {kind = "asset", name = "logo"}
             local replaced = call("update", {kind = "asset", name = "logo", upload_id = source,
-                width = 1, height = 1, expected_revision = original.revision})
+                expected_revision = original.revision})
             test.eq("customized", replaced.state)
             test.eq(original.origin, replaced.origin)
             test.is_nil(replaced.asset.width)
@@ -287,13 +287,14 @@ local run = test.run_cases(function()
             local restored_package = call("reset", {kind = "asset", name = "logo", expected_revision = replaced.revision})
             test.eq("original", restored_package.state)
             local history = call("read_history", {kind = "asset", name = "logo"}).items
-            test.eq("original", history[1].content.asset.source)
-            test.is_nil(history[1].content.asset.upload_id)
+            local reset_detail = call("read_revision", {kind = "asset", name = "logo", seq = history[1].seq})
+            test.eq("original", reset_detail.content.asset.source)
+            test.is_nil(reset_detail.content.asset.upload_id)
             local restored = call("restore", {kind = "asset", name = "logo", expected_revision = restored_package.revision,
-                revision = replaced.revision})
+                seq = replaced.seq})
             test.eq(replaced.asset.upload_id, restored.asset.upload_id)
             local reset = call("restore", {kind = "asset", name = "logo", expected_revision = restored.revision,
-                revision = restored_package.revision})
+                seq = restored_package.seq})
             test.eq("original", reset.state)
             local preview = call("preview", {message = "notice"})
             test.not_nil(preview.inline_assets["mail-library-logo"]:match("^data:image/png;base64,"))

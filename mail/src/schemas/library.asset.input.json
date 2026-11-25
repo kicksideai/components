@@ -17,14 +17,6 @@
       "type": "integer",
       "minimum": 0
     },
-    "width": {
-      "type": "integer",
-      "minimum": 1
-    },
-    "height": {
-      "type": "integer",
-      "minimum": 1
-    },
     "title": {
       "type": "string",
       "minLength": 1
@@ -37,6 +29,10 @@
     },
     "kind": {
       "const": "asset"
+    },
+    "command_id": {
+      "type": "string",
+      "format": "uuid"
     }
   },
   "additionalProperties": false

@@ -4,13 +4,12 @@
   "required": [
     "kind",
     "name",
-    "revision",
+    "seq",
     "expected_revision"
   ],
   "anyOf": [
     {
       "properties": {
-    "command_id": {"type": "string", "format": "uuid"},
         "kind": {
           "const": "asset"
         }
@@ -47,9 +46,13 @@
       "type": "string",
       "description": "Short-lived proof of a clean preview of these exact changes."
     },
-    "revision": {
+    "seq": {
       "type": "integer",
       "minimum": 1
+    },
+    "command_id": {
+      "type": "string",
+      "format": "uuid"
     }
   }
 }

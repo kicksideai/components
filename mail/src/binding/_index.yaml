@@ -43,6 +43,7 @@ entries:
       types: kickside.mail:types
       client: kickside.mail:client
       library: kickside.mail.read:library
+      history: kickside.mail.read:history
       writer: kickside.mail.command:library
       edits: kickside.mail.command:library_edits
       assets: kickside.mail.command:assets
@@ -51,6 +52,9 @@ entries:
       policies:
         - kickside.mail.security:library_component_read
         - kickside.mail.security:library_component_registry
+        - kickside.mail.security:library_history_threads
+        - kickside.mail.security:library_threads_caller
+        - kickside.mail.security:library_thread_config
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
@@ -86,6 +90,9 @@ entries:
       policies:
         - kickside.mail.security:library_component_read
         - kickside.mail.security:library_component_registry
+        - kickside.mail.security:library_history_threads
+        - kickside.mail.security:library_threads_caller
+        - kickside.mail.security:library_thread_config
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
@@ -100,6 +107,9 @@ entries:
       policies:
         - kickside.mail.security:library_component_read
         - kickside.mail.security:library_component_registry
+        - kickside.mail.security:library_history_threads
+        - kickside.mail.security:library_threads_caller
+        - kickside.mail.security:library_thread_config
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access

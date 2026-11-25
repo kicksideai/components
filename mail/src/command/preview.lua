@@ -5,6 +5,7 @@ local resources = require("resource")
 local edit_rules = require("edit")
 local edits = require("library_edits")
 local library = require("library")
+local history = require("history")
 local message = require("message")
 local vars_schema = require("vars")
 local globals = require("globals")
@@ -58,6 +59,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
     local batch: {types.LibraryEdit} = {}
     local operation: string?
     local author: string?
+    local source: types.Resource?
     if bind then
         local proposed, op, shape_err = review_edits(input)
         if shape_err then return nil, shape_err end
@@ -73,6 +75,9 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         if operation == "restore" then
             local read_denied = library.require_read()
             if read_denied then return nil, read_denied end
+            local source_err
+            source, source_err = history.restore_source(batch[1].key, batch[1].restore :: integer)
+            if source_err then return nil, source_err end
         end
     else
         local read_denied = library.require_read()
@@ -129,7 +134,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
                     local source_err = edits.load(workspace, edit.from)
                     if source_err then return nil, source_err end
                 end
-                local candidate, invalid = edits.prepare(tx, edit, operation :: string, items, workspace.originals)
+                local candidate, invalid = edits.prepare(edit, operation :: string, items, workspace.originals, source)
                 if invalid then return nil, invalid end
                 local revision, revision_err = edits.current_revision(workspace, edit.key)
                 if revision_err then return nil, revision_err end

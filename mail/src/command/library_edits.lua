@@ -92,8 +92,8 @@ function M.dependants(workspace: types.LibraryWorkspace, keys: {types.ResourceKe
     return selected, nil
 end
 
-function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: string,
-    items: types.ResourceMap, originals: types.OriginalMap): (types.ResourceContent?, error?, integer?, integer?)
+function M.prepare(edit: types.LibraryEdit, operation: string, items: types.ResourceMap,
+    originals: types.OriginalMap, source: types.Resource?): (types.ResourceContent?, error?)
     local key = edit.key
     local id = resources.subject(key)
     local current, original = items[id], originals[id]
@@ -122,12 +122,10 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
         end
         return nil, nil
     end
-    if key.kind == "asset" and not (edit.content or edit.restore) then
+    if key.kind == "asset" and not (edit.content or source) then
         return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide an upload to add or replace an asset", key)
     end
     local content = edit.content
-    local restored_from: integer?
-    local restore_seq: integer?
     if operation == "create" and edit.from then
         local bad_from = resources.check_key(edit.from)
         if bad_from then return nil, bad_from end
@@ -140,26 +138,8 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
         for field, value in pairs(source) do copy[field] = value end
         for field, value in pairs(content) do copy[field] = value end
         content = copy :: types.ResourceContent
-    elseif edit.restore and not edit.content then
-        local history, history_err = library_reader.history(ex, key, edit.restore)
-        if history_err then return nil, history_err end
-        if not history[1] then
-            return nil, resources.error(errors.NOT_FOUND, "mail_revision_not_found", "Mail library revision was not found", key)
-        end
-        content = history[1].content
-        restored_from = history[1].version
-        if key.kind ~= "asset" then
-            local seq, seq_err = library_reader.event_seq(ex, key, edit.restore)
-            if seq_err then return nil, seq_err end
-            if not seq then return nil, resources.error(errors.NOT_FOUND, "mail_revision_pruned", "Mail library revision is unavailable", key) end
-            restore_seq = seq
-        end
-        if content.asset and content.asset.source == "original" then
-            if not original then return nil, edit_rules.missing(key) end
-            local invalid = resources.check_content(original.resource)
-            if invalid then return nil, invalid end
-            return original.resource, nil, restored_from
-        end
+    elseif source then
+        content = source
     elseif edit.base ~= nil then
         local copy: types.Record = {}
         for field, value in pairs(current) do copy[field] = value end
@@ -170,7 +150,7 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
     if err then return nil, err end
     local invalid = resources.check_content(normalized :: types.ResourceContent)
     if invalid then return nil, invalid end
-    return normalized, nil, restored_from, restore_seq
+    return normalized, nil
 end
 
 function M.create(input: types.ResourceCreate): types.LibraryEdit
@@ -196,9 +176,7 @@ end
 
 function M.restore(input: types.ResourceRestore): types.LibraryEdit
     local edit = M.revision(input)
-    if type(input) == "table" then
-        edit.restore, edit.source_seq = input.seq or input.revision, input.seq
-    end
+    if type(input) == "table" then edit.restore = input.seq end
     return edit
 end
 
@@ -277,7 +255,7 @@ local function validate_templates(workspace: types.LibraryWorkspace, keys: {type
 end
 
 function M.plan(ex: types.Executor, operation: string, edits: {types.LibraryEdit}, opts: types.LibraryWriteOptions,
-    author: string, signature: string, head: integer): ({types.LibraryEvent}?, error?)
+    author: string, signature: string, head: integer, source: types.Resource?): ({types.LibraryEvent}?, error?)
     local mark, state_err = live_repo.get(ex)
     if state_err then return nil, state_err end
     if mark.projected_seq < head then
@@ -319,14 +297,12 @@ function M.plan(ex: types.Executor, operation: string, edits: {types.LibraryEdit
     local previous: types.ResourceMap = {}
     local candidates: {types.ResourceContent} = {}
     local restored: {[integer]: integer} = {}
-    local restore_seq: integer?
     for i, edit in ipairs(edits) do
         local id = resources.subject(edit.key)
-        local candidate, prepare_err, restored_from, source_seq = M.prepare(ex, edit, operation, items, originals)
+        local candidate, prepare_err = M.prepare(edit, operation, items, originals, source)
         if prepare_err then return nil, prepare_err end
         previous[id], items[id] = items[id], candidate :: types.Resource
-        candidates[i], restored[i] = candidate, restored_from
-        restore_seq = source_seq or restore_seq
+        candidates[i], restored[i] = candidate, source and source.revision
     end
     if binding then
         local digest_value, digest_err = digest.preview(operation, candidates, binding.expected, edits[1].restore)
@@ -346,7 +322,7 @@ function M.plan(ex: types.Executor, operation: string, edits: {types.LibraryEdit
         local validation_err = validate_templates(workspace, keys, candidates, changed)
         if validation_err then return nil, validation_err end
     end
-    return edit_rules.plan(operation, edits, revisions, previous, candidates, originals, restored, restore_seq,
+    return edit_rules.plan(operation, edits, revisions, previous, candidates, originals, restored, source and source.seq,
         author, opts.preview_id, signature)
 end
 

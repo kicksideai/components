@@ -22,7 +22,7 @@ override:
     - {subject_id: "system:kickside.mail.retention", subject_type: user, access_mask: 1}
     - {subject_id: "wippy.test:runner", subject_type: user, access_mask: 3}
     - {subject_id: "app:mail_editors", subject_type: group, access_mask: 3}
-  kickside.mail.command:library:imports.thread_events: app.mail_library:source_fault
+  kickside.mail.read:history:imports.thread_events: app.mail_library:source_fault
   kickside.mail.command:retention:imports.uploads: app.mail_library:reap_fault
   kickside.mail.command:library:imports.threads: app.mail_library:append_fault
   kickside.mail.command:library:modules: [security, logger, uuid]

@@ -9,7 +9,7 @@ import type { ResourceContent } from '../types'
 const button = resource('part', 'button', { title: 'Button',
   schema: { type: 'object', properties: { action_url: { type: 'string' }, action_label: { type: 'string', default: 'Open' }, wide: { type: 'boolean' } } },
   samples: { action_url: 'https://example.org' } })
-const logo = resource('asset', 'mail-logo', { title: 'Mail logo', asset: { source: 'upload', width: 120, height: 40 } })
+const logo = resource('asset', 'mail-logo', { title: 'Mail logo', asset: { source: 'upload' } })
 const draft: ResourceContent = { ...resource('message', 'welcome', { title: 'Welcome',
   schema: { type: 'object', properties: { first_name: { type: 'string', description: 'Who it greets' }, site: { type: 'string' } } } }) }
 
@@ -70,7 +70,7 @@ describe('Insert', () => {
     wrapper.unmount()
   })
 
-  it('inserts an image with the alternative text the person gives and its width', async () => {
+  it('inserts an image with the alternative text the person gives', async () => {
     const { wrapper } = await openMenu()
     await choose('Mail logo')
     const alt = document.body.querySelector<HTMLInputElement>('#mail-insert-image input')!
@@ -81,7 +81,7 @@ describe('Insert', () => {
     dialogButton('Insert image')!.click()
     await flushPromises()
     expect(inserted(wrapper)).toEqual([
-      ['<img src="{{ assets["mail-logo"] }}" alt="Acme &quot;logo&quot;" width="120" style="display:block;border:0;max-width:100%;height:auto;">'],
+      ['<img src="{{ assets["mail-logo"] }}" alt="Acme &quot;logo&quot;" style="display:block;border:0;max-width:100%;height:auto;">'],
     ])
     wrapper.unmount()
   })

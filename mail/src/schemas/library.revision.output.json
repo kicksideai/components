@@ -3,8 +3,9 @@
   "required": [
     "kind",
     "name",
-    "revision",
-    "content",
+    "seq",
+    "version",
+    "action",
     "author",
     "created_at"
   ],
@@ -21,10 +22,6 @@
     "name": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9_-]*$"
-    },
-    "revision": {
-      "type": "integer",
-      "minimum": 0
     },
     "version": {
       "type": "integer",
@@ -45,7 +42,8 @@
         "base_changed",
         "reset",
         "restored",
-        "archived"
+        "archived",
+        "deleted"
       ]
     },
     "restored_from": {
@@ -165,18 +163,17 @@
             "size": {
               "type": "integer",
               "minimum": 1
-            },
-            "width": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "height": {
-              "type": "integer",
-              "minimum": 1
             }
           }
         }
       }
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "origin": {
+      "type": "string"
     }
   }
 }

@@ -16,13 +16,21 @@ const notice = resource('message', 'notice', { title: 'Notice', origin_label: 'M
 const welcome = resource('message', 'welcome', { title: 'Customer welcome', base: 'newsletter', state: 'created', revision: 3, author: 'user-1' })
 const library = [standard, newsletter, button, notice, welcome].map(item => row(item))
 
+function historyRoute(item: Resource, entries: ReturnType<typeof revision>[]) {
+  return get(`/api/v1/mail/library/${item.kind}/${item.name}/history`, (_path, options) => {
+    const seq = (options as { params?: { seq?: string } } | undefined)?.params?.seq
+    if (seq) return ok(entries.find(entry => entry.seq === Number(seq)))
+    return ok({ items: entries.map(({ content, state, ...entry }) => entry) })
+  })
+}
+
 function routes(item: Resource, extra: Parameters<typeof serve>[0] = []) {
   serve([
     ...extra,
     get('/api/v1/mail/library', () => ok({ items: [...library] })),
     get('/api/v1/mail/delivery', () => ok({ configured: true })),
     get(`/api/v1/mail/library/${item.kind}/${item.name}`, () => ok(item)),
-    get(`/api/v1/mail/library/${item.kind}/${item.name}/history`, () => ok({ items: [revision(item, item.revision), revision(item, item.revision - 1, { version: item.revision - 1, note: 'Brand refresh' })] })),
+    historyRoute(item, [revision(item, item.revision), revision(item, item.revision - 1, { note: 'Brand refresh' })]),
     post('/api/v1/mail/library/preview', () => ok({ preview_id: 'review-id', subject: 'Hello', html: '<html><body><img src="cid:mail-library-logo"> Preview</body></html>', text: 'Preview', inline_assets: { 'mail-library-logo': 'data:image/png;base64,AAAA' } })),
   ])
 }
@@ -228,9 +236,9 @@ describe('Library resource editor', () => {
   it('lists History and restores a version through the draft, review and save', async () => {
     const save = vi.fn((_path: string, sent?: unknown) => ok({ ...newsletter, ...(sent as object), revision: 6 }))
     const restore = vi.fn(() => ok({ ...newsletter, revision: 6 }))
-    const older = revision({ ...newsletter, html: '<p>The older frame</p>' }, 4, { version: 4, note: 'Brand refresh' })
+    const older = revision({ ...newsletter, html: '<p>The older frame</p>' }, 4, { seq: 42, note: 'Brand refresh' })
     routes({ ...newsletter, used_by: { messages: [] } }, [put('/api/v1/mail/library/base/newsletter', save), post('/api/v1/mail/library/base/newsletter/restore', restore),
-      get('/api/v1/mail/library/base/newsletter/history', () => ok({ items: [revision(newsletter, 5), older] }))])
+      historyRoute(newsletter, [revision(newsletter, 5), older])])
     const wrapper = await open('bases/newsletter/history')
     const rows = wrapper.findAll('.mail-history-row')
     expect(rows[0].text()).toContain('Version 5 · Edited')
@@ -250,7 +258,7 @@ describe('Library resource editor', () => {
     expect(note.value).toBe('Restore version 4')
     ;[...document.body.querySelectorAll('button')].find(node => node.textContent?.trim() === 'Save')!.click()
     await flushPromises()
-    expect(restore).toHaveBeenCalledWith('/api/v1/mail/library/base/newsletter/restore', { expected_revision: 5, revision: 4, note: 'Restore version 4', preview_id: 'review-id', command_id: expect.any(String) })
+    expect(restore).toHaveBeenCalledWith('/api/v1/mail/library/base/newsletter/restore', { expected_revision: 5, seq: 42, note: 'Restore version 4', preview_id: 'review-id', command_id: expect.any(String) })
     expect(save).not.toHaveBeenCalled()
     wrapper.unmount()
   })

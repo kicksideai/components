@@ -10,6 +10,7 @@ local uuid = require("uuid")
 local test = require("test")
 local library_fixtures = require("library_fixtures")
 local fixtures = require("fixtures")
+local autoinit = require("autoinit")
 local session = fixtures.session
 local settings = fixtures.settings
 
@@ -209,7 +210,7 @@ return {run = test.run_cases(function()
             test.eq(item.html, current.html)
 
             local source = {kind = item.kind, name = item.name,
-                expected_revision = saved.revision, revision = created.revision}
+                expected_revision = saved.revision, seq = created.seq}
             local restored_preview = assert(tools:call("kickside.mail.traits:library_preview", {message = item.name, restore = source}))
             source.preview_id = assert(restored_preview.preview_id)
             local restored = data(editor, "POST", path .. "/restore", source)
@@ -218,11 +219,11 @@ return {run = test.run_cases(function()
             test.eq(restored.revision, tool_read.revision)
 
             local history = data(editor, "GET", path .. "/history?limit=1")
-            test.eq(restored.revision, history.items[1].revision)
+            test.eq(restored.seq, history.items[1].seq)
             test.not_nil(history.next_cursor)
             local prior = data(editor, "GET", path .. "/history?limit=1&cursor=" .. history.next_cursor)
-            test.eq(saved.revision, prior.items[1].revision)
-            local detail = data(editor, "GET", path .. "/history?revision=" .. created.revision)
+            test.eq(saved.seq, prior.items[1].seq)
+            local detail = data(editor, "GET", path .. "/history?seq=" .. created.seq)
             test.eq(created.html, detail.content.html)
         end)
 
@@ -458,27 +459,27 @@ return {run = test.run_cases(function()
             item.subject = "Edited subject"
             local edited = update(editor, item)
             local moved = revision_write(editor, "base", edited, {base = "standard"})
-            local restored = revision_write(editor, "restore", moved, {revision = created.revision})
+            local restored = revision_write(editor, "restore", moved, {seq = created.seq})
             local history = data(editor, "GET", route .. "/history").items
             test.eq(4, #history)
             test.eq("restored", history[1].action)
             test.eq(1, history[1].restored_from)
             test.eq(4, history[1].version)
-            test.eq("created", history[1].state)
-            test.eq(restored.revision, history[1].revision)
+            test.eq("created", data(editor, "GET", route .. "/history?seq=" .. restored.seq).state)
+            test.eq(restored.seq, history[1].seq)
             test.eq("base_changed", history[2].action)
             test.eq("edited", history[3].action)
             test.eq("Reword subject", history[3].note)
             test.eq("created", history[4].action)
             test.eq(1, history[4].version)
-            test.eq(created.revision, history[4].revision)
+            test.eq(created.seq, history[4].seq)
             local original = own(data(editor, "GET", "/library/base/plain"))
             original.expected_revision = original.revision
             local custom = update(editor, original)
             revision_write(editor, "reset", custom, {})
             local reset = data(editor, "GET", "/library/base/plain/history").items[1]
             test.eq("reset", reset.action)
-            test.eq("original", reset.state)
+            test.eq("original", data(editor, "GET", "/library/base/plain/history?seq=" .. reset.seq).state)
             test.eq(2, reset.version)
         end)
 
@@ -506,13 +507,13 @@ return {run = test.run_cases(function()
             local route = "/library/message/" .. item.name
             local created = create(editor, item)
             local status, rejected = request(editor, "POST", route .. "/restore",
-                {revision = created.revision, expected_revision = created.revision})
+                {seq = created.seq, expected_revision = created.revision})
             test.eq(400, status)
             test.eq("mail_preview_required", rejected.code)
             test.eq(1, #data(editor, "GET", route .. "/history").items)
             item.expected_revision = created.revision
             local edited = update(editor, item)
-            local source = {kind = "message", name = item.name, expected_revision = edited.revision, revision = created.revision}
+            local source = {kind = "message", name = item.name, expected_revision = edited.revision, seq = created.seq}
             item.expected_revision = edited.revision
             source.preview_id = review(editor, item.name, {resources = {item}})
             status, rejected = request(editor, "POST", route .. "/restore", source)
@@ -520,14 +521,14 @@ return {run = test.run_cases(function()
             test.eq("mail_preview_mismatch", rejected.code)
             source.preview_id = nil
             local receipt = review(editor, item.name, {restore = source})
-            source.preview_id, source.revision = receipt, edited.revision
+            source.preview_id, source.seq = receipt, edited.seq
             status, rejected = request(editor, "POST", route .. "/restore", source)
             test.eq(400, status)
             test.eq("mail_preview_mismatch", rejected.code)
-            source.revision = created.revision
+            source.seq = created.seq
             local restored = data(editor, "POST", route .. "/restore", source)
             local history = data(editor, "GET", route .. "/history").items
-            test.eq(restored.revision, history[1].revision)
+            test.eq(restored.seq, history[1].seq)
             test.eq("restored", history[1].action)
             test.eq(1, history[1].restored_from)
         end)
@@ -839,11 +840,15 @@ return {run = test.run_cases(function()
             test.is_nil(result.preview_id, tool)
         end
 
-        local function seed_source(table_name, item, html)
+        local function seed_source(item, html, historical)
             local db = assert(sql.get("app:db"))
-            if table_name == "mail_library_revision" then
-                assert(db:execute([[UPDATE mail_library_revision SET html=$1 WHERE kind=$2 AND name=$3 AND revision=$4]],
-                    {html, item.kind, item.name, item.revision}))
+            if historical then
+                local thread = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
+                local rows = assert(db:query("SELECT body FROM kickside_event WHERE thread_id=$1 AND seq=$2", {thread, item.seq}))
+                local body = assert(json.decode(rows[1].body))
+                body.content.html = html
+                assert(db:execute("UPDATE kickside_event SET body=$1 WHERE thread_id=$2 AND seq=$3",
+                    {assert(json.encode(body)), thread, item.seq}))
             else
                 assert(db:execute("UPDATE mail_library SET html=$1 WHERE kind=$2 AND name=$3",
                     {html, item.kind, item.name}))
@@ -898,7 +903,7 @@ return {run = test.run_cases(function()
                 local function arm_peer(active)
                     if peer then
                         local source = active and directive(graph.word, target.kind, target.name) .. peer.html or peer.html
-                        seed_source("mail_library", peer, source)
+                        seed_source(peer, source)
                     end
                 end
                 local function alive()
@@ -944,10 +949,10 @@ return {run = test.run_cases(function()
                 review_cycle(editor, preview, graph.diagnostic)
                 alive()
 
-                -- A revision imported from an earlier installation may contain invalid source.
-                seed_source("mail_library_revision", first, bad_html)
+                -- A historical event can contain a template that fails current validation.
+                seed_source(first, bad_html, true)
                 local restore = {kind = target.kind, name = target.name,
-                    revision = first.revision, expected_revision = second.revision}
+                    seq = first.seq, expected_revision = second.revision}
                 local restore_draft = {message = message, restore = restore}
                 review_cycle(editor, restore_draft, graph.diagnostic)
                 tool_cycle(agent, "library_preview", restore_draft, graph.diagnostic)
@@ -1012,7 +1017,7 @@ return {run = test.run_cases(function()
             local revisions = data(editor, "GET", name .. "/history")
             test.eq(3, #revisions.items)
             test.eq("Save both", revisions.items[2].note)
-            local restored = revision_write(editor, "restore", moved, {revision = saved.revision})
+            local restored = revision_write(editor, "restore", moved, {seq = saved.seq})
             test.eq(base.name, restored.base)
             local shipped = own(data(editor, "GET", "/library/base/plain"))
             local original_revision = shipped.revision

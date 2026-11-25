@@ -5,7 +5,10 @@
     "name"
   ],
   "properties": {
-    "command_id": {"type": "string", "format": "uuid"},
+    "command_id": {
+      "type": "string",
+      "format": "uuid"
+    },
     "kind": {
       "type": "string",
       "enum": [
@@ -104,14 +107,6 @@
     "upload_id": {
       "type": "string",
       "format": "uuid"
-    },
-    "width": {
-      "type": "integer",
-      "minimum": 1
-    },
-    "height": {
-      "type": "integer",
-      "minimum": 1
     }
   },
   "additionalProperties": false

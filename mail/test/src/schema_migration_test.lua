@@ -77,7 +77,7 @@ return {run = test.run_cases(function()
         test.it("advertises only current history actions", function()
             local history = assert(registry.get("kickside.mail.traits:library_history"))
             local actions = history.meta.output_schema.properties.items.items.properties.action.enum
-            local expected = {"created", "edited", "base_changed", "reset", "restored", "archived"}
+            local expected = {"created", "edited", "base_changed", "reset", "restored", "archived", "deleted"}
             test.eq(#actions, #expected)
             for index, action in ipairs(expected) do
                 test.eq(actions[index], action)

@@ -62,6 +62,12 @@ function M.resource_at(threads: types.LibraryThreads, seq: integer): (types.Reso
     return M.event_resource(event :: types.ThreadEvent)
 end
 
+function M.retained_boundary(threads: types.LibraryThreads): (integer?, error?)
+    local page, err = threads:list_events({thread_id = M.library_thread_id(), limit = 1})
+    if err then return nil, err end
+    return page.max_pruned_seq, nil
+end
+
 function M.prune_boundary(threads: types.LibraryThreads): ({max_pruned_seq: integer}?, error?)
     return threads:prune_boundary({thread_id = M.library_thread_id()})
 end

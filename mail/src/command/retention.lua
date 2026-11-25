@@ -12,6 +12,7 @@ local repo = require("message_repo")
 local scratch = require("scratch")
 local uploads = require("uploads")
 local upload_refs = require("upload_ref_repo")
+local history = require("history_repo")
 local live_repo = require("live_repo")
 local thread_events = require("thread_events")
 
@@ -121,15 +122,20 @@ function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): 
     if open_err then return nil, open_err end
     local boundary, boundary_err = thread_events.prune_boundary(threads :: types.LibraryThreads)
     if boundary_err then return nil, boundary_err end
-    local collected, blocked, collect_err = collect(now, boundary.max_pruned_seq :: integer, policy.BATCH, now + policy.RECHECK_MS)
+    local seq = boundary.max_pruned_seq :: integer
+    local history_deleted, history_err = database.with_tx(function(tx: types.Transaction): (integer?, error?)
+        return history.prune_below(tx, seq, policy.BATCH)
+    end)
+    if history_err then return nil, history_err end
+    local collected, blocked, collect_err = collect(now, seq, policy.BATCH, now + policy.RECHECK_MS)
     local preview_expiry, preview_err = prune_previews(now // 1000)
     if preview_err then return nil, preview_err end
     local result, sweep_err = prune_messages(now, retention_ms, preview_expiry)
     if sweep_err or collect_err then return nil, sweep_err or collect_err end
     local report = result :: types.OwnerResult
-    if (collected or 0) + #blocked == policy.BATCH then report.needs_continue = true end
+    if history_deleted == policy.BATCH or (collected or 0) + #blocked == policy.BATCH then report.needs_continue = true end
     report.blocked = blocked
-    report.deleted = (report.deleted or 0) + (collected or 0)
+    report.deleted = (report.deleted or 0) + (collected or 0) + (history_deleted or 0)
     return report, nil
 end
 

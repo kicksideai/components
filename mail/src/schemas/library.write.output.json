@@ -1,13 +1,30 @@
 {
   "type": "object",
   "anyOf": [
-    {"required": ["items"]},
-    {"required": ["seq", "committed", "projected"]}
+    {
+      "required": [
+        "items"
+      ]
+    },
+    {
+      "required": [
+        "seq",
+        "committed",
+        "projected"
+      ]
+    }
   ],
   "properties": {
-    "seq": {"type": "integer", "minimum": 1},
-    "committed": {"const": true},
-    "projected": {"type": "boolean"},
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "committed": {
+      "const": true
+    },
+    "projected": {
+      "type": "boolean"
+    },
     "items": {
       "type": "array",
       "items": {
@@ -78,14 +95,6 @@
                 "type": "string"
               },
               "size": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "width": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "height": {
                 "type": "integer",
                 "minimum": 1
               }

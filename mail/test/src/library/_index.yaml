@@ -74,6 +74,7 @@ entries:
       fixtures: app.mail_library:fixtures
       jet: kickside.mail.domain:jet
       api_fixtures: app.mail_api:fixtures
+      prune: kickside.core.retention:prune
       autoinit: kickside.component:autoinit
   - name: draft_render
     kind: library.lua

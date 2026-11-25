@@ -101,9 +101,12 @@ function M.reset(input: types.ResourceRevision): (unknown, error?)
     return write_result(library:reset(input))
 end
 
-function M.history(input: types.LibraryHistoryRequest): (unknown, error?)
+function M.history(input: types.LibraryHistoryRequest & {seq: integer?}): (unknown, error?)
     local library, err = client.library()
     if not library then return nil, err end
+    if input.seq ~= nil then
+        return library:read_revision({kind = input.kind, name = input.name, seq = input.seq :: integer})
+    end
     return library:read_history(input)
 end
 

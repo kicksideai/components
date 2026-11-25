@@ -8,9 +8,9 @@ import { calls, dana, get, ok, post, refuse, resource, revision, row, serve } fr
 import { dialogButton } from '../test/mail'
 
 const logo = resource('asset', 'logo', { title: 'Mail logo', state: 'customized', revision: 3, origin_label: 'Mail',
-  asset: { source: 'upload', filename: 'logo.png', content_type: 'image/png', size: 2048, width: 120, height: 40 }, used_by: { messages: ['notice'] } })
+  asset: { source: 'upload', filename: 'logo.png', content_type: 'image/png', size: 2048 }, used_by: { messages: ['notice'] } })
 const banner = resource('asset', 'banner', { title: 'Spring banner', state: 'created', revision: 1,
-  asset: { source: 'upload', filename: 'banner.png', content_type: 'image/png', size: 4096, width: 600, height: 120 }, used_by: { messages: [] } })
+  asset: { source: 'upload', filename: 'banner.png', content_type: 'image/png', size: 4096 }, used_by: { messages: [] } })
 const notice = resource('message', 'notice', { title: 'Notice', origin_label: 'Mail', used_by: { recent_senders: [] } })
 const standard = resource('base', 'standard', { title: 'Standard', state: 'customized', revision: 7, author: 'user-1', author_label: dana, origin_label: 'Mail',
   html: '<html>mine</html>', original: { html: '<html>shipped</html>', text: 'shipped', schema: { type: 'object', properties: {} }, samples: {} },

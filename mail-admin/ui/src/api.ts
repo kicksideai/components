@@ -2,7 +2,7 @@
 import { api } from '@wippy-fe/proxy'
 import { ApiError, request } from '../../../admin-http'
 import type {
-  Capabilities, DeliveryStatus, DraftRender, Items, LibraryPage, LibraryRow, LogMessage, MessagePage, MessageStatus,
+  Capabilities, DeliveryStatus, DraftRender, HistoryItem, Items, LibraryPage, LibraryRow, LogMessage, MessagePage, MessageStatus,
   Resource, ResourceContent, ResourceKey, ResourceKind, ResourceState, Revision, SendReceipt,
 } from './types'
 
@@ -14,7 +14,7 @@ const resourcePath = (key: ResourceKey) => `${BASE}/library/${key.kind}/${encode
 export interface LibraryFilter { kind?: ResourceKind; state?: ResourceState; q?: string; cursor?: string; limit?: number }
 export interface ActivityFilter { status?: MessageStatus; message?: string; since?: number; q?: string; cursor?: string; limit?: number }
 export interface CopyRequest { kind: ResourceKind; name: string; title: string; description: string; from: ResourceKey; note?: string }
-export interface AssetRequest { name: string; upload_id: string; title?: string; description?: string; width?: number; height?: number; note?: string }
+export interface AssetRequest { name: string; upload_id: string; title?: string; description?: string; note?: string }
 
 function params(values: Record<string, string | number | undefined>): Record<string, string> {
   const out: Record<string, string> = {}
@@ -99,8 +99,10 @@ export const library = {
   assets: (q?: string) => allPages(cursor => libraryPage({ kind: 'asset', q, cursor })),
   get: (key: ResourceKey) => request<Resource>(() => api.get(resourcePath(key)), 'Mail resource'),
   history: (key: ResourceKey) => allPages(cursor =>
-    request<Items<Revision> & { next_cursor?: string }>(
+    request<Items<HistoryItem> & { next_cursor?: string }>(
       () => api.get(`${resourcePath(key)}/history`, { params: params({ cursor }) }), 'Resource history')),
+  revision: (key: ResourceKey, seq: number) => request<Revision>(
+    () => api.get(`${resourcePath(key)}/history`, { params: params({ seq }) }), 'Resource version'),
   copy: (body: CopyRequest) => createResource(body),
   create: (content: ResourceContent, note?: string) => createResource(editable(content), note),
   async update(content: ResourceContent, expected: number, note?: string) {
@@ -114,30 +116,41 @@ export const library = {
   async reset(key: ResourceKey, expected: number) {
     const body = { expected_revision: expected }
     const preview_id = key.kind === 'asset' ? undefined : await review(key, { reset: { ...key, ...body } })
-    const command_id = key.kind === 'asset' ? undefined : crypto.randomUUID()
+    const command_id = crypto.randomUUID()
     const result = await request<Resource | LibraryReceipt>(
       () => api.post(`${resourcePath(key)}/reset`, { ...body, preview_id, command_id }), 'Reset resource')
     return projectedResource(key, result)
   },
-  async restore(key: ResourceKey, revision: number, expected: number, note?: string) {
-    const body = { revision, expected_revision: expected, note }
+  async restore(key: ResourceKey, seq: number, expected: number, note?: string) {
+    const body = { seq, expected_revision: expected, note }
     const preview_id = key.kind === 'asset' ? undefined : await review(key, { restore: { ...key, ...body } })
-    const command_id = key.kind === 'asset' ? undefined : crypto.randomUUID()
+    const command_id = crypto.randomUUID()
     const result = await request<Resource | LibraryReceipt>(
       () => api.post(`${resourcePath(key)}/restore`, { ...body, preview_id, command_id }), 'Restore revision')
     return projectedResource(key, result)
   },
   remove: (key: ResourceKey, expected: number) => {
-    const command_id = key.kind === 'asset' ? undefined : crypto.randomUUID()
+    const command_id = crypto.randomUUID()
     return request<boolean>(
       () => api.delete(resourcePath(key), { data: { expected_revision: expected, command_id } }), 'Delete resource')
   },
   preview: (message: string, resources: ResourceContent[]) =>
     request<DraftRender>(() => api.post(`${BASE}/library/preview`, resources.length ? { message, resources: resources.map(editable) } : { message }), 'Preview'),
   sendTest: (message: string) => request<SendReceipt>(() => api.post(`${BASE}/library/send-test`, { message }), 'Send test'),
-  addAsset: (body: AssetRequest) => request<Resource>(() => api.post(`${BASE}/library`, { kind: 'asset', ...body }), 'Add image'),
-  replaceAsset: (body: AssetRequest, expected: number) =>
-    request<Resource>(() => api.put(`${BASE}/library/asset/${encodeURIComponent(body.name)}`, { ...body, expected_revision: expected }), 'Replace image'),
+  async addAsset(body: AssetRequest) {
+    const key = { kind: 'asset' as const, name: body.name }
+    const command_id = crypto.randomUUID()
+    const result = await request<Resource | LibraryReceipt>(
+      () => api.post(`${BASE}/library`, { kind: key.kind, ...body, command_id }), 'Add image')
+    return projectedResource(key, result)
+  },
+  async replaceAsset(body: AssetRequest, expected: number) {
+    const key = { kind: 'asset' as const, name: body.name }
+    const command_id = crypto.randomUUID()
+    const result = await request<Resource | LibraryReceipt>(
+      () => api.put(resourcePath(key), { ...body, expected_revision: expected, command_id }), 'Replace image')
+    return projectedResource(key, result)
+  },
 }
 
 export interface UploadState { component_id: string; status: string; error?: string }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { ApiError, errorCode } from './api'
-import type { MessageStatus, Origin, PreviewWarning, PrincipalLabel, ResourceKind, RevisionAction } from './types'
+import type { HistoryItem, MessageStatus, Origin, PreviewWarning, PrincipalLabel, ResourceKind, RevisionAction } from './types'
 
 export const kindLabels: Record<ResourceKind, string> = { message: 'Message', base: 'Base template', part: 'Part', asset: 'Image' }
 export const kindPlurals: Record<ResourceKind, string> = { message: 'Messages', base: 'Base templates', part: 'Parts', asset: 'Images' }
@@ -8,7 +8,11 @@ export const kindIcons: Record<ResourceKind, string> = { message: 'tabler:mail',
 
 export const actionLabels: Record<RevisionAction, string> = {
   created: 'Created', edited: 'Edited', base_changed: 'Base template changed', reset: 'Reset to the original',
-  restored: 'Restored', previous_change: 'Changed',
+  restored: 'Restored', archived: 'Archived', deleted: 'Deleted',
+}
+
+export function hasHistorySnapshot(entry: HistoryItem): boolean {
+  return entry.action !== 'archived' && entry.action !== 'deleted'
 }
 
 export function personLabel(label: PrincipalLabel | undefined, id?: string): string {

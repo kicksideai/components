@@ -162,7 +162,7 @@ return {run = test.run_cases(function()
             test.eq(3, #saved.items)
             for _, row in ipairs(saved.items) do
                 test.eq("customized", ok(editor, "library_read", row).state)
-                local history = ok(editor, "library_history", row)
+                local history = ok(editor, "library_history", key(row.kind, row.name))
                 test.eq(person.id, history.items[1].author)
                 test.eq("Brand refresh", history.items[1].note)
             end
@@ -244,7 +244,7 @@ return {run = test.run_cases(function()
             local reset = ok(editor, "library_reset", reset_request)
             test.eq("original", ok(editor, "library_read", key(button.kind, button.name)).state)
             local restore_request = {kind = button.kind, name = button.name,
-                expected_revision = reset.revision, revision = saved.revision}
+                expected_revision = reset.revision, seq = saved.seq}
             restore_request.preview_id = ok(editor, "library_preview", {restore = restore_request, message = "notice"}).preview_id
             local restored = ok(editor, "library_restore", restore_request)
             test.neq(saved.revision, restored.revision)

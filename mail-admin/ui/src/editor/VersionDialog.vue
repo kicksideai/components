@@ -23,7 +23,7 @@ const face = ref<'html' | 'text'>('html')
 watch(() => props.revision, value => { if (value) { view.value = props.compare ? 'compare' : 'version'; face.value = 'html' } })
 const views = [{ label: 'This version', value: 'version' }, { label: 'Compare with current', value: 'compare' }]
 const faces = [{ label: 'HTML', value: 'html' }, { label: 'Plain text', value: 'text' }]
-const isCurrent = computed(() => props.revision?.revision === props.current.revision)
+const isCurrent = computed(() => !props.included && props.revision?.version === props.current.revision)
 const heading = computed(() => {
   const revision = props.revision
   if (!revision) return ''

@@ -209,8 +209,6 @@ entries:
               filename: *text
               content_type: *text
               size: {type: integer, minimum: 1}
-              width: &dimension {type: integer, minimum: 1}
-              height: *dimension
           base: *resource_name
           schema: &variable_schema
             type: object
@@ -320,10 +318,10 @@ entries:
           restore:
             type: object
             additionalProperties: false
-            required: [kind, name, expected_revision, revision]
+            required: [kind, name, expected_revision, seq]
             properties:
               <<: *review_revision
-              revision: {type: integer, minimum: 1}
+              seq: {type: integer, minimum: 1}
           vars: *samples
           attachments:
             type: array
@@ -488,8 +486,7 @@ entries:
           name: *resource_name
           upload_id: {type: string, format: uuid}
           expected_revision: *resource_revision
-          width: *dimension
-          height: *dimension
+          command_id: {type: string, format: uuid}
           title: *title
           description: *text
           note: *text
@@ -547,9 +544,8 @@ entries:
       title: Read Mail Library History
       llm_alias: MailLibraryHistory
       llm_description: >-
-        Read a page of retained versions of one resource, newest first. A row records its display version,
-        resulting state, action, content, acting author ID, time and optional note. Pass the separate
-        revision token to MailLibraryRestore. Use next_cursor to request the next page.
+        Read retained events for one resource, newest first. Use next_cursor for the next page.
+        Pass an event sequence as seq to read its content or to select it for MailLibraryRestore.
       input_schema:
         type: object
         additionalProperties: false
@@ -559,36 +555,42 @@ entries:
           name: *resource_name
           limit: {type: integer, minimum: 1, maximum: 100}
           cursor: *text
+          seq: &event_seq {type: integer, minimum: 1}
       output_schema:
         type: object
-        required: [items]
+        anyOf:
+          - required: [items, library_seq]
+          - required: [kind, name, seq, version, action, author, created_at]
         properties:
+          library_seq: {type: integer, minimum: 0}
           next_cursor: *text
           items:
             type: array
             items:
               type: object
-              required: [kind, name, revision, content, author, created_at]
-              properties:
+              required: [kind, name, seq, version, action, author, created_at]
+              properties: &history_fields
                 kind: *resource_kind
                 name: *resource_name
-                revision: *resource_revision
+                seq: *event_seq
                 version: {type: integer, minimum: 1}
-                state: *resource_state
-                action: {enum: [created, edited, base_changed, reset, restored, archived]}
+                action: {enum: [created, edited, base_changed, reset, restored, archived, deleted]}
                 restored_from: {type: integer, minimum: 1}
                 author: *text
                 note: *text
                 created_at: {type: integer}
-                content:
-                  type: object
-                  required: [kind, name, title, description, html, text, schema, samples]
-                  properties:
-                    <<: *edit_fields
-                    kind: *resource_kind
-                    html: *text
-                    text: *text
-                    asset: *asset_content
+          <<: *history_fields
+          state: *resource_state
+          origin: *text
+          content:
+            type: object
+            required: [kind, name, title, description, html, text, schema, samples]
+            properties:
+              <<: *edit_fields
+              kind: *resource_kind
+              html: *text
+              text: *text
+              asset: *asset_content
     source: *design_source
     method: history
     imports: *design_imports
@@ -600,18 +602,18 @@ entries:
       title: Restore Mail Library Revision
       llm_alias: MailLibraryRestore
       llm_description: >-
-        Restore content from MailLibraryHistory as a new revision. Pass the selected revision and use the
+        Restore content from MailLibraryHistory as a new revision. Pass the selected event sequence as seq and use the
         current revision from MailLibraryRead as expected_revision. For a non-asset restore, pass the
         preview_id returned by MailLibraryPreview. The library validates content and affected messages. A refusal returns success=false, code and error, with the current revision
         or draft diagnostics when applicable.
       input_schema:
         type: object
         additionalProperties: false
-        required: [kind, name, revision, expected_revision]
+        required: [kind, name, seq, expected_revision]
         anyOf: *asset_or_preview
         properties:
           <<: *revision_request
-          revision: {type: integer, minimum: 1}
+          seq: *event_seq
       output_schema: *revision_output
     source: *design_source
     method: restore

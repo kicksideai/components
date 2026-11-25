@@ -12,11 +12,11 @@ import { assetReference } from '../content'
 import { useMail } from '../context'
 import { useReturnFocus } from '../focus'
 import Skeleton from 'primevue/skeleton'
-import { actionLabels, bytes, describe, fullDate, kindIcons, personLabel, plural } from '../copy'
+import { actionLabels, bytes, describe, fullDate, hasHistorySnapshot, kindIcons, personLabel, plural } from '../copy'
 import { emailDocument } from '../editor/render'
 import { problemOf } from '../editor/problems'
 import { useMailInvalidation } from '../realtime'
-import type { DraftRender, Resource, Revision, TemplateKind } from '../types'
+import type { DraftRender, HistoryItem, Resource, TemplateKind } from '../types'
 import RefusalDialog, { type Refusal } from './RefusalDialog.vue'
 import AssetTile from './AssetTile.vue'
 import ResourceSource from './ResourceSource.vue'
@@ -30,7 +30,7 @@ const drawer = ref<HTMLElement>()
 watch(() => !!props.name, open => { if (open) { library.ensure('message'); void nextTick(() => drawer.value?.focus()) } }, { immediate: true })
 
 const asset = shallowRef<Resource>()
-const revisions = shallowRef<Revision[]>([])
+const revisions = shallowRef<HistoryItem[]>([])
 const shown = shallowRef<DraftRender>()
 const shownIn = ref('')
 const loading = ref(false), missing = ref(false)
@@ -84,7 +84,7 @@ async function copy() {
   try { await navigator.clipboard.writeText(reference.value); copied.value = true } catch { copied.value = false }
 }
 
-async function act(kind: 'reset' | 'delete' | 'restore', revision?: Revision) {
+async function act(kind: 'reset' | 'delete' | 'restore', revision?: HistoryItem) {
   const item = asset.value
   if (!item || busy.value !== undefined) return
   if (kind === 'delete' && messages.value.length) {
@@ -101,7 +101,7 @@ async function act(kind: 'reset' | 'delete' | 'restore', revision?: Revision) {
     restore: { header: `Restore version ${revision?.version} of ${item.title}?`, message: 'Every template that shows it changes at once. The current image stays in History.', accept: 'Restore this version' },
   }[kind]
   if (!await host.confirm({ header: copyText.header, message: copyText.message, acceptLabel: copyText.accept, rejectLabel: 'Cancel', ...(kind === 'delete' ? { acceptClass: 'p-button-danger' } : {}) })) return
-  busy.value = revision ? revision.revision : kind
+  busy.value = revision ? revision.seq : kind
   actionError.value = notice.value = ''
   try {
     if (kind === 'delete') {
@@ -110,7 +110,7 @@ async function act(kind: 'reset' | 'delete' | 'restore', revision?: Revision) {
       return
     }
     asset.value = kind === 'reset' ? await libraryApi.reset({ kind: 'asset', name: item.name }, item.revision)
-      : await libraryApi.restore({ kind: 'asset', name: item.name }, revision!.revision, item.revision)
+      : await libraryApi.restore({ kind: 'asset', name: item.name }, revision!.seq, item.revision)
     notice.value = kind === 'reset' ? `${item.title} is back to the original.` : `Version ${revision!.version} is shown again everywhere.`
     await load()
   } catch (failure) {
@@ -179,7 +179,6 @@ const preview = computed(() => shown.value?.html ? emailDocument(shown.value.htm
             </Button>
           </dd>
           <dt>File</dt><dd>{{ asset.asset?.filename }} · {{ bytes(asset.asset?.size) }}</dd>
-          <template v-if="asset.asset?.width"><dt>Size</dt><dd>{{ asset.asset.width }} × {{ asset.asset.height }}</dd></template>
           <dt>Source</dt><dd><ResourceSource :resource="asset" /></dd>
         </dl>
 
@@ -205,16 +204,15 @@ const preview = computed(() => shown.value?.html ? emailDocument(shown.value.htm
           <h3 id="asset-history" class="mail-label">History</h3>
           <p v-if="!revisions.length" class="mail-muted">{{ asset.title }} has not been replaced.</p>
           <ol v-else class="mail-history">
-            <li v-for="revision in revisions" :key="revision.revision" class="mail-history-row">
+            <li v-for="revision in revisions" :key="revision.seq" class="mail-history-row">
               <div class="mail-history-head">
                 <div class="mail-history-main">
                   <span class="mail-history-title">Version {{ revision.version }} · {{ actionLabels[revision.action] }}
-                    <Tag v-if="revision.revision === asset.revision" severity="success" value="Current" class="kx-tag-sm" /></span>
-                  <span class="mail-sub">{{ personLabel(revision.author_label, revision.author) }} · {{ fullDate(revision.created_at) }}
-                    <template v-if="revision.content.asset?.filename"> · {{ revision.content.asset.filename }}</template></span>
+                    <Tag v-if="revision.version === asset.revision" severity="success" value="Current" class="kx-tag-sm" /></span>
+                  <span class="mail-sub">{{ personLabel(revision.author_label, revision.author) }} · {{ fullDate(revision.created_at) }}</span>
                 </div>
-                <Button v-if="revision.revision !== asset.revision" label="Restore" severity="secondary" outlined size="small"
-                  :loading="busy === revision.revision" :disabled="busy !== undefined" @click="act('restore', revision)">
+                <Button v-if="hasHistorySnapshot(revision) && revision.version !== asset.revision" label="Restore" severity="secondary" outlined size="small"
+                  :loading="busy === revision.seq" :disabled="busy !== undefined" @click="act('restore', revision)">
                   <template #icon><Icon icon="tabler:restore" aria-hidden="true" /></template>
                 </Button>
               </div>

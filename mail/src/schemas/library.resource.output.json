@@ -1,13 +1,39 @@
 {
   "type": "object",
   "anyOf": [
-    {"required": ["kind", "name", "title", "description", "html", "text", "schema", "samples", "state", "revision"]},
-    {"required": ["seq", "committed", "projected"]}
+    {
+      "required": [
+        "kind",
+        "name",
+        "title",
+        "description",
+        "html",
+        "text",
+        "schema",
+        "samples",
+        "state",
+        "revision"
+      ]
+    },
+    {
+      "required": [
+        "seq",
+        "committed",
+        "projected"
+      ]
+    }
   ],
   "properties": {
-    "seq": {"type": "integer", "minimum": 1},
-    "committed": {"const": true},
-    "projected": {"type": "boolean"},
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "committed": {
+      "const": true
+    },
+    "projected": {
+      "type": "boolean"
+    },
     "kind": {
       "type": "string",
       "enum": [
@@ -61,14 +87,6 @@
           "type": "string"
         },
         "size": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "width": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "height": {
           "type": "integer",
           "minimum": 1
         }

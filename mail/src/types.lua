@@ -11,7 +11,7 @@ type Record = {[string]: unknown}
 type Recipient = string | {user_id: string}
 type Mailbox = {address: string, name: string?}
 type AttachmentRef = {upload_id: string, filename: string?, disposition: string?, content_id: string?}
-type Asset = {source: string, filename: string?, content_type: string?, size: integer?, width: integer?, height: integer?,
+type Asset = {source: string, filename: string?, content_type: string?, size: integer?,
     filesystem: string?, path: string?, upload_id: string?}
 type AssetPart = {filename: string, content_type: string, size: integer, content: string?}
 type AssetRef = {name: string, content_id: string, original: string?, upload_id: string?}
@@ -121,17 +121,18 @@ type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?
 type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
 type ResourceCreate = ResourceKey & {note: string?, preview_id: string?, command_id: string?, from: ResourceKey?, title: string?, description: string?,
     html: string?, text: string?, base: string?, subject: string?, schema: VariableSchema?, samples: JsonObject?}
-type AssetWrite = {name: string, upload_id: string, command_id: string?, expected_revision: integer?, width: integer?, height: integer?, note: string?,
+type AssetWrite = {name: string, upload_id: string, command_id: string?, expected_revision: integer?, note: string?,
     title: string?, description: string?}
 type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
-type ResourceRestore = ResourceRevision & {revision: integer, seq: integer?}
+type ResourceRestore = ResourceRevision & {seq: integer}
 type RevisionChange = {action: string, state: string, restored_from: integer?, note: string?}
 type LibraryWrite = {item: Resource, released: {Record}}
-type Revision = {action: string, state: string, restored_from: integer?, note: string?, kind: string, name: string, revision: integer, version: integer,
-    content: ResourceContent, author: string, created_at: integer}
+type HistoryItem = {seq: integer, kind: string, name: string, version: integer, action: string,
+    restored_from: integer?, note: string?, author: string, created_at: integer}
+type Revision = HistoryItem & {state: string?, origin: string?, content: ResourceContent?}
 type LibraryHistoryRequest = ResourceKey & {limit: integer?, cursor: string?}
-type LibraryRevisionRequest = ResourceKey & {revision: integer}
-type LibraryHistoryPage = {items: {Revision}, next_cursor: string?}
+type LibraryRevisionRequest = ResourceKey & {seq: integer}
+type LibraryHistoryPage = {items: {HistoryItem}, next_cursor: string?, library_seq: integer}
 type LibraryAssetRequest = {name: string, revision: integer?}
 type LibrarySaveResult = {items: {Resource}?, seq: integer?, projected: boolean?, committed: boolean?}
 type LibraryWriteOptions = {preview_id: string?, command_id: string?, identity_op: string?, command_hash: string?}
@@ -151,7 +152,7 @@ type LibraryListRow = LibraryRowSummary & {
 }
 type LibraryDeclaration = ResourceKey & {base: string?, selected: integer}
 type LibraryPage = {items: {LibraryListRow}, next_cursor: string?, total: integer, library_seq: integer?}
-type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?, source_seq: integer?,
+type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?,
     note: string?, from: ResourceKey?, asset_deadline: integer?}
 type LibraryRow = {
     asset_upload_id: string?, filename: string?, content_type: string?, size_bytes: integer?, archived: boolean | integer | nil,
@@ -179,8 +180,8 @@ type ThreadAppend = {duplicates: integer, max_seq: integer}
 type LibraryThreads = {
     find: (LibraryThreads, {thread_id: string, subject: string?}) -> (ThreadHead?, error?),
     find_event_by_external: (LibraryThreads, ThreadLookup) -> ({event: ThreadEvent?}?, error?),
-    list_events: (LibraryThreads, {thread_id: string, from_seq: integer, to_seq: integer, limit: integer}) ->
-        ({events: {ThreadEvent}, source_gap: boolean?}?, error?),
+    list_events: (LibraryThreads, {thread_id: string, from_seq: integer?, to_seq: integer?, limit: integer}) ->
+        ({events: {ThreadEvent}, max_pruned_seq: integer, source_gap: boolean?}?, error?),
     prune_boundary: (LibraryThreads, {thread_id: string}) -> ({max_pruned_seq: integer}?, error?),
     append_events: (LibraryThreads, {thread_id: string, expect: ThreadExpect, events: {LibraryEvent}}) -> (ThreadAppend?, error?),
     catch_up_projection: (LibraryThreads, {thread_id: string, kind: string, target_seq: integer, deadline: string}) ->
@@ -309,7 +310,7 @@ return {
     ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, LibraryWorkspace = LibraryWorkspace, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
-    ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
+    ResourceRestore = ResourceRestore, HistoryItem = HistoryItem, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
     Library = Library, LibraryHistoryRequest = LibraryHistoryRequest, LibraryRevisionRequest = LibraryRevisionRequest,
     LibraryHistoryPage = LibraryHistoryPage, LibraryAssetRequest = LibraryAssetRequest, LibrarySaveResult = LibrarySaveResult,
     ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,

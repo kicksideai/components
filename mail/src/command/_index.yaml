@@ -19,6 +19,7 @@ entries:
       library: kickside.mail.read:library
       asset_file_repo: kickside.mail.persist:asset_file_repo
       thread_events: kickside.mail.read:thread_events
+      history: kickside.mail.read:history
       threads: kickside.mail.command:threads
       canonical_json: kickside.contract:canonical_json
       live_repo: kickside.mail.persist:live_repo
@@ -101,6 +102,7 @@ entries:
       library_repo: kickside.mail.persist:library_repo
       preview_repo: kickside.mail.persist:preview_repo
       library: kickside.mail.read:library
+      history: kickside.mail.read:history
       settings: kickside.mail.read:settings
       live_preview: kickside.mail.read:preview
       scratch: kickside.mail.render:scratch
@@ -130,6 +132,7 @@ entries:
       live_repo: kickside.mail.persist:live_repo
       thread_events: kickside.mail.read:thread_events
       upload_ref_repo: kickside.mail.persist:upload_ref_repo
+      history_repo: kickside.mail.persist:history_repo
       jobs: kickside.core.jobs:jobs
       policy: kickside.mail.domain:policy
       outbox: kickside.mail.command:outbox

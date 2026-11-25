@@ -16,10 +16,6 @@ local canonical = require("canonical_json")
 
 local M = {}
 
-local function dimension(value: unknown): boolean
-    return value == nil or (type(value) == "number" and math.tointeger(value) ~= nil and value > 0)
-end
-
 function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, error?)
     if type(input) ~= "table" then return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide a mail asset upload") end
     local key = {kind = "asset", name = input.name}
@@ -34,10 +30,9 @@ function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, 
     local content_err = resources.check_content((input :: unknown) :: types.ResourceContent)
     if content_err then return nil, content_err end
     if type(input.upload_id) ~= "string" or not uuid.validate(input.upload_id)
-        or not dimension(input.width) or not dimension(input.height)
         or (input.title ~= nil and (type(input.title) ~= "string" or not input.title:find("%S")))
         or (input.description ~= nil and type(input.description) ~= "string") then
-        return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide an upload ID and optional image dimensions", key)
+        return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide an upload ID and optional title and description", key)
     end
     local denied = library.require_write()
     if denied then return nil, denied end
@@ -77,7 +72,7 @@ function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, 
     local now = time.now():utc()
     local lease = now:add(15 * time.MINUTE)
     local asset: types.Asset = {source = "upload", upload_id = version, filename = info.filename,
-        content_type = info.content_type, size = info.size :: integer, width = input.width, height = input.height}
+        content_type = info.content_type, size = info.size :: integer}
     local deadline = lease:unix_nano() // 1000000
     local _, reserve_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
         return asset_file_repo.reserve(tx, asset, now:unix_nano() // 1000000, deadline)

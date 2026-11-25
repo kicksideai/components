@@ -240,48 +240,6 @@ function M.original_revisions(db: types.Executor): (types.OriginalRevisions?, er
     return revisions, nil
 end
 
-function M.history(db: types.Executor, key: types.ResourceKey, revision: integer?,
-    before: integer?, limit: integer?): ({types.Revision}?, error?)
-    local query = [[SELECT r.*,f.filename,f.content_type,f.size_bytes
-        FROM mail_library_revision r LEFT JOIN mail_asset_file f ON f.upload_id=r.asset_upload_id
-        WHERE r.kind=$1 AND r.name=$2 AND r.action<>'deleted']]
-    local params: {string | integer} = {key.kind, key.name}
-    if revision then
-        query = query .. " AND r.revision=$3"
-        params[3] = revision
-    elseif before then
-        query = query .. " AND r.revision<$3"
-        params[3] = before
-    end
-    query = query .. " ORDER BY r.revision DESC"
-    if limit then
-        params[#params + 1] = limit
-        query = query .. " LIMIT $" .. #params
-    end
-    local rows, err = db:query(query, params)
-    if err then return nil, err end
-    local history: {types.Revision} = {}
-    for i, row in ipairs(rows) do
-        local saved = row :: types.LibraryRow
-        local item, read_err = resource(saved)
-        if read_err then return nil, read_err end
-        history[i] = {kind = saved.kind, name = saved.name, revision = saved.revision, version = saved.version,
-            action = saved.action, state = saved.state, restored_from = saved.restored_from,
-            content = {kind = item.kind, name = item.name, title = item.title, description = item.description,
-                html = item.html, text = item.text, subject = item.subject, base = item.base,
-                schema = item.schema, samples = item.samples, asset = item.asset},
-            author = saved.author, note = saved.note, created_at = saved.updated_at}
-    end
-    return history, nil
-end
-
-function M.event_seq(ex: types.Executor, key: types.ResourceKey, revision: integer): (integer?, error?)
-    local rows, err = ex:query("SELECT seq FROM mail_library_history WHERE kind=$1 AND name=$2 AND version=$3 ORDER BY seq DESC LIMIT 1",
-        {key.kind, key.name, revision})
-    if err then return nil, err end
-    return rows[1] and rows[1].seq :: integer, nil
-end
-
 function M.write_result(ex: types.Executor, key: types.ResourceKey, seq: integer): (types.Resource?, error?)
     local item, err = M.get(ex, key)
     if err then return nil, err end

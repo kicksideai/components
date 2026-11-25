@@ -6,6 +6,7 @@ local uuid = require("uuid")
 local events = require("events")
 local database = require("database")
 local library = require("library")
+local history = require("history")
 local resources = require("resource")
 local edit_rules = require("edit")
 local edit_ops = require("library_edits")
@@ -28,8 +29,7 @@ local function asset_event(tx: types.Transaction, operation: string, edit: types
     if load_err then return nil, load_err end
     local read_err = edit_ops.load(workspace, key)
     if read_err then return nil, read_err end
-    if source then edit.content = source end
-    local candidate, invalid = edit_ops.prepare(tx, edit, operation, workspace.items, workspace.originals)
+    local candidate, invalid = edit_ops.prepare(edit, operation, workspace.items, workspace.originals, source)
     if invalid then return nil, invalid end
     local id = resources.subject(key)
     local current, original = workspace.items[id], workspace.originals[id]
@@ -78,27 +78,9 @@ local function asset_event(tx: types.Transaction, operation: string, edit: types
     return events.build(event_type, body)
 end
 
-local function asset_source(api: types.LibraryThreads, edit: types.LibraryEdit): (types.Resource?, error?)
-    local seq = edit.source_seq
-    if not seq then
-        local resolved, err = database.with_db(function(ex: types.Executor): (integer?, error?)
-            return library_reader.event_seq(ex, edit.key, edit.restore :: integer)
-        end)
-        if err then return nil, err end
-        if not resolved then return nil, resources.error(errors.NOT_FOUND, "mail_revision_pruned", "Mail library revision is unavailable", edit.key) end
-        seq = resolved
-    end
-    local event, err = thread_events.event_at(api, seq :: integer)
-    if err then return nil, err end
-    if event.subject ~= resources.subject(edit.key) then
-        return nil, resources.error(errors.NOT_FOUND, "mail_revision_not_found", "Mail library revision was not found", edit.key)
-    end
-    return thread_events.event_resource(event :: types.ThreadEvent)
-end
-
-local function catching_up(): error
+local function catching_up(head: integer, projected: integer): error
     return errors.new({kind = errors.CONFLICT, retryable = true, message = "Mail library is catching up",
-        details = {code = "mail_library_catching_up"}})
+        details = {code = "mail_library_catching_up", head = head, projected_seq = projected}})
 end
 
 local function result(threads_api: types.LibraryThreads, operation: string, requested: {types.LibraryEdit},
@@ -220,12 +202,12 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
     if mark_err then return nil, mark_err end
     if mark.projected_seq < cursor.event_count then
         local ready = threads.catch_up(api, cursor.event_count)
-        if not ready then return nil, catching_up() end
+        if not ready then return nil, catching_up(cursor.event_count, mark.projected_seq :: integer) end
     end
     local source: types.Resource?
-    if asset and operation == "restore" then
+    if operation == "restore" then
         local source_err
-        source, source_err = asset_source(api, edit)
+        source, source_err = history.restore_source(edit.key, edit.restore :: integer, api)
         if source_err then return nil, source_err end
     end
     local token = uuid.v4()
@@ -233,7 +215,9 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
         if asset then
             local checkpoint, lock_err = live_repo.lock(tx, dialect)
             if lock_err then return nil, lock_err end
-            if checkpoint.projected_seq ~= cursor.event_count then return nil, catching_up() end
+            if checkpoint.projected_seq ~= cursor.event_count then
+                return nil, catching_up(cursor.event_count, checkpoint.projected_seq :: integer)
+            end
             local event, event_err = asset_event(tx, operation, edit, author, signature :: string, source,
                 cursor.event_count, token)
             if event_err then return nil, event_err end
@@ -241,7 +225,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
         end
         local _, lock_err = library_repo.lock(tx, dialect)
         if lock_err then return nil, lock_err end
-        return edit_ops.plan(tx, operation, edits, opts, author, signature :: string, cursor.event_count)
+        return edit_ops.plan(tx, operation, edits, opts, author, signature :: string, cursor.event_count, source)
     end)
     if plan_err then
         if opts.command_id then

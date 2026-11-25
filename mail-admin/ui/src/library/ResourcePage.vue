@@ -21,7 +21,7 @@ import VersionDialog from '../editor/VersionDialog.vue'
 import { problemOf, type Problem } from '../editor/problems'
 import { useMailInvalidation } from '../realtime'
 import { sectionOf, type ResourceSection } from '../route'
-import type { Resource, ResourceContent, Revision, TemplateKind } from '../types'
+import type { HistoryItem, Resource, ResourceContent, Revision, TemplateKind } from '../types'
 import HistoryList from './HistoryList.vue'
 import RefusalDialog, { type Refusal } from './RefusalDialog.vue'
 import UsedBy from './UsedBy.vue'
@@ -74,7 +74,7 @@ async function load(options: { keepDraft?: boolean } = {}) {
 
 // The version loaded into the draft by Restore; saving the draft restores it.
 const restoring = ref<Revision>()
-const revisions = shallowRef<Revision[]>([])
+const revisions = shallowRef<HistoryItem[]>([])
 const historyLoading = ref(false), historyError = ref('')
 const beginHistory = latestRequest()
 async function loadHistory() {
@@ -140,7 +140,7 @@ const originalVersion = computed<Revision | undefined>(() => {
   const item = resource.value
   if (!item?.original) return undefined
   const { kind, name, title, description } = item
-  return { kind, name, revision: -1, version: 0, action: 'reset', state: 'original', author: '', created_at: 0,
+  return { kind, name, seq: 0, version: 0, action: 'reset', state: 'original', author: '', created_at: 0,
     content: { kind, name, title, description, ...item.original } }
 })
 
@@ -193,7 +193,7 @@ async function save(note: string) {
     const source = restoring.value
     const restore = source && JSON.stringify(edited) === JSON.stringify({ ...draftOf(source.content), kind: item.kind, name: item.name })
     const saved = restore
-      ? await libraryApi.restore(key.value, source.revision, item.revision, note || undefined)
+      ? await libraryApi.restore(key.value, source.seq, item.revision, note || undefined)
       : await libraryApi.update(edited, item.revision, note || undefined)
     resource.value = { ...item, ...saved }
     draft.value = draftOf(resource.value)
@@ -275,15 +275,38 @@ function showVersion(revision: Revision, compare = false, included = false) {
   showIncluded.value = included
   shown.value = revision
 }
+async function historyDetail(entry: HistoryItem): Promise<Revision | undefined> {
+  const selected = key.value
+  busy.value = entry.seq
+  actionError.value = ''
+  try {
+    const detail = await libraryApi.revision(selected, entry.seq)
+    if (key.value.kind === selected.kind && key.value.name === selected.name) return detail
+  } catch (failure) {
+    if (key.value.kind === selected.kind && key.value.name === selected.name) {
+      actionError.value = describe(failure, 'This version could not be loaded.')
+    }
+  } finally {
+    if (busy.value === entry.seq) busy.value = undefined
+  }
+}
+
+async function showHistory(entry: HistoryItem) {
+  const detail = await historyDetail(entry)
+  if (detail) showVersion(detail)
+}
+
 // Restore puts the version into the draft; it takes effect through the same review and save as any edit.
-async function restore(revision: Revision) {
+async function restore(entry: HistoryItem | Revision) {
   const item = resource.value
   if (!item || busy.value !== undefined) return
   if (dirty.value && !await host.confirm({
-    header: `Replace your unsaved changes with version ${revision.version}?`,
+    header: `Replace your unsaved changes with version ${entry.version}?`,
     message: 'Your unsaved changes to this resource are discarded. The saved version stays as it is until you save.',
     acceptLabel: 'Load this version', rejectLabel: 'Keep my changes',
   })) return
+  const revision = 'content' in entry ? entry : await historyDetail(entry)
+  if (!revision) return
   draft.value = { ...draftOf(revision.content), kind: item.kind, name: item.name }
   restoring.value = revision
   shown.value = undefined
@@ -412,7 +435,7 @@ watch(() => props.section, () => { notice.value = carried; carried = ''; actionE
         @invalid="value => variablesInvalid = value" />
       <UsedBy v-else-if="section === 'used-by'" :resource="resource" />
       <HistoryList v-else-if="section === 'history'" :resource="resource" :revisions="revisions" :loading="historyLoading" :error="historyError"
-        :busy="typeof busy === 'number' ? busy : (busy ? -1 : undefined)" @show="showVersion" @restore="restore" @retry="loadHistory" />
+        :busy="typeof busy === 'number' ? busy : (busy ? -1 : undefined)" @show="showHistory" @restore="restore" @retry="loadHistory" />
     </template>
   </template>
   <ReviewDialog v-if="resource && draft" :visible="reviewing" :saved="draftOf(resource)" :draft="draft" :busy="saving" :error="reviewError"
