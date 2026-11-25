@@ -58,8 +58,14 @@ end
 function M.status_error(err: error?): (types.TransportReadiness?, error?)
     if not err then return {ready = true}, nil end
     local details = err:details()
-    if not details or details.code ~= "invalid_config" then return nil, err end
-    return {ready = false, code = details.reason_code :: string?, reason = err:message()}, nil
+    local code = details and details.code
+    if code == "invalid_config" then
+        return {ready = false, code = details.reason_code :: string?, reason = err:message()}, nil
+    end
+    if code == "provider_endpoint_invalid" then
+        return {ready = false, code = code, reason = err:message()}, nil
+    end
+    return nil, err
 end
 
 local function valid_authority(authority: string): boolean

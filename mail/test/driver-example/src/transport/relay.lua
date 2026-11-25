@@ -13,13 +13,7 @@ local function configuration(): (Config?, error?)
     local key, key_err = config.read_api_key(SETTINGS, TITLE)
     if key_err then return nil, key_err end
     local url, url_err = config.endpoint(SETTINGS .. ":endpoints", "api", "exact")
-    if url_err then
-        local details = url_err:details()
-        if details and details.code == "provider_endpoint_invalid" then
-            return nil, config.missing(url_err:message(), details.code)
-        end
-        return nil, url_err
-    end
+    if url_err then return nil, url_err end
     return {key = key :: string, url = url :: string}, nil
 end
 
