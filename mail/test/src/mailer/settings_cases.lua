@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local security = require("security")
 local registry = require("registry")
+local config = require("config")
 
 local function register(support)
     local test = support.test
@@ -16,12 +17,24 @@ local function register(support)
 
     test.it("rejects malformed configured addresses before writing settings", function()
         local admin = actors.admin
-        for _, key in ipairs({"from_address", "reply_to"}) do
-            test.is_true(change(admin, key, "mail@example.org").success)
-            local result = change(admin, key, "mail@example")
+        for _, case in ipairs({
+            {key = "from_address", read = config.sender, reason = "from_address_invalid"},
+            {key = "reply_to", read = config.reply_to, reason = "reply_to_invalid"},
+        }) do
+            local key = case.key
+            local previous = change(admin, key, "mail@example.org")
+            test.is_true(previous.success)
+            local malformed = "mail@example"
+            local result = change(admin, key, malformed)
             test.is_false(result.success)
-            test.eq(true, change(admin, key, "mail@example.org").success)
-            test.is_true(change(admin, key, "").success)
+            -- Settings validation returns a message and leaves the key revision intact.
+            test.eq("Enter a valid email address", result.error)
+            test.is_true(change(admin, key, "", previous.revision).success)
+            local value, err = case.read({[key] = malformed})
+            test.is_nil(value)
+            test.eq(errors.INVALID, assert(err):kind())
+            test.eq("invalid_config", err:details().code)
+            test.eq(case.reason, err:details().reason_code)
         end
     end)
 

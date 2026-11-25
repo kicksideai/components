@@ -190,6 +190,15 @@ entries:
     kind: library.lua
     source: file://settings_cases.lua
     modules: [security, registry]
+    imports:
+      config: kickside.mail.domain:config
+  - name: invoke_send_tool
+    kind: security.policy
+    meta: {comment: Lets the case reach the tool with no Send mail capability.}
+    policy:
+      resources: [kickside.mail.traits:mail_send]
+      actions: [funcs.call]
+      effect: allow
   - name: template_cases
     kind: library.lua
     source: file://template_cases.lua

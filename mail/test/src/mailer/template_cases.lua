@@ -148,6 +148,7 @@ local function register(support)
     test.it("invokes the four registered tools as non-admin callers", function()
         local admin, sender = actors.admin, actors.sender
         local reader_policies = {table.unpack(READER_POLICIES)}
+        reader_policies[#reader_policies + 1] = "app.mail_harness:invoke_send_tool"
         local reader = caller(reader_policies)
         local tool_sender = caller({
             "kickside.mail.security:module_access",
@@ -166,8 +167,7 @@ local function register(support)
             refusal(missing, missing_err, errors.NOT_FOUND, "template_not_found")
         end
         local refused, send_err = reader:call(TOOL_NS .. "mail_send", input)
-        test.is_nil(refused)
-        test.eq(errors.PERMISSION_DENIED, assert(send_err):kind())
+        refusal(refused, send_err, errors.PERMISSION_DENIED, "mail_send_denied")
         local absent, preview_err = sender:call(TOOL_NS .. "mail_preview", preview_input)
         refusal(absent, preview_err, errors.PERMISSION_DENIED, "mail_library_denied")
         local preview = assert(tool_sender:call(TOOL_NS .. "mail_preview", preview_input))

@@ -215,7 +215,8 @@ local expiry = test.run_cases(function()
                 local waiting = {}
                 repeat
                     waiting = assert(db:query([[SELECT pid FROM pg_stat_activity
-                        WHERE $1 = ANY(pg_blocking_pids(pid))]], {blocker}))
+                        WHERE $1 = ANY(pg_blocking_pids(pid))
+                          AND query LIKE 'DELETE FROM mail_message_asset%']], {blocker}))
                     if #waiting > 0 then break end
                     time.sleep("15ms")
                 until time.now():unix_nano() >= deadline

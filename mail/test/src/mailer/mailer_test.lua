@@ -45,6 +45,7 @@ local function probe(input)
         local settings = assert(open("kickside.settings:settings"))
         return settings[input.operation](settings, {
             namespace = "kickside.mail", key = input.key, value = input.value,
+            expected_revision = input.expected_revision,
         })
     end
     if input.operation == "write" or input.operation == "write_request" then
@@ -185,9 +186,9 @@ local function await_job(id, status)
     error("Unexpected Jobs state: " .. assert(json.encode(state)))
 end
 
-local function change(admin, key, value)
+local function change(admin, key, value, expected_revision)
     return assert(admin:call("app.mail_harness:probe", {
-        operation = value == nil and "unset" or "set", key = key, value = value,
+        operation = value == nil and "unset" or "set", key = key, value = value, expected_revision = expected_revision,
     }))
 end
 

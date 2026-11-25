@@ -56,12 +56,10 @@ end
 local function open_set(id: string, face: string): (types.TemplateSet?, error?)
     local set, err = templates.get(id)
     if not err then return set :: types.TemplateSet, nil end
-    local details: types.Record = {}
-    for key, value in pairs(err:details() or {}) do details[key] = value end
-    details.code = details.code or "template_set_unavailable"
-    details.face = face
-    details.template_set = id
-    return nil, error_envelope.wrap(err, "Cannot open the Mail template set", details)
+    return nil, errors.new({kind = errors.INTERNAL, retryable = err:retryable(),
+        message = "Cannot open the Mail template set",
+        details = {code = "template_set_unavailable", face = face, template_set = id,
+            cause = error_envelope.encode(err)}})
 end
 
 function M.with_sets<T>(html_id: string, text_id: string,

@@ -159,7 +159,8 @@ return { run = test.run_cases(function()
                 test.eq(face, details.face)
                 test.eq(face == "html" and "kickside.mail.views:templates" or "kickside.mail.views:text_templates",
                     details.template_set)
-                test.eq(err:kind(), details.cause.kind)
+                test.eq(errors.INTERNAL, err:kind())
+                test.eq(errors.PERMISSION_DENIED, details.cause.kind)
             end
         end)
         test.it("requires template.set engine.escape none for mail text", function()
