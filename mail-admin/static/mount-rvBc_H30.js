@@ -358,7 +358,10 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
           }),
           b(c(T.value), 1)
         ])) : v("", !0),
-        a(H, { title: "Delivery service" }, {
+        a(H, {
+          title: "Delivery service",
+          class: "mail-service-group"
+        }, {
           default: f(() => [
             a(O, {
               title: "Service",
@@ -507,4 +510,4 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
 export {
   xt as config
 };
-//# sourceMappingURL=mount-Dtf9Qdpr.js.map
+//# sourceMappingURL=mount-rvBc_H30.js.map
