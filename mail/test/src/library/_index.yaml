@@ -2,6 +2,21 @@
 version: "1.0"
 namespace: app.mail_library
 entries:
+  - name: teardown_test
+    kind: function.lua
+    meta: {type: test, suite: zz_mail_teardown}
+    source: file://teardown_test.lua
+    method: run
+    modules: [contract, fs, funcs, registry, security, sql, time, uuid]
+    imports:
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
+      content: kickside.mail.read:content
+      records: kickside.uploads.persist:upload_record_repo
+      lookup: kickside.uploads.persist:upload_query_repo
+      upload_types: kickside.uploads:types
+      api_fixtures: app.mail_api:fixtures
+      component: kickside.component:component
   - name: site_url_storage
     kind: env.storage.static
     values: {PUBLIC_API_URL: "https://example.org"}

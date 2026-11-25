@@ -33,7 +33,33 @@ entries:
     contracts:
       - contract: kickside.contract:component
         methods:
-          get_status: kickside.core.threads:thread_status
+          get_status: kickside.mail.binding:status
+      - contract: kickside.contract:deletable
+        context_required: [component_id]
+        methods:
+          delete: kickside.mail.binding:teardown
+  - name: status
+    kind: function.lua
+    meta: {private: true}
+    source: file://status.lua
+    method: get_status
+  - name: teardown
+    kind: function.lua
+    meta: {private: true}
+    source: file://teardown.lua
+    method: delete
+    modules: [ctx]
+    imports:
+      writer: kickside.mail.command:library
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:live_sets
+        - kickside.mail.security:live_entries
+        - kickside.mail.security:live_marker_delete
+        - kickside.mail.security:overlay_originals
+        - kickside.core.retention:notify_access
   - name: library_list
     kind: function.lua
     source: &library_source file://library.lua

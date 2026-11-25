@@ -40,11 +40,12 @@ end
 
 local function collect(now_ms: integer, boundary: integer, limit: integer, retry_at: integer): (integer?, {types.BlockedAsset}?, error?)
     local claimed, claim_err = database.with_tx(function(tx: types.Transaction, dialect: string): ({types.Record}?, error?)
-        local mark, lock_err = live_repo.lock(tx, dialect)
+        local mark, lock_err = live_repo.lock_existing(tx, dialect)
         if lock_err then return nil, lock_err end
-        local rows, err = asset_file_repo.claim_due(tx, mark.projected_seq :: integer, now_ms, limit, retry_at)
+        local projected = mark and mark.projected_seq or 0
+        local rows, err = asset_file_repo.claim_due(tx, projected, now_ms, limit, retry_at)
         if err or #rows == limit then return rows, err end
-        local retired, retired_err = asset_file_repo.claim_retired(tx, mark.projected_seq :: integer, boundary, limit - #rows, retry_at)
+        local retired, retired_err = asset_file_repo.claim_retired(tx, projected, boundary, limit - #rows, retry_at)
         if retired_err then return nil, retired_err end
         for _, row in ipairs(retired) do rows[#rows + 1] = row end
         return rows :: {types.Record}, nil
@@ -137,10 +138,12 @@ function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): 
     local threads, open_err = thread_events.open()
     if open_err then return nil, open_err end
     local boundary, boundary_err = thread_events.prune_boundary(threads :: types.LibraryThreads)
-    if boundary_err then return nil, boundary_err end
-    local seq = boundary.max_pruned_seq :: integer
-    local release_err = release_stranded_restores(threads :: types.LibraryThreads, now)
-    if release_err then return nil, release_err end
+    if boundary_err and not errors.is(boundary_err, errors.NOT_FOUND) then return nil, boundary_err end
+    local seq = boundary and boundary.max_pruned_seq or 0
+    if boundary then
+        local release_err = release_stranded_restores(threads :: types.LibraryThreads, now)
+        if release_err then return nil, release_err end
+    end
     local history_deleted, history_err = database.with_tx(function(tx: types.Transaction): (integer?, error?)
         return history.prune_below(tx, seq, policy.BATCH)
     end)

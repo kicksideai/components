@@ -76,4 +76,12 @@ function M.delete_asset(tx: types.Transaction, name: string, seq: integer): (boo
     return true, nil
 end
 
+function M.delete_all(tx: types.Transaction): (integer?, error?)
+    local resources, err = tx:execute("DELETE FROM mail_library")
+    if err then return nil, err end
+    local assets, asset_err = tx:execute("DELETE FROM mail_library_asset")
+    if asset_err then return nil, asset_err end
+    return resources.rows_affected + assets.rows_affected, nil
+end
+
 return M

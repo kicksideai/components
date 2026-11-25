@@ -431,6 +431,13 @@ entries:
       resources: [kickside.mail.projection:marker]
       actions: [registry.get]
       effect: allow
+  - name: live_marker_delete
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.mail.projection:marker]
+      actions: [registry.overlay.delete.registry.entry]
+      effect: allow
   - name: library_thread_config
     kind: security.policy
     meta: {private: true}

@@ -19,6 +19,11 @@ local threads = require("threads")
 local canonical = require("canonical_json")
 local logger = require("logger")
 local live_repo = require("live_repo")
+local asset_refs = require("upload_ref_repo")
+local history_repo = require("history_repo")
+local reference_repo = require("reference_repo")
+local preview_repo = require("preview_repo")
+local live = require("live")
 
 local M = {}
 local RESTORE_GRACE_MS = 15 * 60 * 1000
@@ -276,6 +281,33 @@ function M.one(edit: types.LibraryEdit, operation: string, opts: types.LibraryWr
     local saved, err = M.apply(operation, {edit}, opts or {})
     if err then return nil, err end
     return single(saved :: types.LibrarySaveResult)
+end
+
+function M.teardown(component_id: string?): (boolean?, error?)
+    if component_id ~= thread_events.library_thread_id() then
+        return nil, errors.new({kind = errors.INVALID, message = "Mail library component context is required",
+            details = {code = "mail_library_component_required"}})
+    end
+    local now = time.now():unix_nano() // 1000000
+    local _, err = database.with_tx(function(tx: types.Transaction, dialect: string): (boolean?, error?)
+        local _, lock_err = live_repo.lock(tx, dialect)
+        if lock_err then return nil, lock_err end
+        local _, library_lock_err = library_repo.lock(tx, dialect)
+        if library_lock_err then return nil, library_lock_err end
+        local _, release_err = asset_file_repo.release_library(tx, now)
+        if release_err then return nil, release_err end
+        for _, delete in ipairs({library_repo.delete_all, history_repo.delete_all, reference_repo.delete_all,
+            preview_repo.delete_all, asset_refs.delete_all, live_repo.delete}) do
+            local _, delete_err = delete(tx)
+            if delete_err then return nil, delete_err end
+        end
+        return true, nil
+    end)
+    if err then return nil, err end
+    local cleared, clear_err = live.clear()
+    if clear_err then return nil, clear_err end
+    notify.retention()
+    return cleared, nil
 end
 
 return M

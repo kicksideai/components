@@ -19,6 +19,26 @@ function M.open(): (registry.Snapshot?, error?)
     return registry.overlay(jet.owner)
 end
 
+function M.clear(): (boolean?, error?)
+    local overlay, err = M.open()
+    if err then return nil, err end
+    if not overlay then
+        return nil, errors.new({kind = errors.INTERNAL, message = "Mail live overlay is unavailable",
+            details = {code = "mail_library_overlay_missing"}})
+    end
+    local entries, list_err = overlay:entries()
+    if list_err then return nil, list_err end
+    if #entries == 0 then return true, nil end
+    local changes = overlay:changes()
+    for _, entry in ipairs(entries) do
+        local _, stage_err = changes:delete(entry.id)
+        if stage_err then return nil, stage_err end
+    end
+    local _, apply_err = changes:apply()
+    if apply_err then return nil, apply_err end
+    return true, nil
+end
+
 function M.fence(seq: integer, snapshot_seq: integer?): error?
     local marker, err = registry.get(MARKER)
     if err and not errors.is(err, errors.NOT_FOUND) then return err end

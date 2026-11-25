@@ -9,7 +9,7 @@ local types = require("types")
 
 local M = {}
 
-local function snapshot(ex: types.Executor): ({seq: integer, rows: {types.Resource}}?, error?)
+local function snapshot(ex: types.Executor): ({seq: integer, projected_seq: integer, rows: {types.Resource}}?, error?)
     local before, err = state.get(ex)
     if err then return nil, err end
     local rows, read_err = reader.live_rows(ex)
@@ -20,10 +20,10 @@ local function snapshot(ex: types.Executor): ({seq: integer, rows: {types.Resour
         return nil, errors.new({kind = errors.CONFLICT, retryable = true, message = "Mail templates changed during publication",
             details = {code = "mail_library_publish_conflict"}})
     end
-    return {seq = before.template_seq, rows = rows :: {types.Resource}}, nil
+    return {seq = before.template_seq, projected_seq = after.projected_seq, rows = rows :: {types.Resource}}, nil
 end
 
-local function attempt(): (boolean?, error?)
+local function attempt(min_seq: integer?): (boolean?, error?)
     local overlay, open_err = live.open()
     if open_err then return nil, open_err end
     if not overlay then
@@ -36,16 +36,17 @@ local function attempt(): (boolean?, error?)
     local marker = live.published(entries)
     local data, read_err = database.with_db(snapshot)
     if read_err then return nil, read_err end
+    if min_seq and data.projected_seq < min_seq then return false, nil end
     if marker and marker >= data.seq then return false, nil end
     local declared, declaration_err = originals.list()
     if declaration_err then return nil, declaration_err end
     return live.publish(overlay, entries, data.rows, declared :: types.OriginalMap, data.seq)
 end
 
-function M.publish(): (boolean?, error?)
+function M.publish(min_seq: integer?): (boolean?, error?)
     local last: error?
     for _ = 1, 5 do
-        local changed, err = attempt()
+        local changed, err = attempt(min_seq)
         if not err then
             if changed then notify.library() end
             return true, nil

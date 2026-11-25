@@ -23,6 +23,11 @@ entries:
       threads: kickside.mail.command:threads
       canonical_json: kickside.contract:canonical_json
       live_repo: kickside.mail.persist:live_repo
+      upload_ref_repo: kickside.mail.persist:upload_ref_repo
+      history_repo: kickside.mail.persist:history_repo
+      reference_repo: kickside.mail.persist:reference_repo
+      preview_repo: kickside.mail.persist:preview_repo
+      live: kickside.mail.render:live
   - name: threads
     kind: library.lua
     meta: {private: true}

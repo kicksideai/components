@@ -2,8 +2,8 @@
 local live = require("live")
 local notify = require("notify")
 
-local function run(input: {payload: {uploads_changed: boolean?}}): (boolean?, error?)
-    local published, err = live.publish()
+local function run(input: {payload: {seq: integer, uploads_changed: boolean?}}): (boolean?, error?)
+    local published, err = live.publish(input.payload.seq)
     if err then
         return nil, errors.new({kind = err:kind(), message = err:message(), retryable = true, details = err:details()})
     end

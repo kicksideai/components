@@ -155,7 +155,8 @@ function M.claim_due(tx: types.Transaction, projected: integer, now_ms: integer,
     retry_at: integer): ({types.Record}?, error?)
     return tx:query([[UPDATE mail_asset_file SET state='reaping',due_at=$1 WHERE upload_id IN (
         SELECT upload_id FROM mail_asset_file WHERE due_at<=$2 AND ]] .. eligible("$3") .. [[
-        ORDER BY due_at,upload_id LIMIT $4) RETURNING upload_id]], {retry_at, now_ms, projected, limit})
+        ORDER BY due_at,upload_id LIMIT $4) AND due_at<=$2 AND ]] .. eligible("$3") ..
+        " RETURNING upload_id", {retry_at, now_ms, projected, limit})
 end
 
 function M.claim_retired(tx: types.Transaction, projected: integer, boundary: integer, limit: integer,
@@ -181,6 +182,18 @@ end
 function M.forget(tx: types.Transaction, id: string): (boolean?, error?)
     local _, err = tx:execute("DELETE FROM mail_asset_file WHERE upload_id=$1 AND state='reaping'", {id})
     if err then return nil, err end
+    return true, nil
+end
+
+function M.release_library(tx: types.Transaction, now: integer): (boolean?, error?)
+    local _, err = tx:execute([[INSERT INTO mail_asset_file (upload_id,reserved_at,due_at)
+        SELECT upload_id,$1,$1 FROM mail_library_upload_ref WHERE TRUE ON CONFLICT (upload_id) DO NOTHING]], {now})
+    if err then return nil, err end
+    local _, update_err = tx:execute([[UPDATE mail_asset_file SET
+        due_at=CASE WHEN due_at IS NULL OR due_at>$1 THEN $1 ELSE due_at END,
+        hold_seq=NULL,hold_id=NULL,restore_author=NULL,restore_command_id=NULL,
+        restore_reserved_at=NULL,restore_check_at=NULL WHERE state='held']], {now})
+    if update_err then return nil, update_err end
     return true, nil
 end
 
