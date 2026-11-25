@@ -49,6 +49,7 @@ local function cases()
 
     test.it("declares closed schemas for every library input event and a component-owned fold", function()
         local binding = assert(registry.get("kickside.mail.binding:library"))
+        test.eq("tabler:mail", binding.meta.icon)
         local expected = {
             ["resource.created"] = "created", ["resource.updated"] = "edited",
             ["resource.base_set"] = "base_changed", ["resource.reset"] = false,

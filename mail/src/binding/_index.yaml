@@ -6,6 +6,7 @@ entries:
     kind: contract.binding
     meta:
       title: Mail library
+      icon: tabler:mail
       class: [kickside.mail.library]
       thread: {class: kickside.mail.library}
       provision:
