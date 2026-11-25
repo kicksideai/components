@@ -138,9 +138,13 @@ local function invoke(executor, operation, message)
 end
 
 local function await_message(executor, id, matches, seconds)
-    return delivery_wait.until_state(function()
-        return invoke(executor, "get_message", id)
-    end, matches, tostring(seconds or 25) .. "s")
+    local deadline = time.now():add((seconds or 25) * time.SECOND):unix_nano()
+    repeat
+        local result = assert(invoke(executor, "get_message", id))
+        if matches(result) then return result end
+        time.sleep("25ms")
+    until time.now():unix_nano() >= deadline
+    error("Mail did not reach the expected intermediate state: " .. id)
 end
 
 local function terminal(executor, queued)

@@ -42,6 +42,7 @@ local run = test.run_cases(function()
             state.uploader, state.editor, state.actor, state.scope = setup_actor("upload_editor_sender")
         end)
         test.after_each(function()
+            if state.resume_projection then state.resume_projection() end
             fixtures.remove(state.owned)
             if state.configured then settings.settings("", "") end
             for owner in pairs(state.uploaders) do
@@ -220,8 +221,10 @@ local expiry = test.run_cases(function()
                 local waiting = {}
                 repeat
                     waiting = assert(db:query([[SELECT pid FROM pg_stat_activity
-                        WHERE $1 = ANY(pg_blocking_pids(pid)) AND query LIKE 'DELETE FROM mail_message_asset%']], {blocker}))
-                until #waiting > 0 or time.now():unix_nano() >= deadline
+                        WHERE $1 = ANY(pg_blocking_pids(pid))]], {blocker}))
+                    if #waiting > 0 then break end
+                    time.sleep("15ms")
+                until time.now():unix_nano() >= deadline
                 if #waiting > 0 then
                     assert(db:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff, late}))
                 end

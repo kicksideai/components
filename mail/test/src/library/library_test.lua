@@ -82,6 +82,7 @@ return {run = test.run_cases(function()
         end
         test.after_each(function()
             clear_publication_fault()
+            if state.resume_projection then state.resume_projection() end
             if state.capture_configured then
                 api_fixtures.settings("", "")
                 state.capture_configured = false

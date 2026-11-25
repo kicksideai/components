@@ -46,6 +46,10 @@ local function register(support)
         local threads = library_thread()
         local projection = {thread_id = content.library_component_id(), kind = "kickside.mail:library_tables"}
         assert(threads:pause_projection(projection))
+        state.resume_projection = function()
+            assert(threads:resume_projection(projection))
+            state.resume_projection = nil
+        end
         local saved, err = fixtures.call(state.editor, "restore", restore)
         assert(saved, tostring(err))
         test.is_true(saved.committed)
@@ -53,7 +57,7 @@ local function register(support)
         prune_through(first.seq)
         sweep(time.now():unix_nano() // 1000000)
         local kept = state.storage:exists(source.storage_path)
-        assert(threads:resume_projection(projection))
+        state.resume_projection()
         local folded = assert(threads:catch_up_projection({
             thread_id = projection.thread_id, kind = projection.kind, target_seq = saved.seq,
             deadline = time.now():add(5 * time.SECOND):format(time.RFC3339),
@@ -69,8 +73,9 @@ local function register(support)
         local source, first, latest, restore = restore_history("reap-before-restore")
         local threads = library_thread()
         local id = content.library_component_id()
-        local now = time.now():unix_nano() // 1000000
+        local now = time.now():add(time.HOUR):unix_nano() // 1000000
         local before = assert(threads:find({thread_id = id})).event_count
+        interleave.arm_reap(source.storage_path)
         -- Model a restore that already read its source when the reap claim commits.
         local claimed = assert(database.with_tx(function(tx)
             return ledger.claim_retired(tx, latest.seq, first.seq, 200, now)
@@ -80,7 +85,6 @@ local function register(support)
             if row.upload_id == source.uuid then target = row end
         end
         test.not_nil(target)
-        interleave.arm_reap(source.storage_path)
         local owner = assert(funcs.new():with_context({mail_test_now = now}))
         local reaping = assert(owner:async("kickside.mail.jobs:owner", {}))
         interleave.await("after_claim")
@@ -90,13 +94,13 @@ local function register(support)
         reaping:response():receive()
         local collected = assert(reaping:result()):data()
         assert(collected.success, tostring(collected.error))
-        test.is_true(kept)
+        test.is_true(kept, "The Uploads fixture holds the bytes until the restore is refused")
         test.is_nil(value)
         test.eq(before, assert(threads:find({thread_id = id})).event_count)
         test.eq(errors.NOT_FOUND, assert(err):kind())
         test.eq("mail_asset_source_gone", err:details().code)
         test.eq(latest.seq, call("get", restore).seq)
-        test.is_false(state.storage:exists(source.storage_path))
+        test.is_false(state.storage:exists(source.storage_path), "Uploads removes the bytes after the gate opens")
     end)
 
     local function reserve_restore(name, strand)
@@ -237,11 +241,14 @@ local function register(support)
         test.eq(gif(), older.bytes)
         test.neq(first.asset.upload_id, latest.asset.upload_id)
         local indexed = query("SELECT seq FROM mail_library_history WHERE kind='asset' AND name=$1 ORDER BY seq", {image.name})
-        local source = assert(library_thread():list_events({thread_id = thread, from_seq = first.seq, to_seq = latest.seq,
-            subject = "asset/" .. image.name}))
+        local source = assert(library_thread():list_events({thread_id = thread, from_seq = first.seq,
+            to_seq = latest.seq, ascending = true}))
         test.eq(2, #indexed)
         test.eq(2, #source.events)
-        for index, row in ipairs(indexed) do test.eq(row.seq, source.events[index].seq) end
+        for index, row in ipairs(indexed) do
+            test.eq(row.seq, source.events[index].seq)
+            test.eq("asset/" .. image.name, source.events[index].subject)
+        end
     end)
 
     test.it("adopts, replaces, restores and resets an image in the same library", function()

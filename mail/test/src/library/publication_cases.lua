@@ -31,6 +31,17 @@ local function register(support)
         return thread, {thread_id = support.THREAD, kind = "kickside.mail:library_tables"}
     end
 
+    local function pause_projection()
+        local thread, address = projection()
+        assert(thread:pause_projection(address))
+        local function resume()
+            assert(thread:resume_projection(address))
+            state.resume_projection = nil
+        end
+        state.resume_projection = resume
+        return resume
+    end
+
     test.it("recovers sends through retention after all three publication attempts fail", function()
         api_fixtures.settings("app.mail_harness:capture", "mail@example.org")
         state.capture_configured = true
@@ -82,12 +93,11 @@ local function register(support)
         local saved = assert(call("create", part))
         part.html, part.expected_revision = "Changed HTML", saved.revision
         part.preview_id = review({resources = {part}})
-        local thread, address = projection()
-        assert(thread:pause_projection(address))
+        local resume = pause_projection()
         local updated, err = fixtures.call(nil, "update", part)
         publication_fault({id = "app.mail_library:invalid_template", kind = "registry.entry",
             meta = {type = "kickside.mail:template"}, data = {}})
-        assert(thread:resume_projection(address))
+        resume()
         assert(updated, tostring(err))
         test.is_false(updated.projected)
         fixtures.await(function()
@@ -208,8 +218,7 @@ local function register(support)
         draft.expected_revision = saved.revision
         local receipt = review({resources = {draft}})
         local command = {resources = {draft}, preview_id = receipt, command_id = uuid.v4()}
-        local thread, address = projection()
-        assert(thread:pause_projection(address))
+        local resume = pause_projection()
         local pending, append_err = fixtures.call(nil, "save", command)
         local before = fixtures.call(nil, "get", part)
         local second, catch_err = fixtures.call(nil, "save", {resources = {draft}, preview_id = receipt})
@@ -217,7 +226,7 @@ local function register(support)
         local scope = member.scope:with(assert(security.policy("app.mail_library:deny_library_wait")))
         local denied = assert(funcs.new():with_actor(member.actor):with_scope(scope))
         local denied_write, denied_err = fixtures.call(denied, "save", {resources = {draft}, preview_id = receipt})
-        assert(thread:resume_projection(address))
+        resume()
         test.is_nil(denied_write)
         test.eq(errors.PERMISSION_DENIED, assert(denied_err):kind())
         assert(pending, tostring(append_err))
