@@ -27,7 +27,7 @@ check-module:
 structure:
 	node scripts/check-module.mjs --structure-only
 
-verify: lockrefresh
+verify: structure lockrefresh
 	$(MAKE) lint typecheck check-module test
 
 publish:

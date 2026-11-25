@@ -20,24 +20,16 @@ async function exists(path) {
 
 async function checkStructure() {
   const checker = resolve(root, '../scripts/check_structure.py')
-  const modules = [root]
+  const args = ['-B', checker, root, '--greenfield', basename(root)]
   const peers = ['../mail-admin', '../../providers/mail-resend', '../../providers/mail-sendgrid', '../../providers/mail-mailgun']
   for (const path of peers) {
     const peer = resolve(root, path)
-    if (await exists(resolve(peer, 'wippy.yaml'))) modules.push(peer)
+    if (await exists(resolve(peer, 'wippy.yaml'))) args.push('--peer', peer)
   }
-  console.log('Mail structure check (report only)')
-  for (const moduleDir of modules) {
-    const args = ['-B', checker, moduleDir, '--greenfield', basename(moduleDir)]
-    for (const peer of modules) {
-      if (peer !== moduleDir) args.push('--peer', peer)
-    }
-    const { error, status, signal } = spawnSync('python3', args, { stdio: 'inherit' })
-    if (error) throw error
-    if (status !== 0 && status !== 1) {
-      throw new Error(`Structure checker failed for ${basename(moduleDir)} (${signal || status})`)
-    }
-  }
+  const { error, status, signal } = spawnSync('python3', args, { stdio: 'inherit' })
+  if (error) throw error
+  if (signal) throw new Error(`Mail structure checker terminated by ${signal}`)
+  if (status !== 0) process.exit(status)
 }
 
 await checkStructure()

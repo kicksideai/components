@@ -3,7 +3,11 @@
 """Self-test for check_structure.py: run `python3 -B test_check_structure.py`."""
 
 import os
+from pathlib import Path
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -65,6 +69,34 @@ def fixture(name):
 
 
 class StructureCheckTest(unittest.TestCase):
+    def test_mail_structure_target_passes_on_mail(self):
+        repo = Path(HERE).parent
+        result = subprocess.run(
+            ["make", "-C", "mail", "structure"], cwd=repo,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("mail (kickside.mail): 0 findings", result.stdout)
+
+    def test_mail_structure_target_rejects_a_violation(self):
+        repo = Path(HERE).parent
+        with tempfile.TemporaryDirectory(prefix="mail-structure-", dir=HERE) as directory:
+            root = Path(directory)
+            shutil.copytree(fixture("good"), root / "mail")
+            (root / "mail/src/violation.lua").write_text("return {}\n", encoding="utf-8")
+            for path in ("mail/Makefile", "mail/scripts/check-module.mjs",
+                         "scripts/check_structure.py", "work/scripts/module-rules.mjs"):
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(repo / path, target)
+
+            result = subprocess.run(
+                ["make", "-C", "mail", "structure"], cwd=root,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False,
+            )
+        self.assertIn("S3 src/violation.lua:1", result.stdout)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+
     def test_conforming_module_is_clean(self):
         m = check_structure.run(fixture("good"), greenfield=["good"], peer_dirs=[fixture("good-plugin")])
         self.assertEqual([str(f) for f in m.findings], [])
