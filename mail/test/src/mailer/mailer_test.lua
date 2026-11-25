@@ -70,13 +70,13 @@ local function probe(input)
         return {descriptor = descriptor, plan = plan, upstream_plan = upstream_plan, compiled = compiled}
     end
     if input.operation == "raw" then
-        return open("kickside.mail:transport", "kickside.mail.harness:first")
+        return open("kickside.mail:transport", "kickside.mail.harness:admitted")
     end
     if input.operation == "raw_send" then
         return funcs.call("kickside.mail.harness:send_first", input.message)
     end
     if input.operation == "driver_validation" then
-        return funcs.call("kickside.mail.settings:validate_driver", {value = "first"})
+        return funcs.call("kickside.mail.settings:validate_driver", {value = "kickside.mail.harness:admitted"})
     end
     local mailer, err = open("kickside.mail:mailer")
     if err then return nil, err end
@@ -177,7 +177,7 @@ local function template_request()
 end
 
 local function capture_with(admin)
-    assert(change(admin, "driver", "capture").success)
+    assert(change(admin, "driver", "kickside.mail.harness:capture").success)
     assert(change(admin, "from_address", "mail@example.org").success)
 end
 
@@ -509,7 +509,7 @@ return {
                 local captured = terminal(log_admin, queued)
                 test.eq("sent", captured.status)
                 local request = assert(json.decode(captured.provider_message_id))
-                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "driver", "kickside.mail.harness:admitted").success)
                 input.subject = "Resend fixture"
                 input.origin = {kind = "workflow", id = "fixture-workflow", label = "Fixture workflow"}
                 local failed = terminal(sender, assert(invoke(sender, "send", input)))
@@ -569,21 +569,21 @@ return {
                 local retry = await_message(log_admin, queued.message_id, function(row)
                     return row.status ~= "queued" or row.last_error ~= nil
                 end)
-                test.eq("capture", retry.driver_id)
+                test.eq("kickside.mail.harness:capture", retry.driver_id)
                 test.eq(1, retry.attempts)
-                assert(change(admin, "driver", "second").success)
+                assert(change(admin, "driver", "kickside.mail.harness:second").success)
                 local job_id = persisted(queued.message_id).job_id
                 test.is_true(assert(jobs.wake_job(job_id, {control = true})).woken)
                 local sent = terminal(log_admin, queued)
                 test.eq("sent", sent.status)
                 test.eq(2, sent.attempts)
-                test.eq("capture", sent.driver_id)
+                test.eq("kickside.mail.harness:capture", sent.driver_id)
                 test.eq(queued.message_id, assert(json.decode(sent.provider_message_id)).idempotency_key)
             end)
 
             test.it("records an ambiguous non-idempotent delivery without retrying", function()
                 capture_with(admin)
-                assert(change(admin, "driver", "second").success)
+                assert(change(admin, "driver", "kickside.mail.harness:second").success)
                 local input = body()
                 input.subject = "Fixture ambiguous"
                 local queued = assert(invoke(sender, "send", input))
@@ -610,7 +610,7 @@ return {
 
             test.it("rejects excess recipients before calling Users", function()
                 capture_with(admin)
-                assert(change(admin, "driver", "second").success)
+                assert(change(admin, "driver", "kickside.mail.harness:second").success)
                 local input = body()
                 input.cc = {{user_id = "unavailable-without-users-authority"}}
                 input.bcc = {"bcc@example.org"}
@@ -621,7 +621,7 @@ return {
 
             test.it("refuses excess recipients before queuing", function()
                 capture_with(admin)
-                assert(change(admin, "driver", "second").success)
+                assert(change(admin, "driver", "kickside.mail.harness:second").success)
                 local input = body()
                 input.cc = {"cc@example.org"}
                 input.bcc = {"bcc@example.org"}
@@ -697,9 +697,9 @@ return {
                 local visible = {}
                 for _, row in ipairs(all.items) do visible[row.message_id] = row end
                 test.is_true(visible[one.message_id] ~= nil and visible[three.message_id] ~= nil)
-                test.eq("capture", visible[one.message_id].driver_id)
+                test.eq("kickside.mail.harness:capture", visible[one.message_id].driver_id)
                 local admin_row = assert(invoke(log_admin, "get_message", one.message_id))
-                test.eq("capture", admin_row.driver_id)
+                test.eq("kickside.mail.harness:capture", admin_row.driver_id)
                 test.eq(one.message_id, assert(json.decode(admin_row.provider_message_id)).idempotency_key)
                 test.eq(admin_row.provider_message_id, visible[one.message_id].provider_message_id)
             end)
@@ -935,9 +935,9 @@ return {
                 end)
             end
 
-            test.it("discovers installed descriptors and selects each on the next send", function()
+            test.it("selects admitted binding IDs on the next send", function()
                 test.is_false(change(admin, "driver", "missing").success)
-                for key, value in pairs({driver = "first", from_address = "mail@example.org",
+                for key, value in pairs({driver = "kickside.mail.harness:admitted", from_address = "mail@example.org",
                     from_name = "Test Mail", reply_to = "default@example.org"}) do
                     local result = change(admin, key, value)
                     test.is_true(result.success, result.error :: string?)
@@ -950,7 +950,7 @@ return {
                 local first = assert(invoke(sender, "send", body()))
                 test.eq("first|mail@example.org|Test Mail|default@example.org", terminal(log_admin, first).provider_message_id)
 
-                test.is_true(change(admin, "driver", "second").success)
+                test.is_true(change(admin, "driver", "kickside.mail.harness:second").success)
                 local second = assert(invoke(sender, "send", {
                     template = "notice", vars = {subject = "Status", message = "Ready"},
                     to = {"reader@example.org"}, reply_to = "override@example.org",
@@ -959,7 +959,7 @@ return {
             end)
 
             test.it("returns the message ID as the writable destination reference", function()
-                test.is_true(change(admin, "driver", "first").success)
+                test.is_true(change(admin, "driver", "kickside.mail.harness:admitted").success)
                 test.is_true(change(admin, "from_address", "mail@example.org").success)
                 local result = assert(invoke(sender, "write", body()))
                 test.is_true(result.success)
@@ -974,7 +974,7 @@ return {
             end)
 
             test.it("sends each Sync upsert once and acknowledges deletes without sending", function()
-                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "driver", "kickside.mail.harness:admitted").success)
                 assert(change(admin, "from_address", "mail@example.org").success)
                 local port = assert(registry.get("kickside.mail.sink:send_email"))
                 local request = {
@@ -1053,7 +1053,7 @@ return {
             end)
 
             test.it("records display origin from module and workflow send surfaces", function()
-                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "driver", "kickside.mail.harness:admitted").success)
                 assert(change(admin, "from_address", "mail@example.org").success)
                 local input = body()
                 input.origin = {kind = "module", id = "app:mail-example", label = "Example module"}
@@ -1084,7 +1084,7 @@ return {
             end)
 
             test.it("queues workflow mail with the run ID when no title is supplied", function()
-                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "driver", "kickside.mail.harness:admitted").success)
                 assert(change(admin, "from_address", "mail@example.org").success)
                 local executor = assert(sender:with_context({
                     run_context = {run_id = "workflow-without-title", flow_ref = {kind = "flow", id = "example-flow", version = 1}},
@@ -1105,7 +1105,7 @@ return {
             end)
 
             test.it("finds recent senders and filters activity by the message name", function()
-                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "driver", "kickside.mail.harness:admitted").success)
                 assert(change(admin, "from_address", "mail@example.org").success)
                 local input = template_request()
                 input.origin = {kind = "module", id = "app:recent-senders", label = "Recent senders"}
@@ -1161,7 +1161,7 @@ return {
                 test.eq(missing_driver:details().code, destination.error.code)
                 test.eq(missing_driver:message(), destination.error.message)
                 test.is_false(destination.error.retriable)
-                test.is_true(change(admin, "driver", "first").success)
+                test.is_true(change(admin, "driver", "kickside.mail.harness:admitted").success)
                 test.eq(missing_driver:message(), unconfigured(sender):message())
                 local tool_result, tool_err = sender:call(TOOL_NS .. "mail_send", body())
                 refusal(tool_result, tool_err, errors.INVALID, "invalid_config")
@@ -1360,7 +1360,7 @@ return {
                 local invalid, invalid_err = tool_sender:call(TOOL_NS .. "mail_preview", {template = "notice", vars = {}})
                 refusal(invalid, invalid_err, errors.INVALID, "invalid_template_vars", "subject")
 
-                assert(change(admin, "driver", "first").success)
+                assert(change(admin, "driver", "kickside.mail.harness:admitted").success)
                 assert(change(admin, "from_address", "mail@example.org").success)
                 for _, message in ipairs({input, body()}) do
                     local sent = assert(tool_sender:call(TOOL_NS .. "mail_send", message))
@@ -1474,12 +1474,6 @@ return {
                     local missing, missing_err = invoke(reader, "send", input)
                     refusal(missing, missing_err, errors.INVALID, "recipient_address_missing")
                 end
-            end)
-
-            test.it("selects only drivers with an explicit discovery grant", function()
-                local result = change(admin, "driver", "unregistered")
-                test.is_false(result.success)
-                test.eq("The active mail driver is not installed", result.error)
             end)
 
             test.it("keeps driver selection and transport outside the sending group's public scope", function()

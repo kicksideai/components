@@ -46,9 +46,8 @@ local PUBLIC_CODES = {
     send_in_progress = "provider_unavailable",
     quota_exhausted = "rate_limited",
     settings_read_failed = "invalid_config",
-    invalid_driver_descriptor = "invalid_config",
-    duplicate_driver_id = "invalid_config",
-    driver_availability_invalid = "invalid_config",
+    invalid_transport_status = "invalid_config",
+    delivery_deadline_exceeded = "provider_unavailable",
     provider_endpoint_invalid = "invalid_config",
 }
 

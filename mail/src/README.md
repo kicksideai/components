@@ -13,7 +13,7 @@ Assign **Send mail** to groups that may send messages. **Edit mail library** gra
 
 With Mail Admin installed, open **Settings → Integrations → Mail** to choose an installed delivery service and set the From address. Without Mail Admin, the generated **Mail** section edits Mail’s settings. The display name and default Reply-To address are optional. A message can supply its own Reply-To address. The installation’s configured From applies to every message.
 
-- `driver` selects an installed descriptor by its `id`.
+- `driver` selects an admitted transport by its exact contract binding ID.
 - `from_address` sets the sender’s email address.
 - `from_name` sets the sender’s display name.
 - `reply_to` sets the default reply address.
@@ -29,30 +29,50 @@ Send validates and renders the message, commits it with a delivery job, and retu
 
 Read the log entry with `get_message(message_id)`. It becomes `sent` when the provider accepts the message, with a provider ID if supplied, or `failed` with a structured `last_error`. If a job ends without recording an outcome, `delivery_interrupted` indicates that the provider may have accepted the email. Only callers with **Read all mail delivery logs** see `driver_id`, `provider_message_id`, and a sanitized provider excerpt in `last_error.provider_detail` when present. `list_messages({limit, status?, since?, cursor?})` gives most recent entries first. Dates and `since` use Unix milliseconds. Use the returned `next_cursor` for the next page. The log stores metadata, recipient addresses including Bcc, and attachment references until expiry. Queued mail retains its rendered bodies for delivery. Sent mail discards them on completion. Failed mail keeps its rendered bodies for resend until the log row expires. Expiry defaults to 30 days after completion and follows `log_retention_days`. Provider excerpts omit addresses and words echoed from the subject and rendered bodies. Jobs stores a failure code.
 
-On each attempt the worker selects the active driver and checks the sender’s current **Send mail** capability before delivery. It passes the message ID to providers with idempotency support. For retryable rate limits, timeouts, provider unavailability, or sends already in progress, Mail allows up to 32 attempts with exponential delays from one second to five minutes. A provider retry hint can extend an interval up to 15 minutes. When the HTTP client reports a retryable error without a response, Mail records `provider_transport_failed`. Delivery is at least once. If the provider accepts a request before the client times out, retrying can send a second copy on providers without idempotency support.
+On the first attempt the worker pins the active binding. Each attempt checks that the binding is still admitted and that the sender still holds **Send mail**. It passes the message ID to providers with idempotency support. For retryable rate limits, timeouts, provider unavailability, or sends already in progress, Mail allows up to 32 attempts with exponential delays from one second to five minutes. A provider retry hint can extend an interval up to 15 minutes. When the HTTP client reports a retryable error without a response, Mail records `provider_transport_failed`. If a non-idempotent transport might have accepted the request before communication failed, Mail records `delivery_uncertain` and leaves it for an administrator to check.
 
 The `notice` template supplies plain-text and HTML parts. Set `subject` and any combination of an opening message, headings, paragraphs, labeled details, a web action link, or an inline image. Use `MailGetTemplate` for its variable schema and `MailPreview` for the rendered parts.
 
 `MailSend` appears as a virtual Block. A Workflow can pass the message from a preceding step and fix optional fields in Block configuration. The `kickside.mail.sink:send_email` automation destination queues one message per new `upsert` delivery and returns `dest_ref.message_id`. Direct callers of its writable binding can also use `create`. The `kickside.data:writable` binding declares at-least-once delivery and replays the receipt for the same sender, automation origin, operation and per-delivery idempotency key within the log retention window. A source `delete` requires **Send mail** and succeeds without a payload, a delivery key, or a new message.
 
-Drivers declare `registry.entry` with `meta.type: kickside.mail:driver` and implement `send` on `kickside.mail:transport`. The descriptor supplies `id`, `label`, `icon`, `description`, `binding`, `settings_ns`, and `available_func`. Declare `max_recipients` and `max_message_bytes` as positive integers for the provider. Mail enforces the declared limits on admission and delivery. The driver contributes its exact descriptor, binding, send, and availability function IDs to Mail’s private discovery and dispatch policies. The availability function checks configuration without contacting the provider. Return `{available: true}` when ready. Otherwise return `{available: false, code, reason}` with a stable lower-snake-case code and a sentence that tells the administrator how to configure the service.
+### Transport drivers
 
-A descriptor can also declare `settings_view` as the tag of a custom element. Mail validates the tag’s form during driver discovery. Declare a `view.component` with that `meta.tag_name` and the component’s `meta.base_path` and `meta.entry_point`. The Mail settings block uses the host’s component loader. Grant delivery administrators access to the component and its static bundle. Drivers without a panel use generated rows from their settings definitions.
+Create a `contract.binding` for `kickside.mail:transport` with `send` and
+`status` methods. `send` receives one rendered message, its idempotency key,
+and an RFC3339 deadline. An accepted delivery returns `provider_message_id`
+when the service supplies one. `status` checks the driver's own settings
+without contacting the service. It returns `title`, `icon`, `description`,
+`settings_ns`, `idempotent` and `ready`, with optional positive integer
+`max_recipients` and `max_message_bytes`. Report a setup issue with a stable
+`code` and an actionable `reason`.
 
-The settings block passes four attributes to the panel.
+The provider admits its binding by declaring an exact `contract.open` grant
+as a member of Mail's transports group. Give its methods separate policies
+for their settings and HTTP endpoint access.
 
-- `values` is a JSON object containing effective setting values other than secrets.
-- `secrets` is a JSON object containing a boolean for each secret key indicating whether an override is saved.
-- `errors` is a JSON object mapping setting keys to server validation messages from the last Save.
-- `disabled` is `"true"` while settings are being saved.
+```yaml
+- name: transport_open
+  kind: security.policy
+  meta: {private: true}
+  groups: [kickside.mail.security:transports]
+  policy:
+    resources: [example.mail.driver:transport]
+    actions: [contract.open]
+    effect: allow
+```
 
-The panel emits `change` with `detail: {values}` for every locally changed key. An explicit `null` clears a setting. A secret appears in the event only when a new value is entered. The panel emits `validity` with `detail: {valid}`; a false value disables Save. The block owns the draft, sends changes to Platform Settings, and applies the driver selection after the driver settings pass server validation. Settings definitions and their `validate_func` remain authoritative.
+Driver modules can use `kickside.mail.driver:config` for their Settings and
+endpoint lookups and `kickside.mail.driver:http` for HTTP delivery bounded by
+the Jobs deadline.
 
 ### Delivery administration API
 
-`GET /mail/delivery/drivers` requires **Administer mail delivery**. It returns `{success: true, data: {items: [...]}}` with each installed driver’s `id`, `label`, `icon`, `description`, `settings_ns`, optional `settings_view`, `availability` and `settings`. A setting row identifies its namespace, key, type and form metadata. Non-secret rows include the effective value and declared default. Secret rows contain `is_secret: true` and `has_value`; their values and defaults stay on the server.
-
-`GET /mail/delivery` returns the active driver summary, sender, reply-to address, readiness flags and admitted transports. If setup is incomplete, `code` identifies the issue and `reason` tells the administrator what to do. Sending surfaces return a general `invalid_config` error for delivery setup failures. Use delivery status for the specific setup reason.
+`GET /mail/delivery` requires **Administer mail delivery**. It returns the
+active driver summary, sender, reply-to address, readiness, and the status
+of every admitted transport. Each transport includes its exact binding ID
+and its settings namespace. Read the selected namespace through Platform
+Settings, which masks secret values. When configuration is incomplete,
+`code` identifies the issue and `reason` tells the administrator what to do.
 
 ## Template library
 
@@ -101,7 +121,7 @@ attachment_unavailable         Internal           No
 attachments_too_large          Invalid            No
 body_required                  Invalid            No
 delivery_interrupted           Unavailable        No
-duplicate_driver_id            Invalid            No
+driver_not_admitted            Invalid            No
 duplicate_template_name        Conflict           No
 from_not_allowed               Invalid            No
 html_too_large                 Invalid            No
@@ -114,7 +134,7 @@ invalid_attachment_size        Internal           No
 invalid_body                   Invalid            No
 invalid_config                 Invalid            No
 invalid_content_id             Invalid            No
-invalid_driver_descriptor      Invalid            No
+invalid_transport_status       Internal           No
 invalid_idempotency_key        Invalid            No
 invalid_message                Invalid            No
 invalid_subject                Invalid            No

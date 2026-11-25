@@ -140,7 +140,7 @@ function M.body_error(text: string?, html: string?): error?
 end
 
 -- Budget the larger of JSON escaping, multipart framing, and generated MIME transfer encoding.
-function M.delivery_size(input: types.TransportRequest): integer
+function M.delivery_size(input: types.DeliveryMessage): integer
     local size = 4096 + 6 * (#input.from.address + #(input.from.name or "") + #(input.reply_to or "")
         + #input.subject + #(input.text or "") + #(input.html or ""))
     for _, field in ipairs({"to", "cc", "bcc"}) do

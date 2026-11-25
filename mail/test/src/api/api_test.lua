@@ -89,7 +89,7 @@ return {run = test.run_cases(function()
         end
         local function configure()
             configured = true
-            settings("capture", "mail@example.org")
+            settings("kickside.mail.harness:capture", "mail@example.org")
         end
         local function failed(sender, subject, recipient, at, template)
             local id = uuid.v4()
@@ -143,13 +143,12 @@ return {run = test.run_cases(function()
                     end
                 end
             end
-            test.eq(20, count)
+            test.eq(19, count)
             test.eq(13, library_count)
             local predicate = "kickside.mail.api:library_list.endpoint"
             test.eq("allow", editor.scope:evaluate(editor.actor, "access", predicate))
             test.neq("allow", sender.scope:evaluate(sender.actor, "access", predicate))
             test.eq(403, request(editor, "GET", "/delivery"))
-            test.eq(403, request(editor, "GET", "/delivery/drivers"))
             test.eq(403, request(admin, "GET", "/library"))
 
         end)
@@ -1083,36 +1082,17 @@ return {run = test.run_cases(function()
             test.eq(1, count)
         end)
 
-        test.it("refuses a malformed settings view during driver discovery", function()
+        test.it("lists the admitted transport status through the delivery endpoint", function()
             local admin = session("delivery")
-            local id = "kickside.mail.harness:first_driver"
-            local original = assert(registry.get(id))
-            local overlay = assert(registry.overlay("app.mail_api:descriptor"))
-            local changes = overlay:changes()
-            original.data.settings_view = "/not-a-tag"
-            assert(changes:update(original))
-            assert(changes:apply())
-            local status, body = request(admin, "GET", "/delivery/drivers")
-            local cleanup = assert(registry.overlay("app.mail_api:descriptor")):changes()
-            assert(cleanup:delete(id))
-            assert(cleanup:apply())
-            test.eq(400, status)
-            test.eq("invalid_driver_descriptor", body.code)
-            test.eq("settings_view", body.details.field)
-        end)
-
-        test.it("lists registered drivers through Mail with availability metadata", function()
-            local admin = session("delivery")
-            local listed = data(admin, "GET", "/delivery/drivers")
-            test.eq(3, #listed.items)
-            local driver = listed.items[1]
-            test.eq("capture", driver.id)
-            test.eq("Capture", driver.label)
+            local listed = data(admin, "GET", "/delivery").transports
+            test.eq(3, #listed)
+            local driver = listed[1]
+            test.eq("kickside.mail.harness:capture", driver.id)
+            test.eq("Capture", driver.title)
             test.eq("lucide:mail", driver.icon)
             test.not_nil(driver.description)
-            test.is_true(driver.availability.available)
-            test.is_nil(driver.settings_view)
-            test.eq(0, #driver.settings)
+            test.is_true(driver.ready)
+            test.is_true(driver.idempotent)
         end)
 
         test.it("authorizes delivery administration and sends tests only to the acting address", function()
@@ -1121,10 +1101,10 @@ return {run = test.run_cases(function()
             local sender = session("sender")
             configure()
             local status = data(admin, "GET", "/delivery")
-            test.eq("capture", status.driver.id)
+            test.eq("kickside.mail.harness:capture", status.driver.id)
             test.is_true(status.configured)
             test.is_true(status.ready)
-            test.eq("capture", status.transports[1].id)
+            test.eq("kickside.mail.harness:capture", status.transports[1].id)
             test.is_true(status.transports[1].ready)
             test.eq("mail@example.org", status.from.address)
             test.eq(403, (request(sender, "GET", "/activity")))

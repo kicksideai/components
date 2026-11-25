@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
 local client = require("client")
-local drivers = require("drivers")
+local transports = require("transports")
 local settings = require("settings")
 local config = require("config")
 local canonical_json = require("canonical_json")
@@ -78,6 +78,10 @@ end
 
 local function setup_error(issue: error): error
     local details = issue:details() or {}
+    if details.code == "driver_not_admitted" then
+        return errors.new({kind = errors.INVALID, message = "Mail delivery requires setup. Ask a mail administrator to check the delivery settings.",
+            retryable = false, details = {code = "driver_not_admitted"}})
+    end
     if details.code ~= "invalid_config" then return issue end
     return config.setup_error("Mail delivery requires setup. Ask a mail administrator to check the delivery settings.")
 end
@@ -112,9 +116,9 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     local values, settings_err = settings.mail()
     if settings_err then return nil, setup_error(settings_err) end
     local mail_settings = values :: types.Settings
-    local found, driver_err = drivers.resolve(mail_settings.driver)
+    local found, driver_err = transports.status(mail_settings.driver)
     if driver_err then return nil, setup_error(driver_err) end
-    local driver = found :: types.Driver
+    local driver = found :: types.AdmittedTransport
     if driver.max_recipients then
         local limit_err = message.recipient_bound(input, driver.max_recipients)
         if limit_err then return nil, limit_err end
@@ -122,7 +126,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     local addresses, recipient_err = recipients.resolve(input)
     if recipient_err then return nil, recipient_err end
 
-    local ready_err = drivers.check_available(driver)
+    local ready_err = config.transport_ready_error(driver)
     if ready_err then return nil, setup_error(ready_err) end
     local from, from_err = config.sender(mail_settings)
     if from_err then return nil, setup_error(from_err) end

@@ -4,6 +4,7 @@ local sql = require("sql")
 local channel = require("channel")
 local base64 = require("base64")
 local delivery = require("delivery")
+local types = require("types")
 
 local function result(id, message)
     return {provider_message_id = table.concat({
@@ -11,7 +12,7 @@ local function result(id, message)
     }, "|")}
 end
 
-local function capture(message)
+local function capture(message: types.TransportRequest)
     local behavior = message.subject:match("^Fixture ([%w_]+)$")
     if behavior then
         local db = assert(sql.get("app:db"))
@@ -21,7 +22,7 @@ local function capture(message)
         local fault = behavior:match("^http_(.+)$")
         if fault then
             local response, err = delivery.post("https://provider.example.org/messages",
-                assert(json.encode({fault = fault, attempts = attempts})), {})
+                assert(json.encode({fault = fault, attempts = attempts})), {}, message.deadline)
             if err then return nil, err end
             return delivery.message_id(response)
         end
@@ -86,5 +87,17 @@ return {
         end
         return result("second", message)
     end,
-    available = function() return {available = true} end,
+    status_first = function()
+        return {title = "First", icon = "lucide:mail", description = "First test transport.",
+            settings_ns = "kickside.mail.harness.first", ready = true, idempotent = false}
+    end,
+    status_second = function()
+        return {title = "Second", icon = "lucide:mail", description = "Second test transport.",
+            settings_ns = "kickside.mail.harness.second", ready = true, idempotent = false,
+            max_recipients = 2, max_message_bytes = 100000}
+    end,
+    status_capture = function()
+        return {title = "Capture", icon = "lucide:mail", description = "Captures rendered messages for assertions.",
+            settings_ns = "kickside.mail.harness.capture", ready = true, idempotent = true}
+    end,
 }

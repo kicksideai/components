@@ -195,7 +195,7 @@ return {run = test.run_cases(function()
             test.eq(welcome.name, created.name)
 
             configured = true
-            api_fixtures.settings("capture", "mail@example.org")
+            api_fixtures.settings("kickside.mail.harness:capture", "mail@example.org")
             local _, bad_send = editor:call(NS .. "send_test", {message = welcome.name, to = {"other@example.org"}})
             test.eq(errors.INVALID, bad_send:kind())
             local queued = ok(editor, "send_test", {message = welcome.name})

@@ -23,7 +23,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "title", "icon", "description", "settings_ns", "ready"],
+        "required": ["id", "title", "icon", "description", "settings_ns", "ready", "idempotent"],
         "properties": {
           "id": {"type": "string"},
           "title": {"type": "string"},

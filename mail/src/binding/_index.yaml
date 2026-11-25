@@ -37,7 +37,6 @@ entries:
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
         - kickside.mail.security:settings_read
-        - kickside.mail.security:settings_admin_read
   - name: library_get
     kind: function.lua
     source: *library_source
@@ -183,7 +182,7 @@ entries:
         - kickside.mail.security:site_url
         - kickside.mail.security:template_access
         - kickside.mail.security:asset_bytes
-        - kickside.mail.security:driver_dispatch
+        - kickside.mail.security:transport_calls
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
         - kickside.mail.security:outbox_db
@@ -191,6 +190,7 @@ entries:
         - kickside.mail.security:deferred_delivery
         - kickside.mail.security:job_notify
         - kickside.core.retention:notify_access
+      groups: [kickside.mail.security:transports]
   - name: mailer_resend
     kind: function.lua
     source: *mailer_source
@@ -249,7 +249,8 @@ entries:
     method: delivery_status
     imports: *mailer_imports
     security:
-      policies: [kickside.mail.security:settings_read, kickside.mail.security:settings_admin_read, kickside.mail.security:driver_dispatch]
+      policies: [kickside.mail.security:settings_read, kickside.mail.security:settings_admin_read, kickside.mail.security:transport_calls]
+      groups: [kickside.mail.security:transports]
   - name: mailer_send_delivery_test
     kind: function.lua
     source: *mailer_source

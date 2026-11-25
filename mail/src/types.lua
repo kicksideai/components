@@ -25,10 +25,10 @@ type SendRequest = {
     attachments: {AttachmentRef}?, idempotency_key: string?, origin: Origin?, sink_op: string?,
 }
 type Addresses = {to: {string}, cc: {string}?, bcc: {string}?}
-type TransportRequest = Addresses & {
+type DeliveryMessage = Addresses & {
     from: Mailbox, reply_to: string?, subject: string, html: string?, text: string?,
-    attachments: {Attachment}?, idempotency_key: string?, deadline: string?,
 }
+type TransportRequest = DeliveryMessage & {attachments: {Attachment}?, idempotency_key: string?, deadline: string}
 type TransportResult = {provider_message_id: string?}
 type SendResult = {message_id: string, status: string}
 type MessageRef = {message_id: string}
@@ -178,24 +178,18 @@ type TemplateSet = {
     release: (self: TemplateSet) -> (),
 }
 type SchemaIssue = {schema_path: string, instance_path: string}
-type Driver = {id: string, label: string, icon: string, description: string, binding: string,
-    settings_ns: string, available_func: string, settings_view: string?, max_recipients: integer?, max_message_bytes: integer?,
-    idempotent: boolean?}
-type Availability = {available: boolean, code: string?, reason: string?}
-type DriverSetting = {namespace: string, key: string, value_type: string, is_secret: boolean, has_value: boolean?,
-    value: unknown, default: unknown, title: string?, description: string, order: number?, editable: boolean, schema: unknown}
-type DriverSummary = {id: string, label: string, icon: string, description: string, settings_ns: string,
-    settings_view: string?, availability: Availability, settings: {DriverSetting}}
 type Settings = {driver: string, from_address: string, from_name: string, reply_to: string, log_retention_days: unknown?}
 type ApiSettings = {api_key: string?}
 type SettingsResult = {success: boolean, values: Record?, overridden: {string}?, error: string?}
 type SettingsContract = {get_namespace: (self: SettingsContract, input: {namespace: string}) -> (SettingsResult?, error?)}
 type SettingInput = {value: unknown}
 type SettingValidation = {valid: boolean, error: string?}
-type TransportStatus = {id: string, title: string, icon: string, description: string, settings_ns: string,
-    ready: boolean, code: string?, reason: string?, max_recipients: integer?, max_message_bytes: integer?, idempotent: boolean?}
+type TransportReadiness = {ready: boolean, code: string?, reason: string?}
+type TransportStatus = TransportReadiness & {title: string, icon: string, description: string, settings_ns: string,
+    max_recipients: integer?, max_message_bytes: integer?, idempotent: boolean}
+type AdmittedTransport = TransportStatus & {id: string}
 type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, ready: boolean,
-    transports: {TransportStatus}, from: Mailbox?, reply_to: string?, code: string?, reason: string?}
+    transports: {AdmittedTransport}, from: Mailbox?, reply_to: string?, code: string?, reason: string?}
 type Mailer = {
     send: (self: Mailer, input: SendRequest) -> (SendResult?, error?),
     resend: (self: Mailer, message_id: string) -> (SendResult?, error?),
@@ -207,7 +201,10 @@ type Mailer = {
     delivery_status: (self: Mailer) -> (DeliveryStatus?, error?),
     send_delivery_test: (self: Mailer, input: Record) -> (SendResult?, error?),
 }
-type Transport = {send: (self: Transport, input: TransportRequest) -> (TransportResult?, error?)}
+type Transport = {
+    send: (self: Transport, input: TransportRequest) -> (TransportResult?, error?),
+    status: (self: Transport) -> (TransportStatus?, error?),
+}
 type UserResult = {ok: boolean, user: {user_id: string, email: string}?, error: string?}
 type Users = {get_user: (self: Users, input: {identifier: string}) -> (UserResult?, error?)}
 type AttachmentInput = {refs: {AttachmentRef}?, library_assets: {AssetRef}?, message_bytes: integer, max_message_bytes: integer?}
@@ -276,15 +273,14 @@ return {
     LibraryRow = LibraryRow, LibraryWrite = LibraryWrite, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetReadRequest = AssetReadRequest, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
-    TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
+    DeliveryMessage = DeliveryMessage, TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
     PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, PreviewWarning = PreviewWarning, Rendered = Rendered,
     Appearance = Appearance, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,
     ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, SchemaIssue = SchemaIssue,
-    Driver = Driver, Availability = Availability, DriverSetting = DriverSetting, DriverSummary = DriverSummary,
     Settings = Settings, ApiSettings = ApiSettings,
     SettingsResult = SettingsResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
-    Mailer = Mailer, Transport = Transport, TransportStatus = TransportStatus, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
+    Mailer = Mailer, Transport = Transport, TransportStatus = TransportStatus, TransportReadiness = TransportReadiness, AdmittedTransport = AdmittedTransport, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
     ContentFailure = ContentFailure, ContentProvider = ContentProvider, SinkRequest = SinkRequest,
     SinkResult = SinkResult, SinkFailure = SinkFailure, WritableSink = WritableSink, Realtime = Realtime, DeliveryStatus = DeliveryStatus, TestSend = TestSend, HttpAuth = HttpAuth, HttpResponse = HttpResponse,
 }

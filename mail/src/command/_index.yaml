@@ -131,7 +131,7 @@ entries:
       client: kickside.mail:client
       settings: kickside.mail.read:settings
       config: kickside.mail.domain:config
-      drivers: kickside.mail:drivers_registry
+      transports: kickside.mail.read:transports
       message: kickside.mail.domain:message
       live_preview: kickside.mail.read:preview
       attachments: kickside.mail.command:attachments

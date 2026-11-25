@@ -1,14 +1,15 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local attachments = require("attachments")
 local delivery = require("delivery")
-local drivers = require("drivers")
+local transports = require("transports")
+local config = require("config")
 local identity = require("identity")
 local message = require("message")
 local outbox = require("outbox")
 local settings = require("settings")
 local types = require("types")
 
-local function prepare(row: types.MessageRow, driver: types.Driver, deadline: string): (types.TransportRequest?, error?)
+local function prepare(row: types.MessageRow, driver: types.TransportStatus, deadline: string): (types.TransportRequest?, error?)
     local content, err = delivery.content(row)
     if err then return nil, err end
     local payload = content :: types.DeliveryContent
@@ -34,16 +35,16 @@ local function prepare(row: types.MessageRow, driver: types.Driver, deadline: st
     return request :: types.TransportRequest?, nil
 end
 
-local function send(row: types.MessageRow, driver: types.Driver, lease: types.Lease, deadline: string):
+local function send(row: types.MessageRow, driver: types.TransportStatus, transport: types.Transport, lease: types.Lease, deadline: string):
     (types.TransportResult?, error?, boolean)
+    local ready_err = config.transport_ready_error(driver)
+    if ready_err then return nil, ready_err, true end
     local request, prepare_err = prepare(row, driver, deadline)
     if prepare_err then return nil, prepare_err, true end
-    local transport, open_err = drivers.transport(driver)
-    if open_err then return nil, open_err, true end
     local inactive = outbox.check_lease(row.job_id, lease)
     if inactive then return nil, inactive, true end
-    local delivered, err = (transport :: types.Transport):send(request :: types.TransportRequest)
-    return delivered, err, driver.idempotent == true
+    local delivered, err = transport:send(request :: types.TransportRequest)
+    return delivered, err, driver.idempotent
 end
 
 local function run(input: types.JobInput): (types.Record?, error?)
@@ -58,9 +59,11 @@ local function run(input: types.JobInput): (types.Record?, error?)
     local delivery_err: error?
     local safe_to_retry = true
     if row.driver_id or not settings_err then
-        local driver
-        driver, delivery_err = drivers.resolve(row.driver_id)
-        if driver then delivered, delivery_err, safe_to_retry = send(row, driver, lease, job.deadline) end
+        local driver, transport
+        driver, delivery_err, transport = transports.status(row.driver_id)
+        if driver then
+            delivered, delivery_err, safe_to_retry = send(row, driver, transport :: types.Transport, lease, job.deadline)
+        end
     else
         delivery_err = settings_err
     end

@@ -735,8 +735,13 @@ def foreign_private(m, ref, peers, key=None):
         return None
     owner = owning_peer(ns, peers)
     if owner is not None:
+        entry = owner.by_id.get(ref)
+        if ref in {"kickside.mail.driver:config", "kickside.mail.driver:http"} and entry and entry.kind == "library.lua":
+            # MAP-mail v2 exposes these helpers to transport providers.
+            meta = entry.data.get("meta")
+            if not isinstance(meta, dict) or not meta.get("private"):
+                return None
         if ns == owner.root_ns:
-            entry = owner.by_id.get(ref)
             if name in PUBLIC_NAMES or (entry and entry.kind == "contract.definition"):
                 return None
             return f"{owner.name} root entry {ref} is not its contract, client or types"

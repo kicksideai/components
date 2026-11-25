@@ -13,6 +13,8 @@ local failures = {
 return {
     request = function(method, url, options)
         assert(method == "POST" and url == "https://provider.example.org/messages")
+        local timeout = assert(tonumber(options.timeout:match("^(%d+)ns$")))
+        assert(timeout > 0 and timeout <= 3000000000)
         local input = assert(json.decode(options.body))
         if input.fault == "denied" then
             return nil, errors.new({kind = errors.PERMISSION_DENIED, retryable = false,

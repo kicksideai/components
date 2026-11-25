@@ -8,7 +8,7 @@ local error_envelope = require("error_envelope")
 
 local redact = require("redact")
 
-local M = {clean_detail = redact.clean_detail, response_detail = redact.response_detail}
+local M = {response_detail = redact.response_detail}
 
 local function header(headers: {[string]: string | {string}}, key: string): string?
     for name, value in pairs(headers) do
@@ -73,9 +73,23 @@ function M.status_error(status: number, rejected_status: number, retry_after_ms:
     return M.failure(errors.INTERNAL, "provider_rejected", "The mail service returned an unexpected status", false, status, nil, provider_detail)
 end
 
-function M.post(url: string, body: string, headers: {[string]: string}, auth: types.HttpAuth?): (types.HttpResponse?, error?)
+function M.bearer_json(key: string): {[string]: string}
+    return {Authorization = "Bearer " .. key, ["Content-Type"] = "application/json"}
+end
+
+function M.post(url: string, body: string, headers: {[string]: string}, deadline: string,
+    auth: types.HttpAuth?): (types.HttpResponse?, error?)
+    local expires = type(deadline) == "string" and time.parse(time.RFC3339, deadline)
+    if not expires then
+        return nil, M.failure(errors.INVALID, "delivery_deadline_invalid", "The delivery deadline is invalid", false)
+    end
+    local remaining = expires:sub(time.now()):nanoseconds()
+    if remaining <= 0 then
+        return nil, M.failure(errors.UNAVAILABLE, "delivery_deadline_exceeded", "The delivery deadline has elapsed", true)
+    end
     local response, err = http_client.request("POST", url, {
-        auth = auth, headers = headers, body = body, timeout = "20s", max_response_body = 64 * 1024,
+        auth = auth, headers = headers, body = body, timeout = string.format("%dns", math.min(remaining, 20 * time.SECOND)),
+        max_response_body = 64 * 1024,
     })
     if err then
         if not response and err:retryable() then

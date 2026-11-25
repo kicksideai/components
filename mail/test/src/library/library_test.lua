@@ -300,7 +300,7 @@ return {run = test.run_cases(function()
             local actor = assert(security.new_actor("archive-fixture-sender", {security_groups = {"app:mail_senders"}}))
             local scope = assert(security.named_scope("wippy.security:process"))
             local sender = assert(funcs.new():with_actor(actor):with_scope(scope))
-            api_fixtures.settings("capture", "mail@example.org")
+            api_fixtures.settings("kickside.mail.harness:capture", "mail@example.org")
             local sent, send_err = fixtures.mailer(sender, "send",
                 {template = item.name, vars = {}, to = {"reader@example.org"}})
             api_fixtures.settings("", "")

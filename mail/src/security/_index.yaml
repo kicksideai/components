@@ -101,7 +101,7 @@ entries:
       title: Administer mail delivery
       surface: kickside.mail
       intent: settings_access
-      includes: [kickside.mail.security:log_admin, kickside.mail.security:delivery_calls, kickside.mail.security:delivery_endpoints]
+      includes: [kickside.mail.security:log_admin, kickside.mail.security:delivery_endpoints]
     groups: []
     policy:
       resources:
@@ -116,19 +116,20 @@ entries:
         - kickside.mail.settings:validate_from_name
       actions: [registry.get, registry.find, funcs.call]
       effect: allow
-  - name: driver_discovery
+  - name: transports_base
     kind: security.policy
     meta: { private: true }
+    groups: [kickside.mail.security:transports]
     policy:
-      resources: [kickside.mail:definition]
-      actions: [registry.get, registry.find]
+      resources: [kickside.mail:transport]
+      actions: [contract.get, contract.implementations]
       effect: allow
-  - name: driver_dispatch
+  - name: transport_calls
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail:transport, send]
-      actions: [registry.get, registry.find, contract.get, contract.open, contract.call, contract.implementations, contract.security, funcs.call, funcs.security]
+      resources: [kickside.mail:transport, send, status]
+      actions: [contract.get, contract.implementations, contract.call]
       effect: allow
   - name: settings_read
     kind: security.policy
@@ -428,7 +429,6 @@ entries:
         - kickside.mail.api:activity_list.endpoint
         - kickside.mail.api:activity_get.endpoint
         - kickside.mail.api:activity_resend.endpoint
-        - kickside.mail.api:delivery_drivers.endpoint
         - kickside.mail.api:delivery_status.endpoint
         - kickside.mail.api:delivery_send_test.endpoint
       actions: [registry.get]
@@ -463,24 +463,9 @@ entries:
         - kickside.mail.api:activity_list.endpoint
         - kickside.mail.api:activity_get.endpoint
         - kickside.mail.api:activity_resend.endpoint
-        - kickside.mail.api:delivery_drivers.endpoint
         - kickside.mail.api:delivery_status.endpoint
         - kickside.mail.api:delivery_send_test.endpoint
       actions: [access]
-      effect: allow
-  - name: delivery_calls
-    kind: security.policy
-    meta: { private: true }
-    policy:
-      resources: [kickside.mail.settings:delivery_drivers]
-      actions: [funcs.call, registry.get]
-      effect: allow
-  - name: driver_settings_call
-    kind: security.policy
-    meta: { private: true }
-    policy:
-      resources: [kickside.mail.read:driver_settings]
-      actions: [registry.get, funcs.call, funcs.security]
       effect: allow
   - name: realtime_calls
     kind: security.policy

@@ -246,19 +246,6 @@ entries:
     method: POST
     func: activity_resend
     path: /mail/activity/{id}/resend
-  - name: delivery_drivers
-    kind: function.lua
-    source: file://delivery_drivers.lua
-    method: handler
-    modules: [funcs]
-    imports:
-      request: kickside.mail.api:request
-      client: kickside.mail:client
-  - name: delivery_drivers.endpoint
-    kind: http.endpoint
-    method: GET
-    func: delivery_drivers
-    path: /mail/delivery/drivers
   - name: delivery_status
     kind: function.lua
     source: file://delivery_status.lua

@@ -92,29 +92,24 @@ entries:
       jet: kickside.mail.domain:jet
       render: kickside.mail.render:render
       globals: kickside.mail.render:globals
+  - name: transports
+    kind: library.lua
+    meta: {private: true}
+    source: file://transports.lua
+    modules: [contract]
+    imports:
+      types: kickside.mail:types
+      config: kickside.mail.domain:config
   - name: delivery
     kind: library.lua
     meta: {private: true}
-    source: &delivery_source file://delivery.lua
-    imports: &delivery_imports
+    source: file://delivery.lua
+    imports:
       types: kickside.mail:types
       database: kickside.mail.persist:db
       message_reader: kickside.mail.persist:message_reader
       asset_file_repo: kickside.mail.persist:asset_file_repo
       settings: kickside.mail.read:settings
-      drivers: kickside.mail:drivers_registry
+      transports: kickside.mail.read:transports
       config: kickside.mail.domain:config
-      settings_types: kickside.settings:settings_types
-      settings_defs: kickside.settings:settings_defs
       client: kickside.mail:client
-  - name: driver_settings
-    kind: function.lua
-    meta: {private: true}
-    source: *delivery_source
-    method: driver_settings
-    imports: *delivery_imports
-    security:
-      policies:
-        - kickside.mail.security:settings_read
-        - kickside.mail.security:settings_admin_read
-        - kickside.settings:reader_registry

@@ -10,34 +10,48 @@ function M.setup_error(text: string, reason_code: string?, reason: string?): err
         details = {code = "invalid_config", reason_code = reason_code, reason = reason}})
 end
 
-local function valid_key(value: unknown): boolean
-    if type(value) ~= "string" or not message.header_length(value) then return false end
-    for _, codepoint in utf8.codes(value) do
-        if codepoint == 0x20 or codepoint == 0xA0 or codepoint == 0x1680
-            or (codepoint >= 0x2000 and codepoint <= 0x200A)
-            or codepoint == 0x202F or codepoint == 0x205F or codepoint == 0x3000 then
-            return false
-        end
-    end
-    return true
+function M.driver_not_admitted(): error
+    return errors.new({kind = errors.INVALID, message = "The active mail driver is not admitted", retryable = false,
+        details = {code = "driver_not_admitted"}})
 end
 
-function M.descriptor_error(values: types.Record, id: string): error?
+local function invalid_status(id: string, field: string): error
+    return errors.new({kind = errors.INTERNAL, retryable = false,
+        message = "Mail transport " .. id .. " returned an invalid " .. field,
+        details = {code = "invalid_transport_status", field = field}})
+end
+
+local function nonempty(value: unknown): boolean
+    return type(value) == "string" and value:find("%S") ~= nil
+end
+
+function M.transport_status_error(status: unknown, id: string): error?
+    if type(status) ~= "table" then return invalid_status(id, "status") end
+    local fields = status :: types.Record
+    for _, field in ipairs({"title", "icon", "description", "settings_ns"}) do
+        if not nonempty(fields[field]) then return invalid_status(id, field) end
+    end
+    for _, field in ipairs({"ready", "idempotent"}) do
+        if type(fields[field]) ~= "boolean" then return invalid_status(id, field) end
+    end
     for _, field in ipairs(LIMITS) do
-        local value = values[field]
+        local value = fields[field]
         if value ~= nil and (type(value) ~= "number" or value < 1 or value % 1 ~= 0) then
-            return errors.new({kind = errors.INVALID, retryable = false,
-                message = "Mail driver " .. id .. " requires a positive integer for " .. field,
-                details = {code = "invalid_driver_descriptor"}})
+            return invalid_status(id, field)
         end
     end
+    local code = fields.code
+    if code ~= nil and (type(code) ~= "string" or not code:match("^[a-z][a-z0-9_]*$")) then
+        return invalid_status(id, "code")
+    end
+    if fields.reason ~= nil and not nonempty(fields.reason) then return invalid_status(id, "reason") end
     return nil
 end
 
-function M.api_key_issue(value: unknown): string?
-    if value == nil or value == "" then return "api_key_required" end
-    if not valid_key(value) then return "api_key_invalid" end
-    return nil
+function M.transport_ready_error(status: types.TransportStatus): error?
+    if status.ready then return nil end
+    return M.setup_error(status.reason or ("Complete the " .. status.title .. " settings to send mail."),
+        status.code or "driver_not_configured")
 end
 
 function M.sender(config: types.Settings): (types.Mailbox?, error?)

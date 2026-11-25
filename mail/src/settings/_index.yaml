@@ -8,7 +8,7 @@ entries:
     namespace: kickside.mail
     key: driver
     title: Delivery driver
-    description: ID of the installed driver that delivers mail.
+    description: Exact transport binding ID of the admitted driver.
     scope: global
     value_type: string
     default: ""
@@ -67,18 +67,12 @@ entries:
     imports: &validation_imports
       types: kickside.mail:types
       message: kickside.mail.domain:message
-      drivers: kickside.mail:drivers_registry
+      transports: kickside.mail.read:transports
       policy: kickside.mail.domain:policy
-      config: kickside.mail.domain:config
   - name: validate_from_name
     kind: function.lua
     source: file://validate.lua
     method: from_name
-    imports: *validation_imports
-  - name: validate_api_key
-    kind: function.lua
-    source: file://validate.lua
-    method: api_key
     imports: *validation_imports
   - name: validate_driver
     kind: function.lua
@@ -86,23 +80,10 @@ entries:
     method: driver
     imports: *validation_imports
     security:
-      policies: [kickside.mail.security:driver_discovery]
+      policies: [kickside.mail.security:transport_calls]
+      groups: [kickside.mail.security:transports]
   - name: validate_retention
     kind: function.lua
     source: file://validate.lua
     method: retention
     imports: *validation_imports
-  - name: delivery_drivers
-    kind: function.lua
-    source: file://drivers.lua
-    method: list
-    modules: [funcs]
-    imports:
-      types: kickside.mail:types
-      drivers: kickside.mail:drivers_registry
-      client: kickside.mail:client
-    security:
-      policies:
-        - kickside.mail.security:driver_discovery
-        - kickside.mail.security:driver_dispatch
-        - kickside.mail.security:driver_settings_call

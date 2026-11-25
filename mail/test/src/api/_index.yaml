@@ -83,7 +83,6 @@ entries:
       - kickside.mail.security:driver_admin
       - kickside.mail.security:log_admin
       - kickside.mail.security:delivery_endpoints
-      - kickside.mail.security:delivery_calls
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints
   - name: delivery_sender
@@ -96,7 +95,6 @@ entries:
       - kickside.mail.security:driver_admin
       - kickside.mail.security:log_admin
       - kickside.mail.security:delivery_endpoints
-      - kickside.mail.security:delivery_calls
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints
       - kickside.mail.security:send_access

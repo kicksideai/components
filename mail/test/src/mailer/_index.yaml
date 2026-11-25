@@ -2,149 +2,106 @@
 version: "1.0"
 namespace: kickside.mail.harness
 entries:
-  - name: first_driver
-    kind: registry.entry
-    meta: { type: "kickside.mail:driver" }
-    id: first
-    label: First
-    icon: lucide:mail
-    description: First test transport.
-    binding: kickside.mail.harness:first
-    settings_ns: kickside.mail.harness.first
-    available_func: kickside.mail.harness:available
-  - name: second_driver
-    kind: registry.entry
-    meta: { type: "kickside.mail:driver" }
-    id: second
-    idempotent: false
-    max_recipients: 2
-    max_message_bytes: 100000
-    label: Second
-    icon: lucide:mail
-    description: Second test transport.
-    binding: kickside.mail.harness:second
-    settings_ns: kickside.mail.harness.second
-    available_func: kickside.mail.harness:available
-  - name: capture_driver
-    kind: registry.entry
-    meta: { type: "kickside.mail:driver" }
-    id: capture
-    idempotent: true
-    label: Capture
-    icon: lucide:mail
-    description: Return the rendered message and recipient fields for assertions.
-    binding: kickside.mail.harness:capture
-    settings_ns: kickside.mail.harness.capture
-    available_func: kickside.mail.harness:available
-  - name: first_descriptor_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:first_driver
-    targets:
-      - { entry: kickside.mail.security:driver_discovery, path: ".policy.resources +=" }
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: first_binding_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:first
-    targets:
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: first_send_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:send_first
-    targets:
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: second_descriptor_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:second_driver
-    targets:
-      - { entry: kickside.mail.security:driver_discovery, path: ".policy.resources +=" }
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: second_binding_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:second
-    targets:
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: second_send_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:send_second
-    targets:
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: capture_descriptor_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:capture_driver
-    targets:
-      - { entry: kickside.mail.security:driver_discovery, path: ".policy.resources +=" }
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: capture_binding_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:capture
-    targets:
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: capture_send_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:send_capture
-    targets:
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: unregistered_driver
-    kind: registry.entry
-    meta: { type: "kickside.mail:driver" }
-    id: unregistered
-    label: Unregistered
-    icon: lucide:mail
-    description: A descriptor without delivery authorization.
-    binding: kickside.mail.harness:first
-    settings_ns: kickside.mail.harness.first
-    available_func: kickside.mail.harness:available
-  - name: capture
+  - name: admitted_open
+    kind: security.policy
+    groups: [kickside.mail.security:transports]
+    policy:
+      resources: [kickside.mail.harness:admitted, kickside.mail.harness:second, kickside.mail.harness:capture]
+      actions: [contract.open]
+      effect: allow
+  - name: admitted
     kind: contract.binding
     contracts:
       - contract: kickside.mail:transport
-        methods: { send: "kickside.mail.harness:send_capture" }
-  - name: send_capture
-    kind: function.lua
-    source: file://transport.lua
-    method: capture
-    modules: [json, sql, channel, base64]
-    imports: &transport_imports
-      delivery: kickside.mail.service:delivery
-    security:
-      policies: [kickside.mail.harness:fixture_db]
-  - name: http_client
-    kind: library.lua
-    source: file://http_client.lua
-    modules: [json]
-  - name: first
-    kind: contract.binding
-    contracts:
-      - contract: kickside.mail:transport
-        methods: { send: "kickside.mail.harness:send_first" }
+        methods: {send: kickside.mail.harness:send_first, status: kickside.mail.harness:status_first}
   - name: second
     kind: contract.binding
     contracts:
       - contract: kickside.mail:transport
-        methods: { send: "kickside.mail.harness:send_second" }
+        methods: {send: kickside.mail.harness:send_second, status: kickside.mail.harness:status_second}
+  - name: capture
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:transport
+        methods: {send: kickside.mail.harness:send_capture, status: kickside.mail.harness:status_capture}
+  - name: refused
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:transport
+        methods: {send: kickside.mail.harness:send_first, status: kickside.mail.harness:status_first}
   - name: send_first
     kind: function.lua
     source: file://transport.lua
     method: first
-    modules: [json, sql, channel, base64]
-    imports: *transport_imports
+    modules: &transport_modules [json, sql, channel, base64]
+    imports: &transport_imports
+      delivery: kickside.mail.driver:http
+      types: kickside.mail:types
   - name: send_second
     kind: function.lua
     source: file://transport.lua
     method: second
-    modules: [json, sql, channel, base64]
+    modules: *transport_modules
     imports: *transport_imports
-  - name: available_grant
-    kind: ns.requirement
-    default: kickside.mail.harness:available
-    targets:
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: available
+  - name: send_capture
     kind: function.lua
     source: file://transport.lua
-    method: available
-    modules: [json, sql, channel, base64]
+    method: capture
+    modules: *transport_modules
     imports: *transport_imports
+    security:
+      policies: [kickside.mail.harness:fixture_db]
+  - name: status_first
+    kind: function.lua
+    source: file://transport.lua
+    method: status_first
+    modules: *transport_modules
+    imports: *transport_imports
+  - name: status_second
+    kind: function.lua
+    source: file://transport.lua
+    method: status_second
+    modules: *transport_modules
+    imports: *transport_imports
+  - name: status_capture
+    kind: function.lua
+    source: file://transport.lua
+    method: status_capture
+    modules: *transport_modules
+    imports: *transport_imports
+  - name: http_client
+    kind: library.lua
+    source: file://http_client.lua
+    modules: [json]
+  - name: transport_probe_call
+    kind: security.policy
+    policy:
+      resources: [kickside.mail.harness:transport_probe]
+      actions: [funcs.call]
+      effect: allow
+  - name: transport_probe_contract
+    kind: security.policy
+    policy:
+      resources: [kickside.mail:transport]
+      actions: [contract.get, contract.implementations]
+      effect: allow
+  - name: transport_probe
+    kind: function.lua
+    source: file://transports_test.lua
+    method: probe
+    modules: [contract, funcs, registry, security]
+    imports:
+      test: wippy.test:test
+    security:
+      policies: [kickside.mail.harness:transport_probe_contract]
+  - name: transports_test
+    kind: function.lua
+    meta: {type: test, suite: mail_transports}
+    source: file://transports_test.lua
+    method: run
+    modules: [contract, funcs, registry, security]
+    imports:
+      test: wippy.test:test
   - name: probe
     kind: function.lua
     source: file://mailer_test.lua

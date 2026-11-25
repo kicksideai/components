@@ -203,7 +203,7 @@ local run = test.run_cases(function()
             test.eq("mail-library-sample-mark", next(preview.inline_assets))
             test.is_nil(next(preview.inline_assets, "mail-library-sample-mark"))
             configured = true
-            settings.settings("capture", "mail@example.org")
+            settings.settings("kickside.mail.harness:capture", "mail@example.org")
             local _, sender = setup_actor({"app:mail_senders"})
             local sent = assert(fixtures.mailer(sender, "send", {template = msg.name,
                 vars = {}, to = {"reader@example.org"}}))
@@ -312,7 +312,7 @@ local run = test.run_cases(function()
 
         test.it("counts adopted inline bytes against the driver at admission", function()
             configured = true
-            settings.settings("second", "mail@example.org")
+            settings.settings("kickside.mail.harness:second", "mail@example.org")
             local original = call("get", {kind = "asset", name = "logo"})
             owned[1] = original
             local request = {template = "notice", vars = {subject = "Asset size", message = "Ready"}, to = {"reader@example.org"}}
@@ -338,7 +338,7 @@ local run = test.run_cases(function()
 
         test.it("rejects an empty completed upload at send admission", function()
             configured = true
-            settings.settings("capture", "mail@example.org")
+            settings.settings("kickside.mail.harness:capture", "mail@example.org")
             local empty = upload("text/plain", "x")
             local db = assert(sql.get("app:db"))
             assert(db:execute("UPDATE kickside_uploads SET size=0 WHERE uuid=$1", {empty}))
@@ -395,7 +395,7 @@ local run = test.run_cases(function()
             owned[2] = message
             local template = call("create", message)
             configured = true
-            settings.settings("first", "mail@example.org")
+            settings.settings("kickside.mail.harness:admitted", "mail@example.org")
             local _, sender = setup_actor({"app:mail_senders"})
             local denied = assert(fixtures.mailer(sender, "send", {template = message.name,
                 vars = {}, to = {"reader@example.org"}}))
