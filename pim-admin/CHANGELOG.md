@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.26](https://github.com/kicksideai/components/compare/pim-admin-v0.1.25...pim-admin-v0.1.26) (2026-11-25)
+
+
+### Bug Fixes
+
+* **pim-admin:** replay catalog creation retries ([#457](https://github.com/kicksideai/components/issues/457)) ([6d386a8](https://github.com/kicksideai/components/commit/6d386a8f3d5147dd5ff23edab514565687100d59))
+
 ## [0.1.25](https://github.com/kicksideai/components/compare/pim-admin-v0.1.24...pim-admin-v0.1.25) (2026-11-24)
 
 
