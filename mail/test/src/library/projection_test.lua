@@ -27,13 +27,7 @@ end
 
 local function editor(id)
     local actor = assert(security.new_actor(id, {user_id = id, security_groups = {"app:mail_editors"}}))
-    local policy = assert(security.policy("kickside.mail.security:library_threads"))
-    local database = assert(security.policy("app:member_database"))
-    local component = assert(security.policy("kickside.mail.security:library_component_read"))
-    local registry = assert(security.policy("kickside.mail.security:library_component_registry"))
-    local context = assert(security.policy("app.mail_library:projection_editor_context"))
-    local notifications = assert(security.policy("app.mail_library:projection_editor_notifications"))
-    local scope = assert(security.new_scope({policy, database, component, registry, context, notifications}))
+    local scope = assert(security.named_scope("app.mail_library:projection_editor"))
     local definition = assert(contract.get("kickside.core:threads"))
     return assert(definition:with_actor(actor):with_scope(scope):open())
 end

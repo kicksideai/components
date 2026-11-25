@@ -4,6 +4,17 @@ local test = require("test")
 local resource = require("resource")
 
 local function cases()
+    test.it("mounts the publication fixture through Mail's declared library requirement", function()
+        local adapter = assert(registry.get("kickside.mail:live_registry"))
+        test.eq("ns.requirement", adapter.kind)
+        test.eq("kickside.mail.render:live", adapter.data.default)
+        local publisher = assert(registry.get("kickside.mail.command:live"))
+        test.eq("app.mail_library:projection_fault", publisher.data.imports.live)
+        for _, id in ipairs(assert(registry.get("kickside.mail.jobs:library_sync")).data.security.policies) do
+            test.is_nil(id:match("^app[.:]"), id)
+        end
+    end)
+
     test.it("provisions library editors solely through the installed host grant", function()
         local binding = assert(registry.get("kickside.mail.binding:library"))
         local grants = {}

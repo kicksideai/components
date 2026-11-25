@@ -68,15 +68,6 @@ entries:
       resources: [app.mail_library:invoke, app.mail_library:foreign_list, app.mail_library:invoke_mailer]
       actions: [funcs.call]
       effect: allow
-  - name: publication_failure
-    kind: registry.entry
-    enabled: false
-  - name: publication_fault_read
-    kind: security.policy
-    policy:
-      resources: [app.mail_library:publication_failure]
-      actions: [registry.get]
-      effect: allow
   - name: library_test
     kind: function.lua
     meta: { type: test, suite: mail_library }
@@ -160,7 +151,7 @@ entries:
   - name: projection_fault
     kind: library.lua
     source: file://projection_fault.lua
-    modules: [registry, time]
+    modules: [time]
     imports:
       live: kickside.mail.render:live
       database: kickside.mail.persist:db
@@ -205,6 +196,22 @@ entries:
       originals: kickside.mail.render:originals
       autoinit: kickside.component:autoinit
       test: wippy.test:test
+  - name: projection_editor
+    kind: security.scope
+  - name: projection_editor_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_library:projection_editor
+    groups: [app:user]
+    policies:
+      - kickside.core.jobs.security:module_access
+      - kickside.core.security:module_access
+      - kickside.component.security:module_access
+      - kickside.mail.security:library_threads
+      - kickside.mail.security:library_component_read
+      - kickside.mail.security:library_component_registry
+      - app.mail_library:projection_editor_context
+      - app.mail_library:projection_editor_notifications
   - name: projection_editor_context
     kind: security.policy
     policy:
@@ -214,7 +221,7 @@ entries:
   - name: projection_editor_notifications
     kind: security.policy
     policy:
-      resources: [kickside.core.retention:notify, kickside.core.threads:emit_update, kickside.core.threads:cursor_waiter_signal, kickside.core.jobs.persist:pool_nudge]
+      resources: [kickside.core.retention:notify, kickside.core.threads:emit_update, kickside.core.threads:cursor_waiter_signal]
       actions: [funcs.call]
       effect: allow
   - name: binding_declaration_test

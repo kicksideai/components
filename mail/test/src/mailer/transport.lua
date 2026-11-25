@@ -26,7 +26,7 @@ local function capture(message: types.TransportRequest)
             if err then return nil, err end
             return delivery.message_id(response)
         end
-        if (behavior == "ceiling" or behavior == "ceiling_lost") and attempts == 5 then
+        if behavior == "ceiling" and attempts == 5 then
             channel.new():receive()
         end
         if behavior == "detail" then

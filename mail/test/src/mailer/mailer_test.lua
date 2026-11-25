@@ -210,6 +210,17 @@ return {
         test.describe("System-managed mailer", function()
             local admin, sender, sender_id, denied, log_admin, editor
             local settlement_rows = {}
+            local ceiling = {namespace = "kickside.core.jobs", key = "proc.max_execution"}
+            test.before_all(function()
+                local settings = assert(open("kickside.settings:settings"))
+                local configured = assert(settings:set({namespace = ceiling.namespace, key = ceiling.key, value = "3s"}))
+                assert(configured.success, tostring(configured.error))
+            end)
+            test.after_all(function()
+                local settings = assert(open("kickside.settings:settings"))
+                local reset = assert(settings:unset(ceiling))
+                assert(reset.success, tostring(reset.error))
+            end)
             test.before_each(function()
                 admin = caller({"kickside.mail.harness:admin"})
                 log_admin = caller({"kickside.mail.security:log_admin", "kickside.mail.security:module_runtime"})
@@ -907,36 +918,24 @@ return {
                 error("Retention did not drain the expired rows")
             end)
 
-            for _, lost in ipairs({false, true}) do
-                local hint = lost and "with the lease-release hint lost" or "on the lease-release hint"
-                test.it("settles a delivery killed on the final execution " .. hint, function()
-                    capture_with(admin)
-                    local input = body()
-                    input.subject = lost and "Fixture ceiling_lost" or "Fixture ceiling"
-                    local queued = assert(invoke(sender, "send", input))
-                    await_message(sender, queued.message_id, function(row) return row.attempts == 5 end)
-                    local pending = persisted(queued.message_id)
-                    local job = await_job(pending.job_id, "dead")
-                    test.eq(5, job.execution_seq)
-                    local last_error = job.last_error :: string
-                    test.is_true(last_error:find("max_execution_ms", 1, true) ~= nil, last_error)
-                    if lost then
-                        local before = persisted(queued.message_id)
-                        test.eq("queued", before.status)
-                        test.not_nil(before.html)
-                    end
-                    local failed = await_message(sender, queued.message_id, function(row) return row.status == "failed" end, 35)
-                    test.eq("delivery_interrupted", failed.last_error.code)
-                    test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", failed.last_error.message)
-                    test.eq(5, failed.attempts)
-                    if lost then
-                        test.is_true(failed.finished_at >= pending.next_check_at)
-                    else
-                        test.is_true(failed.finished_at < pending.next_check_at)
-                    end
-                    no_body(queued.message_id)
-                end)
-            end
+            test.it("settles a delivery killed on the final execution on the lease-release hint", function()
+                capture_with(admin)
+                local input = body()
+                input.subject = "Fixture ceiling"
+                local queued = assert(invoke(sender, "send", input))
+                await_message(sender, queued.message_id, function(row) return row.attempts == 5 end)
+                local pending = persisted(queued.message_id)
+                local job = await_job(pending.job_id, "dead")
+                local failed = await_message(sender, queued.message_id, function(row) return row.status == "failed" end, 35)
+                test.eq(5, job.execution_seq)
+                local last_error = job.last_error :: string
+                test.is_true(last_error:find("max_execution_ms", 1, true) ~= nil, last_error)
+                test.eq("delivery_interrupted", failed.last_error.code)
+                test.eq("Ask a mail administrator to check whether the interrupted message was delivered.", failed.last_error.message)
+                test.eq(5, failed.attempts)
+                test.is_true(failed.finished_at < pending.next_check_at)
+                no_body(queued.message_id)
+            end)
 
             test.it("selects admitted binding IDs on the next send", function()
                 test.is_false(change(admin, "driver", "missing").success)

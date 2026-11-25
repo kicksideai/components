@@ -898,16 +898,7 @@ return {run = test.run_cases(function()
 
         local function seed_history(editor, item, invalid_html)
             local actor = assert(security.new_actor(editor.id, {user_id = editor.id, security_groups = {"app:mail_editors"}}))
-            local scope = assert(security.new_scope({
-                assert(security.policy("kickside.mail.security:library_threads")),
-                assert(security.policy("app:member_database")),
-                assert(security.policy("kickside.mail.security:library_component_read")),
-                assert(security.policy("kickside.mail.security:library_component_registry")),
-                assert(security.policy("kickside.core.security:module_access")),
-                assert(security.policy("kickside.component.security:module_access")),
-                assert(security.policy("app.mail_library:projection_editor_context")),
-                assert(security.policy("app.mail_library:projection_editor_notifications")),
-            }))
+            local scope = assert(security.named_scope("app.mail_library:projection_editor"))
             local definition = assert(contract.get("kickside.core:threads"))
             local threads = assert(definition:with_actor(actor):with_scope(scope):open())
             local thread = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")

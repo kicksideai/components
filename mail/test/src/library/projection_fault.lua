@@ -1,10 +1,16 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local registry = require("registry")
 local time = require("time")
 local live = require("live")
 local database = require("database")
 
-local FLAG = "app.mail_library:publication_failure"
+local function fault()
+    return assert(database.with_db(function(ex)
+        local rows, err = ex:query("SELECT subject,observed FROM mail_realtime_fixture WHERE topic=$1",
+            {"fixture.publisher_fault"})
+        if err then return nil, err end
+        return rows, nil
+    end))[1]
+end
 
 local function record(seq, state)
     assert(database.with_db(function(ex)
@@ -14,23 +20,23 @@ local function record(seq, state)
 end
 
 local function publish(overlay, entries, rows, originals, seq)
-    local flag = registry.get(FLAG)
-    if flag and flag.data.permanent then
+    local flag = fault()
+    if flag and flag.observed == "permanent" then
         return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = "Injected permanent publication failure",
             details = {code = "fixture_publication_error"}})
     end
-    if flag and flag.data.enabled then
+    if flag and flag.observed == "unavailable" then
         return nil, errors.new({kind = errors.UNAVAILABLE, retryable = true, message = "Injected publication failure",
             details = {code = "fixture_publication_error"}})
     end
-    local held = flag and flag.data.hold_seq == seq
+    local held = flag and tonumber(flag.subject) == seq
     if held then
         record(seq, "waiting")
         local deadline = time.now():add(2 * time.SECOND):unix_nano()
         repeat
             time.sleep("10ms")
-            flag = registry.get(FLAG)
-        until not flag or flag.data.hold_seq ~= seq or time.now():unix_nano() >= deadline
+            flag = fault()
+        until not flag or tonumber(flag.subject) ~= seq or time.now():unix_nano() >= deadline
     end
     local value, err = live.publish(overlay, entries, rows, originals, seq)
     if held then record(seq, err and tostring(err:kind()) or "applied") end

@@ -2,11 +2,17 @@
 version: "1.0"
 namespace: kickside.mail.driver
 entries:
+  - name: http_client
+    kind: library.lua
+    meta: {private: true}
+    source: file://http_client.lua
+    modules: [http_client]
   - name: http
     kind: library.lua
     source: file://http.lua
-    modules: [http_client, json, base64, time, logger]
+    modules: [json, base64, time, logger]
     imports:
+      http_client: kickside.mail.driver:http_client
       redact: kickside.mail.domain:redact
       types: kickside.mail:types
       error_envelope: kickside.contract:error_envelope

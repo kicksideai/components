@@ -55,6 +55,11 @@ entries:
       effect: allow
   - name: mail_senders
     kind: security.scope
+  - name: mail_senders_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app:mail_senders
+    policies: [kickside.mail.security:send_access]
   - name: mail_editors
     kind: security.scope
   - name: mail_editors_composition
@@ -183,6 +188,13 @@ entries:
       - { name: "kickside.mail:target_db", value: "app:db" }
       - { name: "kickside.mail:api_router", value: "app:api" }
       - { name: "kickside.mail:library_editor_grant", value: {subject_id: "app:mail_editors", subject_type: group, access_mask: 3} }
+      - { name: "kickside.mail:clock", value: "kickside.mail.harness:owner_clock" }
+      - { name: "kickside.mail:thread_reader", value: "app.mail_library:source_fault" }
+      - { name: "kickside.mail:thread_writer", value: "app.mail_library:append_fault" }
+      - { name: "kickside.mail:upload_reaper", value: "app.mail_library:reap_fault" }
+      - { name: "kickside.mail:live_registry", value: "app.mail_library:projection_fault" }
+      - { name: "kickside.mail:draft_renderer", value: "app.mail_library:draft_render" }
+      - { name: "kickside.mail:http_transport", value: "kickside.mail.harness:http_client" }
   - name: dep.workflows
     kind: ns.dependency
     component: kickside/workflows

@@ -89,11 +89,14 @@ return {run = test.run_cases(function()
         end)
         publication_fault = function(enabled, hold_seq, permanent)
             fault_enabled = enabled or hold_seq ~= nil
-            local flag = assert(registry.get("app.mail_library:publication_failure"))
-            flag.data.enabled, flag.data.hold_seq, flag.data.permanent = enabled, hold_seq, permanent
-            local changes = assert(registry.snapshot()):changes()
-            assert(changes:update(flag))
-            assert(changes:apply())
+            local db = assert(sql.get("app:db"))
+            assert(db:execute("DELETE FROM mail_realtime_fixture WHERE topic=$1", {"fixture.publisher_fault"}))
+            if fault_enabled then
+                local mode = permanent and "permanent" or enabled and "unavailable" or "hold"
+                assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
+                    {"fixture.publisher_fault", tostring(hold_seq or ""), "{}", mode}))
+            end
+            assert(db:release())
         end
 
         test.it("recovers sends through retention after all three publication attempts fail", function()
@@ -262,7 +265,9 @@ return {run = test.run_cases(function()
             draft.expected_revision = saved.revision
             local receipt = review({resources = {draft}})
             local command = {resources = {draft}, preview_id = receipt, command_id = uuid.v4()}
-            local thread = assert(assert(contract.get("kickside.core:threads")):open())
+            local member = api_fixtures.session("editor")
+            local definition = assert(contract.get("kickside.core:threads"))
+            local thread = assert(definition:with_actor(member.actor):open())
             local address = {thread_id = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library"),
                 kind = "kickside.mail:library_tables"}
             assert(thread:pause_projection(address))
