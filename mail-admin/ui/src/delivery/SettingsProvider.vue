@@ -24,7 +24,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <kickside-settings-provider v-if="ready" class="mail-provider" :config.attr="JSON.stringify(config)" />
+  <div v-if="ready" class="mail-provider-frame">
+    <kickside-settings-provider class="mail-provider" :config.attr="JSON.stringify(config)" />
+  </div>
   <p v-else-if="error" class="kx-err inline" role="alert">The {{ config.title }} settings could not be loaded. {{ error }}</p>
   <p v-else class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading {{ config.title }} settings…</p>
 </template>

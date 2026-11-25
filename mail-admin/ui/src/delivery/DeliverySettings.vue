@@ -176,8 +176,8 @@ const testBlocked = computed(() => selected.value ? '' : 'Choose a service to se
         </SettingsItem>
       </SettingsGroup>
 
-      <SettingsProvider v-if="serviceSettings" :key="serviceSettings.namespace" :config="serviceSettings" />
       <SettingsProvider :config="senderSettings" />
+      <SettingsProvider v-if="serviceSettings" :key="serviceSettings.namespace" :config="serviceSettings" />
 
       <SettingsGroup title="Test">
         <SettingsItem title="Send a test email" :description="testBlocked || 'Sends a short message to you with the saved settings.'">

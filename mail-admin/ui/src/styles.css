@@ -260,7 +260,10 @@ h1, h2, h3, p, dl, dd, ol, ul { margin: 0; }
 .mail-service-option { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
 .mail-service-option .mail-sub { flex-basis: 100%; }
 /* The platform settings card keeps its own toolbar and card chrome; the block already holds the pane gutter. */
-.mail-provider { display: block; --system-surface-gutter: 0px; --kickside-system-surface-gutter: 0px; }
+/* Each platform settings card sits in one frame with its own Save bar, so a bar visibly saves the fields beside it.
+   The card keeps its chrome; the frame holds the pane gutter's inner spacing. */
+.mail-provider { display: block; --system-surface-gutter: 16px; --kickside-system-surface-gutter: 16px; }
+.mail-provider-frame { border: 1px solid var(--p-content-border-color); border-radius: 14px; overflow: hidden; background: var(--p-content-background); }
 @media (max-width: 640px) {
   .mail-delivery .kx-settings-item-head { flex-wrap: wrap; }
   .mail-delivery .kx-settings-item-actions { flex: 1 1 100%; }

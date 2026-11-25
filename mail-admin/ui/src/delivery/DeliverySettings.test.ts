@@ -72,12 +72,12 @@ describe('Mail delivery settings block', () => {
     wrapper.unmount()
   })
 
-  it('shows the sender fields and the chosen service settings through the platform settings provider', async () => {
+  it('shows the sender fields, then the chosen service settings, through the platform settings provider', async () => {
     serve(server({ driver: mailgun }).routes)
     const wrapper = await open()
     expect(loadByTagName).toHaveBeenCalledWith('kickside-settings-provider', expect.anything())
-    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail.mailgun', 'kickside.mail'])
-    expect(providers(wrapper)[0].title).toBe('Mailgun')
+    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail', 'kickside.mail.mailgun'])
+    expect(providers(wrapper)[1].title).toBe('Mailgun')
     wrapper.unmount()
   })
 
@@ -90,7 +90,7 @@ describe('Mail delivery settings block', () => {
     expect(host.confirm).toHaveBeenCalledOnce()
     expect(calls('put')).toEqual([['/api/v1/settings', { namespace: 'kickside.mail', key: 'driver', value: resend, expected_revision: 7 }]])
     expect(state.driver).toBe(resend)
-    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail.resend', 'kickside.mail'])
+    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail', 'kickside.mail.resend'])
     expect(wrapper.text()).toContain('Mail now sends through Resend.')
     wrapper.unmount()
   })
