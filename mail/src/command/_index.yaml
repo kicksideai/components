@@ -146,7 +146,6 @@ entries:
       types: kickside.mail:types
       asset_file_repo: kickside.mail.persist:asset_file_repo
       database: kickside.mail.persist:db
-      library_repo: kickside.mail.persist:library_repo
       message_repo: kickside.mail.persist:message_repo
       preview_repo: kickside.mail.persist:preview_repo
       content: kickside.mail.read:content

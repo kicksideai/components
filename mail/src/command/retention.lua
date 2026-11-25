@@ -4,7 +4,6 @@ local asset_file_repo = require("asset_file_repo")
 local database = require("database")
 local content = require("content")
 local jobs = require("jobs")
-local library_repo = require("library_repo")
 local outbox = require("outbox")
 local policy = require("policy")
 local preview_repo = require("preview_repo")
@@ -96,19 +95,19 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
 end
 
 local function prune_previews(now: integer): (integer?, error?)
-    local expiry, err = database.with_db(function(ex: database.Executor): (integer?, error?)
-        return preview_repo.next_expiry(ex)
+    local ids, err = database.with_db(function(ex: database.Executor): ({string}?, error?)
+        return preview_repo.expired(ex, now, policy.BATCH)
     end)
-    if err or not expiry or expiry > now then return expiry, err end
-    return database.with_tx(function(tx: database.Transaction, dialect: string): (integer?, error?)
-        local _, lock_err = library_repo.lock(tx, dialect)
-        if lock_err then return nil, lock_err end
-        local ids, prune_err = preview_repo.prune(tx, now, policy.BATCH)
-        if prune_err then return nil, prune_err end
+    if err then return nil, err end
+    if #ids > 0 then
         local _, clear_err = scratch.clear_expired(ids)
         if clear_err then return nil, clear_err end
-        return preview_repo.next_expiry(tx)
-    end)
+        local _, prune_err = database.with_tx(function(tx: database.Transaction): (boolean?, error?)
+            return preview_repo.prune(tx, ids)
+        end)
+        if prune_err then return nil, prune_err end
+    end
+    return database.with_db(preview_repo.next_expiry)
 end
 
 local function earlier(deadline: integer?, candidate: integer?): integer?
@@ -154,10 +153,8 @@ function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): 
     local boundary, boundary_err = thread_events.prune_boundary(threads :: types.LibraryThreads)
     if boundary_err and not errors.is(boundary_err, errors.NOT_FOUND) then return nil, boundary_err end
     local seq = boundary and boundary.max_pruned_seq or 0
-    if boundary then
-        local release_err = release_stranded_restores(threads :: types.LibraryThreads, now)
-        if release_err then return nil, release_err end
-    end
+    local release_err = release_stranded_restores(threads :: types.LibraryThreads, now)
+    if release_err then return nil, release_err end
     local history_deleted, history_err = database.with_tx(function(tx: database.Transaction): (integer?, error?)
         return history.prune_below(tx, seq, policy.BATCH)
     end)

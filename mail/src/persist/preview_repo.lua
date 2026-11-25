@@ -39,14 +39,21 @@ function M.get(ex: database.Executor, id: string): (types.PreviewRow?, error?)
         digest = row.digest :: string, expected = expected :: {[string]: integer}, expires_at = row.expires_at :: integer}, nil
 end
 
-function M.prune(tx: database.Transaction, now: integer, limit: integer): ({string}?, error?)
-    local rows, err = tx:query([[DELETE FROM mail_library_preview WHERE id IN (
-        SELECT id FROM mail_library_preview WHERE expires_at<=$1 ORDER BY expires_at,id LIMIT $2
-    ) RETURNING id]], {now, limit})
+function M.expired(ex: database.Executor, now: integer, limit: integer): ({string}?, error?)
+    local rows, err = ex:query("SELECT id FROM mail_library_preview WHERE expires_at<=$1 ORDER BY expires_at,id LIMIT $2",
+        {now, limit})
     if err then return nil, err end
     local ids: {string} = {}
     for index, row in ipairs(rows) do ids[index] = row.id :: string end
     return ids, nil
+end
+
+function M.prune(tx: database.Transaction, ids: {string}): (boolean?, error?)
+    local markers: {string} = {}
+    for index in ipairs(ids) do markers[index] = "$" .. index end
+    local _, err = tx:execute("DELETE FROM mail_library_preview WHERE id IN (" .. table.concat(markers, ",") .. ")", ids)
+    if err then return nil, err end
+    return true, nil
 end
 
 function M.next_expiry(ex: database.Executor): (integer?, error?)
