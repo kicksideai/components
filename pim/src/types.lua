@@ -158,7 +158,7 @@ type Compiled = {
     dimensions: { Dimension }, vocabularies: { [string]: Vocabulary }, aspects: { [string]: Aspect },
     attributes: { [string]: Attribute }, families: { [string]: Family }, sources: { [string]: Source },
     channels: { [string]: Channel }, scopes: { [string]: boolean }, plugins: { [string]: PluginEntry }, seam_owners: { [string]: string }?,
-    schema_owners: SchemaOwners, layout: Layout, next_attribute_id: integer, layout_digest: string, digest: string,
+    schema_owners: SchemaOwners?, layout: Layout, next_attribute_id: integer, layout_digest: string, digest: string,
     by_id: { [integer]: Attribute }?, has_assets: boolean?,
 }
 type Catalog = {

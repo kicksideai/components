@@ -464,6 +464,22 @@ local function define()
             test.eq(retained.plugin, SHELF)
         end)
 
+        test.it("recovers plugin ownership from the declaration of a pre-upgrade catalog", function()
+            local h = fixture.catalog({ bare = true })
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = ZONES } } } }))
+            local db = assert(sql.get("app:db"))
+            local rows = assert(db:query("SELECT compiled FROM kickside_pim_catalog WHERE catalog_id=$1", {h.id}))
+            local value = rows[1].compiled
+            local compiled = type(value) == "string" and assert(json.decode(value)) or value
+            compiled.schema_owners = nil
+            assert(db:execute("UPDATE kickside_pim_catalog SET compiled=$1 WHERE catalog_id=$2",
+                {assert(json.encode(compiled)), h.id}))
+            db:release()
+            refuse_owner_change(h, { vocabularies = { { code = "zones" } }, remove = { plugins = { ZONES } } },
+                "vocabulary", "zones", ZONES, "catalog")
+            assert(h.call("apply_schema", { declaration = { aspects = { { namespace = "extra" } } } }))
+        end)
+
         test.it("refuses the catalog claiming the removed plugin's vocabulary", function()
             local h = fixture.catalog({ bare = true })
             assert(h.call("apply_schema", { declaration = { plugins = { { use = ZONES } } } }))

@@ -81,7 +81,7 @@ local function plan_schema(db: types.Executor, catalog: types.Catalog?, catalog_
             local scope, err = scopes.load(id)
             return scope ~= nil, err
         end,
-    })
+    }, prev_declaration)
     if cerr or not next_compiled then return nil, cerr end
     local aerr = plugins.admit(next_compiled, prev)
     if aerr then return nil, aerr end

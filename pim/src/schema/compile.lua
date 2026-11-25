@@ -483,7 +483,8 @@ local function compile_families(declaration: types.Declaration, set: AspectSet, 
 end
 
 -- compile(prev, declaration, lookups) returns the compiled model or an error.
-function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookups: lookups_types.Lookups): (types.Compiled?, error?)
+function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookups: lookups_types.Lookups,
+        previous_declaration: types.Declaration?): (types.Compiled?, error?)
     if type(declaration) ~= "table" then return nil, invalid("declaration required") end
     local dims, derr = contexts.compile_dimensions(declaration.dimensions)
     if derr then return nil, derr end
@@ -494,9 +495,16 @@ function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookup
     local declared, cerr = contributed(declaration)
     if cerr or not declared then return nil, cerr end
     if prev then
+        local previous = prev.schema_owners
+        if not previous then
+            if not previous_declaration then return nil, invalid("previous catalog declaration required") end
+            local prior, err = contributed(previous_declaration)
+            if not prior then return nil, err end
+            previous = prior.owners
+        end
         local owners = declared.owners
-        local owner_err = retain_owners("aspect", prev.schema_owners.aspects, owners.aspects)
-            or retain_owners("vocabulary", prev.schema_owners.vocabularies, owners.vocabularies)
+        local owner_err = retain_owners("aspect", previous.aspects, owners.aspects)
+            or retain_owners("vocabulary", previous.vocabularies, owners.vocabularies)
         if owner_err then return nil, owner_err end
     end
     local vocabularies, verr = compile_vocabularies(declared.vocabularies)
