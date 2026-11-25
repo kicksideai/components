@@ -23,10 +23,15 @@ local function broadcast(input)
     else
         assert(input.topic == "mail.activity")
         rows = assert(db:query("SELECT status AS observed FROM mail_message WHERE subject='Realtime fixture delivery'"))
-        local messages = assert(db:query([[SELECT id AS message_id,status,attempts FROM mail_message
-            WHERE subject=$1 ORDER BY created_at DESC LIMIT 1]], {"Fixture once"}))
+        local messages = assert(db:query([[SELECT id,job_id,status,attempts FROM mail_message
+            WHERE subject=$1 ORDER BY created_at DESC LIMIT 1]], {"Fixture pin"}))
+        local message = messages[1]
+        if message and message.status == "queued" and message.attempts == 1 then
+            assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
+                {"fixture.activity_retry", message.id, message.job_id, message.status}))
+        end
         assert(db:release())
-        assert(events.send("mail.fixture", "activity", "mail.activity", messages[1] or {}))
+        assert(events.send("mail.fixture", "activity", "mail.activity"))
         db = assert(sql.get("app:db"))
     end
     if rows[1] then

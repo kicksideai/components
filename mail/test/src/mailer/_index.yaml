@@ -271,12 +271,13 @@ entries:
     meta: {type: test, suite: mail_delivery_signal}
     source: file://delivery_signal_test.lua
     method: run
-    modules: [channel, events, funcs, time]
+    modules: [channel, events, funcs, sql, time]
     imports:
       delivery_wait: app.mail_harness:delivery_wait
       test: wippy.test:test
       api_fixtures: app.mail_api:fixtures
       library_fixtures: app.mail_library:fixtures
+      jobs: kickside.core.jobs:jobs
   - name: delivery_wait
     kind: library.lua
     source: file://delivery_wait.lua
