@@ -169,6 +169,7 @@ type LibraryEventBody = {
     asset: EventAsset?, title: string?, description: string?,
 }
 type ThreadExternal = {external_source: string, external_id: string, external_version: string}
+type RestoreReservation = {upload_id: string, hold_id: string, restore_author: string, restore_command_id: string}
 type ThreadLookup = ThreadExternal & {thread_id: string, event_type: string}
 type ThreadEvent = {seq: integer, subject: string, body: string, subject_version: integer, created_at: string}
 type ThreadHead = {event_count: integer, subject_version: integer?}

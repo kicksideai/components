@@ -108,6 +108,13 @@ entries:
       resources: [kickside.core:threads, kickside.core:threads_binding, find, list_events]
       actions: [contract.get, contract.open, contract.call]
       effect: allow
+  - name: library_retention_threads
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.core:threads, kickside.core:threads_binding, find_event_by_external, prune_boundary]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
   - name: library_prune_boundary
     kind: security.policy
     meta: {private: true, service_only: true}

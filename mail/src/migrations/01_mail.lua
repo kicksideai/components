@@ -77,7 +77,15 @@ local tables: {string} = {
         state TEXT NOT NULL DEFAULT 'held' CHECK (state IN ('held','reaping')),
         hold_seq BIGINT,
         hold_id TEXT,
-        CHECK ((hold_seq IS NULL) = (hold_id IS NULL))
+        restore_command_id TEXT,
+        restore_author TEXT,
+        restore_reserved_at BIGINT,
+        restore_check_at BIGINT,
+        CHECK ((hold_seq IS NULL) = (hold_id IS NULL)),
+        CHECK ((restore_command_id IS NULL) = (restore_author IS NULL)),
+        CHECK ((restore_command_id IS NULL) = (restore_reserved_at IS NULL)),
+        CHECK (restore_command_id IS NULL OR hold_id IS NOT NULL),
+        CHECK (restore_check_at IS NULL OR restore_reserved_at IS NOT NULL)
     )]],
     [[CREATE TABLE mail_library_asset (
         revision BIGINT NOT NULL,
@@ -158,6 +166,8 @@ local indexes: {string} = {
     [[CREATE INDEX mail_library_state ON mail_library(state, kind, name)]],
     [[CREATE INDEX mail_library_base ON mail_library(base, name) WHERE kind = 'message']],
     [[CREATE INDEX mail_asset_file_due ON mail_asset_file(due_at, upload_id) WHERE due_at IS NOT NULL]],
+    [[CREATE INDEX mail_asset_restore_check ON mail_asset_file(restore_check_at, upload_id)
+        WHERE state='held' AND restore_check_at IS NOT NULL]],
     [[CREATE INDEX mail_library_asset_upload ON mail_library_asset(upload_id)]],
     [[CREATE INDEX mail_library_history_page ON mail_library_history(kind,name,seq DESC)]],
     [[CREATE UNIQUE INDEX mail_library_history_version ON mail_library_history(kind,name,version)]],

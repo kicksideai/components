@@ -42,9 +42,12 @@ function M.hold_adoption(tx: types.Transaction, id: string, deadline: integer, n
     return true, nil
 end
 
-function M.hold_restore(tx: types.Transaction, id: string, projected: integer, seq: integer, token: string): (boolean?, error?)
-    local result, err = tx:execute([[UPDATE mail_asset_file SET hold_seq=$1,hold_id=$2
-        WHERE upload_id=$3 AND state='held' AND (hold_seq IS NULL OR hold_seq<=$4)]], {seq, token, id, projected})
+function M.hold_restore(tx: types.Transaction, id: string, projected: integer, token: string, author: string,
+    command_id: string, reserved_at: integer, check_at: integer): (boolean?, error?)
+    local result, err = tx:execute([[UPDATE mail_asset_file SET hold_seq=$1,hold_id=$2,
+        restore_author=$3,restore_command_id=$4,restore_reserved_at=$5,restore_check_at=$6
+        WHERE upload_id=$7 AND state='held' AND (hold_seq IS NULL OR hold_seq<=$8)]],
+        {projected + 1, token, author, command_id, reserved_at, check_at, id, projected})
     if err then return nil, err end
     if result.rows_affected == 1 then return true, nil end
     local rows, read_err = tx:query("SELECT state FROM mail_asset_file WHERE upload_id=$1", {id})
@@ -65,8 +68,29 @@ function M.finish_adoption(tx: types.Transaction, id: string, token: string): (b
 end
 
 function M.release_hold(tx: types.Transaction, id: string, token: string): (boolean?, error?)
-    local _, err = tx:execute("UPDATE mail_asset_file SET hold_seq=NULL,hold_id=NULL WHERE upload_id=$1 AND hold_id=$2",
+    local _, err = tx:execute([[UPDATE mail_asset_file SET hold_seq=NULL,hold_id=NULL,restore_author=NULL,
+        restore_command_id=NULL,restore_reserved_at=NULL,restore_check_at=NULL WHERE upload_id=$1 AND hold_id=$2]],
         {id, token})
+    if err then return nil, err end
+    return true, nil
+end
+
+function M.due_restores(ex: types.Executor, now: integer, limit: integer): ({types.RestoreReservation}?, error?)
+    local rows, err = ex:query([[SELECT upload_id,hold_id,restore_author,restore_command_id FROM mail_asset_file
+        WHERE state='held' AND restore_check_at <= $1 ORDER BY restore_check_at,upload_id LIMIT $2]], {now, limit})
+    return rows :: {types.RestoreReservation}?, err
+end
+
+function M.next_restore_check(ex: types.Executor): (integer?, error?)
+    local rows, err = ex:query([[SELECT restore_check_at FROM mail_asset_file WHERE state='held' AND restore_check_at IS NOT NULL
+        ORDER BY restore_check_at,upload_id LIMIT 1]])
+    if err then return nil, err end
+    return rows[1] and rows[1].restore_check_at :: integer?, nil
+end
+
+function M.confirm_restore(tx: types.Transaction, id: string, token: string): (boolean?, error?)
+    local _, err = tx:execute([[UPDATE mail_asset_file SET restore_check_at=NULL
+        WHERE upload_id=$1 AND hold_id=$2 AND state='held']], {id, token})
     if err then return nil, err end
     return true, nil
 end

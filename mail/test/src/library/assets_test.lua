@@ -190,6 +190,57 @@ local run = test.run_cases(function()
             restore_race("reap-before-restore", true)
         end)
 
+        local function reserve_restore(name, strand)
+            local image = {kind = "asset", name = name, upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            local first = call("create", image)
+            local source = assert(lookup.get(first.asset.upload_id))
+            image.upload_id, image.expected_revision = upload("image/gif", gif() .. "next"), first.revision
+            local latest = call("update", image)
+            local now = time.now():unix_nano() // 1000000
+            local writer = assert(editor:with_context({mail_test_now = now, mail_test_strand_restore = strand}))
+            local restored, err = fixtures.call(writer, "restore", {
+                kind = "asset", name = name, seq = first.seq, expected_revision = latest.revision,
+                command_id = uuid.v4(),
+            })
+            return source, first.seq, now, restored, err
+        end
+
+        local function hold(id)
+            local db = assert(sql.get("app:db"))
+            local rows = assert(db:query("SELECT hold_id,restore_check_at FROM mail_asset_file WHERE upload_id=$1", {id}))
+            assert(db:release())
+            local row = rows[1]
+            return row and row.hold_id, row and row.restore_check_at
+        end
+
+        test.it("releases a stranded restore reservation after its grace period and reaps the upload", function()
+            local source, original_seq, now, restored, err = reserve_restore("stranded-restore", true)
+            test.is_nil(restored)
+            test.eq(errors.UNAVAILABLE, assert(err):kind())
+            local reserved = assert(hold(source.uuid))
+            prune_through(original_seq)
+            sweep(now + 15 * 60 * 1000 - 1)
+            test.eq(reserved, hold(source.uuid))
+            test.is_true(storage:exists(source.storage_path))
+            sweep(now + 15 * 60 * 1000 + 1)
+            test.is_nil(hold(source.uuid))
+            test.is_false(storage:exists(source.storage_path))
+        end)
+
+        test.it("keeps an expired restore reservation whose event exists", function()
+            local source, _, now, restored, err = reserve_restore("appended-restore", false)
+            assert(restored, tostring(err))
+            local reserved, deadline = hold(source.uuid)
+            test.not_nil(reserved)
+            test.eq(now + 15 * 60 * 1000, deadline)
+            sweep(now + 15 * 60 * 1000 + 1)
+            local kept, next_check = hold(source.uuid)
+            test.eq(reserved, kept)
+            test.is_nil(next_check)
+            test.eq(gif(), call("asset_content", {kind = "asset", name = restored.name}).bytes)
+        end)
+
         test.it("keeps an old upload through History and pending delivery, then reaps it", function()
             local image = {kind = "asset", name = "retained-image", upload_id = upload("image/gif", gif())}
             owned[1] = image

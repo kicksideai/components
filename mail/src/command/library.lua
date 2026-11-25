@@ -21,9 +21,11 @@ local logger = require("logger")
 local live_repo = require("live_repo")
 
 local M = {}
+local RESTORE_GRACE_MS = 15 * 60 * 1000
 
 local function asset_event(tx: types.Transaction, operation: string, edit: types.LibraryEdit, author: string,
-    signature: string, source: types.Resource?, head: integer, token: string, versions: {[string]: integer}): (types.LibraryEvent?, error?)
+    signature: string, source: types.Resource?, head: integer, token: string, command_id: string,
+    versions: {[string]: integer}): (types.LibraryEvent?, error?)
     local key = edit.key
     local workspace, load_err = edit_ops.workspace(tx, versions)
     if load_err then return nil, load_err end
@@ -63,11 +65,12 @@ local function asset_event(tx: types.Transaction, operation: string, edit: types
         else
             local upload_id = asset.upload_id :: string
             local reserve_err: error?
+            local now = time.now():unix_nano() // 1000000
             if source then
-                _, reserve_err = asset_file_repo.hold_restore(tx, upload_id, head, head + 1, token)
+                _, reserve_err = asset_file_repo.hold_restore(tx, upload_id, head, token, author, command_id,
+                    now, now + RESTORE_GRACE_MS)
             else
-                _, reserve_err = asset_file_repo.hold_adoption(tx, upload_id, edit.asset_deadline :: integer,
-                    time.now():unix_nano() // 1000000, head + 1, token)
+                _, reserve_err = asset_file_repo.hold_adoption(tx, upload_id, edit.asset_deadline :: integer, now, head + 1, token)
             end
             if reserve_err then return nil, reserve_err end
             body.asset = {upload_id = upload_id, filename = asset.filename :: string,
@@ -221,7 +224,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
                 return nil, catching_up(cursor.event_count, checkpoint.projected_seq :: integer)
             end
             local event, event_err = asset_event(tx, operation, edit, author, signature :: string, source,
-                cursor.event_count, token, versions :: {[string]: integer})
+                cursor.event_count, token, command_id :: string, versions :: {[string]: integer})
             if event_err then return nil, event_err end
             return {event :: types.LibraryEvent}, nil
         end
@@ -239,6 +242,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
     end
     local expect: types.ThreadExpect = {head = cursor.event_count}
     if #batch == 1 then expect.subject, expect.version = batch[1].subject, batch[1].body.revision - 1 end
+    if batch[1].type == events.ASSET_RESTORED then notify.retention() end
     local receipt, err = threads.append(api, author, identity_op, command_id :: string, expect, batch)
     if err or receipt.duplicates > 0 then
         local details = err and err:details() or {}

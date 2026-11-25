@@ -15,8 +15,28 @@ local upload_refs = require("upload_ref_repo")
 local history = require("history_repo")
 local live_repo = require("live_repo")
 local thread_events = require("thread_events")
+local thread_commands = require("thread_commands")
+local events = require("events")
 
 local M = {}
+
+local function release_stranded_restores(threads: types.LibraryThreads, now: integer): error?
+    local reservations, err = database.with_db(function(ex: types.Executor): ({types.RestoreReservation}?, error?)
+        return asset_file_repo.due_restores(ex, now, policy.BATCH)
+    end)
+    if err then return err end
+    for _, row in ipairs(reservations) do
+        local event, lookup_err = thread_commands.find_command(threads, row.restore_author, "restore",
+            row.restore_command_id, events.ASSET_RESTORED)
+        if lookup_err then return lookup_err end
+        local update = event and asset_file_repo.confirm_restore or asset_file_repo.release_hold
+        local _, update_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
+            return update(tx, row.upload_id, row.hold_id)
+        end)
+        if update_err then return update_err end
+    end
+    return nil
+end
 
 local function collect(now_ms: integer, boundary: integer, limit: integer, retry_at: integer): (integer?, {types.BlockedAsset}?, error?)
     local claimed, claim_err = database.with_tx(function(tx: types.Transaction, dialect: string): ({types.Record}?, error?)
@@ -119,6 +139,8 @@ function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): 
     local boundary, boundary_err = thread_events.prune_boundary(threads :: types.LibraryThreads)
     if boundary_err then return nil, boundary_err end
     local seq = boundary.max_pruned_seq :: integer
+    local release_err = release_stranded_restores(threads :: types.LibraryThreads, now)
+    if release_err then return nil, release_err end
     local history_deleted, history_err = database.with_tx(function(tx: types.Transaction): (integer?, error?)
         return history.prune_below(tx, seq, policy.BATCH)
     end)
@@ -132,7 +154,11 @@ function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): 
     local asset_due, asset_err = database.with_db(function(ex: types.Executor): (integer?, error?)
         local mark, mark_err = live_repo.get(ex)
         if mark_err then return nil, mark_err end
-        return asset_file_repo.next_due(ex, mark.projected_seq :: integer)
+        local due, due_err = asset_file_repo.next_due(ex, mark.projected_seq :: integer)
+        if due_err then return nil, due_err end
+        local restore_check, restore_err = asset_file_repo.next_restore_check(ex)
+        if restore_err then return nil, restore_err end
+        return earlier(due, restore_check), nil
     end)
     if asset_err then return nil, asset_err end
     local report = result :: types.OwnerResult

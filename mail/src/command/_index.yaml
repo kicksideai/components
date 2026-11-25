@@ -134,6 +134,8 @@ entries:
       thread_events: kickside.mail.read:thread_events
       upload_ref_repo: kickside.mail.persist:upload_ref_repo
       history_repo: kickside.mail.persist:history_repo
+      thread_commands: kickside.mail.command:threads
+      events: kickside.mail.domain:events
       jobs: kickside.core.jobs:jobs
       policy: kickside.mail.domain:policy
       outbox: kickside.mail.command:outbox
