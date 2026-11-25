@@ -968,7 +968,7 @@ def check_s14(m):
 
     Own-namespace wildcards are allowed where rulebook I1/I2 show them: module_access with
     registry.get/registry.find, and the private runtime policy it includes with the I2 actions.
-    Mail overlay wildcards grant only typed overlay entry operations.
+    Mail overlay wildcards grant typed overlay entry operations and template.get on draft sets.
     A '*' resource is exact only when every condition is an eq match on an own entry id."""
     overlay_namespaces = OVERLAY_NAMESPACES.get(m.root_ns, ())
     access = [e for e in m.entries if e.kind == "security.policy"
@@ -1010,7 +1010,10 @@ def check_s14(m):
                     continue
                 ns = res[:-2] if res.endswith(":*") else None
                 if ns in overlay_namespaces:
-                    if actions and all(OVERLAY_ENTRY_ACTION.fullmatch(action) for action in actions):
+                    if actions and all(
+                        OVERLAY_ENTRY_ACTION.fullmatch(action) or (ns == "kickside.mail.draft" and action == "template.get")
+                        for action in actions
+                    ):
                         continue
                 elif ns and m.own(ns) and allowed_actions is not None:
                     own_wildcards = True

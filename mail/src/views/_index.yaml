@@ -340,20 +340,3 @@ entries:
       client: kickside.mail:client
       resources: kickside.mail.library:resources
       jet: kickside.mail.domain:jet
-  - name: render
-    kind: library.lua
-    source: file://render.lua
-    modules: [templates, html]
-    imports:
-      types: kickside.mail:types
-      catalog: kickside.mail.views:catalog
-      message: kickside.mail.domain:message
-      globals: kickside.mail.views:globals
-      jet: kickside.mail.domain:jet
-      resources: kickside.mail.library:resources
-      asset_refs: kickside.mail.domain:assets
-  - name: globals
-    kind: library.lua
-    source: file://globals.lua
-    modules: [env, registry, security]
-    imports: { types: kickside.mail:types, settings: kickside.mail:settings }

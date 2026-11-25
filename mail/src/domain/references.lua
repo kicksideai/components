@@ -25,15 +25,28 @@ function M.source_reference(source: string?, name: string): boolean
     return names[name] == true
 end
 
-local function collect(source: string, bases: {[string]: boolean}, parts: {[string]: boolean}, assets: {[string]: boolean})
-    for directive, _, path in source:gmatch([[{{%-?%s*(%a+)%s+(["'])(.-)%2]]) do
-        if directive == "extends" or directive == "include" then
-            local kind, name = path:match("^/?([a-z]+)/([a-z0-9][a-z0-9_-]*)$")
-            if kind == "base" then bases[name] = true end
-            if kind == "part" and directive == "include" then parts[name] = true end
+function M.template_keys(content: types.ResourceContent): {types.ResourceKey}
+    local keys: {types.ResourceKey} = {}
+    local seen: {[string]: boolean} = {}
+    local function add(kind: string, name: string)
+        local id = kind .. "/" .. name
+        if seen[id] then return end
+        seen[id] = true
+        keys[#keys + 1] = {kind = kind, name = name}
+    end
+    local function collect(source: string)
+        for directive, _, path in source:gmatch([[{{%-?%s*(%a+)%s+(["'])(.-)%2]]) do
+            if directive == "extends" or directive == "import" or directive == "include" then
+                local kind, name = path:match("^/?([a-z]+)/([a-z0-9][a-z0-9_-]*)$")
+                if kind == "base" or kind == "part" or kind == "message" then add(kind, name) end
+            end
         end
     end
-    asset_names(source, assets)
+    if content.base then add("base", content.base) end
+    collect(content.html)
+    collect(content.text)
+    if content.subject then collect(content.subject) end
+    return keys
 end
 
 local function sorted(names: {[string]: boolean}): {string}
@@ -47,10 +60,13 @@ function M.refs(content: types.ResourceContent): types.ResourceReferences
     local bases: {[string]: boolean} = {}
     local parts: {[string]: boolean} = {}
     local assets: {[string]: boolean} = {}
-    if content.base then bases[content.base] = true end
-    collect(content.html, bases, parts, assets)
-    collect(content.text, bases, parts, assets)
-    if content.subject then collect(content.subject, bases, parts, assets) end
+    for _, key in ipairs(M.template_keys(content)) do
+        if key.kind == "base" then bases[key.name] = true end
+        if key.kind == "part" then parts[key.name] = true end
+    end
+    asset_names(content.html, assets)
+    asset_names(content.text, assets)
+    if content.subject then asset_names(content.subject, assets) end
     return {bases = sorted(bases), parts = sorted(parts), assets = sorted(assets)}
 end
 

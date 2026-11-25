@@ -7,9 +7,11 @@ local database = require("database")
 local store = require("store")
 local resources = require("resources")
 local edit_ops = require("edits")
-local projection = require("projection")
-local draft = require("draft")
+local live = require("live")
+local scratch = require("scratch")
+local originals = require("originals")
 local globals = require("globals")
+local settings = require("settings")
 local realtime = require("realtime")
 local preview_id = require("preview_id")
 local attachments = require("attachments")
@@ -22,6 +24,30 @@ local logger = require("logger")
 local error_envelope = require("error_envelope")
 
 local M = {}
+
+local function publish(tx: types.Transaction): (boolean?, error?)
+    local declarations, declaration_err = originals.list()
+    if declaration_err then return nil, declaration_err end
+    local rows, read_err = store.live_rows(tx)
+    if read_err then return nil, read_err end
+    return live.publish(rows :: {types.Resource}, declarations :: types.OriginalMap)
+end
+
+local function reconcile(): (boolean?, error?)
+    return database.with_tx(function(tx: types.Transaction, dialect: string): (boolean?, error?)
+        local lock_err = store.lock(tx, dialect)
+        if lock_err then return nil, lock_err end
+        local _, clear_err = scratch.clear_workspace()
+        if clear_err then return nil, clear_err end
+        return publish(tx)
+    end)
+end
+
+function M.boot(): {status: string, message: string?}
+    local _, err = reconcile()
+    if err then return {status = "error", message = err:message()} end
+    return {status = "success"}
+end
 
 local function change(edits: {types.LibraryEdit}, operation: string, receipt: string?): ({types.Resource}?, error?)
     local denied = client.require_library()
@@ -62,8 +88,10 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
     if actor_err then return nil, actor_err end
     if not actor then return nil, resources.error(errors.PERMISSION_DENIED, "mail_library_denied", "A principal must edit the mail library") end
     local author = actor:id()
-    local values, globals_err = globals.library_samples()
+    local appearance, globals_err = settings.appearance()
     if globals_err then return nil, globals_err end
+    local values = globals.data(appearance :: types.Appearance)
+    values.sender.name = ""
 
     local function write(tx: types.Transaction, dialect: string): ({types.Resource}?, error?)
         local lock_err = store.lock(tx, dialect)
@@ -118,8 +146,11 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
         end
 
         if key.kind ~= "asset" then
-            local dependent = edit_ops.dependants(items :: types.ResourceMap, keys, changed)
-            local _, validation_err = draft.validate(items :: types.ResourceMap, key, candidates, dependent, values :: types.RenderGlobals)
+            local dependent, dependants_err = edit_ops.dependants(tx, items :: types.ResourceMap, originals :: types.OriginalMap, keys, changed)
+            if dependants_err then return nil, dependants_err end
+            local _, clear_err = scratch.clear_workspace()
+            if clear_err then return nil, clear_err end
+            local _, validation_err = scratch.validate(items :: types.ResourceMap, key, candidates, dependent :: {types.Resource}, values)
             if validation_err then return nil, validation_err end
         end
         if operation == "delete" then
@@ -179,7 +210,7 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
         local result, write_err = write(tx, dialect)
         if write_err then return nil, write_err end
         if keys[1].kind ~= "asset" and not (operation == "delete" and keys[1].kind == "message") then
-            local _, projection_err = projection.publish(tx)
+            local _, projection_err = publish(tx)
             if projection_err then
                 return nil, error_envelope.wrap(projection_err, projection_err:message(),
                     {code = "mail_projection_failed", resource = keys[1]})
@@ -190,7 +221,7 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
     end)
     if err then
         if published then
-            return nil, error_envelope.cleanup(projection.reconcile, err, "Mail live source reconciliation failed")
+            return nil, error_envelope.cleanup(reconcile, err, "Mail live source reconciliation failed")
         end
         return nil, err
     end

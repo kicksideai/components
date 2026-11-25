@@ -29,7 +29,12 @@ local function cancel_after_publication(editor, method, input)
     local deadline = time.now():add(10 * time.SECOND):unix_nano()
     local published
     repeat
-        published = registry.get(DRAFT .. "html")
+        for _, entry in ipairs(workspace()) do
+            if entry.kind == "template.set" and entry.id:sub(-5) == ".html" then
+                published = entry.id
+                break
+            end
+        end
         if not published and not future:is_complete() then time.sleep("1ms") end
     until published or future:is_complete() or time.now():unix_nano() >= deadline
     if future:is_complete() then
@@ -38,7 +43,8 @@ local function cancel_after_publication(editor, method, input)
     end
     assert(future:cancel())
     assert(published, "Draft evaluation must publish the workspace before cancellation")
-    assert(registry.get(DRAFT .. "html"))
+    assert(registry.get(published))
+    return published:sub(1, -5)
 end
 
 return {run = test.run_cases(function()
@@ -84,6 +90,28 @@ return {run = test.run_cases(function()
             test.eq(0, #workspace())
         end
 
+        test.it("builds scratch entries for only the message and its referenced base", function()
+            local base = assert(editor:call(NS .. "create", resource("base", "workspace-base", "{{ block body() }}{{ end }}")))
+            owned[#owned + 1] = {kind = "base", name = base.name}
+            local extra = assert(editor:call(NS .. "create", resource("part", PART, "Unrelated part")))
+            owned[#owned + 1] = {kind = "part", name = extra.name}
+            local draft = resource("message", MESSAGE, "Closure body")
+            draft.base = base.name
+            local scoped = assert(editor:with_context({mail_test_expected_scratch_entries = 7}))
+            local output, err = scoped:call(NS .. "render_draft", {message = MESSAGE, resources = {draft}})
+            test.eq(0, #workspace())
+            assert(output, tostring(err))
+            test.not_nil(output.html:find("Closure body", 1, true))
+        end)
+
+        test.it("returns a failed preview with an empty scratch overlay", function()
+            local draft = resource("message", MESSAGE, '{{ include "/part/workspace-missing" }}')
+            local output, err = editor:call(NS .. "render_draft", {message = MESSAGE, resources = {draft}})
+            test.eq(0, #workspace())
+            test.is_nil(output)
+            test.not_nil(err)
+        end)
+
         test.it("evaluates and saves after a cancelled preview without changing live mail", function()
             local draft = resource("message", MESSAGE, "Cancelled preview body")
             cancel_after_publication(editor, "render_draft", {message = MESSAGE, resources = {draft}})
@@ -104,17 +132,17 @@ return {run = test.run_cases(function()
             owned[2] = {kind = "part", name = PART}
             local edited = resource("part", PART, "Cancelled part")
             local extra = resource("part", "workspace-extra", "Draft-only part")
-            cancel_after_publication(editor, "render_draft", {message = MESSAGE, resources = {edited, extra}})
-            assert(registry.get(DRAFT .. "part." .. extra.name .. ".html"))
-            assert(registry.get(DRAFT .. "part." .. PART .. ".html"))
+            local prefix = cancel_after_publication(editor, "render_draft", {message = MESSAGE, resources = {edited, extra}})
+            assert(registry.get(prefix .. "part." .. extra.name .. ".html"))
+            assert(registry.get(prefix .. "part." .. PART .. ".html"))
             for _, item in ipairs(assert(editor:call(NS .. "list", {kind = "part"}))) do
                 test.neq(extra.name, item.name)
             end
-            test.neq("allow", scope:evaluate(actor, "template.get", DRAFT .. "html"))
-            test.neq("allow", scope:evaluate(actor, "registry.get", DRAFT .. "part." .. extra.name .. ".html"))
+            test.neq("allow", scope:evaluate(actor, "template.get", prefix .. "html"))
+            test.neq("allow", scope:evaluate(actor, "registry.get", prefix .. "part." .. extra.name .. ".html"))
             assert(editor:call(NS .. "delete", {kind = "part", name = PART, expected_revision = part.revision}))
-            test.is_nil(registry.get(DRAFT .. "part." .. extra.name .. ".html"))
-            test.is_nil(registry.get(DRAFT .. "part." .. PART .. ".html"))
+            test.is_nil(registry.get(prefix .. "part." .. extra.name .. ".html"))
+            test.is_nil(registry.get(prefix .. "part." .. PART .. ".html"))
             preview_and_save()
         end)
 

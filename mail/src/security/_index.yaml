@@ -169,7 +169,6 @@ entries:
         - kickside.mail.views:templates
         - kickside.mail.views:layout
         - kickside.mail.views:text_templates
-        - app:definition
         - kickside.mail:definition
         - kickside.mail.views:notice_template
         - kickside.mail.views:standard_template
@@ -370,6 +369,7 @@ entries:
     meta: { private: true }
     policy:
       resources: ["kickside.mail.draft:*"]
+      # Jet checks template.get on each generated scratch set ID.
       actions: [registry.overlay.create.template.jet, registry.overlay.delete.template.jet, registry.overlay.create.template.set, registry.overlay.delete.template.set, template.get]
       effect: allow
   - name: principal_directory_get

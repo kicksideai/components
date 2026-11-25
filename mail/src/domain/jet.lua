@@ -10,6 +10,10 @@ local M = {
     draft_namespace = "kickside.mail.draft:",
 }
 
+function M.scratch_namespace(id: string): string
+    return M.draft_namespace .. id .. "."
+end
+
 function M.name(resource: types.ResourceKey, face: string?): string
     local name = resource.kind .. "/" .. resource.name
     if face == "subject" then return name .. ".subject" end

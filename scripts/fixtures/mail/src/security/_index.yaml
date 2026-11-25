@@ -45,3 +45,9 @@ entries:
       resources: [kickside.mail.projection:marker]
       actions: [registry.get]
       effect: allow
+  - name: live_wildcard_read
+    kind: security.policy
+    policy:
+      resources: ["kickside.mail.projection:*"]
+      actions: [template.get]
+      effect: allow

@@ -13,7 +13,7 @@ entries:
       settings: kickside.mail:settings
       drivers: kickside.mail:drivers_registry
       message: kickside.mail.domain:message
-      render: kickside.mail.views:render
+      live_preview: kickside.mail.service:live_preview
       attachments: kickside.mail.service:attachments
       recipients: kickside.mail.service:recipients
       canonical_json: kickside.contract:canonical_json
@@ -83,13 +83,18 @@ entries:
     security: *catalog_security
   - name: preview
     kind: function.lua
-    source: file://preview.lua
+    source: &preview_source file://preview.lua
     method: preview
-    imports:
+    imports: &preview_imports
       types: kickside.mail:types
       client: kickside.mail:client
       message: kickside.mail.domain:message
-      render: kickside.mail.views:render
+      render: kickside.mail.render:render
+      catalog: kickside.mail.views:catalog
+      globals: kickside.mail.render:globals
+      jet: kickside.mail.domain:jet
+      resources: kickside.mail.library:resources
+      settings: kickside.mail:settings
       attachments: kickside.mail.service:attachments
     security:
       policies:
@@ -99,6 +104,11 @@ entries:
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
         - kickside.mail.security:asset_bytes
+  - name: live_preview
+    kind: library.lua
+    meta: { private: true, comment: Supplies settings and live library resources to the renderer. }
+    source: *preview_source
+    imports: *preview_imports
   - name: delivery
     kind: library.lua
     source: file://delivery.lua

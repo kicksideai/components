@@ -3,6 +3,7 @@ local types = require("types")
 local client = require("client")
 local database = require("database")
 local resources = require("resources")
+local originals = require("originals")
 local store = require("store")
 local settings = require("settings")
 local policy = require("policy")
@@ -25,10 +26,10 @@ end
 
 local function used_by(item: types.Resource): (types.UsedBy?, error?)
     if item.kind == "asset" or item.kind == "base" then
-        local originals, err = resources.originals()
+        local declarations, err = originals.list()
         if err then return nil, err end
         return database.with_db(function(db: types.DB): (types.UsedBy?, error?)
-            local keys, read_err = store.referrers(db, item, originals :: types.OriginalMap)
+            local keys, read_err = store.referrers(db, item, declarations :: types.OriginalMap)
             if read_err then return nil, read_err end
             return {messages = store.message_names(keys :: {types.ResourceKey})}, nil
         end)

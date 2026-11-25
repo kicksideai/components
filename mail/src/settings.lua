@@ -3,6 +3,8 @@ local types = require("types")
 local contract = require("contract")
 local registry = require("registry")
 local config = require("config")
+local env = require("env")
+local security = require("security")
 
 local M = {missing = config.setup_error}
 
@@ -24,6 +26,17 @@ function M.read(namespace: string): (types.Record?, error?)
     local result, err = M.namespace(namespace)
     if err then return nil, err end
     return result.values, nil
+end
+
+function M.appearance(): (types.Appearance?, error?)
+    local values, err = M.read("kickside.ui")
+    if err then return nil, err end
+    local url, url_err = env.get("PUBLIC_API_URL")
+    if url_err and url_err:kind() ~= errors.NOT_FOUND then return nil, url_err end
+    local actor, actor_err = security.actor()
+    if actor_err then return nil, actor_err end
+    local meta = actor and actor:meta()
+    return {title = values.title, url = url, sender_name = meta and meta.full_name}, nil
 end
 
 function M.api_key(values: types.ApiSettings, service: string?): (string?, error?)

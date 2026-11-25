@@ -35,6 +35,12 @@ entries:
       resources: [app.templates:reminder_template]
       actions: [registry.get, registry.find]
       effect: allow
+  - name: bundled_template_origin
+    kind: security.policy
+    policy:
+      resources: [app:definition]
+      actions: [registry.get]
+      effect: allow
   - name: editor
     kind: security.scope
   - name: editor_composition
@@ -43,6 +49,7 @@ entries:
     group_id: app.mail_api:editor
     policies:
       - app.mail_api:bundled_template_catalog
+      - app.mail_api:bundled_template_origin
       - kickside.mail.security:library_access
       - kickside.mail.security:library_calls
       - kickside.mail.security:library_endpoints

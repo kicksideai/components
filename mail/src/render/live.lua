@@ -2,34 +2,27 @@
 local types = require("types")
 local registry = require("registry")
 local security = require("security")
-local database = require("database")
-local store = require("store")
-local resources = require("resources")
+local resource = require("resource")
 local jet = require("jet")
-local draft = require("draft")
 
 local M = {}
 
-function M.check_shadow(declared: types.Original): error?
+function M.editable(declared: types.Original): error?
     for _, id in pairs(declared.entries) do
         if not security.can("registry.overlay.shadow", id) or not security.can("registry.overlay.update.template.jet", id)
             or not security.can("registry.overlay.delete.template.jet", id) then
-            return resources.error(errors.PERMISSION_DENIED, "mail_original_not_editable",
+            return resource.error(errors.PERMISSION_DENIED, "mail_original_not_editable",
                 "The installed module does not grant projection access to this original", declared.resource)
         end
     end
     return nil
 end
 
-local function desired(tx: types.Transaction): ({[string]: types.JetEntry}?, error?)
-    local originals, declaration_err = resources.originals()
-    if declaration_err then return nil, declaration_err end
-    local rows, err = store.live_rows(tx)
-    if err then return nil, err end
+local function desired(rows: {types.Resource}, originals: types.OriginalMap): ({[string]: types.JetEntry}?, error?)
     local entries: {[string]: types.JetEntry} = {}
     for _, item in ipairs(rows) do
-        local original = originals[resources.key(item)]
-        local origin_err = resources.match_origin(item, original)
+        local original = originals[resource.subject(item)]
+        local origin_err = resource.match_origin(item, original)
         if origin_err then return nil, origin_err end
         for _, entry in ipairs(jet.entries(item, jet.live_namespace, jet.html, jet.text, original and original.entries)) do
             entries[entry.id] = entry
@@ -38,8 +31,8 @@ local function desired(tx: types.Transaction): ({[string]: types.JetEntry}?, err
     return entries, nil
 end
 
-function M.publish(tx: types.Transaction): (boolean?, error?)
-    local entries, err = desired(tx)
+function M.publish(rows: {types.Resource}, originals: types.OriginalMap): (boolean?, error?)
+    local entries, err = desired(rows, originals)
     if err then return nil, err end
 
     local overlay, open_err = registry.overlay(jet.owner)
@@ -76,24 +69,6 @@ function M.publish(tx: types.Transaction): (boolean?, error?)
         if apply_err then return nil, apply_err end
     end
     return true, nil
-end
-
-local function reconcile(tx: types.Transaction, dialect: string): (boolean?, error?)
-    local lock_err = store.lock(tx, dialect)
-    if lock_err then return nil, lock_err end
-    local _, clear_err = draft.clear_workspace()
-    if clear_err then return nil, clear_err end
-    return M.publish(tx)
-end
-
-function M.reconcile(): (boolean?, error?)
-    return database.with_tx(reconcile)
-end
-
-function M.boot(): {status: string, message: string?}
-    local _, err = M.reconcile()
-    if err then return {status = "error", message = err:message()} end
-    return {status = "success"}
 end
 
 return M

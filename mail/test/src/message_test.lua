@@ -2,6 +2,7 @@
 local test = require("test")
 local message = require("message")
 local render = require("render")
+local renderer = require("renderer")
 local templates = require("templates")
 local failure = require("failure")
 
@@ -128,7 +129,7 @@ return { run = test.run_cases(function()
                 {face = "html", html = missing, text = "kickside.mail.views:text_templates"},
                 {face = "text", html = "kickside.mail.views:templates", text = missing},
             }) do
-                local result, err = render.with_sets(item.html, item.text, function()
+                local result, err = renderer.with_sets(item.html, item.text, function()
                     error("An unavailable template set must not be rendered")
                 end)
                 test.is_nil(result)
@@ -152,7 +153,7 @@ return { run = test.run_cases(function()
         test.it("renders the notice header and text verbatim while escaping HTML", function()
             local literal = [[A & <B> "C" 'D' &lt;]]
             local escaped = "A &amp; &lt;B&gt; &#34;C&#34; &#39;D&#39; &amp;lt;"
-            local result = assert(render.render("notice", {
+            local result = assert(render.template("notice", {
                 subject = literal, heading = "Status", message = literal, inline_content_id = "content",
                 image_alt = "Status graphic",
             }))
@@ -165,7 +166,7 @@ return { run = test.run_cases(function()
             test.not_nil(result.html:find('alt="Status graphic"', 1, true))
         end)
         test.it("renders the notice with a left-aligned card, preview line and accessible details", function()
-            local rendered = assert(render.render("notice", {
+            local rendered = assert(render.template("notice", {
                 subject = "Status", preheader = "A & B", heading = "Report ready",
                 message = "Read the update.", action_label = "Read the report", action_url = "https://example.org/report",
                 details = {{key = "Status", value = "Ready"}}, inline_content_id = "content", image_alt = [[A "chart"]],
@@ -198,7 +199,7 @@ return { run = test.run_cases(function()
         end)
         test.it("wraps prose and preserves the full action link in the text layout", function()
             local url = "https://example.org/reports/" .. string.rep("a", 75) .. "?a=1&b=2"
-            local result = assert(render.render("notice", {
+            local result = assert(render.template("notice", {
                 subject = "Status", message = string.rep("word ", 30) .. "done",
                 action_label = "Read the report", action_url = url,
                 details = {{key = "State", value = "Ready"}},
@@ -241,7 +242,7 @@ return { run = test.run_cases(function()
             test.eq(inputs.preheader, part("text_templates", "preheader", inputs))
         end)
         test.it("omits actions with non-web URLs in both bodies", function()
-            local result = assert(render.render("notice", {
+            local result = assert(render.template("notice", {
                 subject = "Status", message = "Ready", action_label = "Open",
                 action_url = "javascript:alert(1)",
             }))
@@ -249,7 +250,7 @@ return { run = test.run_cases(function()
             test.is_nil(result.text:find("javascript:", 1, true))
         end)
         test.it("renders an external template that extends the shared layout", function()
-            local result = assert(render.render("reminder", {task = "A & B"}))
+            local result = assert(render.template("reminder", {task = "A & B"}))
             test.eq("Reminder: A & B", result.subject)
             test.eq("Please finish A & B.\n\nKickSide\n", result.text)
             test.not_nil(result.html:find("<p>Please finish A &amp; B.</p>", 1, true))
@@ -271,13 +272,13 @@ return { run = test.run_cases(function()
             test.is_nil(result.html:find("bad()", 1, true))
         end)
         test.it("returns a native error for a missing template and can render again", function()
-            local result, err = render.render("missing", {})
+            local result, err = render.template("missing", {})
             test.is_nil(result)
             test.eq("template_not_found", err:details().code)
-            test.not_nil(assert(render.render("notice", { subject = "Status", message = "Ready" })))
+            test.not_nil(assert(render.template("notice", { subject = "Status", message = "Ready" })))
         end)
         test.it("validates the rendered subject as a mail header", function()
-            local result, err = render.render("notice", {subject = "Status\nBcc: to@example.org", message = "Ready"})
+            local result, err = render.template("notice", {subject = "Status\nBcc: to@example.org", message = "Ready"})
             test.is_nil(result)
             test.eq("invalid_subject", err:details().code)
         end)

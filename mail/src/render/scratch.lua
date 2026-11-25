@@ -3,29 +3,38 @@ local types = require("types")
 local registry = require("registry")
 local error_envelope = require("error_envelope")
 local render = require("render")
-local catalog = require("catalog")
+local vars_schema = require("vars")
 local globals = require("globals")
-local resources = require("resources")
+local resource = require("resource")
+local references = require("references")
+local uuid = require("uuid")
 local jet = require("jet")
 local asset_refs = require("asset_refs")
 
 local M = {}
-local HTML = jet.draft_namespace .. "html"
-local TEXT = jet.draft_namespace .. "text"
 
-local function add_set(changes: registry.Changes, id: string, escape: string): error?
-    local _, err = changes:create({id = id, kind = "template.set", data = {engine = {escape = escape}}})
-    return err
+local function closure(items: types.ResourceMap, message: types.ResourceContent?,
+    candidates: {types.ResourceContent}, dependants: {types.Resource}?): {types.ResourceContent}
+    local selected: {types.ResourceContent} = {}
+    local seen: {[string]: boolean} = {}
+    local function add(item: types.ResourceContent?)
+        if not item then return end
+        local id = resource.subject(item)
+        if seen[id] then return end
+        seen[id] = true
+        selected[#selected + 1] = item
+    end
+    add(message)
+    for _, item in ipairs(candidates) do add(item) end
+    for _, item in ipairs(dependants or {}) do add(item) end
+    for _, item in ipairs(selected) do
+        for _, key in ipairs(references.template_keys(item)) do add(items[resource.subject(key)]) end
+    end
+    return selected
 end
 
-local function clear(overlay: registry.Snapshot): (boolean?, error?)
-    local entries, err = overlay:entries()
-    if err then return nil, err end
-    if #entries == 0 then return false, nil end
-    local ids = {}
-    for _, entry in ipairs(entries) do
-        ids[#ids + 1] = entry.id
-    end
+local function remove(overlay: registry.Snapshot, ids: {string}): (boolean?, error?)
+    if #ids == 0 then return true, nil end
     local changes = overlay:changes()
     local _, stage_err = changes:delete(ids)
     if stage_err then return nil, stage_err end
@@ -37,47 +46,56 @@ end
 function M.clear_workspace(): (boolean?, error?)
     local overlay, err = registry.overlay(jet.draft_owner)
     if err then return nil, err end
-    return clear(overlay)
+    local entries, list_err = overlay:entries()
+    if list_err then return nil, list_err end
+    local ids: {string} = {}
+    for _, entry in ipairs(entries) do ids[#ids + 1] = entry.id end
+    return remove(overlay, ids)
 end
 
-local function open(items: types.ResourceMap, checked: {types.ResourceContent}): error?
+local function open(selected: {types.ResourceContent}, checked: {types.ResourceContent},
+    namespace: string, html_id: string, text_id: string): ({string}?, error?)
     local overlay, err = registry.overlay(jet.draft_owner)
-    if err then return err end
-    local cleared, clear_err = clear(overlay)
-    if clear_err then return clear_err end
-    if cleared then
-        overlay, err = registry.overlay(jet.draft_owner)
-        if err then return err end
-    end
+    if err then return nil, err end
     local changes = overlay:changes()
-    local html_err = add_set(changes, HTML, "html")
-    if html_err then return html_err end
-    local text_err = add_set(changes, TEXT, "none")
-    if text_err then return text_err end
+    local _, html_err = changes:create({id = html_id, kind = "template.set", data = {engine = {escape = "html"}}})
+    if html_err then return nil, html_err end
+    local _, text_err = changes:create({id = text_id, kind = "template.set", data = {engine = {escape = "none"}}})
+    if text_err then return nil, text_err end
 
-    for _, item in pairs(items) do
-        for _, entry in ipairs(jet.entries(item, jet.draft_namespace, HTML, TEXT)) do
-            local _, stage_err = changes:create(entry)
-            if stage_err then return stage_err end
+    local ids: {string} = {html_id, text_id}
+    local function stage(entry: types.JetEntry): error?
+        local _, stage_err = changes:create(entry)
+        if stage_err then return stage_err end
+        ids[#ids + 1] = entry.id
+        return nil
+    end
+    for _, item in ipairs(selected) do
+        for _, entry in ipairs(jet.entries(item, namespace, html_id, text_id)) do
+            local stage_err = stage(entry)
+            if stage_err then return nil, stage_err end
         end
     end
     for _, item in ipairs(checked) do
         if item.kind == "part" then
             local name = "check/" .. item.name
             local source = '{{ include "/' .. jet.name(item) .. '" vars }}'
-            local _, html_err = changes:create(jet.entry(jet.draft_namespace .. "check.html." .. item.name, HTML, name, source))
-            if html_err then return html_err end
-            local _, text_err = changes:create(jet.entry(jet.draft_namespace .. "check.text." .. item.name, TEXT, name, source))
-            if text_err then return text_err end
+            local check_html_err = stage(jet.entry(namespace .. "check.html." .. item.name, html_id, name, source))
+            if check_html_err then return nil, check_html_err end
+            local check_text_err = stage(jet.entry(namespace .. "check.text." .. item.name, text_id, name, source))
+            if check_text_err then return nil, check_text_err end
         end
     end
     local _, apply_err = changes:apply()
-    return apply_err
+    if apply_err then return nil, apply_err end
+    return ids, nil
 end
 
-local function with_draft<T>(items: types.ResourceMap, checked: {types.ResourceContent},
+local function with_draft<T>(selected: {types.ResourceContent}, checked: {types.ResourceContent},
     run: (types.TemplateSet, types.TemplateSet) -> (T?, error?)): (T?, error?)
-    local open_err = open(items, checked)
+    local namespace = jet.scratch_namespace(uuid.v4())
+    local html_id, text_id = namespace .. "html", namespace .. "text"
+    local ids, open_err = open(selected, checked, namespace, html_id, text_id)
     if open_err then
         if open_err:kind() ~= errors.CONFLICT then return nil, open_err end
         local details = open_err:details() or {}
@@ -85,8 +103,12 @@ local function with_draft<T>(items: types.ResourceMap, checked: {types.ResourceC
         return nil, errors.new({kind = errors.CONFLICT, retryable = open_err:retryable() == true,
             message = "The draft workspace is unavailable.", details = details})
     end
-    local value, err = render.with_sets(HTML, TEXT, run)
-    local final_err = error_envelope.cleanup(M.clear_workspace, err, "Cannot close the mail draft sets")
+    local value, err = render.with_sets(html_id, text_id, run)
+    local final_err = error_envelope.cleanup(function()
+        local overlay, overlay_err = registry.overlay(jet.draft_owner)
+        if overlay_err then return nil, overlay_err end
+        return remove(overlay, ids :: {string})
+    end, err, "Cannot close the mail draft sets")
     if final_err then return nil, final_err end
     return value, nil
 end
@@ -99,11 +121,11 @@ local function diagnostic(err: error, item: types.ResourceContent, changed: {typ
     local details = err:details()
     local candidates: {types.ResourceKey} = {}
     local seen: {[string]: boolean} = {}
-    local function add(resource: types.ResourceKey)
-        local key = resources.key(resource)
-        if seen[key] then return end
-        seen[key] = true
-        candidates[#candidates + 1] = {kind = resource.kind, name = resource.name}
+    local function add(key: types.ResourceKey)
+        local id = resource.subject(key)
+        if seen[id] then return end
+        seen[id] = true
+        candidates[#candidates + 1] = {kind = key.kind, name = key.name}
     end
     add(item)
     if item.base then add({kind = "base", name = item.base}) end
@@ -120,24 +142,15 @@ local function render_message(item: types.ResourceContent, vars: types.JsonObjec
     return nil, invalid(err)
 end
 
-local function record_usage(usage: types.AssetUsage, name: string, refs: {types.AssetRef}?)
-    for _, ref in ipairs(refs or {}) do
-        usage[ref.name] = usage[ref.name] or {}
-        usage[ref.name][#usage[ref.name] + 1] = name
-    end
-end
-
 local function validate_faces(item: types.ResourceContent, values: types.RenderGlobals, html: types.TemplateSet,
-    text: types.TemplateSet, usage: types.AssetUsage): error?
-    if item.kind == "asset" then return nil end
+    text: types.TemplateSet): error?
     if item.kind == "message" then
-        local rendered, err = render_message(item, item.samples, values, html, text)
-        if rendered then record_usage(usage, item.name, rendered.library_assets) end
+        local _, err = render_message(item, item.samples, values, html, text)
         return err
     end
-    local schema_err = catalog.validate_vars(item.schema, item.samples)
+    local schema_err = vars_schema.validate_vars(item.schema, item.samples)
     if schema_err then return invalid(render.face_error(item, "samples", schema_err)) end
-    local context = globals.data(values, item.samples, "")
+    local context = globals.context(values, item.samples, "")
     local name = item.kind == "part" and ("check/" .. item.name) or jet.name(item)
     context.assets = asset_refs.context(values.assets or {})
     local _, html_err = render.render_face(item, "html", html, name, context)
@@ -155,13 +168,12 @@ local function issue(err: error): types.DraftIssue
 end
 
 local function check(candidates: {types.ResourceContent}, dependants: {types.Resource}, values: types.RenderGlobals,
-    html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview, error?, error?, types.AssetUsage)
+    html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview, error?, error?)
     local result: types.DraftPreview = {errors = {}, dependent_messages = {}}
-    local usage: types.AssetUsage = {}
     local candidate_error: error?
     local dependent_error: error?
     for _, candidate in ipairs(candidates) do
-        local err = validate_faces(candidate, values, html, text, usage)
+        local err = validate_faces(candidate, values, html, text)
         if err then
             err = diagnostic(err, candidate, candidates)
             result.errors[#result.errors + 1] = issue(err)
@@ -169,7 +181,7 @@ local function check(candidates: {types.ResourceContent}, dependants: {types.Res
         end
     end
     for _, item in ipairs(dependants) do
-        local err = validate_faces(item, values, html, text, usage)
+        local err = validate_faces(item, values, html, text)
         if err then
             err = diagnostic(err, item, candidates)
             result.errors[#result.errors + 1] = issue(err)
@@ -177,16 +189,17 @@ local function check(candidates: {types.ResourceContent}, dependants: {types.Res
             dependent_error = dependent_error or err
         end
     end
-    return result, candidate_error, dependent_error, usage
+    return result, candidate_error, dependent_error
 end
 
 function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidates: {types.ResourceContent},
-    dependants: {types.Resource}, values: types.RenderGlobals): (types.AssetUsage?, error?)
+    dependants: {types.Resource}, values: types.RenderGlobals): (boolean?, error?)
     values.assets = asset_refs.from_items(items)
-    return with_draft(items, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (types.AssetUsage?, error?)
-        local result, candidate_error, dependent_error, usage = check(candidates, dependants, values, html, text)
+    local selected = closure(items, nil, candidates, dependants)
+    return with_draft(selected, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (boolean?, error?)
+        local result, candidate_error, dependent_error = check(candidates, dependants, values, html, text)
         if candidate_error then return nil, candidate_error end
-        if not dependent_error then return usage, nil end
+        if not dependent_error then return true, nil end
         if #candidates == 0 then
             return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = dependent_error:message(),
                 details = {code = "mail_resource_in_use", resource = key, dependent = dependent_error:details(),
@@ -203,7 +216,8 @@ end
 function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, candidates: {types.ResourceContent},
     dependants: {types.Resource}, values: types.RenderGlobals, attachments: {types.AttachmentRef}?): (types.DraftPreview?, error?)
     values.assets = asset_refs.from_items(items)
-    return with_draft(items, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview?, error?)
+    local selected = closure(items, item, candidates, dependants)
+    return with_draft(selected, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview?, error?)
         local result = check(candidates, dependants, values, html, text)
         local rendered, err = render_message(item, vars, values, html, text, attachments)
         if err then
@@ -224,26 +238,12 @@ function M.preview(items: types.ResourceMap, item: types.Resource, vars: types.J
     end)
 end
 
-function M.asset_usage(items: types.ResourceMap, values: types.RenderGlobals): (types.AssetUsage?, error?)
-    values.assets = asset_refs.from_items(items)
-    return with_draft(items, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.AssetUsage?, error?)
-        local usage: types.AssetUsage = {}
-        for _, item in pairs(items) do
-            if item.kind == "message" then
-                local rendered, err = render_message(item, item.samples, values, html, text)
-                if err then return nil, err end
-                record_usage(usage, item.name, rendered.library_assets)
-            end
-        end
-        return usage, nil
-    end)
-end
-
 function M.render(items: types.ResourceMap, item: types.Resource, vars: types.JsonObject,
     candidates: {types.ResourceContent}, values: types.RenderGlobals,
     attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     values.assets = asset_refs.from_items(items)
-    return with_draft(items, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
+    local selected = closure(items, item, candidates)
+    return with_draft(selected, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
         local result, err = render_message(item, vars, values, html, text, attachments)
         if err then return nil, diagnostic(err, item, candidates) end
         return result, nil

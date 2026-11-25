@@ -1,10 +1,9 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
-local registry = require("registry")
+local declarations = require("originals")
 local resource = require("resource")
 local database = require("database")
 local store = require("store")
-local jet = require("jet")
 
 local M = {
     error = resource.error,
@@ -19,73 +18,6 @@ local M = {
     visible_messages = resource.visible_messages,
     MAX_EDITS = resource.MAX_EDITS,
 }
-
-local function original(id: string, data: types.Record): (types.Original?, error?)
-    local declaration = data.template :: types.ResourceContent
-    if type(declaration) ~= "table" then
-        return nil, M.error(errors.INVALID, "invalid_template_declaration", "Missing mail resource declaration " .. id)
-    end
-    local fields = data.template :: types.Record
-    local entry_ids = fields.entries :: {[string]: string}
-    if declaration.kind == "asset" then
-        entry_ids = {}
-        declaration.html, declaration.text = "", ""
-    elseif type(entry_ids) ~= "table" or type(entry_ids.html) ~= "string" or type(entry_ids.text) ~= "string"
-        or (declaration.kind == "message" and type(entry_ids.subject) ~= "string") then
-        return nil, M.error(errors.INVALID, "invalid_template_declaration", "Missing Jet registry IDs for " .. id)
-    end
-    declaration.schema = (fields.variable_schema or fields.input_schema or {type = "object", properties = {}}) :: types.VariableSchema
-    declaration.samples = (fields.sample or {}) :: types.JsonObject
-    local item, err = M.normalize(declaration)
-    if err then return nil, err end
-    if item.base then
-        local prefix = jet.prefix(item.base)
-        if item.html:sub(1, #prefix) ~= prefix or item.text:sub(1, #prefix) ~= prefix then
-            return nil, M.error(errors.INVALID, "invalid_template_declaration", "The shipped Jet faces must use the declared base for " .. id, item)
-        end
-        item.html = item.html:sub(#prefix + 1)
-        item.text = item.text:sub(#prefix + 1)
-    end
-    local resource = item :: types.Resource
-    resource.state, resource.revision, resource.origin = "original", 0, id
-    return {resource = resource, entries = entry_ids}, nil
-end
-
-local function module_title(id: string, titles: {[string]: string}): string
-    local namespace = id:match("^([^:]+):")
-    while namespace do
-        if titles[namespace] then return titles[namespace] end
-        namespace = namespace:match("^(.*)%.[^.]+$")
-    end
-    return "Installed module"
-end
-
-function M.originals(): (types.OriginalMap?, error?)
-    local entries, err = registry.find({[".kind"] = "registry.entry", ["meta.type"] = "kickside.mail:template"})
-    if err then return nil, err end
-    local definitions, definitions_err = registry.find({[".kind"] = "ns.definition"})
-    if definitions_err then return nil, definitions_err end
-    local titles: {[string]: string} = {}
-    for _, definition in ipairs(definitions) do
-        local namespace = definition.id:match("^([^:]+):")
-        local title = definition.meta.title
-        if namespace and type(title) == "string" and title:find("%S") then
-            titles[namespace] = title
-        end
-    end
-    local items: types.OriginalMap = {}
-    for _, entry in ipairs(entries) do
-        local declared, declaration_err = original(entry.id, entry.data :: types.Record)
-        if declaration_err then return nil, declaration_err end
-        declared.resource.origin_label = module_title(entry.id, titles)
-        local key = M.key(declared.resource)
-        if items[key] then
-            return nil, M.error(errors.CONFLICT, "duplicate_template_name", "Multiple modules declare " .. key, declared.resource)
-        end
-        items[key] = declared
-    end
-    return items, nil
-end
 
 function M.match_origin(item: types.Resource, declared: types.Original?): error?
     local err = resource.match_origin(item, declared)
@@ -106,7 +38,7 @@ local function merge(db: types.Executor, originals: types.OriginalMap, rows: {ty
 end
 
 function M.load(db: types.Executor): (types.ResourceMap?, error?, types.OriginalMap?)
-    local originals, err = M.originals()
+    local originals, err = declarations.list()
     if err then return nil, err end
     local rows, read_err = store.find(db, {})
     if read_err then return nil, read_err end
@@ -117,7 +49,7 @@ end
 function M.get(key: types.ResourceKey): (types.Resource?, error?, types.Original?)
     local bad_key = M.check_key(key)
     if bad_key then return nil, bad_key end
-    local originals, err = M.originals()
+    local originals, err = declarations.list()
     if err then return nil, err end
     local item, read_err = store.read(key)
     if read_err then return nil, read_err end
@@ -132,7 +64,7 @@ function M.get(key: types.ResourceKey): (types.Resource?, error?, types.Original
 end
 
 function M.page(filter: types.ResourceFilter, after: types.ResourceKey?, limit: integer): (types.LibraryPage?, error?)
-    local originals, err = M.originals()
+    local originals, err = declarations.list()
     if err then return nil, err end
     local declarations: {types.LibraryDeclaration} = {}
     for _, declared in pairs(originals) do
@@ -162,7 +94,7 @@ end
 function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
     local q = filter.q and filter.q:lower()
     return database.with_db(function(db: types.DB): ({types.Resource}?, error?)
-        local originals, err = M.originals()
+        local originals, err = declarations.list()
         if err then return nil, err end
         local stored_only = filter.state == "created" or filter.state == "customized"
         local rows, read_err = store.find(db, stored_only and filter or {kind = filter.kind})

@@ -62,3 +62,34 @@ entries:
     set: kickside.mail.views:text_templates
     meta: { name: test/standalone-part }
     source: *standalone_part
+
+  - name: deny_app_definition
+    kind: security.policy
+    policy:
+      resources: [app:definition]
+      actions: [registry.get]
+      effect: deny
+  - name: preview_without_app_definition
+    kind: function.lua
+    source: file://globals_test.lua
+    method: preview
+    modules: [security]
+    imports:
+      test: wippy.test:test
+      preview: kickside.mail.service:live_preview
+    security:
+      policies:
+        - app.templates:deny_app_definition
+        - kickside.mail.security:template_access
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+  - name: globals_test
+    kind: function.lua
+    meta: {type: test, suite: mail_templates}
+    source: file://globals_test.lua
+    method: run
+    modules: [funcs]
+    imports:
+      test: wippy.test:test

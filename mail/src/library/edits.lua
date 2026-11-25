@@ -2,7 +2,7 @@
 local types = require("types")
 local resources = require("resources")
 local store = require("store")
-local projection = require("projection")
+local live = require("live")
 
 local M = {}
 
@@ -22,20 +22,23 @@ function M.base_exists(items: types.ResourceMap, resource: types.ResourceContent
     return nil
 end
 
-function M.dependants(items: types.ResourceMap, keys: {types.ResourceKey}, changed: {[string]: boolean}, all: boolean?): {types.Resource}
-    local bases: {[string]: boolean} = {}
-    for _, key in ipairs(keys) do
-        if key.kind == "part" then all = true end
-        if key.kind == "base" then bases[key.name] = true end
-    end
+function M.dependants(ex: types.Executor, items: types.ResourceMap, originals: types.OriginalMap,
+    keys: {types.ResourceKey}, changed: {[string]: boolean}): ({types.Resource}?, error?)
     local selected: {types.Resource} = {}
-    for id, item in pairs(items) do
-        if item.kind == "message" and not changed[id] and (all or (item.base and bases[item.base])) then
-            selected[#selected + 1] = item
+    local seen: {[string]: boolean} = {}
+    for _, key in ipairs(keys) do
+        local sources, err = store.referrers(ex, key, originals)
+        if err then return nil, err end
+        for _, source in ipairs(sources) do
+            local id = resources.key(source)
+            if source.kind == "message" and items[id] and not changed[id] and not seen[id] then
+                selected[#selected + 1] = items[id]
+                seen[id] = true
+            end
         end
     end
     table.sort(selected, function(a, b) return a.name < b.name end)
-    return selected
+    return selected, nil
 end
 
 function M.prepare(tx: types.Transaction, edit: types.LibraryEdit, operation: string,
@@ -50,7 +53,7 @@ function M.prepare(tx: types.Transaction, edit: types.LibraryEdit, operation: st
         if edit.expected ~= current.revision then return nil, M.conflict(key, current.revision) end
     end
     if original then
-        local projection_err = projection.check_shadow(original)
+        local projection_err = live.editable(original)
         if projection_err then return nil, projection_err end
     end
     if operation == "reset" then

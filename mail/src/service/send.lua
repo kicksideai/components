@@ -14,7 +14,7 @@ local security = require("security")
 local resources = require("resources")
 local realtime = require("realtime")
 local message = require("message")
-local render = require("render")
+local live_preview = require("live_preview")
 local attachments = require("attachments")
 local recipients = require("recipients")
 
@@ -43,7 +43,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
 
     local render_err
     if not rendered and input.template then
-        rendered, render_err = render.render(input.template, input.vars, input.attachments)
+        rendered, render_err = live_preview.template(input.template, input.vars, input.attachments)
         if render_err then return nil, render_err end
     end
     local addresses, recipient_err = recipients.resolve(input)
@@ -68,7 +68,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     end
 
     if not rendered then
-        rendered, render_err = render.body(input.subject :: string, input.text, input.html, input.attachments)
+        rendered, render_err = live_preview.body(input.subject :: string, input.text, input.html, input.attachments)
         if render_err then return nil, render_err end
     end
 

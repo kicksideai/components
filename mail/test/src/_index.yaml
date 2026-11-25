@@ -160,7 +160,8 @@ entries:
     imports:
       test: wippy.test:test
       message: kickside.mail.domain:message
-      render: kickside.mail.views:render
+      render: kickside.mail.service:live_preview
+      renderer: kickside.mail.render:render
       failure: kickside.mail.domain:failure
   - name: dep.blocks
     kind: ns.dependency

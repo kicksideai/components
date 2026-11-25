@@ -150,6 +150,7 @@ type TemplateRequest = {template: string}
 type PreviewRequest = {template: string, vars: JsonObject, attachments: {AttachmentRef}?}
 type PreviewResult = {subject: string, html: string, text: string, inline_assets: InlineAssets?, warnings: {PreviewWarning}?}
 type Rendered = {subject: string, html: string?, text: string?, library_assets: {AssetRef}?, inline_assets: InlineAssets?, warnings: {PreviewWarning}?}
+type Appearance = {title: unknown, url: string?, sender_name: unknown}
 type RenderGlobals = {assets: {Resource}?, site: {title: string, url: string}, sender: {name: string}}
 type TemplateParts = {subject: string, html: string, text: string}
 type VariableSchema = {type: string, properties: JsonObject, additionalProperties: boolean?}
@@ -228,7 +229,8 @@ return {
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetReadRequest = AssetReadRequest, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
     TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
-    PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, PreviewWarning = PreviewWarning, Rendered = Rendered, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
+    PreviewRequest = PreviewRequest, PreviewResult = PreviewResult, PreviewWarning = PreviewWarning, Rendered = Rendered,
+    Appearance = Appearance, RenderGlobals = RenderGlobals, TemplateParts = TemplateParts,
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,
     ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, SchemaIssue = SchemaIssue,
     Driver = Driver, Availability = Availability, DriverSetting = DriverSetting, DriverSummary = DriverSummary,

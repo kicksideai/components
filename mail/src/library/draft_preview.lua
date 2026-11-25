@@ -4,16 +4,18 @@ local client = require("client")
 local resources = require("resources")
 local edit_ops = require("edits")
 local message = require("message")
-local catalog = require("catalog")
+local vars_schema = require("vars")
 local globals = require("globals")
+local settings = require("settings")
 local store = require("store")
 local database = require("database")
-local draft = require("draft")
+local scratch = require("scratch")
 local security = require("security")
 local time = require("time")
 local preview_id = require("preview_id")
 local attachments = require("attachments")
 local renderer = require("render")
+local live_preview = require("live_preview")
 
 local M = {}
 
@@ -62,10 +64,11 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
             if from_err then return nil, from_err end
         end
     end
-    local vars_err = catalog.check_vars(input.vars)
+    local vars_err = vars_schema.check_vars(input.vars)
     if vars_err then return nil, vars_err end
-    local values, globals_err = globals.read()
+    local appearance, globals_err = settings.appearance()
     if globals_err then return nil, globals_err end
+    local values = globals.data(appearance :: types.Appearance)
     local rendered, render_err = database.with_tx(function(tx: types.Transaction, dialect: string): (types.Rendered | types.DraftPreview | nil, error?)
         local lock_err = store.lock(tx, dialect)
         if lock_err then return nil, lock_err end
@@ -93,12 +96,15 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         if not item then return nil, edit_ops.missing(key) end
         local vars = input.vars
         if vars == nil then vars = item.samples end
+        local _, clear_err = scratch.clear_workspace()
+        if clear_err then return nil, clear_err end
         if not bind then
-            return draft.render(items :: types.ResourceMap, item, vars, candidates, values :: types.RenderGlobals, input.attachments)
+            return scratch.render(items :: types.ResourceMap, item, vars, candidates, values, input.attachments)
         end
-        local dependent = edit_ops.dependants(items :: types.ResourceMap, keys, changed)
-        local result, draft_err = draft.preview(items :: types.ResourceMap, item, vars, candidates, dependent,
-            values :: types.RenderGlobals, input.attachments)
+        local dependent, dependants_err = edit_ops.dependants(tx, items :: types.ResourceMap, originals :: types.OriginalMap, keys, changed)
+        if dependants_err then return nil, dependants_err end
+        local result, draft_err = scratch.preview(items :: types.ResourceMap, item, vars, candidates, dependent :: {types.Resource},
+            values, input.attachments)
         if draft_err then return nil, draft_err end
         if #result.errors == 0 then
             local actor, actor_err = security.actor()
@@ -133,5 +139,7 @@ function M.preview_edits(input: types.EditPreview): (types.DraftPreview?, error?
     local result, err = preview(input, true)
     return result :: types.DraftPreview?, err
 end
+
+M.render = live_preview.preview
 
 return M

@@ -4,9 +4,8 @@ local templates = require("templates")
 local html = require("html")
 local globals = require("globals")
 local message = require("message")
-local catalog = require("catalog")
+local vars_schema = require("vars")
 local jet = require("jet")
-local resources = require("resources")
 local asset_refs = require("asset_refs")
 
 local M = {}
@@ -98,10 +97,10 @@ end
 
 function M.faces(item: types.ResourceContent, vars: unknown, values: types.RenderGlobals, html_set: types.TemplateSet,
     text_set: types.TemplateSet, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
-    local validation_err = catalog.validate_vars(item.schema, vars)
+    local validation_err = vars_schema.validate_vars(item.schema, vars)
     if validation_err then return nil, validation_err end
     local variables = vars :: types.JsonObject
-    local context = globals.data(values, variables, type(variables.subject) == "string" and variables.subject or "")
+    local context = globals.context(values, variables, type(variables.subject) == "string" and variables.subject or "")
     context._mail_html, context._mail_text = nil, nil
     context.assets = nil
     local name = jet.name(item)
@@ -134,22 +133,8 @@ function M.faces(item: types.ResourceContent, vars: unknown, values: types.Rende
         library_assets = asset_refs.select(body, assets, asset_context)}, nil
 end
 
-function M.render(template_name: unknown, data: unknown, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
-    local size_err = catalog.check_vars(data)
-    if size_err then return nil, size_err end
-    local item, declaration_err = catalog.resolve(template_name)
-    if declaration_err then return nil, declaration_err end
-    local values, err = globals.read()
-    if err then return nil, err end
-    local assets, asset_err = resources.list({kind = "asset"})
-    if asset_err then return nil, asset_err end
-    values.assets = assets
-    return M.with_sets(jet.html, jet.text, function(html_set: types.TemplateSet, text_set: types.TemplateSet): (types.Rendered?, error?)
-        return M.faces(item :: types.Resource, data, values :: types.RenderGlobals, html_set, text_set, attachments)
-    end)
-end
-
-function M.body(subject: string, text: string?, markup: string?, attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
+function M.body(subject: string, text: string?, markup: string?, values: types.RenderGlobals,
+    attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     if text and not text:find("%S") then text = nil end
     local data = {_mail_text = text}
     if markup and markup:find("%S") then
@@ -164,12 +149,9 @@ function M.body(subject: string, text: string?, markup: string?, attachments: {t
                 retryable = false, details = {code = "body_required"}})
         end
     end
-    local values, globals_err = globals.read()
-    if globals_err then return nil, globals_err end
-    local context = globals.data(values :: types.RenderGlobals, data, subject)
-    local assets, asset_err = resources.list({kind = "asset"})
-    if asset_err then return nil, asset_err end
-    local asset_context = asset_refs.context(assets :: {types.Resource}, attachments)
+    local context = globals.context(values, data, subject)
+    local assets = values.assets or {}
+    local asset_context = asset_refs.context(assets, attachments)
     context.assets = asset_context
     local set, err = open_set(jet.html, "html")
     if err then return nil, err end
@@ -177,7 +159,7 @@ function M.body(subject: string, text: string?, markup: string?, attachments: {t
     set:release()
     if render_err then return nil, render_err end
     if not body:find("%S") then return nil, empty_body("html") end
-    return {subject = subject, html = body, text = text, library_assets = asset_refs.select(body, assets :: {types.Resource}, asset_context)}, nil
+    return {subject = subject, html = body, text = text, library_assets = asset_refs.select(body, assets, asset_context)}, nil
 end
 
 return M

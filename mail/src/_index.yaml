@@ -96,7 +96,7 @@ entries:
   - name: settings
     kind: library.lua
     source: file://settings.lua
-    modules: [contract, registry]
+    modules: [contract, registry, env, security]
     imports: { types: kickside.mail:types, config: kickside.mail.domain:config }
   - name: drivers_registry
     kind: library.lua

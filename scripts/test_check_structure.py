@@ -104,10 +104,10 @@ class StructureCheckTest(unittest.TestCase):
         self.assertEqual([str(f) for f in m.findings if f.rule == "S2"], [])
         self.assertEqual(check_structure.Module(fixture("good")).level("settings"), "persist")
 
-    def test_mail_overlay_wildcards_allow_only_overlay_actions_in_two_namespaces(self):
+    def test_mail_overlay_wildcards_allow_template_get_only_on_draft_sets(self):
         m = check_structure.run(fixture("mail"))
         got = [(f.file, f.line) for f in m.findings if f.rule == "S14"]
-        self.assertEqual(got, [("src/security/_index.yaml", line) for line in (20, 26, 26, 32, 39)])
+        self.assertEqual(got, [("src/security/_index.yaml", line) for line in (26, 26, 32, 39, 51)])
 
     def test_mail_owns_its_overlay_namespaces_without_index_files(self):
         m = check_structure.run(fixture("mail"), peer_dirs=[fixture("good")])
@@ -124,6 +124,7 @@ class StructureCheckTest(unittest.TestCase):
         got = [f.line for f in m.findings if f.rule == "S14"]
         self.assertIn(8, got)
         self.assertIn(14, got)
+        self.assertIn(20, got)
 
     def test_peer_module_allows_root_client_and_contracts_only(self):
         peer = check_structure.Module(fixture("good"))

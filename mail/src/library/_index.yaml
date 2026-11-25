@@ -44,59 +44,12 @@ entries:
   - name: resources
     kind: library.lua
     source: file://resources.lua
-    modules: [registry]
     imports:
       types: kickside.mail:types
       database: kickside.mail.persist:db
       resource: kickside.mail.domain:resource
       store: kickside.mail.library:store
-      jet: kickside.mail.domain:jet
-  - name: projection
-    kind: library.lua
-    source: &projection_source file://projection.lua
-    modules: &projection_modules [registry, security]
-    imports: &projection_imports
-      types: kickside.mail:types
-      database: kickside.mail.persist:db
-      store: kickside.mail.library:store
-      resources: kickside.mail.library:resources
-      jet: kickside.mail.domain:jet
-      draft: kickside.mail.library:draft
-  - name: reconcile
-    kind: function.lua
-    meta:
-      private: true
-      type: bootloader
-      requires: [wippy.migration:migration_bootloader]
-      order: 35
-    source: *projection_source
-    method: boot
-    modules: *projection_modules
-    imports: *projection_imports
-    security:
-      policies:
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
-        - kickside.mail.security:template_access
-        - kickside.mail.security:overlay_owner
-        - kickside.mail.security:overlay_projection
-        - kickside.mail.security:overlay_originals
-        - kickside.mail.security:overlay_drafts
-        - kickside.mail.security:site_url
-        - kickside.mail.security:settings_read
-  - name: draft
-    kind: library.lua
-    source: file://draft.lua
-    modules: [registry]
-    imports:
-      types: kickside.mail:types
-      jet: kickside.mail.domain:jet
-      resources: kickside.mail.library:resources
-      render: kickside.mail.views:render
-      globals: kickside.mail.views:globals
-      asset_refs: kickside.mail.domain:assets
-      catalog: kickside.mail.views:catalog
-      error_envelope: kickside.contract:error_envelope
+      originals: kickside.mail.render:originals
   - name: preview_id
     kind: library.lua
     source: file://preview_id.lua
@@ -113,7 +66,7 @@ entries:
       types: kickside.mail:types
       resources: kickside.mail.library:resources
       store: kickside.mail.library:store
-      projection: kickside.mail.library:projection
+      live: kickside.mail.render:live
   - name: list
     kind: function.lua
     method: list
@@ -125,6 +78,7 @@ entries:
       database: kickside.mail.persist:db
       resources: kickside.mail.library:resources
       store: kickside.mail.library:store
+      originals: kickside.mail.render:originals
       outbox: kickside.mail.outbox:store
       settings: kickside.mail:settings
       policy: kickside.mail.domain:policy
@@ -175,24 +129,6 @@ entries:
         - kickside.mail.security:template_access
         - kickside.mail.security:settings_read
         - kickside.mail.security:settings_admin_read
-  - name: render
-    kind: function.lua
-    method: preview
-    source: file://../service/preview.lua
-    imports:
-      types: kickside.mail:types
-      client: kickside.mail:client
-      message: kickside.mail.domain:message
-      render: kickside.mail.views:render
-      attachments: kickside.mail.service:attachments
-    security:
-      policies:
-        - kickside.mail.security:outbox_db
-        - kickside.mail.security:outbox_config
-        - kickside.mail.security:template_access
-        - kickside.mail.security:site_url
-        - kickside.mail.security:settings_read
-        - kickside.mail.security:asset_bytes
   - name: create
     kind: function.lua
     method: create
@@ -205,9 +141,11 @@ entries:
       resources: kickside.mail.library:resources
       store: kickside.mail.library:store
       edits: kickside.mail.library:edits
-      projection: kickside.mail.library:projection
-      draft: kickside.mail.library:draft
-      globals: kickside.mail.views:globals
+      live: kickside.mail.render:live
+      originals: kickside.mail.render:originals
+      scratch: kickside.mail.render:scratch
+      globals: kickside.mail.render:globals
+      settings: kickside.mail:settings
       realtime: kickside.mail:realtime
       preview_id: kickside.mail.library:preview_id
       attachments: kickside.mail.service:attachments
@@ -315,10 +253,12 @@ entries:
       resources: kickside.mail.library:resources
       store: kickside.mail.library:store
       edits: kickside.mail.library:edits
-      draft: kickside.mail.library:draft
-      render: kickside.mail.views:render
-      catalog: kickside.mail.views:catalog
-      globals: kickside.mail.views:globals
+      scratch: kickside.mail.render:scratch
+      render: kickside.mail.render:render
+      live_preview: kickside.mail.service:live_preview
+      vars: kickside.mail.domain:vars
+      globals: kickside.mail.render:globals
+      settings: kickside.mail:settings
       preview_id: kickside.mail.library:preview_id
       attachments: kickside.mail.service:attachments
       message: kickside.mail.domain:message
@@ -349,3 +289,39 @@ entries:
         - kickside.mail.security:overlay_drafts
         - kickside.settings:reader_secrets
         - kickside.mail.security:asset_bytes
+  - name: render
+    kind: function.lua
+    method: render
+    source: *draft_preview_source
+    modules: *draft_preview_modules
+    imports: *draft_preview_imports
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:asset_bytes
+  - name: reconcile
+    kind: function.lua
+    meta:
+      private: true
+      type: bootloader
+      requires: [wippy.migration:migration_bootloader]
+      order: 35
+    source: *service_source
+    method: boot
+    modules: *service_modules
+    imports: *service_imports
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:overlay_projection
+        - kickside.mail.security:overlay_originals
+        - kickside.mail.security:overlay_drafts
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read

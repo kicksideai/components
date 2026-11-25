@@ -9,6 +9,15 @@ entries:
     kind: env.variable
     variable: PUBLIC_API_URL
     storage: app.mail_library:site_url_storage
+  - name: site_title
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.ui
+    key: title
+    title: Site title
+    scope: global
+    value_type: string
+    default: KickSide
   - name: fixtures
     kind: library.lua
     source: file://fixtures.lua
@@ -29,9 +38,9 @@ entries:
   - name: draft_render
     kind: library.lua
     source: file://draft_render.lua
-    modules: [ctx]
+    modules: [ctx, registry]
     imports:
-      render: kickside.mail.views:render
+      render: kickside.mail.render:render
       types: kickside.mail:types
   - name: draft_workspace_test
     kind: function.lua
@@ -66,11 +75,17 @@ entries:
     imports: *assets_imports
   - name: projection_fault
     kind: library.lua
-    source: file://projection_fault.lua
-    modules: [ctx, templates]
-    imports:
-      projection: kickside.mail.library:projection
+    source: &projection_fault_source file://projection_fault.lua
+    modules: &projection_fault_modules [ctx, templates]
+    imports: &projection_fault_imports
+      live: kickside.mail.render:live
+      database: kickside.mail.persist:db
       types: kickside.mail:types
+  - name: projection_database
+    kind: library.lua
+    source: *projection_fault_source
+    modules: *projection_fault_modules
+    imports: *projection_fault_imports
   - name: service_content
     kind: function.lua
     source: *assets_source
