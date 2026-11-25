@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { onBeforeUnmount, onMounted, ref, shallowRef, type Ref, type ShallowRef } from 'vue'
-import { isMissing, library } from '../api'
+import { library } from '../api'
 import { describe } from '../copy'
-import { useLibraryChanges, type LibraryChange } from '../realtime'
+import { useMailInvalidation } from '../realtime'
 import type { LibraryRow, Resource, ResourceKind } from '../types'
 
-// The summary row a resource read stands for, so a change event updates rows without reloading lists.
+// Project a newly saved resource into a cached summary row.
 export function rowOf(item: Resource): LibraryRow {
   const { kind, name, title, description, state, revision, origin, origin_label, base, author, author_label, updated_at, used_by } = item
   const usage = used_by && {
@@ -16,22 +16,21 @@ export function rowOf(item: Resource): LibraryRow {
 }
 
 interface KindList { rows: ShallowRef<LibraryRow[]>; loaded: Ref<boolean>; loading: Ref<boolean>; error: Ref<string>; users: number; stale: boolean }
-type RowListener = (change: LibraryChange, row: LibraryRow | undefined, item: Resource | undefined) => void
 
-// Summary rows by kind, read only for the kinds a mounted screen asks for. A change event reads the one resource
-// it names and patches the rows in place; nothing reloads a whole list after the first read.
+// Summary rows are cached by kind for pickers and resource labels.
 export function useLibrary() {
   const kinds = Object.fromEntries((['message', 'base', 'part', 'asset'] as ResourceKind[])
     .map(kind => [kind, { rows: shallowRef<LibraryRow[]>([]), loaded: ref(false), loading: ref(false), error: ref(''), users: 0, stale: false }])) as
     Record<ResourceKind, KindList>
   const pending = new Map<ResourceKind, Promise<void>>()
-  const listeners = new Set<RowListener>()
+  let generation = 0
 
   function load(kind: ResourceKind): Promise<void> {
     const running = pending.get(kind)
     if (running) return running
     const list = kinds[kind]
     list.loading.value = true
+    const requested = generation
     const task = (async () => {
       try {
         const rows: LibraryRow[] = []
@@ -43,13 +42,14 @@ export function useLibrary() {
         } while (cursor)
         list.rows.value = rows
         list.loaded.value = true
-        list.stale = false
+        list.stale = requested !== generation
         list.error.value = ''
       } catch (failure) {
         list.error.value = describe(failure, 'The mail library could not be loaded.')
       } finally {
         list.loading.value = false
         pending.delete(kind)
+        if (requested !== generation && list.users > 0) ensure(kind)
       }
     })()
     pending.set(kind, task)
@@ -75,34 +75,14 @@ export function useLibrary() {
     list.rows.value = rows
   }
 
-  async function changed(change: LibraryChange) {
-    let row: LibraryRow | undefined, item: Resource | undefined
-    try {
-      item = await library.get(change)
-      row = rowOf(item)
-    } catch (failure) {
-      if (!isMissing(failure)) {
-        kinds[change.kind].stale = true
-        if (kinds[change.kind].users > 0) ensure(change.kind)
-        return
-      }
-    }
-    patch(change.kind, change.name, row)
-    for (const listener of listeners) listener(change, row, item)
-  }
-  useLibraryChanges(change => { void changed(change) })
-
-  // After the page was hidden, lists in use read again once; lists nobody shows wait until someone does.
   function refresh() {
-    for (const list of Object.values(kinds)) list.stale = list.loaded.value
-    for (const [kind, list] of Object.entries(kinds) as [ResourceKind, KindList][]) if (list.users > 0) ensure(kind)
+    generation++
+    for (const [kind, list] of Object.entries(kinds) as [ResourceKind, KindList][]) {
+      list.stale = list.loaded.value
+      if (list.users > 0) ensure(kind)
+    }
   }
-
-  // Every change as one read row, for screens that keep their own server-ordered pages.
-  function onRow(listener: RowListener) {
-    listeners.add(listener)
-    onBeforeUnmount(() => listeners.delete(listener))
-  }
+  useMailInvalidation('mail.library', refresh)
 
   const find = (kind: ResourceKind, name: string) => kinds[kind].rows.value.find(item => item.name === name)
   // A title, or undefined while the kind is still loading; the reference once it is known not to be listed.
@@ -116,5 +96,5 @@ export function useLibrary() {
   const ready = (kind: ResourceKind) => kinds[kind].loaded.value
   const failed = (kind: ResourceKind) => kinds[kind].error.value
 
-  return { kinds, use, ensure, load, find, title, ofKind, ready, failed, onRow, refresh, patch }
+  return { kinds, use, ensure, load, find, title, ofKind, ready, failed, refresh, patch }
 }

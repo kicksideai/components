@@ -30,6 +30,35 @@ export function editable(content: ResourceContent): ResourceContent {
     : { kind, name, title, description, html, text, schema, samples }
 }
 
+type ReviewedDraft = DraftRender & {
+  preview_id?: string
+  errors?: (Record<string, unknown> & { message: string })[]
+  dependent_messages?: string[]
+}
+
+const reviewMessage = (key: ResourceKey) => key.kind === 'message' ? key.name : 'notice'
+
+async function review(key: ResourceKey, draft: Record<string, unknown>): Promise<string> {
+  const result = await request<ReviewedDraft>(
+    () => api.post(`${BASE}/library/preview`, { message: reviewMessage(key), ...draft }, { params: { review: 'true' } }),
+    'Review changes',
+  )
+  const issue = result.errors?.[0]
+  if (issue) {
+    throw new ApiError({ kind: 'INVALID', message: issue.message, details: {
+      ...issue, errors: result.errors, dependent_messages: result.dependent_messages,
+    } }, 'Review changes')
+  }
+  if (!result.preview_id) throw new ApiError({ message: 'Mail did not return a preview ID.' }, 'Review changes')
+  return result.preview_id
+}
+
+async function createResource(body: ResourceContent | CopyRequest, note?: string): Promise<Resource> {
+  const proposed = { ...body, note: note ?? ('note' in body ? body.note : undefined) }
+  const preview_id = await review(body, { create: proposed })
+  return request<Resource>(() => api.post(`${BASE}/library`, { ...proposed, preview_id }), 'Create resource')
+}
+
 export const library = {
   page: (filter: LibraryFilter = {}) =>
     request<LibraryPage>(() => api.get(`${BASE}/library`, { params: params({ view: 'summary', limit: 100, ...filter }) }), 'Mail library'),
@@ -39,15 +68,23 @@ export const library = {
   get: (key: ResourceKey) => request<Resource>(() => api.get(resourcePath(key)), 'Mail resource'),
   history: (key: ResourceKey) =>
     request<Items<Revision>>(() => api.get(`${resourcePath(key)}/history`), 'Resource history').then(r => r.items),
-  copy: (body: CopyRequest) => request<Resource>(() => api.post(`${BASE}/library`, body), 'Create resource'),
-  create: (content: ResourceContent, note?: string) =>
-    request<Resource>(() => api.post(`${BASE}/library`, { ...editable(content), note }), 'Create resource'),
-  update: (content: ResourceContent, expected: number, note?: string) =>
-    request<Resource>(() => api.put(resourcePath(content), { ...editable(content), expected_revision: expected, note }), 'Save resource'),
-  reset: (key: ResourceKey, expected: number) =>
-    request<Resource>(() => api.post(`${resourcePath(key)}/reset`, { expected_revision: expected }), 'Reset resource'),
-  restore: (key: ResourceKey, revision: number, expected: number) =>
-    request<Resource>(() => api.post(`${resourcePath(key)}/restore`, { revision, expected_revision: expected }), 'Restore revision'),
+  copy: (body: CopyRequest) => createResource(body),
+  create: (content: ResourceContent, note?: string) => createResource(editable(content), note),
+  async update(content: ResourceContent, expected: number, note?: string) {
+    const proposed = { ...editable(content), expected_revision: expected, note }
+    const preview_id = await review(content, { resources: [proposed] })
+    return request<Resource>(() => api.put(resourcePath(content), { ...proposed, preview_id }), 'Save resource')
+  },
+  async reset(key: ResourceKey, expected: number) {
+    const body = { expected_revision: expected }
+    const preview_id = key.kind === 'asset' ? undefined : await review(key, { reset: { ...key, ...body } })
+    return request<Resource>(() => api.post(`${resourcePath(key)}/reset`, { ...body, preview_id }), 'Reset resource')
+  },
+  async restore(key: ResourceKey, revision: number, expected: number, note?: string) {
+    const body = { revision, expected_revision: expected, note }
+    const preview_id = key.kind === 'asset' ? undefined : await review(key, { restore: { ...key, ...body } })
+    return request<Resource>(() => api.post(`${resourcePath(key)}/restore`, { ...body, preview_id }), 'Restore revision')
+  },
   remove: (key: ResourceKey, expected: number) =>
     request<boolean>(() => api.delete(resourcePath(key), { data: { expected_revision: expected } }), 'Delete resource'),
   preview: (message: string, resources: ResourceContent[]) =>

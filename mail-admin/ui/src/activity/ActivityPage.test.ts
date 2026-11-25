@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { flushPromises, mount } from '@vue/test-utils'
-import { api } from '@wippy-fe/proxy'
 import { describe, expect, it, vi } from 'vitest'
 import MailAdmin from '../app/MailAdmin.vue'
 import { notify } from '../test/setup'
@@ -145,38 +144,27 @@ describe('Mail activity', () => {
     wrapper.unmount()
   })
 
-  it('updates the changed row and the open message from one read, keeping every loaded page', async () => {
-    const third = message('2b9f1c2e-1111-4222-8333-444455556666', { subject: 'Older one', created_at: Date.now() - 3_600_000 })
-    const fresh = message('3b9f1c2e-1111-4222-8333-444455556666', { subject: 'Brand new', status: 'queued' })
-    serve([
-      get('/api/v1/mail/library', () => ok({ items: [resource('message', 'notice', { title: 'Notice' })] })),
-      get('/api/v1/mail/delivery', () => ok({ configured: true })),
-      get('/api/v1/mail/activity', (_path, options) => {
-        const params = (options as { params: Record<string, string> }).params
-        return ok(params.cursor ? { items: [third], has_more: false, total: 3, failed_today: 1 } : { items: [failed, sent], has_more: true, next_cursor: 'p2', total: 3, failed_today: 1 })
-      }),
-      get(`/api/v1/mail/activity/${failedId}`, () => ok(failed)),
-    ])
+  it('refetches filtered Activity and the open message after a topic-only invalidation', async () => {
+    routes()
     const wrapper = await open(`activity/${failedId}`)
-    await wrapper.findAll('.mail-more button').at(-1)!.trigger('click')
+    await wrapper.findAll('.p-togglebutton').find(node => node.text() === 'Failed')!.trigger('click')
     await flushPromises()
-    expect(calls('get').filter(([path, options]) => path === '/api/v1/mail/activity' && (options as { params: Record<string, string> }).params.cursor === 'p2')).toHaveLength(1)
-    const count = (path: string) => calls('get').filter(([called]) => called === path).length
-    const list = count('/api/v1/mail/activity'), one = count(`/api/v1/mail/activity/${failedId}`)
-    vi.mocked(api.get).mockClear()
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.find('.kx-notice.error').text()).toContain('1 message failed today.')
+    const resolved = { ...failed, status: 'sent', subject: 'Invoice reminder (sent)', last_error: undefined }
     serve([
-      get(`/api/v1/mail/activity/${failedId}`, () => ok({ ...failed, status: 'sent', subject: 'Invoice reminder (sent)' })),
-      get(`/api/v1/mail/activity/${fresh.message_id}`, () => ok(fresh)),
+      get('/api/v1/mail/activity', () => ok({ items: [], has_more: false, total: 0, failed_today: 0 })),
+      get(`/api/v1/mail/activity/${failedId}`, () => ok(resolved)),
       get('/api/v1/mail/library', () => ok({ items: [] })),
     ])
-    notify('mail.message.changed', { data: { message_id: failedId, status: 'sent' } })
-    notify('mail.message.changed', { data: { message_id: fresh.message_id, status: 'queued' } })
+    notify('mail.activity')
     await flushPromises()
-    expect(count('/api/v1/mail/activity')).toBe(0)
-    expect(list).toBeGreaterThan(0)
-    expect(one).toBeGreaterThan(0)
-    const subjects = wrapper.findAll('tbody tr').map(row => row.find('.mail-name').text())
-    expect(subjects).toEqual(['Brand new', 'Invoice reminder (sent)', 'Weekly report', 'Older one'])
+    expect(wrapper.findAll('tbody tr')).toHaveLength(0)
+    expect(wrapper.find('.mail-count').text()).toBe('0 messages')
+    expect(wrapper.find('.kx-notice.error').exists()).toBe(false)
+    expect(wrapper.find('.mail-drawer-title').text()).toContain('Invoice reminder (sent)')
+    const last = calls('get').filter(([path]) => path === '/api/v1/mail/activity').at(-1)
+    expect(last?.[1]).toMatchObject({ params: { status: 'failed', limit: '50' } })
     wrapper.unmount()
   })
 })

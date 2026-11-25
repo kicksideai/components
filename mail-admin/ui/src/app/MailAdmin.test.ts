@@ -149,22 +149,19 @@ describe('Mail administration shell', () => {
     wrapper.unmount()
   })
 
-  it('updates and adds rows from a library change by reading that one resource, without listing again or polling', async () => {
+  it('refetches the visible library page after a topic-only invalidation', async () => {
     serveLibrary()
     const interval = vi.spyOn(globalThis, 'setInterval')
     const wrapper = await open()
     const before = libraryParams().length
-    const signature = resource('part', 'signature', { title: 'Signature', state: 'created', author: 'user-1', revision: 9 })
-    serve([
-      get('/api/v1/mail/library', () => ok({ items: rows })),
-      get('/api/v1/mail/delivery', () => ok({ configured: true })),
-      get('/api/v1/mail/library/part/signature', () => ok(signature)),
-      get('/api/v1/mail/library/part/footer', () => ok(resource('part', 'footer', { title: 'Footer renamed', state: 'customized', revision: 4 }))),
-    ])
-    notify('mail.library.changed', { topic: 'mail.library.changed', data: { kind: 'part', name: 'signature', revision: 9 } })
-    notify('mail.library.changed', { topic: 'mail.library.changed', data: { kind: 'part', name: 'footer', revision: 4 } })
+    const updatedRows = [
+      ...rows.map(item => item.name === 'footer' ? { ...item, title: 'Footer renamed', revision: 4 } : item),
+      row(resource('part', 'signature', { title: 'Signature', state: 'created', revision: 9 })),
+    ]
+    serveLibrary(undefined, updatedRows)
+    notify('mail.library')
     await flushPromises()
-    expect(libraryParams().length).toBe(before)
+    expect(libraryParams()).toHaveLength(before + 1)
     expect(rowNames(wrapper)).toEqual(['Standard', 'Newsletter', 'Footer renamed', 'Notice', 'Weekly report', 'Mail logo', 'Signature'])
     expect(interval).not.toHaveBeenCalled()
     wrapper.unmount()
@@ -173,9 +170,9 @@ describe('Mail administration shell', () => {
   it('stops listening to changes once it is gone', async () => {
     serveLibrary()
     const wrapper = await open()
-    expect(subscriptions.get('mail.library.changed')?.size).toBeGreaterThan(0)
+    expect(subscriptions.get('mail.library')?.size).toBeGreaterThan(0)
     wrapper.unmount()
-    expect(subscriptions.has('mail.library.changed')).toBe(false)
-    expect(subscriptions.has('mail.message.changed')).toBe(false)
+    expect(subscriptions.has('mail.library')).toBe(false)
+    expect(subscriptions.has('mail.activity')).toBe(false)
   })
 })

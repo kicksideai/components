@@ -73,8 +73,6 @@ export function fullDate(at: number | undefined): string {
   return at ? fullFormat.format(at) : '—'
 }
 
-export function todayStart(now = Date.now()): number { return startOfDay(now) }
-
 export function recipients(to: readonly string[]): string {
   if (!to.length) return ''
   return to.length === 1 ? `To ${to[0]}` : `To ${to[0]} +${to.length - 1}`

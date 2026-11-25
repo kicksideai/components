@@ -23,7 +23,7 @@ function routes(item: Resource, extra: Parameters<typeof serve>[0] = []) {
     get('/api/v1/mail/delivery', () => ok({ configured: true })),
     get(`/api/v1/mail/library/${item.kind}/${item.name}`, () => ok(item)),
     get(`/api/v1/mail/library/${item.kind}/${item.name}/history`, () => ok({ items: [revision(item, item.revision), revision(item, item.revision - 1, { version: item.revision - 1, note: 'Brand refresh' })] })),
-    post('/api/v1/mail/library/preview', () => ok({ subject: 'Hello', html: '<html><body><img src="cid:mail-library-logo"> Preview</body></html>', text: 'Preview', inline_assets: { 'mail-library-logo': 'data:image/png;base64,AAAA' } })),
+    post('/api/v1/mail/library/preview', () => ok({ preview_id: 'review-id', subject: 'Hello', html: '<html><body><img src="cid:mail-library-logo"> Preview</body></html>', text: 'Preview', inline_assets: { 'mail-library-logo': 'data:image/png;base64,AAAA' } })),
   ])
 }
 
@@ -68,7 +68,7 @@ describe('Library resource editor', () => {
     await wrapper.find('#mail-review input').setValue('Shorter greeting')
     await wrapper.find('#mail-review').trigger('submit')
     await flushPromises()
-    expect(save).toHaveBeenCalledWith('/api/v1/mail/library/message/welcome', expect.objectContaining({ expected_revision: 3, note: 'Shorter greeting', html: '{{ block body() }}<p>Hi</p>{{ end }}' }))
+    expect(save).toHaveBeenCalledWith('/api/v1/mail/library/message/welcome', expect.objectContaining({ expected_revision: 3, preview_id: 'review-id', note: 'Shorter greeting', html: '{{ block body() }}<p>Hi</p>{{ end }}' }))
     expect(wrapper.text()).toContain('Saved Customer welcome.')
     expect(wrapper.text()).not.toContain('Unsaved changes')
     vi.useRealTimers()
@@ -182,8 +182,14 @@ describe('Library resource editor', () => {
     ])
     const wrapper = await open('messages/welcome/content')
     await (await body(wrapper)).setValue('mine')
+    const requestCount = calls('get').filter(([path]) => path === '/api/v1/mail/library/message/welcome').length
+    notify('mail.library')
+    await flushPromises()
+    expect(calls('get').filter(([path]) => path === '/api/v1/mail/library/message/welcome')).toHaveLength(requestCount + 1)
+    expect(((await body(wrapper)).element as HTMLTextAreaElement).value).toBe('mine')
+    expect(wrapper.text()).toContain('Unsaved changes')
     current = { ...welcome, revision: 9, html: 'theirs', author_label: { kind: 'user', id: 'user-2', label: 'Marco Ruiz' } }
-    notify('mail.library.changed', { data: { kind: 'message', name: 'welcome', revision: 9 } })
+    notify('mail.library')
     await flushPromises()
     expect(wrapper.text()).toContain('Marco Ruiz saved Customer welcome while you were editing.')
     expect(control(wrapper, 'Review changes')!.attributes('disabled')).toBeDefined()
@@ -215,7 +221,7 @@ describe('Library resource editor', () => {
     vi.mocked(host.confirm).mockResolvedValueOnce(true)
     await control(wrapper, 'Reset to original')!.trigger('click')
     await flushPromises()
-    expect(reset).toHaveBeenCalledWith('/api/v1/mail/library/base/standard/reset', { expected_revision: 7 })
+    expect(reset).toHaveBeenCalledWith('/api/v1/mail/library/base/standard/reset', { expected_revision: 7, preview_id: 'review-id' })
     wrapper.unmount()
   })
 
@@ -244,7 +250,8 @@ describe('Library resource editor', () => {
     expect(note.value).toBe('Restore version 4')
     ;[...document.body.querySelectorAll('button')].find(node => node.textContent?.trim() === 'Save')!.click()
     await flushPromises()
-    expect(save).toHaveBeenCalledWith('/api/v1/mail/library/base/newsletter', expect.objectContaining({ expected_revision: 5, note: 'Restore version 4', html: '<p>The older frame</p>' }))
+    expect(restore).toHaveBeenCalledWith('/api/v1/mail/library/base/newsletter/restore', { expected_revision: 5, revision: 4, note: 'Restore version 4', preview_id: 'review-id' })
+    expect(save).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
@@ -315,7 +322,7 @@ describe('Library resource editor', () => {
     ])
     const wrapper = await open('messages/welcome/content')
     gone = true
-    notify('mail.library.changed', { data: { kind: 'message', name: 'welcome', revision: 3 } })
+    notify('mail.library')
     await flushPromises()
     expect(wrapper.text()).toContain('This resource no longer exists')
     wrapper.unmount()

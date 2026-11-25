@@ -17,8 +17,8 @@ import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { activity, isDenied } from '../api'
 import { useMail } from '../context'
-import { describe, originText, personLabel, plural, recipients, statusLabels, statusSeverity, todayStart, when } from '../copy'
-import { useMessageChanges } from '../realtime'
+import { describe, originText, personLabel, plural, recipients, statusLabels, statusSeverity, when } from '../copy'
+import { useMailInvalidation } from '../realtime'
 import type { LogMessage, MessageStatus } from '../types'
 import MessageDrawer from './MessageDrawer.vue'
 
@@ -84,7 +84,7 @@ async function load(refresh = false) {
 }
 
 async function loadMore() {
-  if (!cursor.value || more.value) return
+  if (loading.value || !cursor.value || more.value) return
   const current = beginList()
   more.value = true
   moreError.value = ''
@@ -107,29 +107,7 @@ const failedToday = ref(0)
 watch([status, template, period, search], () => { void load() })
 useHostVisibilityRefresh(() => load(loaded.value))
 
-// A change reads the one message it names: a shown row updates in place and a new message that the filters
-// cover goes on top, keeping every page already loaded.
-function covered(item: LogMessage): boolean {
-  const f = filter()
-  if (f.q) return false
-  return (!f.status || item.status === f.status) && (!f.message || item.template === f.message) && item.created_at >= f.since
-}
-useMessageChanges(async change => {
-  if (!loaded.value) return
-  let item: LogMessage
-  try { item = await activity.get(change.message_id) } catch { return }
-  const index = items.value.findIndex(row => row.message_id === item.message_id)
-  const before = index >= 0 ? items.value[index] : undefined
-  if (before?.status !== 'failed' && item.status === 'failed' && item.created_at >= todayStart()) failedToday.value++
-  if (index >= 0) {
-    const next = [...items.value]
-    next[index] = item
-    items.value = next
-  } else if (covered(item)) {
-    items.value = [item, ...items.value]
-    if (total.value !== undefined) total.value++
-  }
-})
+useMailInvalidation('mail.activity', () => { void load(loaded.value) })
 
 // Mail counts up to 10,000 messages; beyond that, and for a search over the newest 10,000, the count is a minimum.
 const countLabel = computed(() => {
@@ -223,7 +201,7 @@ function closeMessage() {
       </DataTable>
       <div v-if="cursor" class="mail-more">
         <span v-if="moreError" class="kx-err inline" role="alert">{{ moreError }}</span>
-        <Button :label="moreError ? 'Retry' : 'Show more'" severity="secondary" outlined :loading="more" @click="loadMore" />
+        <Button :label="moreError ? 'Retry' : 'Show more'" severity="secondary" outlined :loading="more" :disabled="loading" @click="loadMore" />
       </div>
     </template>
   </template>

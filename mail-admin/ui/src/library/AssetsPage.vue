@@ -16,6 +16,7 @@ import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { isDenied, library as libraryApi } from '../api'
 import { useMail } from '../context'
 import { bytes, describe, plural, shortDate } from '../copy'
+import { useMailInvalidation } from '../realtime'
 import type { Resource } from '../types'
 import AssetDrawer from './AssetDrawer.vue'
 import AssetTile from './AssetTile.vue'
@@ -55,18 +56,8 @@ async function load(refresh = false) {
 }
 watch(search, () => { void load() })
 useHostVisibilityRefresh(() => load(loaded.value))
-// A change to one image updates its row; a new image joins the rows when no search narrows them.
-library.onRow((change, _row, item) => {
-  if (change.kind !== 'asset') return
-  const index = rows.value.findIndex(row => row.name === change.name)
-  const next = [...rows.value]
-  if (index >= 0) {
-    if (item) next[index] = item
-    else next.splice(index, 1)
-  } else if (item && !search.value) next.push(item)
-  else return
-  rows.value = next
-})
+useMailInvalidation('mail.library', () => { void load(loaded.value) })
+
 function usedBy(row: Resource): string | undefined {
   const count = library.find('asset', row.name)?.used_by?.messages
   if (count === undefined) return library.ready('asset') ? '—' : undefined

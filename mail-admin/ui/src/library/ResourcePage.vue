@@ -19,7 +19,7 @@ import SourceEditor from '../editor/SourceEditor.vue'
 import VariablesEditor from '../editor/VariablesEditor.vue'
 import VersionDialog from '../editor/VersionDialog.vue'
 import { problemOf, type Problem } from '../editor/problems'
-import { useLibraryChanges } from '../realtime'
+import { useMailInvalidation } from '../realtime'
 import { sectionOf, type ResourceSection } from '../route'
 import type { Resource, ResourceContent, Revision, TemplateKind } from '../types'
 import HistoryList from './HistoryList.vue'
@@ -47,13 +47,16 @@ async function load(options: { keepDraft?: boolean } = {}) {
   try {
     const item = await libraryApi.get(key.value)
     if (!current()) return
-    if (options.keepDraft && dirty.value && resource.value && item.revision !== resource.value.revision) {
+    const keepDraft = options.keepDraft && dirty.value
+    if (keepDraft && resource.value && item.revision !== resource.value.revision) {
       stale.value = { revision: item.revision, by: personLabel(item.author_label, item.author) || 'Someone' }
       return
     }
     resource.value = item
-    draft.value = draftOf(item)
-    restoring.value = undefined
+    if (!keepDraft) {
+      draft.value = draftOf(item)
+      restoring.value = undefined
+    }
     setTitle(item.title)
     stale.value = undefined
     gone.value = denied.value = false
@@ -94,10 +97,7 @@ async function refresh() {
   await Promise.all([load({ keepDraft: true }), loadHistory()])
 }
 useHostVisibilityRefresh(refresh)
-useLibraryChanges(change => {
-  if (change.kind === props.kind && change.name === props.name) void refresh()
-  else if (props.kind === 'base' && change.kind === 'message') void load({ keepDraft: true })
-})
+useMailInvalidation('mail.library', () => { void refresh() })
 
 const busy = ref<'reset' | 'delete' | 'save' | 'test' | number>()
 const actionError = ref('')
@@ -160,7 +160,7 @@ const blockedReason = computed(() => stale.value ? 'Discard your changes to load
 const setupFailure = ref(false)
 function fail(failure: unknown, fallback: string) {
   setupFailure.value = ['invalid_config', 'from_name_invalid'].includes(errorCode(failure) ?? '')
-  conflict.value = errorCode(failure) === 'mail_revision_conflict'
+  conflict.value = ['mail_revision_conflict', 'mail_preview_stale'].includes(errorCode(failure) ?? '')
   if (conflict.value) void refresh()
   actionError.value = describe(failure, fallback)
 }
@@ -190,12 +190,16 @@ async function save(note: string) {
   reviewError.value = actionError.value = notice.value = ''
   dependents.value = undefined
   try {
-    const saved = await libraryApi.update(edited, item.revision, note || undefined)
+    const source = restoring.value
+    const restore = source && JSON.stringify(edited) === JSON.stringify({ ...draftOf(source.content), kind: item.kind, name: item.name })
+    const saved = restore
+      ? await libraryApi.restore(key.value, source.revision, item.revision, note || undefined)
+      : await libraryApi.update(edited, item.revision, note || undefined)
     resource.value = { ...item, ...saved }
     draft.value = draftOf(resource.value)
     reviewing.value = false
-    notice.value = restoring.value
-      ? `Version ${restoring.value.version} from ${fullDate(restoring.value.created_at)} is now in effect.`
+    notice.value = restore
+      ? `Version ${source.version} from ${fullDate(source.created_at)} is now in effect.`
       : `Saved ${saved.title}.${props.kind === 'message' ? '' : ' Every message that uses it has the change.'}`
     restoring.value = undefined
     await refresh()
@@ -207,7 +211,7 @@ async function save(note: string) {
     } else if (found) {
       saveProblem.value = found
       reviewing.value = false
-    } else if (errorCode(failure) === 'mail_revision_conflict') {
+    } else if (['mail_revision_conflict', 'mail_preview_stale'].includes(errorCode(failure) ?? '')) {
       reviewing.value = false
       await load({ keepDraft: true })
     } else {

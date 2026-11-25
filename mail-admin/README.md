@@ -45,11 +45,9 @@ The tab holds the mail template library and delivery Activity:
   fix, so the page keeps that list of codes. Beyond 10,000 messages the count
   reads as a minimum, and a search covers the newest 10,000.
 
-Each screen reads what it shows. When Mail announces `mail.library.changed`
-or `mail.message.changed`, the page reads the one resource or message named and
-updates its row in place; when the host tab becomes visible again, the screen
-shown reads its first page again. Leaving an unsaved draft through the page or
-the browser asks first, and the host receives `dirty-change`.
+Each screen reads what it shows. On a `mail.library` or `mail.activity`
+invalidation, the screen refetches the data it displays through the Mail API.
+An editor keeps unsaved changes and identifies a newer revision when it arrives.
 
 A preview shows Mail's warning when Gmail may clip the email, and an email
 larger than Mail can send is a problem that blocks saving.

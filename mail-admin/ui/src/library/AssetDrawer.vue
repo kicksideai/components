@@ -15,6 +15,7 @@ import Skeleton from 'primevue/skeleton'
 import { actionLabels, bytes, describe, fullDate, kindIcons, personLabel, plural } from '../copy'
 import { emailDocument } from '../editor/render'
 import { problemOf } from '../editor/problems'
+import { useMailInvalidation } from '../realtime'
 import type { DraftRender, Resource, Revision, TemplateKind } from '../types'
 import RefusalDialog, { type Refusal } from './RefusalDialog.vue'
 import AssetTile from './AssetTile.vue'
@@ -54,7 +55,8 @@ async function load() {
     error.value = ''
     const first = item.used_by?.messages?.[0]
     shownIn.value = first ?? ''
-    shown.value = first ? await libraryApi.preview(first, []) : undefined
+    const preview = first ? await libraryApi.preview(first, []) : undefined
+    if (current()) shown.value = preview
   } catch (failure) {
     if (!current()) return
     missing.value = isMissing(failure)
@@ -64,7 +66,7 @@ async function load() {
   }
 }
 watch(() => props.name, () => { copied.value = linkCopied.value = false; notice.value = actionError.value = ''; void load() }, { immediate: true })
-library.onRow(change => { if (change.kind === 'asset' && change.name === props.name) void load() })
+useMailInvalidation('mail.library', () => { if (props.name) void load() })
 
 const messages = computed(() => (asset.value?.used_by?.messages ?? []).map(name => ({ name, title: library.title('message', name) })))
 async function copyLink() {

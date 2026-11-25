@@ -8,6 +8,7 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import SettingsDraftActions from '@kickside/ui-kit/SettingsDraftActions.vue'
 import SettingsGroup from '@kickside/ui-kit/SettingsGroup.vue'
 import SettingsItem from '@kickside/ui-kit/SettingsItem.vue'
@@ -16,7 +17,7 @@ import { activity, delivery as deliveryApi, isDenied } from '../api'
 import { deliveryFailure, describe } from '../copy'
 import { useReturnFocus } from '../focus'
 import { ensureTag } from '../mount'
-import { useMessageChanges } from '../realtime'
+import { useMailInvalidation } from '../realtime'
 import type { DeliveryStatus, LogMessage } from '../types'
 import { drivers as listDrivers, save as saveSettings, sendTest, settings as readSettings, type Driver, type Setting, type SettingWrite } from './api'
 import DriverRows from './DriverRows.vue'
@@ -226,11 +227,17 @@ async function leave(path: string) {
 // The test goes to the signed-in administrator through the saved settings; its outcome arrives as Activity changes.
 const test = shallowRef<LogMessage | { message_id: string; status: 'queued'; last_error?: undefined }>()
 const testError = ref('')
+const beginTestRead = latestRequest()
 async function refreshTest() {
-  if (!test.value) return
-  try { test.value = await activity.get(test.value.message_id) } catch { /* the receipt stays until the next change */ }
+  const id = test.value?.message_id
+  if (!id) return
+  const current = beginTestRead()
+  try {
+    const item = await activity.get(id)
+    if (current() && test.value?.message_id === id) test.value = item
+  } catch { /* the receipt stays until the next change */ }
 }
-useMessageChanges(change => { if (change.message_id === test.value?.message_id) void refreshTest() })
+useMailInvalidation('mail.activity', () => { if (test.value?.status === 'queued') void refreshTest() })
 async function runTest() {
   busy.value = 'test'
   testError.value = ''

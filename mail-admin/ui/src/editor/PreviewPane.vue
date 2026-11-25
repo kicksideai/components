@@ -16,7 +16,7 @@ import { emailDocument } from './render'
 const props = defineProps<{ draft: ResourceContent; messages?: string[] }>()
 const emit = defineEmits<{ problem: [problem: Problem | undefined] }>()
 const { library, delivery } = useMail()
-if (props.draft.kind !== 'message') library.ensure('message')
+if (props.draft.kind !== 'message') library.use('message')
 const ids = { message: useId() }
 
 const mode = ref<'email' | 'text'>('email')

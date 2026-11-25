@@ -17,6 +17,7 @@ import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { isDenied, library as libraryApi } from '../api'
 import { useMail } from '../context'
 import { describe, kindIcons, kindLabels, kindPlurals, plural, shortDate } from '../copy'
+import { useMailInvalidation } from '../realtime'
 import { kindOf, type LibrarySection } from '../route'
 import type { LibraryRow, ResourceKind } from '../types'
 import PreviewGallery from './PreviewGallery.vue'
@@ -70,7 +71,7 @@ async function load(refresh = false) {
   }
 }
 async function loadMore() {
-  if (!cursor.value || more.value) return
+  if (loading.value || !cursor.value || more.value) return
   const current = begin()
   more.value = true
   moreError.value = ''
@@ -90,32 +91,9 @@ watch([kind, state, search], () => { void load() })
 // Reads on mount, and again when the page is shown after being hidden.
 useHostVisibilityRefresh(() => load(loaded.value))
 
-// Rows come in the server's order, by reference. A change updates its row in place, or adds a new resource where
-// that order puts it among the rows already shown; the search and state filters are the server's, so a row the
-// filters may no longer match is kept until the next read. The total follows creations and deletions the
-// unfiltered list covers.
-const keyOf = (row: { kind: string; name: string }) => row.kind + '/' + row.name
-library.onRow((change, row) => {
-  const key = keyOf(change)
-  const index = rows.value.findIndex(item => keyOf(item) === key)
-  const covered = (!kind.value || change.kind === kind.value) && state.value === 'all' && !search.value
-  if (index >= 0) {
-    const next = [...rows.value]
-    if (row) next[index] = row
-    else next.splice(index, 1)
-    rows.value = next
-    if (!row && total.value !== undefined) total.value--
-    return
-  }
-  if (!covered) return
-  if (!row) { if (total.value !== undefined) total.value--; return }
-  if (row.revision === 1 && row.state === 'created' && total.value !== undefined) total.value++
-  const last = rows.value[rows.value.length - 1]
-  if (cursor.value && last && key > keyOf(last)) return
-  const at = rows.value.findIndex(item => keyOf(item) > key)
-  const next = [...rows.value]
-  next.splice(at < 0 ? next.length : at, 0, row)
-  rows.value = next
+useMailInvalidation('mail.library', () => {
+  if (kind.value === 'message') library.ensure('base')
+  void load(loaded.value)
 })
 
 const head = computed(() => {
@@ -224,7 +202,7 @@ const gallery = ref(false)
     </DataTable>
     <div v-if="cursor" class="mail-more">
       <span v-if="moreError" class="kx-err inline" role="alert">{{ moreError }}</span>
-      <Button :label="moreError ? 'Retry' : 'Show more'" severity="secondary" outlined :loading="more" @click="loadMore" />
+      <Button :label="moreError ? 'Retry' : 'Show more'" severity="secondary" outlined :loading="more" :disabled="loading" @click="loadMore" />
     </div>
   </template>
   <PreviewGallery :visible="gallery" @close="gallery = false" />

@@ -169,7 +169,8 @@ describe('New and duplicate', () => {
 
   it('duplicates a resource under a new reference, starting from its copy', async () => {
     const copy = vi.fn(() => ok(resource('base', 'standard-copy', { title: 'Standard copy', state: 'created', revision: 1 })))
-    routes([post('/api/v1/mail/library', copy)])
+    const review = vi.fn(() => ok({ preview_id: 'copy-review' }))
+    routes([post('/api/v1/mail/library/preview', review), post('/api/v1/mail/library', copy)])
     const wrapper = await open('bases/standard/content')
     dialogButton('Duplicate')!.click()
     await flushPromises()
@@ -179,7 +180,12 @@ describe('New and duplicate', () => {
     expect(inputs[1].value).toBe('standard-copy')
     dialogButton('Create base template')!.click()
     await flushPromises()
-    expect(copy).toHaveBeenCalledWith('/api/v1/mail/library', expect.objectContaining({ kind: 'base', name: 'standard-copy', from: { kind: 'base', name: 'standard' } }))
+    expect(review).toHaveBeenCalledWith('/api/v1/mail/library/preview', expect.objectContaining({
+      create: expect.objectContaining({ kind: 'base', name: 'standard-copy', from: { kind: 'base', name: 'standard' } }),
+    }))
+    expect(copy).toHaveBeenCalledWith('/api/v1/mail/library', expect.objectContaining({
+      kind: 'base', name: 'standard-copy', from: { kind: 'base', name: 'standard' }, preview_id: 'copy-review',
+    }))
     expect(wrapper.emitted('navigate')?.at(-1)).toEqual(['bases/standard-copy/content'])
     wrapper.unmount()
   })

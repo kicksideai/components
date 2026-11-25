@@ -228,7 +228,7 @@ describe('Mail delivery settings block', () => {
     expect(wrapper.text()).toContain('Sending the test…')
 
     current = message('m-test', { status: 'failed', last_error: { kind: 'PERMISSION_DENIED', code: 'credentials_invalid', message: 'Ask a mail administrator to check delivery authorization.' } })
-    notify('mail.message.changed', { message_id: 'm-test', status: 'failed' })
+    notify('mail.activity')
     await flushPromises()
     expect(wrapper.text()).toContain('refused the credentials.')
     expect(wrapper.text()).toContain('Check the API key above, save, and send again.')

@@ -13,7 +13,7 @@ import { activity, isDenied, isMissing } from '../api'
 import { useMail } from '../context'
 import { useReturnFocus } from '../focus'
 import { deliveryFailure, describe, fixedOutsideMail, fullDate, originText, personLabel, statusLabels, statusSeverity } from '../copy'
-import { useMessageChanges } from '../realtime'
+import { useMailInvalidation } from '../realtime'
 import type { LogMessage, SendReceipt } from '../types'
 
 const props = defineProps<{ messageId?: string }>()
@@ -69,7 +69,7 @@ watch(() => props.messageId, id => {
   if (id !== message.value?.message_id) message.value = undefined
   void load()
 }, { immediate: true })
-useMessageChanges(change => { if (change.message_id === props.messageId) void load() })
+useMailInvalidation('mail.activity', () => { if (props.messageId) void load() })
 
 async function sendAgain() {
   const item = message.value
