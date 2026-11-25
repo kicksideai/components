@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.25](https://github.com/kicksideai/components/compare/pim-v0.1.24...pim-v0.1.25) (2026-11-25)
+
+
+### Bug Fixes
+
+* **pim:** preserve schema ownership across generations ([#456](https://github.com/kicksideai/components/issues/456)) ([545b428](https://github.com/kicksideai/components/commit/545b4289954f92c1c940de8e4aab8f181edbfd99))
+
 ## [0.1.24](https://github.com/kicksideai/components/compare/pim-v0.1.23...pim-v0.1.24) (2026-11-24)
 
 
