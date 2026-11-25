@@ -3,7 +3,7 @@ local database = require("database")
 local types = require("types")
 local resources = require("resource")
 local edit_rules = require("edit")
-local library = require("library")
+local usage_reader = require("usage")
 local library_reader = require("library_reader")
 local references = require("references")
 local originals_reader = require("originals")
@@ -76,7 +76,7 @@ function M.dependants(workspace: LibraryWorkspace, keys: {types.ResourceKey}, ch
     local selected: {types.Resource} = {}
     local seen: {[string]: boolean} = {}
     for _, key in ipairs(keys) do
-        local sources, err = library.referrers(workspace.ex, key, workspace.originals)
+        local sources, err = usage_reader.referrers(workspace.ex, key, workspace.originals)
         if err then return nil, err end
         for _, source in ipairs(sources) do
             local id = resources.subject(source)
@@ -311,12 +311,12 @@ function M.plan(ex: database.Executor, operation: string, edits: {types.LibraryE
         if digest_value ~= binding.digest then return nil, mismatch() end
     end
     if operation == "delete" and key.kind ~= "message" then
-        local sources, ref_err = library.referrers(ex, key, originals)
+        local sources, ref_err = usage_reader.referrers(ex, key, originals)
         if ref_err then return nil, ref_err end
         if #sources > 0 then
             return nil, errors.new({kind = errors.CONFLICT, message = "Library resources use this mail resource",
                 details = {code = "mail_resource_in_use", resource = {kind = key.kind, name = key.name},
-                    messages = library.message_names(sources), resources = sources}})
+                    messages = usage_reader.message_names(sources), resources = sources}})
         end
     end
     if operation ~= "delete" or key.kind ~= "message" then

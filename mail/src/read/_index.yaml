@@ -73,7 +73,7 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://library.lua
-    modules: [contract, time]
+    modules: [contract]
     imports:
       live: kickside.mail.render:live
       live_repo: kickside.mail.persist:live_repo
@@ -84,20 +84,32 @@ entries:
       error_envelope: kickside.contract:error_envelope
       database: kickside.mail.persist:db
       library_reader: kickside.mail.persist:library_reader
-      message_reader: kickside.mail.persist:message_reader
-      reference_repo: kickside.mail.persist:reference_repo
       history_repo: kickside.mail.persist:history_repo
       history: kickside.mail.read:history
       thread_events: kickside.mail.read:thread_events
       originals: kickside.mail.render:originals
-      config: kickside.mail.domain:config
-      policy: kickside.mail.domain:policy
       resource: kickside.mail.domain:resource
-      references: kickside.mail.domain:references
       asset_refs: kickside.mail.domain:assets
       content: kickside.mail.read:content
-      settings: kickside.mail.read:settings
       keyset: kickside.contract:keyset
+      usage: kickside.mail.read:usage
+  - name: usage
+    kind: library.lua
+    meta: {private: true}
+    source: file://usage.lua
+    modules: [time]
+    imports:
+      types: kickside.mail:types
+      database: kickside.mail.persist:db
+      resource: kickside.mail.domain:resource
+      originals: kickside.mail.render:originals
+      library_reader: kickside.mail.persist:library_reader
+      message_reader: kickside.mail.persist:message_reader
+      reference_repo: kickside.mail.persist:reference_repo
+      config: kickside.mail.domain:config
+      policy: kickside.mail.domain:policy
+      references: kickside.mail.domain:references
+      settings: kickside.mail.read:settings
   - name: activity
     kind: library.lua
     meta: {private: true}

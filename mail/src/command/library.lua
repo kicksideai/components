@@ -6,6 +6,7 @@ local uuid = require("uuid")
 local events = require("events")
 local database = require("database")
 local library = require("library")
+local usage_reader = require("usage")
 local history = require("history")
 local resources = require("resource")
 local edit_rules = require("edit")
@@ -47,11 +48,11 @@ local function asset_event(tx: database.Transaction, operation: string, edit: ty
         change = current and "edited" or "created"}
     local event_type = edit_rules.event_type(operation, key)
     if operation == "delete" then
-        local sources, ref_err = library.referrers(tx, key, workspace.originals)
+        local sources, ref_err = usage_reader.referrers(tx, key, workspace.originals)
         if ref_err then return nil, ref_err end
         if #sources > 0 then
             return nil, errors.new({kind = errors.CONFLICT, message = "Library resources use this mail resource",
-                details = {code = "mail_resource_in_use", resource = key, messages = library.message_names(sources),
+                details = {code = "mail_resource_in_use", resource = key, messages = usage_reader.message_names(sources),
                     resources = sources}})
         end
         body.change = "deleted"
@@ -128,7 +129,7 @@ local function result(threads_api: types.LibraryThreads, operation: string, requ
             end
         end
         if item.kind == "asset" then
-            local usage, usage_err = library.used_by(item)
+            local usage, usage_err = usage_reader.used_by(item)
             if usage_err then
                 logger:warn("Mail asset usage is unavailable", {seq = seq, error = tostring(usage_err)})
             else
