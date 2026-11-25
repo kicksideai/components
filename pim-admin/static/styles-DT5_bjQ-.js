@@ -1025,7 +1025,7 @@ const Ri = {
     ...e == null ? {} : { after: String(e) },
     ...t ? { text: t } : {}
   }),
-  createCatalog: (e, t, i = {}) => P(g, { idempotency_key: `ui-${Date.now()}`, title: e, declaration: t, plugin_configs: i }, "catalog create"),
+  createCatalog: (e, t, i, r = {}) => P(g, { idempotency_key: t, title: e, declaration: i, plugin_configs: r }, "catalog create"),
   history: (e, t = {}) => z(`${g}/${encodeURIComponent(e)}/history`, "catalog history", Object.fromEntries(Object.entries(t).filter(([, i]) => i !== void 0).map(([i, r]) => [i, String(r)]))),
   schema: (e) => z(`${g}/${encodeURIComponent(e)}/schema`, "schema"),
   applySchema: (e, t, i, r = {}) => P(`${g}/${encodeURIComponent(e)}/schema`, { declaration: t, expected_generation: i, plugin_configs: r }, "schema apply"),
