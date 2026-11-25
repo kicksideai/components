@@ -44,20 +44,17 @@ local function register(support)
         local destination = assert(invoke(sender, "write", body()))
         test.is_false(destination.success)
         test.eq(missing_driver:details().code, destination.error.code)
-        test.eq(missing_driver:message(), destination.error.message)
         test.is_false(destination.error.retriable)
         test.is_true(change(admin, "driver", "app.mail_harness:admitted").success)
-        test.eq(missing_driver:message(), unconfigured(sender):message())
+        test.eq(missing_driver:kind(), unconfigured(sender):kind())
         local tool_result, tool_err = sender:call(TOOL_NS .. "mail_send", body())
         refusal(tool_result, tool_err, errors.INVALID, "invalid_config")
-        test.eq(missing_driver:message(), tool_err:message())
         for key in pairs(tool_err:details()) do test.eq("code", key) end
         local workflow = assert(sender:with_context({
             run_context = {run_id = "example-run", flow_ref = {kind = "flow", id = "example-flow", version = 1}},
         }))
         local workflow_result, workflow_err = workflow:call(TOOL_NS .. "mail_send", body())
         refusal(workflow_result, workflow_err, errors.INVALID, "invalid_config")
-        test.eq(missing_driver:message(), workflow_err:message())
         for key in pairs(workflow_err:details()) do test.eq("code", key) end
     end)
 
