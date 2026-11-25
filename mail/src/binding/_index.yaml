@@ -322,7 +322,11 @@ entries:
     method: delivery_status
     imports: *mailer_imports
     security:
-      policies: [kickside.mail.security:settings_read, kickside.mail.security:settings_admin_read, kickside.mail.security:transport_calls]
+      policies:
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:settings_revision_read
+        - kickside.mail.security:settings_admin_read
+        - kickside.mail.security:transport_calls
       groups: [kickside.mail.security:transports]
   - name: mailer_send_delivery_test
     kind: function.lua

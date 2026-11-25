@@ -212,7 +212,11 @@ type SchemaIssue = {schema_path: string, instance_path: string}
 type Settings = {driver: string, from_address: string, from_name: string, reply_to: string, log_retention_days: unknown?}
 type ApiSettings = {api_key: string?}
 type SettingsResult = {success: boolean, values: Record?, overridden: {string}?, error: string?}
-type SettingsContract = {get_namespace: (self: SettingsContract, input: {namespace: string}) -> (SettingsResult?, error?)}
+type SettingResult = {success: boolean, value: unknown, revision: integer?, error: string?}
+type SettingsContract = {
+    get_namespace: (self: SettingsContract, input: {namespace: string}) -> (SettingsResult?, error?),
+    get: (self: SettingsContract, input: {namespace: string, key: string}) -> (SettingResult?, error?),
+}
 type SettingInput = {value: unknown}
 type SettingValidation = {valid: boolean, error: string?}
 type TransportReadiness = {ready: boolean, code: string?, reason: string?}
@@ -220,7 +224,7 @@ type TransportStatus = TransportReadiness & {title: string, icon: string, descri
     max_recipients: integer?, max_message_bytes: integer?, idempotent: boolean}
 type AdmittedTransport = TransportStatus & {id: string}
 type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, ready: boolean,
-    transports: {AdmittedTransport}, from: Mailbox?, reply_to: string?, code: string?, reason: string?}
+    transports: {AdmittedTransport}, from: Mailbox?, reply_to: string?, code: string?, reason: string?, driver_revision: integer}
 type DeliveryTestRequest = {}
 type Mailer = {
     send: (self: Mailer, input: SendRequest) -> (SendResult?, error?),
@@ -315,7 +319,7 @@ return {
     VariableSchema = VariableSchema, TemplateSummary = TemplateSummary, Template = Template, TemplateList = TemplateList,
     ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, SchemaIssue = SchemaIssue,
     Settings = Settings, ApiSettings = ApiSettings,
-    SettingsResult = SettingsResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
+    SettingsResult = SettingsResult, SettingResult = SettingResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
     Mailer = Mailer, Transport = Transport, TransportStatus = TransportStatus, TransportReadiness = TransportReadiness, AdmittedTransport = AdmittedTransport, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
     ContentFailure = ContentFailure, ContentProvider = ContentProvider, SinkRequest = SinkRequest,
     SinkResult = SinkResult, SinkFailure = SinkFailure, WritableSink = WritableSink, Realtime = Realtime, DeliveryStatus = DeliveryStatus, TestSend = TestSend, HttpAuth = HttpAuth, HttpResponse = HttpResponse,

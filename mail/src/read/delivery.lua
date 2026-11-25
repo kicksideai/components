@@ -24,6 +24,8 @@ local function status(): (types.DeliveryStatus?, error?)
     local values, err = settings.mail()
     if err then return nil, err end
     local mail_settings = values :: types.Settings
+    local driver_revision, revision_err = settings.revision("kickside.mail", "driver")
+    if revision_err then return nil, revision_err end
     local available, list_err = transports.list()
     if list_err then return nil, list_err end
 
@@ -50,6 +52,7 @@ local function status(): (types.DeliveryStatus?, error?)
     if issue and details.code ~= "invalid_config" and details.code ~= "driver_not_admitted" then return nil, issue end
     return {driver = selected and {id = selected.id, label = selected.title} or nil,
         configured = issue == nil, ready = issue == nil, transports = available, from = from, reply_to = reply_to,
+        driver_revision = driver_revision :: integer,
         code = (details.reason_code or details.code) :: string?,
         reason = issue and ((details.reason :: string?) or issue:message()) or nil}, nil
 end

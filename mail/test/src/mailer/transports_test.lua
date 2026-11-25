@@ -101,6 +101,22 @@ local function define_tests()
             test.eq(errors.PERMISSION_DENIED, err:kind())
         end)
 
+        test.it("reports the stored driver revision so a settings write can check it", function()
+            local selected = change_driver(ADMITTED)
+            local current = invoke("delivery_status", nil, {
+                "kickside.mail.security:module_runtime", "kickside.mail.security:log_admin",
+            })
+            local cleared = change_driver()
+            local unset = invoke("delivery_status", nil, {
+                "kickside.mail.security:module_runtime", "kickside.mail.security:log_admin",
+            })
+            test.is_true(selected.success, selected.error :: string?)
+            test.is_true(selected.revision > 0)
+            test.eq(selected.revision, current.driver_revision)
+            test.is_true(cleared.success, cleared.error :: string?)
+            test.eq(0, unset.driver_revision)
+        end)
+
         test.it("rejects a refused ID in the driver setting", function()
             local result = change_driver(REFUSED)
             test.is_false(result.success)

@@ -20,6 +20,21 @@ function M.namespace(namespace: string): (types.SettingsResult?, error?)
     return result, nil
 end
 
+-- revision returns the stored override revision of one setting; 0 while it holds its declared default.
+function M.revision(namespace: string, key: string): (integer?, error?)
+    local definition, definition_err = contract.get("kickside.settings:settings")
+    if definition_err then return nil, definition_err end
+    local settings, open_err = definition:open()
+    if open_err then return nil, open_err end
+    local result, read_err = (settings :: types.SettingsContract):get({namespace = namespace, key = key})
+    if read_err then return nil, read_err end
+    if not result.success then
+        return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = result.error :: string,
+            details = {code = "settings_read_failed", namespace = namespace}})
+    end
+    return result.revision or 0, nil
+end
+
 local function read_values(namespace: string): (types.Record?, error?)
     local result, err = M.namespace(namespace)
     if err then return nil, err end

@@ -203,6 +203,13 @@ entries:
       resources: [kickside.settings:settings, kickside.settings:settings_binding, get_namespace]
       actions: [registry.get, contract.get, contract.open, contract.call]
       effect: allow
+  - name: settings_revision_read
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.settings:settings, kickside.settings:settings_binding, get]
+      actions: [registry.get, contract.get, contract.open, contract.call]
+      effect: allow
   - name: settings_admin_read
     kind: security.policy
     meta: {private: true}

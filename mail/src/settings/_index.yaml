@@ -4,7 +4,9 @@ namespace: kickside.mail.settings
 entries:
   - name: setting_driver
     kind: registry.entry
-    meta: { type: "kickside.settings:definition" }
+    meta:
+      type: "kickside.settings:definition"
+      comment: Chosen from Mail's admitted transports in the Mail settings block, so the generic form never shows it as a typed ID.
     namespace: kickside.mail
     key: driver
     title: Delivery driver
@@ -13,6 +15,7 @@ entries:
     value_type: string
     default: ""
     order: 10
+    visible: false
     read_access: admin
     validate_func: kickside.mail.settings:validate_driver
   - name: setting_from_address

@@ -11,7 +11,7 @@ Assign **Send mail** to groups that may send messages. **Edit mail library** gra
 
 ## Settings
 
-With Mail Admin installed, open **Settings → Integrations → Mail** to choose an installed delivery service and set the From address. Without Mail Admin, the generated **Mail** section edits Mail’s settings. The display name and default Reply-To address are optional. A message can supply its own Reply-To address. The installation’s configured From applies to every message.
+With Mail Admin installed, open **Settings → Integrations → Mail** to choose an admitted delivery service and set the From address. Without Mail Admin, the generated **Mail** section edits the sender and retention settings; the driver setting is hidden from the generic form and is written through the Settings contract. The display name and default Reply-To address are optional. A message can supply its own Reply-To address. The installation’s configured From applies to every message.
 
 - `driver` selects an admitted transport by its exact contract binding ID.
 - `from_address` sets the sender’s email address.
@@ -71,7 +71,9 @@ the Jobs deadline.
 active driver summary, sender, reply-to address, readiness, and the status
 of every admitted transport. Each transport includes its exact binding ID
 and its settings namespace. Read the selected namespace through Platform
-Settings, which masks secret values. When configuration is incomplete,
+Settings, which masks secret values. `driver_revision` is the revision of the
+stored `driver` setting (0 while it holds its default); pass it as
+`expected_revision` when writing `driver` so a concurrent change is refused. When configuration is incomplete,
 `code` identifies the issue and `reason` tells the administrator what to do.
 
 ## Template library
