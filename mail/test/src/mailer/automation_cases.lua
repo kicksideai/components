@@ -60,6 +60,20 @@ local function register(support)
         test.is_nil(result.dest_ref.transport_metadata)
     end)
 
+    test.it("refuses a writable origin that differs from its automation reference", function()
+        local sender = actors.sender
+        local refused = assert(invoke(sender, "write_request", {
+            config = {}, sink_op = "upsert", input = body(),
+            idempotency_key = "mismatched-automation-origin", origin = "automation-1",
+            automation_ref = {kind = "automation", id = "automation-2", revision = 1},
+        }))
+        test.is_false(refused.success)
+        test.eq("invalid_request", refused.error.code)
+        test.is_false(refused.error.retriable)
+        test.is_nil(refused.dest_ref)
+        test.eq(0, assert(invoke(sender, "list_messages", {limit = 1})).total)
+    end)
+
     test.it("sends once per Sync identity and acknowledges deletes without sending", function()
         local admin, sender = actors.admin, actors.sender
         assert(change(admin, "driver", "app.mail_harness:admitted").success)

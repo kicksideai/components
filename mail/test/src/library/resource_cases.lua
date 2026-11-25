@@ -15,6 +15,8 @@ local function register(support)
     local review = support.review
     local call = support.call
     local candidate = support.candidate
+    local publication_fault = support.publication_fault
+    local clear_publication_fault = support.clear_publication_fault
     local value = support.value
     local discard_overlay = support.discard_overlay
 
@@ -274,6 +276,18 @@ local function register(support)
         assert(changes:update(entry))
         assert(changes:update(declaration))
         assert(changes:apply())
+        publication_fault({id = "app.mail_library:invalid_module_update", kind = "registry.entry",
+            meta = {type = "kickside.mail:template"}, data = {}})
+        test.eq("success", assert(fixtures.boot()).status)
+        fixtures.await_sync_idle()
+        local rendered, refusal = fixtures.mailer(nil, "preview", {template = "notice", vars = {
+            subject = "Module update", message = "Wait for templates",
+        }})
+        test.is_nil(rendered)
+        test.eq(errors.UNAVAILABLE, assert(refusal):kind())
+        test.eq("mail_library_publishing", refusal:details().code)
+        test.eq(saved.revision, assert(call("get", key)).revision)
+        clear_publication_fault()
         test.eq("success", assert(fixtures.boot()).status)
         fixtures.await_live(saved.seq)
         test.eq("Customized Example", assert(value(HTML, "part/header", data)))

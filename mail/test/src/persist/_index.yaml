@@ -13,15 +13,15 @@ entries:
       fixtures: app.mail_library:fixtures
       api_fixtures: app.mail_api:fixtures
       database: app:database_fixture
+      delivery_wait: app.mail_harness:delivery_wait
   - name: message_test
     kind: function.lua
     meta: { type: test, suite: mail_persist }
     source: file://message_test.lua
     method: run
-    modules: [funcs, sql, time, uuid]
+    modules: [funcs, uuid]
     imports:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       api_fixtures: app.mail_api:fixtures
-      database: app:database_fixture
       delivery_wait: app.mail_harness:delivery_wait

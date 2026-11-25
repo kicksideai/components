@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local fs = require("fs")
-local interleave = require("asset_interleave")
+local ctx = require("ctx")
+local threads_fixture = require("threads_fixture")
 
 local function get(id)
     local volume, err = fs.get(id)
@@ -13,7 +14,8 @@ local function get(id)
         return volume:open(path, mode)
     end
     function storage:remove(path)
-        interleave.pause_reap(path)
+        local pause = ctx.get("mail_fixture_upload_pause")
+        if pause and path == pause.path then threads_fixture.pause(pause.gate) end
         return volume:remove(path)
     end
     function storage:signed_url()

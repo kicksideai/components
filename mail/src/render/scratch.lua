@@ -13,26 +13,6 @@ local asset_refs = require("asset_refs")
 
 local M = {}
 
-local function closure(items: types.ResourceMap, message: types.ResourceContent?,
-    candidates: {types.ResourceContent}, dependants: {types.Resource}?): {types.ResourceContent}
-    local selected: {types.ResourceContent} = {}
-    local seen: {[string]: boolean} = {}
-    local function add(item: types.ResourceContent?)
-        if not item then return end
-        local id = resource.subject(item)
-        if seen[id] then return end
-        seen[id] = true
-        selected[#selected + 1] = item
-    end
-    add(message)
-    for _, item in ipairs(candidates) do add(item) end
-    for _, item in ipairs(dependants or {}) do add(item) end
-    for _, item in ipairs(selected) do
-        for _, key in ipairs(references.template_keys(item)) do add(items[resource.subject(key)]) end
-    end
-    return selected
-end
-
 local function remove(overlay: registry.Snapshot, ids: {string}): (boolean?, error?)
     if #ids == 0 then return true, nil end
     local changes = overlay:changes()
@@ -217,7 +197,7 @@ end
 function M.validate(items: types.ResourceMap, key: types.ResourceKey, candidates: {types.ResourceContent},
     dependants: {types.Resource}, values: types.RenderGlobals): (boolean?, error?)
     values.assets = asset_refs.from_items(items)
-    local selected = closure(items, nil, candidates, dependants)
+    local selected = references.closure(items, nil, candidates, dependants)
     return with_draft(uuid.v4(), selected, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (boolean?, error?)
         local result, candidate_error, dependent_error = check(candidates, dependants, values, html, text)
         if candidate_error then return nil, candidate_error end
@@ -238,7 +218,7 @@ end
 function M.preview(id: string, items: types.ResourceMap, item: types.Resource, vars: types.JsonObject, candidates: {types.ResourceContent},
     dependants: {types.Resource}, values: types.RenderGlobals, attachments: {types.AttachmentRef}?): (types.DraftPreview?, error?)
     values.assets = asset_refs.from_items(items)
-    local selected = closure(items, item, candidates, dependants)
+    local selected = references.closure(items, item, candidates, dependants)
     return with_draft(id, selected, candidates, function(html: types.TemplateSet, text: types.TemplateSet): (types.DraftPreview?, error?)
         local result = check(candidates, dependants, values, html, text)
         local rendered, err = render_message(item, vars, values, html, text, attachments)
@@ -264,7 +244,7 @@ function M.render(id: string, items: types.ResourceMap, item: types.Resource, va
     candidates: {types.ResourceContent}, values: types.RenderGlobals,
     attachments: {types.AttachmentRef}?): (types.Rendered?, error?)
     values.assets = asset_refs.from_items(items)
-    local selected = closure(items, item, candidates)
+    local selected = references.closure(items, item, candidates)
     return with_draft(id, selected, {}, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
         local result, err = render_message(item, vars, values, html, text, attachments)
         if err then return nil, diagnostic(err, item, candidates) end

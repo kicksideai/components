@@ -5,6 +5,7 @@ local test = require("test")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
 local database = require("database")
+local delivery_wait = require("delivery_wait")
 
 local function install_link_fault()
     return assert(database.with_db(function(db, dialect)
@@ -51,27 +52,33 @@ return {run = test.run_cases(function()
             test.eq("mail_db_unconfigured", err:details().code)
         end)
 
-        test.it("rolls back the message and job when their link fails", function()
+        local cleanup
+        test.after_each(function()
+            if not cleanup then return end
+            cleanup()
+            cleanup = nil
+            api_fixtures.settings("", "")
+        end)
+
+        test.it("rolls back the message and releases the handle for the next send", function()
             local member = api_fixtures.session("sender")
             local sender = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
             api_fixtures.settings("app.mail_harness:capture", "mail@example.org")
-            local function job_count()
-                return assert(database.with_db(function(db)
-                    return db:query("SELECT COUNT(*) AS n FROM kickside_job WHERE owner_kind='mail-message'")
-                end))[1].n
-            end
-            local before = job_count()
-            local cleanup = install_link_fault()
+            cleanup = install_link_fault()
             local value, err = fixtures.mailer(sender, "send", {
                 to = {"reader@example.org"}, subject = "Fixture rollback", text = "Ready",
             })
-            cleanup()
-            api_fixtures.settings("", "")
             test.is_nil(value)
             test.eq(errors.INTERNAL, assert(err):kind())
             test.eq("mail_job_link_missing", err:details().code)
-            test.eq(before, job_count())
             test.eq(0, assert(fixtures.mailer(sender, "list_messages", {limit = 1})).total)
+            local queued = assert(fixtures.mailer(sender, "send", {
+                to = {"reader@example.org"}, subject = "After rollback", text = "Ready",
+            }))
+            local delivered = delivery_wait.terminal(function()
+                return fixtures.mailer(sender, "get_message", queued.message_id)
+            end, "25s")
+            test.eq("sent", delivered.status)
         end)
     end)
 end)}

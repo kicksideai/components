@@ -8,7 +8,9 @@ local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
 local database = require("database")
 local jet = require("jet")
+local references = require("references")
 local test = require("test")
+local threads_fixture = require("threads_fixture")
 
 local OWNER = jet.draft_owner
 local DRAFT = "kickside.mail.draft:"
@@ -51,7 +53,7 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail draft workspace", function()
-        local editor, actor, scope, owned, initial, live_html
+        local editor, actor, scope, owned, initial, live_html, restore_threads
 
         local function create(item)
             local draft = {message = item.kind == "message" and item.name or "notice", create = item}
@@ -74,8 +76,30 @@ return {run = test.run_cases(function()
         end)
 
         test.after_each(function()
+            if restore_threads then
+                restore_threads()
+                restore_threads = nil
+            end
             fixtures.remove(owned)
         end)
+
+        local function cancel_at_threads(method, input, fault)
+            restore_threads = threads_fixture.select()
+            local permission = assert(security.policy("app.mail_library:threads_fixture_dispatch"))
+            local caller = assert(editor:with_scope(assert(scope:with(permission))))
+            fault.gate = uuid.v4()
+            caller = assert(caller:with_context({mail_fixture_threads = fault}))
+            local paused = threads_fixture.observe_pause(fault.gate)
+            local call = assert(fixtures.async(caller, method, input))
+            paused()
+            test.is_false(call:is_complete())
+            call:cancel()
+            test.is_true(call:is_canceled())
+            local value = call:result()
+            test.is_nil(value)
+            restore_threads()
+            restore_threads = nil
+        end
 
         local function live_is_unchanged()
             local current = assert(fixtures.call(editor, "get", {kind = "message", name = MESSAGE}))
@@ -98,6 +122,24 @@ return {run = test.run_cases(function()
             test.neq(initial.revision, saved[1].revision)
             test.eq(0, #workspace())
         end
+
+        test.it("selects only the draft roots and their transitive template references", function()
+            local message = resource("message", MESSAGE, '{{ include "/part/direct" }}')
+            message.base = "workspace-base"
+            local base = resource("base", message.base, '{{ include "/part/transitive" }}')
+            local direct = resource("part", "direct", '{{ include "/part/transitive" }}')
+            local transitive = resource("part", "transitive", "Shared")
+            local unrelated = resource("part", "unrelated", "Omit")
+            local selected = references.closure({
+                ["base/workspace-base"] = base, ["part/direct"] = direct,
+                ["part/transitive"] = transitive, ["part/unrelated"] = unrelated,
+            }, message, {}, {})
+            test.eq(4, #selected)
+            test.eq(message.name, selected[1].name)
+            test.eq(base.name, selected[2].name)
+            test.eq(direct.name, selected[3].name)
+            test.eq(transitive.name, selected[4].name)
+        end)
 
         test.it("renders a draft with its referenced base while leaving unrelated parts unchanged", function()
             local base = create(resource("base", "workspace-base", "<main>{{ block body() }}{{ end }}</main>"))
@@ -125,7 +167,9 @@ return {run = test.run_cases(function()
 
         test.it("evaluates and saves after a cancelled preview without changing live mail", function()
             local draft = resource("message", MESSAGE, "Cancelled preview body")
-            abandoned_workspace({draft}, time.now():unix() + 15 * 60)
+            draft.expected_revision = initial.revision
+            cancel_at_threads("preview", {message = MESSAGE, resources = {draft}}, {subject = "message/" .. MESSAGE})
+            test.eq(0, #workspace())
             live_is_unchanged()
             preview_and_save()
         end)
@@ -151,9 +195,10 @@ return {run = test.run_cases(function()
             local draft = resource("message", MESSAGE, "Cancelled save body")
             draft.expected_revision = initial.revision
             local review = assert(fixtures.call(editor, "preview", {message = MESSAGE, resources = {draft}}))
-            abandoned_workspace({draft})
+            local input = {resources = {draft}, preview_id = assert(review.preview_id)}
+            cancel_at_threads("save", input, {append = "pause"})
             live_is_unchanged()
-            local saved = assert(fixtures.call(editor, "save", {resources = {draft}, preview_id = review.preview_id}))
+            local saved = assert(fixtures.call(editor, "save", input))
             test.eq(draft.html, saved.items[1].html)
             test.eq(0, #workspace())
         end)

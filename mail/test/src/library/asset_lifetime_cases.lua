@@ -9,8 +9,7 @@ local time = require("time")
 local lookup = require("lookup")
 local settings = require("settings")
 local fixtures = require("fixtures")
-local interleave = require("asset_interleave")
-local database = require("database")
+local threads_fixture = require("threads_fixture")
 
 local function register(support)
     local test = support.test
@@ -38,22 +37,42 @@ local function register(support)
         return assert(definition:with_actor(state.actor):open())
     end
 
+    local function fixture_threads()
+        state.restore_threads = threads_fixture.select()
+        local policy = assert(security.policy("app.mail_library:threads_fixture_dispatch"))
+        return assert(state.editor:with_scope(assert(state.scope:with(policy))))
+    end
+
+    local function fixture_retention(now, fault, upload_pause)
+        return assert(funcs.new():with_context({mail_test_now = now, mail_fixture_threads = fault,
+            mail_fixture_upload_pause = upload_pause}))
+    end
+
     test.it("keeps a pending restore reservation while Core prunes its source event", function()
         local source, first, _, restore = restore_history("restore-before-reap")
         local threads = library_thread()
+        local writer = fixture_threads()
         local projection = {thread_id = fixtures.library_component_id(), kind = "kickside.mail:library_tables"}
         assert(threads:pause_projection(projection))
         state.resume_projection = function()
             assert(threads:resume_projection(projection))
             state.resume_projection = nil
         end
-        local saved, err = fixtures.call(state.editor, "restore", restore)
-        assert(saved, tostring(err))
-        test.is_true(saved.committed)
-        test.is_false(saved.projected)
+        local gate = uuid.v4()
+        local paused = threads_fixture.observe_pause(gate)
+        writer = assert(writer:with_context({mail_fixture_threads = {append = "pause", gate = gate}}))
+        local restoring = assert(fixtures.async(writer, "restore", restore))
+        paused()
         prune_through(first.seq)
         sweep(time.now():unix_nano() // 1000000)
         local kept = state.storage:exists(source.storage_path)
+        threads_fixture.resume(gate)
+        restoring:response():receive()
+        local response, err = restoring:result()
+        local saved = response and response:data()
+        assert(saved, tostring(err))
+        test.is_true(saved.committed)
+        test.is_false(saved.projected)
         state.resume_projection()
         local folded = assert(threads:catch_up_projection({
             thread_id = projection.thread_id, kind = projection.kind, target_seq = saved.seq,
@@ -72,18 +91,21 @@ local function register(support)
         local id = fixtures.library_component_id()
         local now = time.now():add(time.HOUR):unix_nano() // 1000000
         local before = assert(threads:find({thread_id = id})).event_count
-        interleave.arm_reap(source.storage_path)
-        -- Model a restore that already read its source when the reap claim commits.
-        local claimed = assert(database.with_db(function(db)
-            return db:execute("UPDATE mail_asset_file SET state='reaping',due_at=$1 WHERE upload_id=$2", {now, source.uuid})
-        end))
-        test.eq(1, claimed.rows_affected)
-        local owner = assert(funcs.new():with_context({mail_test_now = now}))
+        local writer = fixture_threads()
+        local source_gate, reap_gate = uuid.v4(), uuid.v4()
+        local source_read = threads_fixture.observe_pause(source_gate)
+        local reap_claimed = threads_fixture.observe_pause(reap_gate)
+        writer = assert(writer:with_context({mail_fixture_threads = {source_seq = first.seq, gate = source_gate}}))
+        local restoring = assert(fixtures.async(writer, "restore", restore))
+        source_read()
+        local owner = fixture_retention(now, {pruned = first.seq}, {path = source.storage_path, gate = reap_gate})
         local reaping = assert(owner:async(fixtures.retention_id(), {}))
-        interleave.await("after_claim")
+        reap_claimed()
         local kept = state.storage:exists(source.storage_path)
-        local value, err = fixtures.call(state.editor, "restore", restore)
-        interleave.release("after_claim")
+        threads_fixture.resume(source_gate)
+        restoring:response():receive()
+        local value, err = restoring:result()
+        threads_fixture.resume(reap_gate)
         reaping:response():receive()
         local collected = assert(reaping:result()):data()
         assert(collected.success, tostring(collected.error))
@@ -97,20 +119,18 @@ local function register(support)
     end)
 
     local function reserve_restore(name, strand)
-        local source, first, latest, restore = restore_history(name)
+        local source, first, _, restore = restore_history(name)
         local now = time.now():unix_nano() // 1000000
+        local executor = strand and fixture_threads() or state.editor
+        local writer = assert(executor:with_context({mail_test_now = now,
+            mail_fixture_threads = strand and {append = "lost"} or nil}))
+        local restored, err = fixtures.call(writer, "restore", restore)
         if strand then
-            local reserved = assert(database.with_db(function(db)
-                return db:execute([[UPDATE mail_asset_file SET hold_seq=$1,hold_id=$2,
-                    restore_author=$3,restore_command_id=$4,restore_reserved_at=$5,restore_check_at=$6
-                    WHERE upload_id=$7]],
-                    {latest.seq + 1, uuid.v4(), state.uploader, restore.command_id, now, now + 15 * 60 * 1000, source.uuid})
-            end))
-            test.eq(1, reserved.rows_affected)
+            test.is_nil(restored)
+            test.eq(errors.UNAVAILABLE, assert(err):kind())
+            test.eq("fixture_lost_append", err:details().code)
             return source, first.seq, now
         end
-        local writer = assert(state.editor:with_context({mail_test_now = now}))
-        local restored, err = fixtures.call(writer, "restore", restore)
         return source, first.seq, now, restored, err
     end
 
@@ -137,7 +157,9 @@ local function register(support)
     test.it("releases a stranded restore reservation while History retains the upload", function()
         local source, _, now = reserve_restore("restore-with-unpruned-source", true)
         test.not_nil(hold(source.uuid))
-        sweep(now + 15 * 60 * 1000 + 1)
+        local owner = fixture_retention(now + 15 * 60 * 1000 + 1, {missing_boundary = true})
+        local report = assert(owner:call(fixtures.retention_id(), {}))
+        test.is_true(report.success, tostring(report.error))
         test.is_nil(hold(source.uuid))
         test.is_true(state.storage:exists(source.storage_path))
     end)

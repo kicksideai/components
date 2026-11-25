@@ -14,7 +14,6 @@ local lookup = require("lookup")
 local settings = require("settings")
 local fixtures = require("fixtures")
 local prune = require("prune")
-local interleave = require("asset_interleave")
 local asset_lifetime_cases = require("asset_lifetime_cases")
 local asset_content_cases = require("asset_content_cases")
 local asset_delivery_cases = require("asset_delivery_cases")
@@ -39,6 +38,10 @@ local run = test.run_cases(function()
             state.uploader, state.editor, state.actor, state.scope = setup_actor("upload_editor_sender")
         end)
         test.after_each(function()
+            if state.restore_threads then
+                state.restore_threads()
+                state.restore_threads = nil
+            end
             if state.resume_projection then state.resume_projection() end
             fixtures.remove(state.owned)
             if state.configured then settings.settings("", "") end

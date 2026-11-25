@@ -42,6 +42,26 @@ function M.template_keys(content: types.ResourceContent): {types.ResourceKey}
     return keys
 end
 
+function M.closure(items: types.ResourceMap, message: types.ResourceContent?,
+    candidates: {types.ResourceContent}, dependants: {types.Resource}?): {types.ResourceContent}
+    local selected: {types.ResourceContent} = {}
+    local seen: {[string]: boolean} = {}
+    local function add(item: types.ResourceContent?)
+        if not item then return end
+        local id = item.kind .. "/" .. item.name
+        if seen[id] then return end
+        seen[id] = true
+        selected[#selected + 1] = item
+    end
+    add(message)
+    for _, item in ipairs(candidates) do add(item) end
+    for _, item in ipairs(dependants or {}) do add(item) end
+    for _, item in ipairs(selected) do
+        for _, key in ipairs(M.template_keys(item)) do add(items[key.kind .. "/" .. key.name]) end
+    end
+    return selected
+end
+
 local function sorted(names: {[string]: boolean}): {string}
     local result: {string} = {}
     for name in pairs(names) do result[#result + 1] = name end

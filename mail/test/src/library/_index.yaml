@@ -152,6 +152,8 @@ entries:
       api_fixtures: app.mail_api:fixtures
       database: app:database_fixture
       jet: kickside.mail.domain:jet
+      references: kickside.mail.domain:references
+      threads_fixture: app.mail_library:threads_fixture
   - name: assets_test
     kind: function.lua
     meta: { type: test, suite: mail_assets }
@@ -166,10 +168,50 @@ entries:
       lookup: app.mail_library:upload_fixture
       settings: app.mail_api:fixtures
       prune: kickside.core.retention:prune
-      asset_interleave: app.mail_library:asset_interleave
       asset_lifetime_cases: app.mail_library:asset_lifetime_cases
       asset_content_cases: app.mail_library:asset_content_cases
       asset_delivery_cases: app.mail_library:asset_delivery_cases
+  - name: threads_fixture
+    kind: library.lua
+    source: &threads_fixture_source file://threads_fixture.lua
+    modules: &threads_fixture_modules [channel, contract, ctx, events, registry, time]
+  - name: threads_fixture_append
+    kind: function.lua
+    source: *threads_fixture_source
+    modules: *threads_fixture_modules
+    method: append
+    security: &threads_fixture_security
+      policies: [app.mail_library:threads_fixture_dispatch, app.mail_library:threads_fixture_events]
+  - name: threads_fixture_list
+    kind: function.lua
+    source: *threads_fixture_source
+    modules: *threads_fixture_modules
+    method: list
+    security: *threads_fixture_security
+  - name: threads_fixture_find
+    kind: function.lua
+    source: *threads_fixture_source
+    modules: *threads_fixture_modules
+    method: find
+    security: *threads_fixture_security
+  - name: threads_fixture_boundary
+    kind: function.lua
+    source: *threads_fixture_source
+    modules: *threads_fixture_modules
+    method: boundary
+    security: *threads_fixture_security
+  - name: threads_fixture_dispatch
+    kind: security.policy
+    policy:
+      resources: [app.mail_library:threads_fault_binding, kickside.core:threads_binding]
+      actions: [registry.get, contract.open]
+      effect: allow
+  - name: threads_fixture_events
+    kind: security.policy
+    policy:
+      resources: [mail.fixture.threads]
+      actions: [events.send, events.subscribe]
+      effect: allow
   - name: asset_lifetime_cases
     kind: library.lua
     source: file://asset_lifetime_cases.lua
@@ -178,8 +220,7 @@ entries:
       fixtures: app.mail_library:fixtures
       lookup: app.mail_library:upload_fixture
       settings: app.mail_api:fixtures
-      database: app:database_fixture
-      asset_interleave: app.mail_library:asset_interleave
+      threads_fixture: app.mail_library:threads_fixture
   - name: asset_content_cases
     kind: library.lua
     source: file://asset_content_cases.lua
@@ -205,18 +246,12 @@ entries:
     method: expiry
     modules: *assets_modules
     imports: *assets_imports
-  - name: asset_interleave
-    kind: library.lua
-    source: file://asset_interleave.lua
-    modules: [sql]
-    imports:
-      fixtures: app.mail_library:fixtures
   - name: upload_storage
     kind: library.lua
     source: file://upload_storage.lua
-    modules: [fs]
+    modules: [fs, ctx]
     imports:
-      asset_interleave: app.mail_library:asset_interleave
+      threads_fixture: app.mail_library:threads_fixture
   - name: acl_test
     kind: function.lua
     meta: { type: test, suite: mail_library_acl }
