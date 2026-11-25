@@ -55,50 +55,18 @@ The source editor is CodeMirror 6 (MIT), bundled into the module and loaded only
 when an editor opens. Jet template tags share Liquid's `{{ … }}` delimiters, so
 the Liquid grammar over HTML highlights template expressions inside markup.
 
-## Delivery settings and driver panels
+## Delivery settings
 
 `kickside.mail.admin:delivery_block` is Mail's block in System → Settings →
 Integrations, rendered by `kickside-mail-delivery`. It holds the active
 delivery service, the sender identity (From address, From name, Reply-to) and
 a test email to the signed-in administrator, with one draft and one Save. The
-installed drivers and their settings rows come from `GET /api/v1/mail/delivery/drivers`. The endpoint requires **Administer mail delivery** and returns whether secrets are set.
-
-The active driver's own settings appear inside the block:
-
-- A driver that declares `settings_view: <tag>` in its descriptor ships a web
-  component for its settings. The block loads the tag and mounts it.
-- A driver without one gets rows generated from the setting definitions of its
-  `settings_ns`.
-
-The driver panel contract:
-
-| Direction | Name | Shape |
-| --- | --- | --- |
-| attribute | `values` | JSON object: the saved values of the driver's namespace, without secrets |
-| attribute | `secrets` | JSON object: `{ <key>: true \| false }`, whether each secret is saved. Secret values never reach the panel |
-| attribute | `errors` | JSON object: `{ <key>: <message> }` from the server's validation of the last Save |
-| attribute | `draft` | JSON object: the changes the block still holds for this namespace; the panel starts from `values` with these applied |
-| attribute | `disabled` | `"true"` while the block saves |
-| event | `change` | `detail: { values }`: every key the panel changed from the saved values; a secret appears only when the person enters a new one; `null` clears a value |
-| event | `validity` | `detail: { valid }`: the panel's own check of its current values |
-
-The block owns the draft: it shows the draft bar while the identity or the
-panel's changes differ from the saved values, blocks Save while the panel
-reports `valid: false`, and writes the panel's changes under the driver's
-`settings_ns` before switching the service, so a refused value never leaves
-mail on a half-configured service. The server validates every value again
-through the settings definitions' `validate_func`; a refusal returns to the
-panel in `errors`.
-
-The Settings API writes the values one by one and stops at the first refusal,
-keeping the ones before it. After every Save the block reads the settings back
-and lists what was saved, the value that was refused with the reason, and the
-changes that stay in the draft; the panel is mounted again from the saved
-values with the remaining changes in `draft`. After Discard it is mounted again
-from the saved values alone.
-
-The block reports unsaved changes as `dirty-change` (`{ dirty }`), the event
-the System shell guards on, and asks before leaving through its own links.
+block lists admitted transport bindings from `GET /api/v1/mail/delivery` and
+loads the selected transport's settings namespace from Platform Settings.
+Settings rows show whether a secret is set and mask its value. The block
+writes the provider settings and sender identity before switching the service.
+Each setting's `validate_func` runs on the server, and the block keeps any
+refused or pending values in the draft.
 
 ## Installation and access
 

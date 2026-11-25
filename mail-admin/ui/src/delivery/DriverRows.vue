@@ -11,8 +11,7 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import SettingsItem from '@kickside/ui-kit/SettingsItem.vue'
 import type { Setting } from './api'
 
-// Rows for a driver that ships no settings view, generated from its setting definitions. Like a driver's own
-// view, the rows report changes and validity; the block keeps the draft and saves.
+// The delivery block owns the draft and saves the settings in order.
 const props = defineProps<{ settings: Setting[]; errors: Record<string, string>; draft?: Record<string, unknown>; disabled?: boolean }>()
 const emit = defineEmits<{ change: [values: Record<string, unknown>]; validity: [valid: boolean] }>()
 
@@ -41,7 +40,7 @@ watch(values, current => {
   }
   emit('change', changes)
   emit('validity', props.settings.every(item => !formProblem(item)))
-}, { deep: true })
+}, { deep: true, immediate: true })
 const options = (item: Setting) => (item.schema?.enum ?? []).map(value => ({ label: String(value), value }))
 </script>
 

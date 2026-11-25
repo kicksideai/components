@@ -128,7 +128,7 @@ export function deliveryFailure(code: string, service: string, where = 'in Setti
     case 'quota_exhausted': return { lead: `${service} reports the sending quota is used up.`, next: `Sending resumes when the quota renews, or after the plan changes with ${service}.` }
     case 'rate_limited': return { lead: `${service} is limiting how fast mail is sent.`, next: 'Mail tries again on its own.' }
     case 'message_rejected': return { lead: `${service} rejected the message itself.`, next: 'Check the recipients, the subject and the attachments.' }
-    case 'invalid_config': case 'settings_read_failed': case 'provider_endpoint_invalid': case 'driver_availability_invalid':
+    case 'invalid_config': case 'settings_read_failed': case 'provider_endpoint_invalid': case 'driver_not_admitted': case 'invalid_transport_status':
       return { lead: 'The delivery settings are not complete.', next: `Check the settings ${where}, save, and send again.` }
     case 'from_name_invalid': return { lead: 'The sender name cannot be used in email.', next: `Correct the From name ${where}.` }
     default: return undefined
@@ -137,8 +137,8 @@ export function deliveryFailure(code: string, service: string, where = 'in Setti
 
 // Failures that come from the delivery settings or the account with the service: sending the same message again
 // fails the same way until something changes there. Mail does not report this itself (see the README).
-export const fixedOutsideMail = new Set(['invalid_config', 'settings_read_failed', 'invalid_driver_descriptor', 'duplicate_driver_id',
-  'driver_availability_invalid', 'provider_endpoint_invalid', 'credentials_invalid', 'authorization_refused', 'sender_or_recipient_not_allowed',
+export const fixedOutsideMail = new Set(['invalid_config', 'settings_read_failed', 'driver_not_admitted',
+  'invalid_transport_status', 'provider_endpoint_invalid', 'credentials_invalid', 'authorization_refused', 'sender_or_recipient_not_allowed',
   'from_name_invalid'])
 
 export function describe(error: unknown, fallback: string): string {

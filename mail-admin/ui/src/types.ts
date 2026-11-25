@@ -143,8 +143,24 @@ export interface LogMessage {
 export interface MessagePage { items: LogMessage[]; next_cursor?: string; has_more: boolean; total?: number; total_is_lower_bound?: boolean; failed_today?: number }
 export interface SendReceipt { message_id: string; status: MessageStatus }
 
+export interface TransportStatus {
+  id: string
+  title: string
+  icon: string
+  description: string
+  settings_ns: string
+  ready: boolean
+  idempotent: boolean
+  code?: string
+  reason?: string
+  max_recipients?: number
+  max_message_bytes?: number
+}
+
 export interface DeliveryStatus {
   configured: boolean
+  ready: boolean
+  transports: TransportStatus[]
   driver?: { id: string; label: string }
   from?: { address: string; name?: string }
   reply_to?: string

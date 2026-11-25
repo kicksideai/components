@@ -16,15 +16,11 @@ import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import { activity, delivery as deliveryApi, isDenied } from '../api'
 import { deliveryFailure, describe } from '../copy'
 import { useReturnFocus } from '../focus'
-import { ensureTag } from '../mount'
 import { useMailInvalidation } from '../realtime'
 import type { DeliveryStatus, LogMessage } from '../types'
-import { drivers as listDrivers, save as saveSettings, sendTest, settings as readSettings, type Driver, type Setting, type SettingWrite } from './api'
+import { save as saveSettings, sendTest, settings as readSettings, type Setting, type SettingWrite } from './api'
 import DriverRows from './DriverRows.vue'
 
-// Mail's block in System → Settings: the delivery service, its own settings, the sender identity and a test.
-// One draft and one Save cover the block and the active driver's settings, whether the driver ships its own view
-// or gets rows generated from its setting definitions.
 const emit = useEvents<{ 'dirty-change': { dirty: boolean } }>()
 const MAIL = 'kickside.mail'
 const identityKeys = ['from_address', 'from_name', 'reply_to'] as const
@@ -32,8 +28,8 @@ const identityLabels = { from_address: 'From address', from_name: 'From name', r
 
 const loading = ref(true), denied = ref(false)
 const error = ref('')
-const drivers = shallowRef<Driver[]>([])
 const status = shallowRef<DeliveryStatus>()
+const drivers = computed(() => status.value?.transports ?? [])
 
 interface Identity { driver: string; from_address: string; from_name: string; reply_to: string }
 const saved = ref<Identity>({ driver: '', from_address: '', from_name: '', reply_to: '' })
@@ -50,10 +46,8 @@ function identityOf(list: Setting[]): Identity {
   return { driver: value('driver'), from_address: value('from_address'), from_name: value('from_name'), reply_to: value('reply_to') }
 }
 
-// The true state: installed drivers with their settings, delivery status and Mail's own values.
 async function read() {
-  const [found, current, list] = await Promise.all([listDrivers(), deliveryApi.status(), readSettings(MAIL)])
-  drivers.value = found
+  const [current, list] = await Promise.all([deliveryApi.status(), readSettings(MAIL)])
   status.value = current
   return identityOf(list)
 }
@@ -75,38 +69,30 @@ async function load() {
 onMounted(load)
 
 const active = computed(() => drivers.value.find(item => item.id === draft.value.driver))
-const driverSettings = computed(() => active.value?.settings ?? [])
-const viewReady = ref(false)
+const driverSettings = shallowRef<Setting[]>([])
 const driverLoading = ref(false), driverError = ref('')
-watch(() => active.value?.id, async () => {
+watch(() => active.value?.id, async (_id, _previous, onCleanup) => {
   const driver = active.value
+  driverSettings.value = []
   driverChanges.value = {}
   driverValid.value = true
   fieldErrors.value = {}
-  viewReady.value = false
-  driverLoading.value = !!driver?.settings_view
+  driverLoading.value = !!driver
   driverError.value = ''
-  if (!driver?.settings_view) return
-  const ready = await ensureTag(driver.settings_view)
-  if (active.value?.id !== driver.id) return
-  viewReady.value = ready
-  driverLoading.value = false
-  if (!ready) driverError.value = `The ${driver.label} settings could not be loaded. Reload the page to try again.`
+  if (!driver) return
+  let current = true
+  onCleanup(() => { current = false })
+  try {
+    const settings = await readSettings(driver.settings_ns)
+    if (current) driverSettings.value = settings
+  } catch (failure) {
+    if (current) driverError.value = describe(failure, `The ${driver.title} settings could not be loaded.`)
+  } finally {
+    if (current) driverLoading.value = false
+  }
 })
 
 const isSecret = (item: Setting) => !!item.is_secret || item.value_type === 'secret'
-// What the driver's own view receives: saved values other than secrets, which secrets are set, and the block's draft.
-const panelValues = computed(() => JSON.stringify(Object.fromEntries(driverSettings.value
-  .filter(item => !isSecret(item)).map(item => [item.key, item.value ?? item.default ?? null]))))
-const panelSecrets = computed(() => JSON.stringify(Object.fromEntries(driverSettings.value
-  .filter(isSecret).map(item => [item.key, !!item.has_value]))))
-const panelErrors = computed(() => JSON.stringify(fieldErrors.value))
-const panelDraft = ref('{}')
-function fromPanel(event: Event, kind: 'change' | 'validity') {
-  const detail = (event as CustomEvent).detail as { values?: Record<string, unknown>; valid?: boolean } | undefined
-  if (kind === 'change' && detail?.values && typeof detail.values === 'object') driverChanges.value = { ...detail.values }
-  if (kind === 'validity' && typeof detail?.valid === 'boolean') driverValid.value = detail.valid
-}
 
 const addressPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const identityErrors = computed(() => ({
@@ -118,24 +104,22 @@ const identityErrors = computed(() => ({
 for (const key of identityKeys) watch(() => draft.value[key], () => {
   if (fieldErrors.value[key]) { const { [key]: _gone, ...rest } = fieldErrors.value; fieldErrors.value = rest }
 })
-const settingLabel = (key: string) => `${active.value?.label}: ${driverSettings.value.find(item => item.key === key)?.title ?? key}`
+const settingLabel = (key: string) => `${active.value?.title}: ${driverSettings.value.find(item => item.key === key)?.title ?? key}`
 const reviewing = ref(false)
 useReturnFocus(() => reviewing.value)
 const changes = computed(() => {
   const list: string[] = []
-  if (draft.value.driver !== saved.value.driver) list.push(`Service: ${active.value?.label ?? 'none'}`)
+  if (draft.value.driver !== saved.value.driver) list.push(`Service: ${active.value?.title ?? 'none'}`)
   for (const key of identityKeys) if (draft.value[key] !== saved.value[key]) list.push(identityLabels[key])
   for (const key of Object.keys(driverChanges.value)) list.push(settingLabel(key))
   return list
 })
 const dirty = computed(() => JSON.stringify(draft.value) !== JSON.stringify(saved.value) || Object.keys(driverChanges.value).length > 0)
 watch(dirty, value => emit('dirty-change', { dirty: value }), { immediate: true })
-const invalid = computed(() => !!identityErrors.value.from_address || !!identityErrors.value.reply_to || !driverValid.value)
+const invalid = computed(() => !!identityErrors.value.from_address || !!identityErrors.value.reply_to || !driverValid.value || driverLoading.value || !!driverError.value)
 
-// The driver's view starts again from the saved values and the block's draft after Discard or Save.
 const panelGeneration = ref(0)
 function remountPanel() {
-  panelDraft.value = JSON.stringify(driverChanges.value)
   panelGeneration.value++
 }
 function discard() {
@@ -158,14 +142,14 @@ function writesOf(): { write: SettingWrite; label: string }[] {
   for (const key of identityKeys) {
     if (draft.value[key] !== saved.value[key]) writes.push({ write: { namespace: MAIL, key, value: draft.value[key] || null }, label: identityLabels[key] })
   }
-  if (draft.value.driver !== saved.value.driver) writes.push({ write: { namespace: MAIL, key: 'driver', value: draft.value.driver || null }, label: `Service: ${active.value?.label ?? 'none'}` })
+  if (draft.value.driver !== saved.value.driver) writes.push({ write: { namespace: MAIL, key: 'driver', value: draft.value.driver || null }, label: `Service: ${active.value?.title ?? 'none'}` })
   return writes
 }
 
 // Whether a write is what the server now holds. A secret is held when it is set; its value never comes back.
-function landed(write: SettingWrite, identity: Identity): boolean {
+function landed(write: SettingWrite, identity: Identity, settings: Setting[]): boolean {
   if (write.namespace === MAIL) return (identity[write.key as keyof Identity] || null) === write.value
-  const setting = drivers.value.find(item => item.settings_ns === write.namespace)?.settings.find(item => item.key === write.key)
+  const setting = settings.find(item => item.namespace === write.namespace && item.key === write.key)
   if (!setting) return false
   if (isSecret(setting)) return write.value === null ? !setting.has_value : !!setting.has_value
   return (setting.value ?? setting.default ?? null) === write.value || (write.value === null && (setting.value ?? null) === (setting.default ?? null))
@@ -187,8 +171,10 @@ async function save() {
   }
   // Whatever the answer, the page shows what the server now holds and keeps only the changes that did not land.
   try {
-    const identity = await read()
-    const kept = writes.filter(entry => !landed(entry.write, identity))
+    const namespace = active.value?.settings_ns
+    const [identity, settings] = await Promise.all([read(), namespace ? readSettings(namespace) : []])
+    driverSettings.value = settings
+    const kept = writes.filter(entry => !landed(entry.write, identity, settings))
     const keptIdentity = { ...identity }
     const keptDriver: Record<string, unknown> = {}
     for (const { write } of kept) {
@@ -262,7 +248,7 @@ const testFailure = computed(() => {
 const testBlocked = computed(() => dirty.value ? 'Save or discard your changes to send a test.'
   : !status.value?.configured ? 'Finish setting up delivery to send a test.' : '')
 
-const serviceOptions = computed(() => drivers.value.map(item => ({ value: item.id, label: item.label, icon: item.icon, description: item.description })))
+const serviceOptions = computed(() => drivers.value.map(item => ({ value: item.id, label: item.title, icon: item.icon, description: item.description })))
 const statusNotice = computed(() => {
   const current = status.value
   if (!current || current.configured) return undefined
@@ -298,7 +284,7 @@ const statusNotice = computed(() => {
 
       <fieldset class="mail-fieldset mail-delivery-body" :disabled="busy === 'save'" :inert="busy === 'save' || undefined">
         <SettingsGroup title="Delivery service">
-          <SettingsItem title="Service" :description="active?.description || 'Choose the service that delivers your email.'">
+          <SettingsItem title="Service" :description="active?.reason || active?.description || 'Choose the service that delivers your email.'">
             <template #actions>
               <span class="mail-setting-control">
                 <Select v-model="draft.driver" :options="serviceOptions" option-label="label" option-value="value" append-to="self"
@@ -312,16 +298,10 @@ const statusNotice = computed(() => {
               </span>
             </template>
           </SettingsItem>
-          <p v-if="driverLoading" class="kx-loading mail-driver-state" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading {{ active?.label }} settings…</p>
+          <p v-if="driverLoading" class="kx-loading mail-driver-state" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading {{ active?.title }} settings…</p>
           <p v-else-if="driverError" class="kx-err inline mail-driver-state" role="alert">{{ driverError }}</p>
-          <template v-else-if="active">
-            <component :is="active.settings_view" v-if="active.settings_view && viewReady" :key="active.id + ':' + panelGeneration"
-              class="mail-driver-view" :values.attr="panelValues" :secrets.attr="panelSecrets" :errors.attr="panelErrors" :draft.attr="panelDraft"
-              :disabled.attr="String(busy === 'save')"
-              @change="(event: Event) => fromPanel(event, 'change')" @validity="(event: Event) => fromPanel(event, 'validity')" />
-            <DriverRows v-else :key="active.id + ':' + panelGeneration" :settings="driverSettings" :errors="fieldErrors" :draft="driverChanges"
-              :disabled="busy === 'save'" @change="values => driverChanges = values" @validity="valid => driverValid = valid" />
-          </template>
+          <DriverRows v-else-if="active" :key="active.id + ':' + panelGeneration" :settings="driverSettings" :errors="fieldErrors" :draft="driverChanges"
+            :disabled="busy === 'save'" @change="values => driverChanges = values" @validity="valid => driverValid = valid" />
         </SettingsGroup>
 
         <SettingsGroup title="Sender">

@@ -101,41 +101,43 @@ local function cases()
                 "Edit mail library alone does not reach Activity")
         end)
 
-        test.it("lists installed delivery drivers with their settings views to delivery administrators only", function()
+        test.it("lists admitted transport status and reads masked settings separately", function()
             local settings_contract = assert(assert(contract.get("kickside.settings:settings")):open())
             local written = assert(settings_contract:set({namespace = "app.fixture", key = "api_key", value = "fixture-key-private"}))
             assert(written.success, tostring(written.error))
-            local status, body = get(signed_in({"app:delivery", "app:user"}), "/mail/delivery/drivers")
+            local status, body = get(signed_in({"app:delivery", "app:user"}), "/mail/delivery")
+            local settings_status, listing = get(signed_in({"app:settings_admin", "app:user"}), "/settings?namespace=app.fixture")
             local cleared = assert(settings_contract:unset({namespace = "app.fixture", key = "api_key"}))
             assert(cleared.success, tostring(cleared.error))
-            test.eq(status, 200, json.encode(body))
-            local items = (body.data :: {[string]: unknown}).items :: {{[string]: unknown}}
-            local fixture
-            for _, item in ipairs(items) do if item.id == "fixture" then fixture = item end end
-            test.not_nil(fixture, json.encode(body))
-            test.eq(fixture.label, "Fixture delivery")
-            test.eq(fixture.settings_ns, "app.fixture")
-            test.eq(fixture.settings_view, "app-fixture-settings")
-            test.eq(false, fixture.availability.available)
-            test.eq("fixture_key_required", fixture.availability.code)
-            test.eq("Add a key for the fixture service.", fixture.availability.reason)
-            local settings = fixture.settings
-            test.eq(2, #settings)
-            test.eq("api_key", settings[1].key)
-            test.is_true(settings[1].is_secret)
-            test.is_true(settings[1].has_value)
-            test.is_nil(settings[1].value)
-            test.is_nil(settings[1].default)
-            test.eq("region", settings[2].key)
-            test.eq("us", settings[2].value)
-            test.is_nil((json.encode(body):find("fixture-key-private", 1, true)))
-            test.is_nil((json.encode(body):find("fixture-key-default", 1, true)))
-            local unconfigured_status, unconfigured = get(signed_in({"app:delivery", "app:user"}), "/mail/delivery/drivers")
-            test.eq(200, unconfigured_status)
-            test.is_false(unconfigured.data.items[1].settings[1].has_value)
+            test.eq(200, status)
+            local items = (body.data :: {[string]: unknown}).transports :: {{[string]: unknown}}
+            local fixture = items[1]
+            test.eq("app:fixture_binding", fixture.id)
+            test.eq("Fixture delivery", fixture.title)
+            test.eq("app.fixture", fixture.settings_ns)
+            test.is_false(fixture.ready)
+            test.eq("fixture_key_required", fixture.code)
+            test.eq("Add a key for the fixture service.", fixture.reason)
+            test.is_nil(fixture.settings)
 
-            local denied = get(signed_in({"app:editor", "app:user"}), "/mail/delivery/drivers")
-            test.eq(denied, 403, "an editor without delivery administration never learns the services")
+            test.eq(200, settings_status)
+            local settings = listing.settings :: {{[string]: unknown}}
+            test.eq(2, #settings)
+            local by_key = {}
+            for _, row in ipairs(settings) do by_key[row.key] = row end
+            test.is_true(by_key.api_key.is_secret)
+            test.is_true(by_key.api_key.has_value)
+            test.is_nil(by_key.api_key.value)
+            test.is_nil(by_key.api_key.default)
+            test.eq("us", by_key.region.value)
+            local unconfigured_status, unconfigured = get(signed_in({"app:settings_admin", "app:user"}), "/settings?namespace=app.fixture")
+            test.eq(200, unconfigured_status)
+            local rows = unconfigured.settings :: {{[string]: unknown}}
+            for _, row in ipairs(rows) do by_key[row.key] = row end
+            test.is_false(by_key.api_key.has_value)
+
+            local denied = get(signed_in({"app:editor", "app:user"}), "/mail/delivery")
+            test.eq(403, denied, "an editor without delivery administration never learns the services")
         end)
 
         test.it("declares the Mail settings block on the delivery component", function()
@@ -148,15 +150,20 @@ local function cases()
             local status, body = get(signed_in({"app:settings_admin", "app:user"}), "/settings/blocks")
             test.eq(status, 200, json.encode(body))
             local count = 0
+            local provider = 0
             for _, item in ipairs(body.blocks :: {{[string]: unknown}}) do
-                test.neq("app.fixture", item.namespace)
-                if item.namespace == "kickside.mail" then
+                if item.namespace == "app.fixture" then
+                    provider = provider + 1
+                    test.eq("app.fixture", item.key)
+                    test.is_nil(item.component_tag)
+                elseif item.namespace == "kickside.mail" then
                     count = count + 1
                     test.eq("Integrations", item.group)
                     test.eq("kickside-mail-delivery", item.component_tag)
                 end
             end
             test.eq(1, count)
+            test.eq(1, provider)
         end)
     end)
 end

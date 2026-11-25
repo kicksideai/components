@@ -1,6 +1,6 @@
 import { W as P, P as U } from "./wc-runtime-CYKoUhqs.js";
 import { defineComponent as D, openBlock as v, createElementBlock as b, createElementVNode as u, toDisplayString as z, renderSlot as L, createCommentVNode as N, onBeforeUnmount as K, watch as q, nextTick as Y, Fragment as H, createVNode as d, unref as x, withCtx as V } from "vue";
-import { api as i, on as O } from "@wippy-fe/proxy";
+import { api as o, on as O } from "@wippy-fe/proxy";
 import { Icon as G } from "@iconify/vue";
 import $ from "primevue/button";
 import J from "primevue/tag";
@@ -61,7 +61,7 @@ function rr(r, e) {
   }
   return r instanceof Error ? r : new s({ kind: "UNAVAILABLE" }, e);
 }
-async function o(r, e) {
+async function i(r, e) {
   let a;
   try {
     a = (await r()).data;
@@ -83,8 +83,8 @@ function h(r) {
 }
 const er = (r) => r.kind === "message" ? r.name : "notice";
 async function g(r, e) {
-  const a = await o(
-    () => i.post(`${n}/library/preview`, { message: er(r), ...e }),
+  const a = await i(
+    () => o.post(`${n}/library/preview`, { message: er(r), ...e }),
     "Review changes"
   ), t = a.errors?.[0];
   if (t)
@@ -98,11 +98,11 @@ async function g(r, e) {
 }
 async function C(r, e) {
   const a = { ...r, note: e ?? ("note" in r ? r.note : void 0) }, t = await g(r, { create: a });
-  return o(() => i.post(`${n}/library`, { ...a, preview_id: t }), "Create resource");
+  return i(() => o.post(`${n}/library`, { ...a, preview_id: t }), "Create resource");
 }
 function j(r = {}) {
-  return o(
-    () => i.get(`${n}/library`, { params: w({ limit: 100, ...r }) }),
+  return i(
+    () => o.get(`${n}/library`, { params: w({ limit: 100, ...r }) }),
     "Mail library"
   );
 }
@@ -118,55 +118,55 @@ async function T(r) {
 const hr = {
   page: j,
   assets: (r) => T((e) => j({ kind: "asset", q: r, cursor: e })),
-  get: (r) => o(() => i.get(l(r)), "Mail resource"),
-  history: (r) => T((e) => o(
-    () => i.get(`${l(r)}/history`, { params: w({ cursor: e }) }),
+  get: (r) => i(() => o.get(l(r)), "Mail resource"),
+  history: (r) => T((e) => i(
+    () => o.get(`${l(r)}/history`, { params: w({ cursor: e }) }),
     "Resource history"
   )),
   copy: (r) => C(r),
   create: (r, e) => C(h(r), e),
   async update(r, e, a) {
     const t = { ...h(r), expected_revision: e, note: a }, p = await g(r, { resources: [t] });
-    return o(() => i.put(l(r), { ...t, preview_id: p }), "Save resource");
+    return i(() => o.put(l(r), { ...t, preview_id: p }), "Save resource");
   },
   async reset(r, e) {
     const a = { expected_revision: e }, t = r.kind === "asset" ? void 0 : await g(r, { reset: { ...r, ...a } });
-    return o(() => i.post(`${l(r)}/reset`, { ...a, preview_id: t }), "Reset resource");
+    return i(() => o.post(`${l(r)}/reset`, { ...a, preview_id: t }), "Reset resource");
   },
   async restore(r, e, a, t) {
     const p = { revision: e, expected_revision: a, note: t }, c = r.kind === "asset" ? void 0 : await g(r, { restore: { ...r, ...p } });
-    return o(() => i.post(`${l(r)}/restore`, { ...p, preview_id: c }), "Restore revision");
+    return i(() => o.post(`${l(r)}/restore`, { ...p, preview_id: c }), "Restore revision");
   },
-  remove: (r, e) => o(() => i.delete(l(r), { data: { expected_revision: e } }), "Delete resource"),
-  preview: (r, e) => o(() => i.post(`${n}/library/preview`, e.length ? { message: r, resources: e.map(h) } : { message: r }), "Preview"),
-  sendTest: (r) => o(() => i.post(`${n}/library/send-test`, { message: r }), "Send test"),
-  addAsset: (r) => o(() => i.post(`${n}/library`, { kind: "asset", ...r }), "Add image"),
-  replaceAsset: (r, e) => o(() => i.put(`${n}/library/asset/${encodeURIComponent(r.name)}`, { ...r, expected_revision: e }), "Replace image")
+  remove: (r, e) => i(() => o.delete(l(r), { data: { expected_revision: e } }), "Delete resource"),
+  preview: (r, e) => i(() => o.post(`${n}/library/preview`, e.length ? { message: r, resources: e.map(h) } : { message: r }), "Preview"),
+  sendTest: (r) => i(() => o.post(`${n}/library/send-test`, { message: r }), "Send test"),
+  addAsset: (r) => i(() => o.post(`${n}/library`, { kind: "asset", ...r }), "Add image"),
+  replaceAsset: (r, e) => i(() => o.put(`${n}/library/asset/${encodeURIComponent(r.name)}`, { ...r, expected_revision: e }), "Replace image")
 }, fr = {
   // The platform upload flow: the file becomes the caller's upload, which Mail adopts as an asset once the platform
   // reports it completed.
   async add(r) {
     const e = new FormData();
-    return e.append("file", r), e.append("metadata", JSON.stringify({ filename: r.name })), o(async () => {
-      const t = (await i.post("/api/v1/uploads", e, { headers: { "Content-Type": "multipart/form-data" } })).data;
+    return e.append("file", r), e.append("metadata", JSON.stringify({ filename: r.name })), i(async () => {
+      const t = (await o.post("/api/v1/uploads", e, { headers: { "Content-Type": "multipart/form-data" } })).data;
       return { data: t?.success && t.uuid ? { success: !0, data: { uuid: t.uuid } } : { success: !1, error: t?.error } };
     }, "Upload").then((a) => a.uuid);
   },
   // The upload's processing status and the component whose public meta changes at each upload milestone.
   async state(r) {
-    return o(async () => {
-      const a = (await i.get(`/api/v1/uploads/${encodeURIComponent(r)}`)).data;
+    return i(async () => {
+      const a = (await o.get(`/api/v1/uploads/${encodeURIComponent(r)}`)).data;
       return a?.success && a.upload && a.component_id ? { data: { success: !0, data: { component_id: a.component_id, status: String(a.upload.status ?? ""), error: a.upload.error } } } : { data: { success: !1, error: a?.error } };
     }, "Upload");
   }
 }, vr = {
-  capabilities: () => o(() => i.get(`${n}/capabilities`), "Mail access")
+  capabilities: () => i(() => o.get(`${n}/capabilities`), "Mail access")
 }, br = {
-  list: (r) => o(() => i.get(`${n}/activity`, { params: w({ limit: 50, ...r }) }), "Mail activity"),
-  get: (r) => o(() => i.get(`${n}/activity/${encodeURIComponent(r)}`), "Mail message"),
-  resend: (r) => o(() => i.post(`${n}/activity/${encodeURIComponent(r)}/resend`, {}), "Send again")
+  list: (r) => i(() => o.get(`${n}/activity`, { params: w({ limit: 50, ...r }) }), "Mail activity"),
+  get: (r) => i(() => o.get(`${n}/activity/${encodeURIComponent(r)}`), "Mail message"),
+  resend: (r) => i(() => o.post(`${n}/activity/${encodeURIComponent(r)}/resend`, {}), "Send again")
 }, wr = {
-  status: () => o(() => i.get(`${n}/delivery`), "Delivery status")
+  status: () => i(() => o.get(`${n}/delivery`), "Delivery status")
 };
 function ar(r) {
   if (!(r instanceof s)) return;
@@ -204,7 +204,7 @@ function Dr(r) {
   const e = tr[r.kind];
   return e ? r.kind === "test" || r.kind === "resend" ? e : r.label ? `${e} · ${r.label}` : e : r.label;
 }
-const S = 1440 * 60 * 1e3, A = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric" }), I = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric", year: "numeric" }), ir = new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }), or = new Intl.DateTimeFormat(void 0, { dateStyle: "medium", timeStyle: "short" });
+const S = 1440 * 60 * 1e3, A = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric" }), I = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric", year: "numeric" }), or = new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }), ir = new Intl.DateTimeFormat(void 0, { dateStyle: "medium", timeStyle: "short" });
 function F(r) {
   const e = new Date(r);
   return e.setHours(0, 0, 0, 0), e.getTime();
@@ -220,10 +220,10 @@ function Rr(r, e = Date.now()) {
 }
 function Sr(r, e = Date.now()) {
   const a = F(e);
-  return r >= a ? ir.format(r) : r >= a - S ? "Yesterday" : new Date(r).getFullYear() === new Date(e).getFullYear() ? A.format(r) : I.format(r);
+  return r >= a ? or.format(r) : r >= a - S ? "Yesterday" : new Date(r).getFullYear() === new Date(e).getFullYear() ? A.format(r) : I.format(r);
 }
 function Ar(r) {
-  return r ? or.format(r) : "—";
+  return r ? ir.format(r) : "—";
 }
 function Ir(r) {
   return r.length ? r.length === 1 ? `To ${r[0]}` : `To ${r[0]} +${r.length - 1}` : "";
@@ -284,7 +284,8 @@ function Er(r, e, a = "in Settings → Mail") {
     case "invalid_config":
     case "settings_read_failed":
     case "provider_endpoint_invalid":
-    case "driver_availability_invalid":
+    case "driver_not_admitted":
+    case "invalid_transport_status":
       return { lead: "The delivery settings are not complete.", next: `Check the settings ${a}, save, and send again.` };
     case "from_name_invalid":
       return { lead: "The sender name cannot be used in email.", next: `Correct the From name ${a}.` };
@@ -295,9 +296,8 @@ function Er(r, e, a = "in Settings → Mail") {
 const Br = /* @__PURE__ */ new Set([
   "invalid_config",
   "settings_read_failed",
-  "invalid_driver_descriptor",
-  "duplicate_driver_id",
-  "driver_availability_invalid",
+  "driver_not_admitted",
+  "invalid_transport_status",
   "provider_endpoint_invalid",
   "credentials_invalid",
   "authorization_refused",
@@ -398,7 +398,7 @@ export {
   wr as H,
   gr as I,
   rr as J,
-  o as K,
+  i as K,
   ur as _,
   Yr as a,
   M as b,
@@ -427,4 +427,4 @@ export {
   Br as y,
   Er as z
 };
-//# sourceMappingURL=SettingsDraftActions.vue_vue_type_script_setup_true_lang-Bw84NwTO.js.map
+//# sourceMappingURL=SettingsDraftActions.vue_vue_type_script_setup_true_lang-DSE5w_vL.js.map

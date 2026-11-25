@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { flushPromises, mount } from '@vue/test-utils'
-import { host, loadByTagName } from '@wippy-fe/proxy'
+import { host } from '@wippy-fe/proxy'
 import { describe, expect, it, vi } from 'vitest'
 import DeliverySettings from './DeliverySettings.vue'
 import { hostEmit, notify } from '../test/setup'
 import { calls, get, message, ok, post, put, refuse, serve } from '../test/fixtures'
 import type { Setting } from './api'
 
+const mailgun = 'kickside.mail.mailgun:transport'
+const resend = 'kickside.mail.resend:transport'
 const drivers = [
-  { id: 'mailgun', label: 'Mailgun', icon: 'tabler:mail', description: 'Sends through Mailgun.', settings_ns: 'kickside.mail.mailgun', settings_view: 'kickside-mailgun-settings' },
-  { id: 'resend', label: 'Resend', icon: 'tabler:send', description: 'Sends through Resend.', settings_ns: 'kickside.mail.resend' },
+  { id: mailgun, title: 'Mailgun', icon: 'tabler:mail', description: 'Sends through Mailgun.', settings_ns: 'kickside.mail.mailgun', ready: true, idempotent: false },
+  { id: resend, title: 'Resend', icon: 'tabler:send', description: 'Sends through Resend.', settings_ns: 'kickside.mail.resend', ready: true, idempotent: true },
 ]
 const definitions: Record<string, Setting[]> = {
   'kickside.mail.mailgun': [
     { namespace: 'kickside.mail.mailgun', key: 'api_key', value_type: 'secret', is_secret: true, title: 'API key' },
-    { namespace: 'kickside.mail.mailgun', key: 'domain', value_type: 'string', default: '', title: 'Sending domain' },
+    { namespace: 'kickside.mail.mailgun', key: 'domain', value_type: 'string', default: '', title: 'Sending domain', schema: { pattern: '^[a-z.]+$' } },
     { namespace: 'kickside.mail.mailgun', key: 'region', value_type: 'string', default: 'us', title: 'Region' },
   ],
   'kickside.mail.resend': [
@@ -33,9 +35,11 @@ function settingsServer(initial: Record<string, Record<string, unknown>>, refuse
     namespace: 'kickside.mail', key, value_type: 'string', value: state['kickside.mail']?.[key] ?? '',
   }))
   const routes = [
-    get('/api/v1/mail/delivery/drivers', () => ok({ items: drivers.map(item => ({ ...item, settings: view(item.settings_ns) })) })),
-    get('/api/v1/mail/delivery', () => ok({ configured: !!state['kickside.mail']?.driver, reason: state['kickside.mail']?.driver ? undefined : 'Choose a delivery service for Mail.' })),
-    get('/api/v1/settings', () => Promise.resolve({ data: { success: true, settings: mailRows() } })),
+    get('/api/v1/mail/delivery', () => ok({ transports: drivers, ready: !!state['kickside.mail']?.driver, configured: !!state['kickside.mail']?.driver, reason: state['kickside.mail']?.driver ? undefined : 'Choose a delivery service for Mail.' })),
+    get('/api/v1/settings', (_path, options) => {
+      const namespace = (options as { params: { namespace: string } }).params.namespace
+      return Promise.resolve({ data: { success: true, settings: namespace === 'kickside.mail' ? mailRows() : view(namespace) } })
+    }),
     put('/api/v1/settings', (_path, body) => {
       for (const write of (body as { values: { namespace: string; key: string; value: unknown }[] }).values) {
         if (refuseKey && write.namespace === refuseKey.namespace && write.key === refuseKey.key) {
@@ -51,7 +55,7 @@ function settingsServer(initial: Record<string, Record<string, unknown>>, refuse
   return { state, routes }
 }
 
-const savedMailgun = { 'kickside.mail': { driver: 'mailgun', from_address: 'support@example.org', from_name: 'Example' }, 'kickside.mail.mailgun': { api_key: 'k', domain: 'mg.example.org', region: 'us' } }
+const savedMailgun = { 'kickside.mail': { driver: mailgun, from_address: 'support@example.org', from_name: 'Example' }, 'kickside.mail.mailgun': { api_key: 'k', domain: 'mg.example.org', region: 'us' } }
 
 async function open() {
   const wrapper = mount(DeliverySettings, { attachTo: document.body })
@@ -70,16 +74,16 @@ async function reviewAndSave(wrapper: Awaited<ReturnType<typeof open>>) {
 }
 
 describe('Mail delivery settings block', () => {
-  it('renders generated rows for a driver without its own view and saves its settings before the service', async () => {
+  it('loads settings for the selected transport and saves them before switching service', async () => {
     const server = settingsServer({ ...savedMailgun, 'kickside.mail.resend': { api_key: 'old' } })
     serve(server.routes)
     const wrapper = await open()
-    expect(loadByTagName).toHaveBeenCalledWith('kickside-mailgun-settings')
-    expect(wrapper.find('kickside-mailgun-settings').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Sending domain')
 
-    wrapper.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', 'resend')
+    wrapper.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', resend)
     await flushPromises()
-    expect(wrapper.find('kickside-mailgun-settings').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Sending domain')
+    expect(calls('get')).toContainEqual(['/api/v1/settings', { params: { namespace: 'kickside.mail.resend' } }])
     expect(wrapper.text()).toContain('API key')
     expect(wrapper.text()).toContain('Set')
     expect(wrapper.find('input[type="password"]').exists()).toBe(false)
@@ -91,7 +95,7 @@ describe('Mail delivery settings block', () => {
     const [[, body]] = calls('put')
     expect((body as { values: unknown[] }).values).toEqual([
       { namespace: 'kickside.mail.resend', key: 'api_key', value: 're_new' },
-      { namespace: 'kickside.mail', key: 'driver', value: 'resend' },
+      { namespace: 'kickside.mail', key: 'driver', value: resend },
     ])
     expect(document.body.textContent).toContain('Saved: Resend: API key, Service: Resend.')
     expect(button(wrapper, 'Review changes')).toBeUndefined()
@@ -99,7 +103,7 @@ describe('Mail delivery settings block', () => {
   })
 
   it('lets a secret replacement be cancelled', async () => {
-    serve(settingsServer({ ...savedMailgun, 'kickside.mail': { ...savedMailgun['kickside.mail'], driver: 'resend' }, 'kickside.mail.resend': { api_key: 'old' } }).routes)
+    serve(settingsServer({ ...savedMailgun, 'kickside.mail': { ...savedMailgun['kickside.mail'], driver: resend }, 'kickside.mail.resend': { api_key: 'old' } }).routes)
     const wrapper = await open()
     await button(wrapper, 'Replace')!.trigger('click')
     await wrapper.find('input[type="password"]').setValue('typed')
@@ -112,47 +116,50 @@ describe('Mail delivery settings block', () => {
     wrapper.unmount()
   })
 
-  it('mounts the driver view with saved values and secret presence, and follows its change and validity events', async () => {
+  it('shows masked settings and keeps invalid provider fields in the draft', async () => {
     serve(settingsServer(savedMailgun).routes)
     const wrapper = await open()
-    const view = wrapper.find('kickside-mailgun-settings')
-    expect(JSON.parse(view.attributes('values')!)).toEqual({ domain: 'mg.example.org', region: 'us' })
-    expect(JSON.parse(view.attributes('secrets')!)).toEqual({ api_key: true })
-    expect(view.attributes('values')).not.toContain('api_key')
+    const domain = () => wrapper.find('input[aria-label="Sending domain"]')
+    expect((domain().element as HTMLInputElement).value).toBe('mg.example.org')
+    expect(wrapper.find('input[type="password"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Set')
 
-    view.element.dispatchEvent(new CustomEvent('change', { detail: { values: { domain: 'bad domain' } } }))
-    view.element.dispatchEvent(new CustomEvent('validity', { detail: { valid: false } }))
+    await domain().setValue('bad domain')
     await flushPromises()
     expect(button(wrapper, 'Review changes')!.attributes('disabled')).toBeDefined()
     expect(hostEmit).toHaveBeenLastCalledWith('dirty-change', { dirty: true })
 
-    view.element.dispatchEvent(new CustomEvent('validity', { detail: { valid: true } }))
+    await domain().setValue('mg.example.net')
     await flushPromises()
     expect(button(wrapper, 'Review changes')!.attributes('disabled')).toBeUndefined()
+    await domain().setValue('bad domain')
     await button(wrapper, 'Discard')!.trigger('click')
     await flushPromises()
     expect(hostEmit).toHaveBeenLastCalledWith('dirty-change', { dirty: false })
+    expect((domain().element as HTMLInputElement).value).toBe('mg.example.org')
+    await wrapper.find('input[aria-label="From name"]').setValue('Updated name')
+    expect(button(wrapper, 'Review changes')!.attributes('disabled')).toBeUndefined()
     wrapper.unmount()
   })
 
   it('after a refusal, reads the true state and says which values were saved, which was refused and which wait', async () => {
-    const server = settingsServer(savedMailgun, { namespace: 'kickside.mail.mailgun', key: 'domain', message: 'Enter a valid sending domain' })
+    const server = settingsServer(savedMailgun, { namespace: 'kickside.mail.mailgun', key: 'region', message: 'Choose the service region' })
     serve(server.routes)
     const wrapper = await open()
-    wrapper.find('kickside-mailgun-settings').element.dispatchEvent(new CustomEvent('change', { detail: { values: { region: 'eu', domain: 'mg.example.net' } } }))
+    await wrapper.find('input[aria-label="Sending domain"]').setValue('mg.example.net')
+    await wrapper.find('input[aria-label="Region"]').setValue('eu')
     await wrapper.find('input[aria-label="From name"]').setValue('Example Support')
     await flushPromises()
     await reviewAndSave(wrapper)
-    expect(server.state['kickside.mail.mailgun'].region).toBe('eu')
+    expect(server.state['kickside.mail.mailgun'].domain).toBe('mg.example.net')
     expect(server.state['kickside.mail'].from_name).toBe('Example')
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Saved: Mailgun: Region.')
-    expect(text).toContain('Not saved: Mailgun: Sending domain. Enter a valid sending domain')
+    expect(text).toContain('Saved: Mailgun: Sending domain.')
+    expect(text).toContain('Not saved: Mailgun: Region. Choose the service region')
     expect(text).toContain('Still in your draft: From name.')
-    const view = wrapper.find('kickside-mailgun-settings')
-    expect(JSON.parse(view.attributes('values')!)).toEqual({ domain: 'mg.example.org', region: 'eu' })
-    expect(JSON.parse(view.attributes('draft')!)).toEqual({ domain: 'mg.example.net' })
-    expect(JSON.parse(view.attributes('errors')!)).toEqual({ domain: 'Enter a valid sending domain' })
+    expect((wrapper.find('input[aria-label="Sending domain"]').element as HTMLInputElement).value).toBe('mg.example.net')
+    expect((wrapper.find('input[aria-label="Region"]').element as HTMLInputElement).value).toBe('eu')
+    expect(wrapper.findAll('.mail-field-error').map(node => node.text())).toContain('Choose the service region')
     expect((wrapper.find('input[aria-label="From name"]').element as HTMLInputElement).value).toBe('Example Support')
     wrapper.unmount()
   })
@@ -195,7 +202,6 @@ describe('Mail delivery settings block', () => {
 
   it('tells someone without delivery administration to ask for access and names no service', async () => {
     serve([
-      get('/api/v1/mail/delivery/drivers', () => refuse(403, { error: 'Forbidden', code: 'mail_delivery_denied', kind: 'PERMISSION_DENIED' })),
       get('/api/v1/mail/delivery', () => refuse(403, { error: 'Forbidden', kind: 'PERMISSION_DENIED' })),
       get('/api/v1/settings', () => refuse(403, { error: 'Forbidden', kind: 'PERMISSION_DENIED' })),
     ])

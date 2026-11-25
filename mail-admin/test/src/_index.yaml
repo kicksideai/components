@@ -67,7 +67,6 @@ entries:
       - kickside.mail.security:driver_admin
       - kickside.mail.security:log_admin
       - kickside.mail.security:delivery_endpoints
-      - kickside.mail.security:delivery_calls
       - kickside.mail.security:module_runtime
       - kickside.mail.admin.security:module_access
       - kickside.mail.admin.security:member_endpoints
@@ -101,7 +100,6 @@ entries:
     key: api_key
     title: Fixture key
     value_type: secret
-    visible: false
     read_access: admin
     default: fixture-key-default
     order: 10
@@ -112,37 +110,33 @@ entries:
     key: region
     title: Fixture region
     value_type: string
-    visible: false
     default: us
     order: 20
-  - name: fixture_available
+  - name: fixture_status
     kind: function.lua
     source: |
-      return {check = function()
-        return {available = false, code = "fixture_key_required", reason = "Add a key for the fixture service."}
+      return {status = function()
+        return {title = "Fixture delivery", icon = "tabler:mail", description = "Accepts messages for the harness.",
+          settings_ns = "app.fixture", idempotent = false, ready = false,
+          code = "fixture_key_required", reason = "Add a key for the fixture service."}
       end}
-    method: check
-  - name: fixture_available_grant
-    kind: ns.requirement
-    default: app:fixture_available
-    targets:
-      - { entry: kickside.mail.security:driver_dispatch, path: ".policy.resources +=" }
-  - name: fixture_driver
-    kind: registry.entry
-    meta: { type: "kickside.mail:driver" }
-    id: fixture
-    label: Fixture delivery
-    icon: tabler:mail
-    description: Accepts messages for the harness.
-    binding: app:fixture_binding
-    settings_ns: app.fixture
-    settings_view: app-fixture-settings
-    available_func: app:fixture_available
-  - name: fixture_descriptor_grant
-    kind: ns.requirement
-    default: app:fixture_driver
-    targets:
-      - { entry: kickside.mail.security:driver_discovery, path: ".policy.resources +=" }
+    method: status
+  - name: fixture_send
+    kind: function.lua
+    source: 'return {send = function() return {} end}'
+    method: send
+  - name: fixture_binding
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:transport
+        methods: {send: app:fixture_send, status: app:fixture_status}
+  - name: fixture_open
+    kind: security.policy
+    groups: [kickside.mail.security:transports]
+    policy:
+      resources: [app:fixture_binding]
+      actions: [contract.open]
+      effect: allow
   - name: dep.test
     kind: ns.dependency
     component: wippy/test
