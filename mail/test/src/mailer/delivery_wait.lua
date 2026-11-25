@@ -1,20 +1,21 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local channel = require("channel")
-local events = require("events")
+local signal = require("signal")
 local time = require("time")
 
 local function observe(topic, duration)
-    local subscription = assert(events.subscribe("mail.fixture", topic))
-    local changes = subscription:channel()
+    local changes, close = signal.subscribe()
     return function(read, ready)
         local deadline = assert(time.after(duration))
         local result, err = read()
-        while not err and not ready(result) do
-            local wake = channel.select({changes:case_receive(), deadline:case_receive()})
-            result, err = read()
-            if wake.channel == deadline then break end
+        if not err and not ready(result) then
+            repeat
+                local wake = channel.select({changes:case_receive(), deadline:case_receive()})
+                if wake.channel == deadline then break end
+                if not topic or wake.value == topic then result, err = read() end
+            until err or ready(result)
         end
-        subscription:close()
+        close()
         return result, err
     end
 end

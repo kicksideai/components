@@ -18,20 +18,29 @@ entries:
     kind: function.lua
     source: file://broadcast.lua
     method: broadcast
-    modules: [events, json, security, sql]
+    modules: [json, security, sql]
+    imports: { signal: app.mail_realtime:signal }
     security:
       policies: [app.mail_harness:fixture_db, app.mail_realtime:fixture_activity_signal]
   - name: fixture_activity_signal
     kind: security.policy
     policy:
-      resources: [mail.fixture]
-      actions: [events.send]
+      resources: [app.mail_realtime:signals, mail.fixture.waiters]
+      actions: [pg.open, pg.broadcast_local]
       effect: allow
+  - name: signals
+    kind: pg.scope
+    lifecycle: {auto_start: true}
+  - name: signal
+    kind: library.lua
+    source: file://signal.lua
+    modules: [pg, process]
   - name: notify
     kind: function.lua
     source: file://notify.lua
     method: notify
-    modules: [events, security]
+    modules: [security]
+    imports: { signal: app.mail_realtime:signal }
     security:
       policies: [app.mail_realtime:fixture_activity_signal]
   - name: notify_test
@@ -43,4 +52,5 @@ entries:
     imports:
       test: wippy.test:test
       api_fixtures: app.mail_api:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
       library_fixtures: app.mail_library:fixtures

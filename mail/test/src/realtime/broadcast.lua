@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local events = require("events")
 local json = require("json")
 local security = require("security")
+local signal = require("signal")
 local sql = require("sql")
 
 local function broadcast(input)
@@ -17,6 +17,7 @@ local function broadcast(input)
             assert(db:execute("UPDATE mail_realtime_fixture SET observed=$1 WHERE topic=$2 AND subject=$3",
                 {observed, "fixture.refuse_library", name}))
             assert(db:release())
+            signal.publish("library_refused")
             return {success = false, error = "Fixture refuses library broadcast"}
         end
         rows = assert(db:query([[SELECT CAST(revision AS TEXT) AS observed FROM mail_library
@@ -40,7 +41,7 @@ local function broadcast(input)
             {input.topic, "fixture", assert(json.encode(input)), rows[1].observed}))
     end
     assert(db:release())
-    assert(events.send("mail.fixture", input.topic == "mail.library" and "library" or "activity", input.topic))
+    signal.publish(input.topic == "mail.library" and "library" or "activity")
     return {success = true}
 end
 

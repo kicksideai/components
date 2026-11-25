@@ -1,6 +1,4 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local channel = require("channel")
-local events = require("events")
 local funcs = require("funcs")
 local sql = require("sql")
 local time = require("time")
@@ -20,7 +18,53 @@ return {run = test.run_cases(function()
             api.settings("", "")
         end)
 
+        test.it("returns an already completed delivery from the first public read", function()
+            library.await_current_live()
+            local member = api.session("sender")
+            local sender = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
+            api.settings("app.mail_harness:capture", "fixture@example.org")
+            local receipt = assert(library.mailer(sender, "send", {
+                to = {"reader@example.org"}, subject = "Completed before waiting", text = "Delivery notification",
+            }))
+            local function read()
+                return library.mailer(sender, "get_message", receipt.message_id)
+            end
+            local waiting_since = time.now()
+            local completed = delivery_wait.terminal(read, "12s")
+            test.eq("sent", completed.status)
+            test.not_nil(completed.finished_at)
+            test.is_true(time.now():before(waiting_since:add("1s")), "Completion did not wake the Activity wait")
+
+            local reads = 0
+            local started = time.now()
+            local row = delivery_wait.terminal(function()
+                reads = reads + 1
+                return read()
+            end, "12s")
+            test.eq(completed.finished_at, row.finished_at)
+            test.eq("sent", row.status)
+            test.eq(1, reads)
+            test.is_true(time.now():before(started:add("1s")))
+        end)
+
+        test.it("wakes when a short-lived broadcaster publishes during the first read", function()
+            local state = {message_id = "fixture", status = "queued"}
+            local started = time.now()
+            local row = delivery_wait.terminal(function()
+                local snapshot = state
+                if state.status == "queued" then
+                    state = {message_id = state.message_id, status = "sent"}
+                    local published = assert(funcs.call("app.mail_realtime:broadcast", {topic = "mail.activity"}))
+                    test.is_true(published.success)
+                end
+                return snapshot
+            end, "1s")
+            test.eq("sent", row.status)
+            test.is_true(time.now():before(started:add("1s")), "Activity wait reached its deadline")
+        end)
+
         test.it("announces a committed retry and reads the terminal delivery receipt", function()
+            library.await_current_live()
             local member = api.session("sender")
             local sender = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
             api.settings("app.mail_harness:capture", "fixture@example.org")
@@ -29,8 +73,7 @@ return {run = test.run_cases(function()
             assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,'{}','')",
                 {watch, subject}))
             assert(db:release())
-            local subscription = assert(events.subscribe("mail.fixture", "activity"))
-            local queue = subscription:channel()
+            local observe = delivery_wait.observe("activity", "12s")
             local receipt = assert(library.mailer(sender, "send",
                 {to = {"reader@example.org"}, subject = subject, text = "Delivery notification"}))
             local function retry_job()
@@ -41,14 +84,7 @@ return {run = test.run_cases(function()
                 assert(db:release())
                 return rows[1] and rows[1].data
             end
-            local deadline = assert(time.after("12s"))
-            local job_id = retry_job()
-            while not job_id do
-                local next = channel.select({queue:case_receive(), deadline:case_receive()})
-                job_id = retry_job()
-                if next.channel == deadline then break end
-            end
-            subscription:close()
+            local job_id = observe(retry_job, function(id) return id ~= nil end)
             assert(job_id, "The Activity invalidation observes the committed retry")
             local retry = assert(library.mailer(sender, "get_message", receipt.message_id))
             test.eq("queued", retry.status)

@@ -141,7 +141,7 @@ entries:
   - name: admission_cases
     kind: library.lua
     source: file://admission_cases.lua
-    modules: [security, registry, json, sql, uuid]
+    modules: [security, registry, json, sql, time, uuid]
     imports:
       policy: kickside.mail.domain:policy
       jobs: kickside.core.jobs:jobs
@@ -309,7 +309,7 @@ entries:
     meta: {type: test, suite: mail_delivery_signal}
     source: file://delivery_signal_test.lua
     method: run
-    modules: [channel, events, funcs, sql, time]
+    modules: [funcs, sql, time]
     imports:
       delivery_wait: app.mail_harness:delivery_wait
       test: wippy.test:test
@@ -319,7 +319,8 @@ entries:
   - name: delivery_wait
     kind: library.lua
     source: file://delivery_wait.lua
-    modules: [channel, events, time]
+    modules: [channel, time]
+    imports: { signal: app.mail_realtime:signal }
   - name: driver_example_cases
     kind: library.lua
     source: file://driver_example_cases.lua
