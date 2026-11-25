@@ -91,7 +91,7 @@ const cases = [
       projections: { [projection]: cursor({ parked: true, error: 'Supplier mapping crashed.' }) },
     },
     async verify({ row, requests, button, page }) {
-      const crash = row.getByRole('checkbox', { name: 'Crash on update', exact: true })
+      const crash = row.getByRole('switch', { name: 'Crash on update', exact: true })
       await crash.waitFor()
       assert.equal(await crash.isChecked(), true)
       await crash.uncheck()
