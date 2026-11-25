@@ -115,13 +115,15 @@ return {run = test.run_cases(function()
             end, "Component deletion job did not complete")
             local threads = assert(assert(contract.get("kickside.core:threads")):open())
             fixtures.await(function()
+                local step = assert(funcs.call("kickside.component:retention",
+                    {change = {owner_locator = {kind = "component", id = component_id}}}))
+                assert(step.success, tostring(step.error))
+                if step.needs_continue then return false end
                 local components = assert(component.list_system({component_ids = {component_id}}))
                 if #components ~= 0 then return false end
-                local thread, err = threads:find({thread_id = component_id})
-                if err then
-                    assert(errors.is(err, errors.NOT_FOUND) or errors.is(err, errors.PERMISSION_DENIED), tostring(err))
-                end
-                return thread == nil
+                local boundary, err = threads:prune_boundary({thread_id = component_id})
+                if err then assert(errors.is(err, errors.NOT_FOUND), tostring(err)) end
+                return boundary == nil and err ~= nil
             end, "Component deletion did not purge the library and its thread")
             local retention = assert(funcs.new():with_context({mail_test_now = now}))
             local swept = assert(retention:call("kickside.mail.jobs:owner", {}))
