@@ -108,7 +108,7 @@ local function register(support)
         local template = call("create", message)
         state.configured = true
         settings.settings("app.mail_harness:admitted", "mail@example.org")
-        local _, sender = setup_actor({"app:mail_senders"})
+        local _, sender = setup_actor("sender")
         local denied = assert(fixtures.mailer(sender, "send", {template = message.name,
             vars = {}, to = {"reader@example.org"}}))
         local failure = terminal(sender, denied.message_id)
@@ -146,7 +146,7 @@ local function register(support)
             test.eq(case.code, assert(err):details().code)
         end
         local id = upload("image/gif", gif())
-        local reader_id, reader = setup_actor({"app:mail_editors"})
+        local reader_id, reader = setup_actor("editor")
         local owner = assert(security.new_actor(state.uploader))
         local definition = assert(contract.get("kickside.component:component_service"))
         local component = assert(assert(definition:with_actor(owner)):open())

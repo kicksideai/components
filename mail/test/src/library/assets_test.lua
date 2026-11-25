@@ -24,20 +24,10 @@ local asset_lifetime_cases = require("asset_lifetime_cases")
 local asset_content_cases = require("asset_content_cases")
 local asset_delivery_cases = require("asset_delivery_cases")
 
-local function setup_actor(groups)
-    local id = uuid.v4()
-    local db = assert(sql.get("app:db"))
-    assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
-        VALUES ($1,$2,$1,'test-only','active')]], {id, id .. "@example.org"}))
-    for _, group in ipairs(groups) do
-        assert(db:execute("INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)", {id, group}))
-    end
-    assert(db:release())
-    assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
-    local actor = assert(security.new_actor(id, {security_groups = groups}))
-    local scope = assert(security.named_scope("wippy.security:process"))
-    local exec = assert(funcs.new():with_actor(actor):with_scope(scope))
-    return id, exec
+local function setup_actor(role)
+    local member = settings.session(role, true)
+    local exec = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
+    return member.id, exec, member.actor
 end
 
 local function define(kind, name, html)
@@ -51,9 +41,11 @@ local run = test.run_cases(function()
         test.before_each(function()
             state.owned, state.sources, state.configured = {}, {}, false
             state.storage = assert(fs.get("app:uploads"))
-            state.uploader, state.editor = setup_actor({"app:mail_editors", "app:mail_senders"})
+            local actor
+            state.uploader, state.editor, actor = setup_actor("upload_editor_sender")
             local owner = upload_types.component_id_for_owner(state.uploader)
-            local registered = assert(state.editor:call("kickside.component.binding:register_component_func",
+            local setup = assert(funcs.new():with_actor(actor):with_scope(assert(security.named_scope("wippy.security:process"))))
+            local registered = assert(setup:call("kickside.component.binding:register_component_func",
                 {component_id = owner, impl_id = upload_types.IMPL}))
             assert(registered.success, registered.error)
         end)

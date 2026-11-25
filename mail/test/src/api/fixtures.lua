@@ -13,7 +13,7 @@ local function session(names, compose_memberships)
         VALUES ($1,$2,'Mail fixture','test-only','active')]], {id, email}))
     local groups = names and {"app.mail_api:" .. names, "app:user"} or {"app:user"}
     if names == "outside" or names == "module_only" then groups = {"app.mail_api:" .. names} end
-    if names == "editor" or names == "editor_sender" then groups[#groups + 1] = "app:mail_editors" end
+    if names and names:find("editor", 1, true) then groups[#groups + 1] = "app:mail_editors" end
     if names and names:find("sender", 1, true) then groups[#groups + 1] = "app:mail_senders" end
     for _, group in ipairs(groups) do
         assert(db:execute("INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)", {id, group}))

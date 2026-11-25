@@ -51,10 +51,10 @@ return {run = test.run_cases(function()
             local component_id = content.library_component_id()
             local now = time.now():add(time.HOUR):unix_nano() // 1000000
             local teardown = open("kickside.contract:deletable", component_id, now)
-            local who = api_fixtures.session("editor")
+            local who = api_fixtures.session("upload_editor", true)
             local owner = upload_types.component_id_for_owner(who.id)
-            local editor = assert(funcs.new():with_actor(who.actor):with_scope(assert(security.named_scope("wippy.security:process"))))
-            local registered = assert(editor:call("kickside.component.binding:register_component_func",
+            local setup = assert(funcs.new():with_actor(who.actor):with_scope(assert(security.named_scope("wippy.security:process"))))
+            local registered = assert(setup:call("kickside.component.binding:register_component_func",
                 {component_id = owner, impl_id = upload_types.IMPL}))
             assert(registered.success, tostring(registered.error))
             local storage = assert(fs.get("app:uploads"))
@@ -63,6 +63,7 @@ return {run = test.run_cases(function()
             assert(storage:writefile(source, gif))
             assert(records.create(source, who.id, #gif, "image/gif", "app:uploads", source,
                 "kickside.uploads:types.generic", {filename = "mark"}, "completed"))
+            local editor = assert(funcs.new():with_actor(who.actor):with_scope(who.scope))
             local image = assert(fixtures.call(editor, "add_asset", {kind = "asset", name = "teardown-image", upload_id = source}))
             local upload = assert(lookup.get(image.asset.upload_id))
             local message = {kind = "message", name = "teardown-message", title = "Teardown", description = "",
