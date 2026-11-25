@@ -76,15 +76,14 @@ describe('Mail administration shell', () => {
     wrapper.unmount()
   })
 
-  it('shows Activity to a sender without delivery administration and hides it from an editor who cannot send', async () => {
+  it('shows Activity only to delivery administrators', async () => {
     serveLibrary({ send: true, edit_library: true, administer_delivery: false })
     let wrapper = await open()
-    expect(railLabels(wrapper)).toContain('Activity')
-    wrapper.unmount()
-    serveLibrary({ send: false, edit_library: true, administer_delivery: false })
-    wrapper = await open()
     expect(railLabels(wrapper)).not.toContain('Activity')
-    expect(calls('get').some(([path]) => path === '/api/v1/mail/delivery')).toBe(false)
+    wrapper.unmount()
+    serveLibrary({ send: false, edit_library: true, administer_delivery: true })
+    wrapper = await open()
+    expect(railLabels(wrapper)).toContain('Activity')
     wrapper.unmount()
   })
 

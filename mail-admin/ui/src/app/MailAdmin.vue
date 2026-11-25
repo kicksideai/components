@@ -4,6 +4,7 @@ import { host } from '@wippy-fe/proxy'
 import { useHostVisibility } from '@wippy-fe/webcomponent-vue'
 import { computed, provide, ref, shallowRef, watch } from 'vue'
 import SettingsRail, { type SettingsRailGroup, type SettingsRailItem } from '@kickside/ui-kit/SettingsRail.vue'
+import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import { access, delivery as deliveryApi } from '../api'
 import { mailContextKey, type CreateIntent } from '../context'
 import { kindIcons, kindPlurals } from '../copy'
@@ -112,8 +113,7 @@ const sectionIcons: Record<ResourceSection, (kind: string) => string> = {
   history: () => 'tabler:history',
 }
 
-// Activity is for delivery administrators and, limited to their own email, for senders.
-const showActivity = computed(() => !!capabilities.value && (capabilities.value.administer_delivery || capabilities.value.send))
+const showActivity = computed(() => !!capabilities.value?.administer_delivery)
 const libraryGroups = computed<SettingsRailGroup[]>(() => [
   { heading: 'Library', items: [
     { value: 'messages', label: 'Messages', icon: kindIcons.message },
@@ -170,7 +170,13 @@ watch(() => pathOf(current.value), () => { main.value?.scrollTo({ top: 0 }) })
       <div ref="main" class="kx-main-scroll mail-main" :class="{ 'mail-main-wide': current.name === 'resource' && current.section === 'content' }">
         <ResourcePage v-if="current.name === 'resource'" :key="current.kind + '/' + current.resource"
           :kind="current.kind" :name="current.resource" :section="current.section" />
-        <ActivityPage v-else-if="current.name === 'activity'" :message="current.message" :template="current.template" />
+        <template v-else-if="current.name === 'activity'">
+          <ActivityPage v-if="showActivity" :message="current.message" :template="current.template" />
+          <template v-else-if="capabilities">
+            <SettingsSectionHead title="Activity" description="" />
+            <p class="kx-notice warn mail-block" role="alert">Ask an administrator to grant you access to mail delivery.</p>
+          </template>
+        </template>
         <AssetsPage v-else-if="current.section === 'assets'" :asset="current.asset" />
         <LibraryPage v-else :section="current.section" />
       </div>

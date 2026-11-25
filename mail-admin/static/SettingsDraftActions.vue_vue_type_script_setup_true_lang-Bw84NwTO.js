@@ -1,6 +1,6 @@
 import { W as P, P as U } from "./wc-runtime-CYKoUhqs.js";
-import { api as i, on as L } from "@wippy-fe/proxy";
-import { onBeforeUnmount as N, defineComponent as D, openBlock as v, createElementBlock as b, createElementVNode as u, toDisplayString as z, renderSlot as K, createCommentVNode as q, watch as Y, nextTick as H, Fragment as V, createVNode as d, unref as x, withCtx as O } from "vue";
+import { defineComponent as D, openBlock as v, createElementBlock as b, createElementVNode as u, toDisplayString as z, renderSlot as L, createCommentVNode as N, onBeforeUnmount as K, watch as q, nextTick as Y, Fragment as H, createVNode as d, unref as x, withCtx as V } from "vue";
+import { api as i, on as O } from "@wippy-fe/proxy";
 import { Icon as G } from "@iconify/vue";
 import $ from "primevue/button";
 import J from "primevue/tag";
@@ -15,6 +15,27 @@ function gr(r, e) {
     }
   };
 }
+const Q = { class: "system-section-head" }, X = { class: "system-section-head-text" }, Z = {
+  key: 0,
+  class: "kx-head-actions"
+}, ur = /* @__PURE__ */ D({
+  __name: "SettingsSectionHead",
+  props: {
+    title: {},
+    description: {}
+  },
+  setup(r) {
+    return (e, a) => (v(), b("header", Q, [
+      u("div", X, [
+        u("h1", null, z(r.title), 1),
+        u("p", null, z(r.description), 1)
+      ]),
+      e.$slots.actions ? (v(), b("div", Z, [
+        L(e.$slots, "actions")
+      ])) : N("", !0)
+    ]));
+  }
+});
 class s extends Error {
   constructor(e, a, t) {
     super(e.message ?? e.error ?? `${a} failed`), this.name = "ApiError", this.kind = e.kind, this.details = e.details, this.retryable = e.retryable, this.status = t;
@@ -32,7 +53,7 @@ function R(r, e, a) {
     retryable: typeof r.retryable == "boolean" ? r.retryable : void 0
   }, e, a);
 }
-function Q(r, e) {
+function rr(r, e) {
   if (r instanceof s) return r;
   if (m(r) && m(r.response) && m(r.response.data)) {
     const { data: a, status: t } = r.response;
@@ -45,7 +66,7 @@ async function o(r, e) {
   try {
     a = (await r()).data;
   } catch (t) {
-    throw Q(t, e);
+    throw rr(t, e);
   }
   if (a?.success === !0 && a.data !== void 0) return a.data;
   throw a?.success === !1 ? R(a, e) : new s({ kind: "INTERNAL", message: `${e}: invalid response envelope`, details: { code: "response_envelope_invalid" } }, e);
@@ -60,10 +81,10 @@ function h(r) {
   const { kind: e, name: a, title: t, description: p, html: c, text: k, base: E, subject: B, schema: y, samples: _ } = r;
   return e === "message" ? { kind: e, name: a, title: t, description: p, html: c, text: k, base: E, subject: B, schema: y, samples: _ } : { kind: e, name: a, title: t, description: p, html: c, text: k, schema: y, samples: _ };
 }
-const X = (r) => r.kind === "message" ? r.name : "notice";
+const er = (r) => r.kind === "message" ? r.name : "notice";
 async function g(r, e) {
   const a = await o(
-    () => i.post(`${n}/library/preview`, { message: X(r), ...e }),
+    () => i.post(`${n}/library/preview`, { message: er(r), ...e }),
     "Review changes"
   ), t = a.errors?.[0];
   if (t)
@@ -94,7 +115,7 @@ async function T(r) {
   } while (a);
   return e;
 }
-const ur = {
+const hr = {
   page: j,
   assets: (r) => T((e) => j({ kind: "asset", q: r, cursor: e })),
   get: (r) => o(() => i.get(l(r)), "Mail resource"),
@@ -121,7 +142,7 @@ const ur = {
   sendTest: (r) => o(() => i.post(`${n}/library/send-test`, { message: r }), "Send test"),
   addAsset: (r) => o(() => i.post(`${n}/library`, { kind: "asset", ...r }), "Add image"),
   replaceAsset: (r, e) => o(() => i.put(`${n}/library/asset/${encodeURIComponent(r.name)}`, { ...r, expected_revision: e }), "Replace image")
-}, hr = {
+}, fr = {
   // The platform upload flow: the file becomes the caller's upload, which Mail adopts as an asset once the platform
   // reports it completed.
   async add(r) {
@@ -138,27 +159,27 @@ const ur = {
       return a?.success && a.upload && a.component_id ? { data: { success: !0, data: { component_id: a.component_id, status: String(a.upload.status ?? ""), error: a.upload.error } } } : { data: { success: !1, error: a?.error } };
     }, "Upload");
   }
-}, fr = {
-  capabilities: () => o(() => i.get(`${n}/capabilities`), "Mail access")
 }, vr = {
+  capabilities: () => o(() => i.get(`${n}/capabilities`), "Mail access")
+}, br = {
   list: (r) => o(() => i.get(`${n}/activity`, { params: w({ limit: 50, ...r }) }), "Mail activity"),
   get: (r) => o(() => i.get(`${n}/activity/${encodeURIComponent(r)}`), "Mail message"),
   resend: (r) => o(() => i.post(`${n}/activity/${encodeURIComponent(r)}/resend`, {}), "Send again")
-}, br = {
+}, wr = {
   status: () => o(() => i.get(`${n}/delivery`), "Delivery status")
 };
-function Z(r) {
+function ar(r) {
   if (!(r instanceof s)) return;
   const e = r.details?.code;
   return typeof e == "string" ? e : void 0;
 }
-function wr(r) {
+function kr(r) {
   return r instanceof s && (r.status === 403 || r.kind === "PERMISSION_DENIED");
 }
-function kr(r) {
+function yr(r) {
   return r instanceof s && (r.status === 404 || r.kind === "NOT_FOUND");
 }
-const yr = { message: "Message", base: "Base template", part: "Part", asset: "Image" }, _r = { message: "Messages", base: "Base templates", part: "Parts", asset: "Images" }, zr = { message: "tabler:mail", base: "tabler:layout", part: "tabler:puzzle", asset: "tabler:photo" }, $r = {
+const _r = { message: "Message", base: "Base template", part: "Part", asset: "Image" }, zr = { message: "Messages", base: "Base templates", part: "Parts", asset: "Images" }, $r = { message: "tabler:mail", base: "tabler:layout", part: "tabler:puzzle", asset: "tabler:photo" }, Cr = {
   created: "Created",
   edited: "Edited",
   base_changed: "Base template changed",
@@ -166,48 +187,48 @@ const yr = { message: "Message", base: "Base template", part: "Part", asset: "Im
   restored: "Restored",
   previous_change: "Changed"
 };
-function Cr(r, e) {
+function jr(r, e) {
   return r?.label ?? e ?? "";
 }
 function M(r) {
   return r === void 0 ? "" : r < 1024 ? `${r} B` : r < 1024 * 1024 ? `${Math.round(r / 1024)} KB` : `${(r / 1024 / 1024).toFixed(1)} MB`;
 }
-const jr = { queued: "Pending", sent: "Sent", failed: "Failed" }, Tr = { queued: "secondary", sent: "success", failed: "danger" }, rr = {
+const Tr = { queued: "Pending", sent: "Sent", failed: "Failed" }, Mr = { queued: "secondary", sent: "success", failed: "danger" }, tr = {
   workflow: "Workflow",
   automation: "Automation",
   test: "Test send",
   resend: "Sent again"
 };
-function Mr(r) {
+function Dr(r) {
   if (!r) return "";
-  const e = rr[r.kind];
+  const e = tr[r.kind];
   return e ? r.kind === "test" || r.kind === "resend" ? e : r.label ? `${e} · ${r.label}` : e : r.label;
 }
-const S = 1440 * 60 * 1e3, A = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric" }), I = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric", year: "numeric" }), er = new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }), ar = new Intl.DateTimeFormat(void 0, { dateStyle: "medium", timeStyle: "short" });
+const S = 1440 * 60 * 1e3, A = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric" }), I = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric", year: "numeric" }), ir = new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }), or = new Intl.DateTimeFormat(void 0, { dateStyle: "medium", timeStyle: "short" });
 function F(r) {
   const e = new Date(r);
   return e.setHours(0, 0, 0, 0), e.getTime();
 }
-function tr(r, e = Date.now()) {
+function nr(r, e = Date.now()) {
   if (!r) return "—";
   const a = F(e);
   return r >= a ? "Today" : r >= a - S ? "Yesterday" : new Date(r).getFullYear() === new Date(e).getFullYear() ? A.format(r) : I.format(r);
 }
-function Dr(r, e = Date.now()) {
-  const a = tr(r, e);
+function Rr(r, e = Date.now()) {
+  const a = nr(r, e);
   return a === "Today" || a === "Yesterday" ? a.toLowerCase() : "on " + a;
 }
-function Rr(r, e = Date.now()) {
+function Sr(r, e = Date.now()) {
   const a = F(e);
-  return r >= a ? er.format(r) : r >= a - S ? "Yesterday" : new Date(r).getFullYear() === new Date(e).getFullYear() ? A.format(r) : I.format(r);
-}
-function Sr(r) {
-  return r ? ar.format(r) : "—";
+  return r >= a ? ir.format(r) : r >= a - S ? "Yesterday" : new Date(r).getFullYear() === new Date(e).getFullYear() ? A.format(r) : I.format(r);
 }
 function Ar(r) {
+  return r ? or.format(r) : "—";
+}
+function Ir(r) {
   return r.length ? r.length === 1 ? `To ${r[0]}` : `To ${r[0]} +${r.length - 1}` : "";
 }
-function Ir(r, e, a = e + "s") {
+function Fr(r, e, a = e + "s") {
   return `${r} ${r === 1 ? e : a}`;
 }
 const f = {
@@ -244,7 +265,7 @@ const f = {
   message_too_large: "The message with its attachments is larger than the delivery service accepts.",
   upload_still_processing: "The image is still being processed. Mail adds it as soon as it is ready."
 };
-function Fr(r, e, a = "in Settings → Mail") {
+function Er(r, e, a = "in Settings → Mail") {
   switch (r) {
     case "credentials_invalid":
       return { lead: `${e} refused the credentials.`, next: `Check the API key ${a}, save, and send again.` };
@@ -271,7 +292,7 @@ function Fr(r, e, a = "in Settings → Mail") {
       return;
   }
 }
-const Er = /* @__PURE__ */ new Set([
+const Br = /* @__PURE__ */ new Set([
   "invalid_config",
   "settings_read_failed",
   "invalid_driver_descriptor",
@@ -283,52 +304,31 @@ const Er = /* @__PURE__ */ new Set([
   "sender_or_recipient_not_allowed",
   "from_name_invalid"
 ]);
-function Br(r, e) {
+function Pr(r, e) {
   if (!(r instanceof s) || r.status === void 0) return `${e} Check your connection and try again.`;
-  const a = Z(r);
+  const a = ar(r);
   return a && f[a] ? f[a] : r.status === 403 ? f.mail_library_denied : r.status >= 500 ? `${e} Try again in a moment.` : r.message || e;
 }
-function Pr(r) {
+function Ur(r) {
   return r.code === "gmail_html_clipping" && r.bytes && r.threshold_bytes ? `Gmail may clip this email: its HTML is ${M(r.bytes)}, above Gmail’s ${M(r.threshold_bytes)}. Readers then see only the start until they open the rest.` : r.message;
 }
-function Ur(r) {
+function Lr(r) {
   return r.trim().toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
 }
-const Lr = /^[a-z0-9][a-z0-9_-]*$/;
-function Nr(r, e) {
-  const a = L(r, e);
-  N(() => {
+const Nr = /^[a-z0-9][a-z0-9_-]*$/;
+function Kr(r, e) {
+  const a = O(r, e);
+  K(() => {
     typeof a == "function" && a();
   });
 }
-function Kr() {
+function qr() {
   let r = 0;
   return () => {
     const e = ++r;
     return () => e === r;
   };
 }
-const ir = { class: "system-section-head" }, or = { class: "system-section-head-text" }, nr = {
-  key: 0,
-  class: "kx-head-actions"
-}, qr = /* @__PURE__ */ D({
-  __name: "SettingsSectionHead",
-  props: {
-    title: {},
-    description: {}
-  },
-  setup(r) {
-    return (e, a) => (v(), b("header", ir, [
-      u("div", or, [
-        u("h1", null, z(r.title), 1),
-        u("p", null, z(r.description), 1)
-      ]),
-      e.$slots.actions ? (v(), b("div", nr, [
-        K(e.$slots, "actions")
-      ])) : q("", !0)
-    ]));
-  }
-});
 function sr() {
   let r = document.activeElement;
   for (; r?.shadowRoot?.activeElement; ) r = r.shadowRoot.activeElement;
@@ -336,13 +336,13 @@ function sr() {
 }
 function Yr(r) {
   let e = null;
-  Y(r, (a) => {
+  q(r, (a) => {
     if (a) {
       e = sr();
       return;
     }
     const t = e;
-    e = null, H(() => {
+    e = null, Y(() => {
       t?.isConnected && t.focus();
     });
   });
@@ -356,7 +356,7 @@ const Hr = /* @__PURE__ */ D({
   },
   emits: ["discard", "review"],
   setup(r) {
-    return (e, a) => (v(), b(V, null, [
+    return (e, a) => (v(), b(H, null, [
       d(x(J), {
         severity: "warn",
         value: "Unsaved changes"
@@ -369,7 +369,7 @@ const Hr = /* @__PURE__ */ D({
         disabled: r.busy || r.discardDisabled,
         onClick: a[0] || (a[0] = (t) => e.$emit("discard"))
       }, {
-        icon: O(() => [
+        icon: V(() => [
           d(x(G), {
             icon: "tabler:restore",
             "aria-hidden": "true"
@@ -389,42 +389,42 @@ const Hr = /* @__PURE__ */ D({
 });
 export {
   s as A,
-  jr as B,
-  Tr as C,
-  vr as D,
-  Ar as E,
-  Rr as F,
-  fr as G,
-  br as H,
+  Tr as B,
+  Mr as C,
+  br as D,
+  Ir as E,
+  Sr as F,
+  vr as G,
+  wr as H,
   gr as I,
-  Q as J,
+  rr as J,
   o as K,
-  qr as _,
+  ur as _,
   Yr as a,
   M as b,
-  Cr as c,
-  Br as d,
-  Z as e,
-  _r as f,
-  zr as g,
-  Kr as h,
-  wr as i,
-  $r as j,
-  yr as k,
-  ur as l,
-  Sr as m,
-  Dr as n,
-  Mr as o,
-  Ir as p,
+  jr as c,
+  Pr as d,
+  ar as e,
+  zr as f,
+  $r as g,
+  qr as h,
+  kr as i,
+  Cr as j,
+  _r as k,
+  hr as l,
+  Ar as m,
+  Rr as n,
+  Dr as o,
+  Fr as p,
   Hr as q,
-  kr as r,
-  tr as s,
-  hr as t,
-  Nr as u,
-  Ur as v,
-  Pr as w,
-  Lr as x,
-  Er as y,
-  Fr as z
+  yr as r,
+  nr as s,
+  fr as t,
+  Kr as u,
+  Lr as v,
+  Ur as w,
+  Nr as x,
+  Br as y,
+  Er as z
 };
-//# sourceMappingURL=SettingsDraftActions.vue_vue_type_script_setup_true_lang-DYPXSEr5.js.map
+//# sourceMappingURL=SettingsDraftActions.vue_vue_type_script_setup_true_lang-Bw84NwTO.js.map

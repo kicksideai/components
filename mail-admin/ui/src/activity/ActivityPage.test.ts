@@ -126,21 +126,14 @@ describe('Mail activity', () => {
     wrapper.unmount()
   })
 
-  it('shows a sender their own email with the neutral reason and no service details', async () => {
-    const neutral = { ...failed, driver_id: undefined, provider_message_id: undefined,
-      last_error: { kind: 'INVALID', code: 'message_rejected', message: 'Ask a mail administrator to check why the message was refused.' } }
+  it('keeps a direct Activity link private for a sender without delivery administration', async () => {
     serve([
       get('/api/v1/mail/library', () => ok({ items: [] })),
       get('/api/v1/mail/capabilities', () => ok({ send: true, edit_library: true, administer_delivery: false })),
-      get('/api/v1/mail/activity', () => ok({ items: [neutral], has_more: false, total: 1, failed_today: 1 })),
-      get(`/api/v1/mail/activity/${failedId}`, () => ok(neutral)),
     ])
     const wrapper = await open(`activity/${failedId}`)
-    expect(wrapper.find('.system-section-head p').text()).toBe('Email you sent in the last 30 days.')
-    const drawer = wrapper.find('.mail-drawer-body')
-    expect(drawer.find('.mail-failure').text()).toContain('Ask a mail administrator to check why the message was refused.')
-    expect(drawer.text()).not.toContain('Delivery service')
-    expect(drawer.text()).not.toContain('fixture')
+    expect(wrapper.find('[role="alert"]').text()).toContain('Ask an administrator to grant you access to mail delivery.')
+    expect(calls('get').some(([path]) => path.startsWith('/api/v1/mail/activity'))).toBe(false)
     wrapper.unmount()
   })
 

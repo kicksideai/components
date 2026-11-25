@@ -165,7 +165,7 @@ const technical = computed(() => {
               <Button v-if="capabilities?.administer_delivery" link size="small" class="mail-inline-link" label="Open delivery settings" @click="host.navigate('/system/settings/mail')" /></p>
             <p v-else-if="!message.can_resend" class="mail-sub">It cannot be sent again because its content was not kept.</p>
             <p v-if="sendError" class="mail-field-error" role="alert">{{ sendError }}</p>
-            <div v-if="message.can_resend && !receipt && !settingsFailure">
+            <div v-if="capabilities?.send && message.can_resend && !receipt && !settingsFailure">
               <Button label="Send again" :loading="sending" @click="sendAgain">
                 <template #icon><Icon icon="tabler:send" aria-hidden="true" /></template>
               </Button>

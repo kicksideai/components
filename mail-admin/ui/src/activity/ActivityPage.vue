@@ -23,7 +23,7 @@ import type { LogMessage, MessageStatus } from '../types'
 import MessageDrawer from './MessageDrawer.vue'
 
 const props = defineProps<{ message?: string; template?: string }>()
-const { library, go, capabilities } = useMail()
+const { library, go } = useMail()
 library.use('message')
 
 type StatusFilter = 'all' | MessageStatus
@@ -116,8 +116,6 @@ const countLabel = computed(() => {
 })
 const searchWindow = computed(() => lowerBound.value && !!search.value)
 const health = computed(() => failedToday.value ? `${plural(failedToday.value, 'message')} failed today.` : '')
-const admin = computed(() => !!capabilities.value?.administer_delivery)
-const description = computed(() => admin.value ? 'Every email sent from this workspace in the last 30 days.' : 'Email you sent in the last 30 days.')
 
 function templateTitle(name: string | undefined): string | undefined {
   if (!name) return '—'
@@ -132,7 +130,7 @@ function closeMessage() {
 </script>
 
 <template>
-  <SettingsSectionHead title="Activity" :description="description" />
+  <SettingsSectionHead title="Activity" description="Every email sent from this workspace in the last 30 days." />
 
   <p v-if="denied" class="kx-notice warn mail-block" role="alert">
     <Icon icon="tabler:lock" aria-hidden="true" />Ask an administrator to grant you access to mail delivery.

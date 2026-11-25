@@ -34,16 +34,11 @@ The tab holds the mail template library and delivery Activity:
   image that any template names is refused with those templates listed. Images
   are replaced, reset, restored from History and deleted when no message shows
   them.
-- **Activity** lists recent email with its status, template, sender and origin,
-  searchable by subject and recipient. Delivery administrators see every
-  message; a sender sees their own, with the neutral failure text. Opening a
-  message shows its reason, history and technical details, and a failed message
-  can be sent again. A delivery administrator reads what the service refused and
-  what to change; other senders read Mail's neutral text. Failures that only the
-  delivery settings or the service account can fix offer the delivery settings
-  instead of Send again; Mail does not yet report which failures a resend can
-  fix, so the page keeps that list of codes. Beyond 10,000 messages the count
-  reads as a minimum, and a search covers the newest 10,000.
+- **Activity** lets delivery administrators search recent email by subject or recipient and
+  inspect its status, template, sender, origin and failure details. Administrators with
+  **Send mail** can resend messages with retained content. Failures that require a
+  settings or service-account change link to delivery settings. Counts above 10,000
+  show a minimum, and a search covers the newest 10,000 messages.
 
 Each screen reads what it shows. On a `mail.library` or `mail.activity`
 invalidation, the screen refetches the data it displays through the Mail API.
@@ -112,9 +107,8 @@ Bind `kickside.mail.admin:ui_server` to the host HTTP service and install
 `ui.settings_tab` entry `kickside.mail.admin:settings_tab` appears only for
 callers who can reach `kickside.mail.api:library_list.endpoint`, which Mail
 grants with **Edit mail library**. The page reads `GET /mail/capabilities`:
-Activity appears for **Administer mail delivery** and, limited to the caller's
-own email, for **Send mail**; Send again and Send test to me also require
-**Send mail**. Uploading and replacing images requires the Mail library
+Activity requires **Administer mail delivery**. Send again and Send test to me
+also require **Send mail**. Uploading and replacing images requires the Mail library
 component grant the host composes through `kickside.mail:library_editor_grant`.
 
 The public `kickside.mail.admin.security:module_access` policy grants the view
