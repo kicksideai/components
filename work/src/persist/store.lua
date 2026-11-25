@@ -76,6 +76,9 @@ function M.decode_board(row: types.Row): (types.Board?, error?)
     local applied_seq, decode_err = need_int(row, "applied_seq")
     if decode_err or applied_seq == nil then return nil, decode_err end
 
+    local snapshot_seq, decode_err = need_int(row, "snapshot_seq")
+    if decode_err or snapshot_seq == nil then return nil, decode_err end
+
     local digest, decode_err = need(row, "digest")
     if decode_err or digest == nil then return nil, decode_err end
 
@@ -95,7 +98,7 @@ function M.decode_board(row: types.Row): (types.Board?, error?)
         schema_version = schema_version,
         board_id = board_id, key_prefix = key_prefix, generation = generation,
         compiled = compiled, model = schema.model(compiled), digest = digest,
-        applied_seq = applied_seq, counter = counter,
+        applied_seq = applied_seq, snapshot_seq = snapshot_seq, counter = counter,
         tombstone_floor_seq = tombstone_floor_seq, layout = layout,
     }, nil
 end

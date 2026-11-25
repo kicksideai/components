@@ -140,9 +140,9 @@ local function read(request: Request, workload: boolean): (Report?, error?)
         if sprint.item.type ~= "sprint" or sprint.item.life ~= "live" then
             return nil, problem(errors.NOT_FOUND, "planning_sprint_unavailable", "Sprint not found on this board.")
         end
-        if sprint.as_of ~= schema.as_of then return nil, stale() end
+        if sprint.snapshot_seq ~= schema.snapshot_seq then return nil, stale() end
         local capacity, storage_err = storage.read(request.board_id, board.plugin.attachment_id :: string,
-            request.sprint_id, schema.as_of :: integer)
+            request.sprint_id, schema.snapshot_seq)
         if not capacity then return nil, storage_err end
         held = capacity
     elseif not workload then
@@ -183,7 +183,7 @@ local function read(request: Request, workload: boolean): (Report?, error?)
         repeat
             local page, page_err = query.page(args, context)
             if not page then return nil, page_err end
-            if page.as_of ~= schema.as_of then return nil, stale() end
+            if page.snapshot_seq ~= schema.snapshot_seq then return nil, stale() end
             for _, item in ipairs(page.items) do
                 local id = fields.assignee and assignee(item.values[fields.assignee]) or nil
                 local target = id and person(people, id) or result.unassigned

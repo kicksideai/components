@@ -1,10 +1,14 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local channel = require("channel")
+local ctx = require("ctx")
 local funcs = require("funcs")
+local json = require("json")
 local sql = require("sql")
 local time = require("time")
 local board_client = require("board_client")
+local consts = require("consts")
 local fixture = require("fixture")
+local materializer = require("materializer")
 local scoped = require("scoped")
 local steps = require("steps")
 local test = require("test")
@@ -22,6 +26,21 @@ function M.resolve(request)
     return { sprint_id = request.sprint_id or (membership and membership.item) }
 end
 
+local function rebuild(board_id, as_of, generation, through)
+    local db = assert(sql.get("app:db"))
+    local tx = assert(db:begin())
+    assert(tx:execute([[INSERT INTO kickside_work_job (board_id, job_id, job_type, key, status)
+        VALUES ($1, 'time-sprint-report-rebuild', 'reindex', $2, 'pending')]],
+        { board_id, json.encode({ generation = generation, after = "" }) }))
+    local seq = as_of + 1
+    assert(materializer.fold(tx, db:type(), board_id, { { seq = seq, type = consts.EVENTS.INDEX_REBUILT,
+        body = { recompute = { after = "", through = through, generation = generation } } } }, seq, 5000))
+    local job = assert(tx:query("SELECT key FROM kickside_work_job WHERE board_id = $1 AND job_type = 'reindex'", { board_id }))[1]
+    assert(json.decode(job.key).after == through)
+    assert(tx:commit())
+    db:release()
+end
+
 function M.report(request)
     local result, err = board_client.call("query", {
         board_id = request.board_id, limit = 50,
@@ -32,6 +51,16 @@ function M.report(request)
     for _, item in ipairs(result.items) do items[#items + 1] = item.id end
     local sprint, sprint_err = board_client.call("get", { board_id = request.board_id, item = { id = request.sprint_id } })
     if sprint_err then return nil, sprint_err end
+    -- Interleave after Planning's reads and before Time acquires its report snapshot.
+    local change = ctx.get("time_sprint_report_interleave")
+    if change == "rebuild" then
+        rebuild(request.board_id, result.as_of, result.generation, items[1])
+    elseif change == "membership" then
+        local written, write_err = board_client.call("apply", { board_id = request.board_id, key = "interleaved-membership",
+            mode = "atomic", ops = { { op = "set", item = items[1], clear = { "current_sprint" } } } })
+        assert(written, steps.detail(write_err))
+        test.eq(written.outcomes[1].status, "applied")
+    end
     local points = sprint.item.values.name == "Points"
     return { items = items, as_of = result.as_of, coverage = result.after and "limited" or "complete",
         unit = points and "points" or "minutes", points_field = points and "story_points" or nil }
@@ -75,6 +104,16 @@ local function setup(entry_visibility, points)
     })
     test.eq(steps.one(board, { op = "transition", item = sprint, transition = "start" }).status, "applied")
     return admin, board, sprint, now
+end
+
+local function interleaved_totals(change)
+    local admin, board, sprint, now = setup("all")
+    local day = now:format("2006-01-02")
+    local item = steps.create(board, "issue", { current_sprint = { board = board.id, item = sprint },
+        time_original_minutes = 60 })
+    invoke(admin, "create", { board_id = board.id, item = item, key = "interleaved-report", minutes = 20, work_date = day })
+    return funcs.new():with_actor(admin.actor):with_scope(admin.scope):with_context({ time_sprint_report_interleave = change })
+        :call("kickside.work.time.api:handle_totals", { board_id = board.id, sprint = sprint, group_by = "sprint", from = day, to = day })
 end
 
 M.run = test.run_cases(function()
@@ -149,6 +188,21 @@ M.run = test.run_cases(function()
             test.eq(group.original_minutes, 45)
             test.eq(group.minutes, 30)
             test.eq(group.entry_count, 1)
+        end)
+
+        test.it("reports sprint totals across a committed index rebuild", function()
+            local report, err = interleaved_totals("rebuild")
+            assert(report, steps.detail(err))
+            local group = report.groups[1]
+            test.eq(group.minutes, 20)
+            test.eq(group.original_minutes, 60)
+            test.eq(group.entry_count, 1)
+        end)
+
+        test.it("refuses sprint totals across a committed membership change", function()
+            local report, err = interleaved_totals("membership")
+            test.is_nil(report)
+            test.eq(assert(err):details().code, "planning_snapshot_changed")
         end)
 
         test.it("keeps decimal story points and actual minutes in separate columns", function()

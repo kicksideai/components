@@ -16,8 +16,8 @@ M.Resolve = Resolve
 M.Report = Report
 M.Result = Result
 
-local function candidate(request: Resolve, id: string, at: integer?): (string?, error?)
-    local found, err = board.sprint(request.board_id, id, at)
+local function candidate(request: Resolve, id: string, snapshot_seq: integer): (string?, error?)
+    local found, err = board.sprint(request.board_id, id, snapshot_seq)
     if errors.is(err, errors.NOT_FOUND) then return nil, nil end
     if err or not found then return nil, err end
     local first, last = found.item.values.planning_start, found.item.values.planning_end
@@ -41,16 +41,16 @@ function M.resolve(request: Resolve): ({ sprint_id: string? }?, error?)
     if item.item.life ~= "live" then
         return nil, board.problem(errors.NOT_FOUND, "planning_item_unavailable", "Item not found on this board.")
     end
-    if item.as_of ~= schema.as_of then return nil, board.stale() end
+    if item.snapshot_seq ~= schema.snapshot_seq then return nil, board.stale() end
     if request.sprint_id then
-        local id, sprint_err = candidate(request, request.sprint_id, item.as_of)
+        local id, sprint_err = candidate(request, request.sprint_id, item.snapshot_seq)
         if sprint_err then return nil, sprint_err end
         if id then return { sprint_id = id }, nil end
     end
     local result: { sprint_id: string? } = table.create(0, 1)
     local membership = item.item.values[board.SPRINT_FIELD] :: work.Target?
     if membership and membership.board == request.board_id and membership.item ~= request.sprint_id then
-        local id, sprint_err = candidate(request, membership.item, item.as_of)
+        local id, sprint_err = candidate(request, membership.item, item.snapshot_seq)
         if sprint_err then return nil, sprint_err end
         result.sprint_id = id
     end
@@ -60,10 +60,10 @@ end
 function M.report(request: Report): (Result?, error?)
     local schema, plugin, err = board.active(request.board_id)
     if not schema or not plugin then return nil, err end
-    local sprint, read_err = board.sprint(request.board_id, request.sprint_id, schema.as_of)
+    local sprint, read_err = board.sprint(request.board_id, request.sprint_id, schema.snapshot_seq)
     if not sprint then return nil, read_err end
     local at = sprint.as_of :: integer
-    local capacity, capacity_err = storage.read(request.board_id, plugin.attachment_id :: string, request.sprint_id, at)
+    local capacity, capacity_err = storage.read(request.board_id, plugin.attachment_id :: string, request.sprint_id, sprint.snapshot_seq)
     if not capacity then return nil, capacity_err end
     local fields = mapping.workload(schema.compiled :: work.Compiled, (plugin.config or {}) :: mapping.Config)
     local result: Result = { items = {}, as_of = at, coverage = "complete", unit = capacity.unit or "minutes",
@@ -82,7 +82,7 @@ function M.report(request: Report): (Result?, error?)
         args.limit = math.min(200, request.limit - #result.items)
         local page, page_err = query.page(args, context)
         if not page then return nil, page_err end
-        if page.as_of ~= at then return nil, board.stale() end
+        if page.snapshot_seq ~= sprint.snapshot_seq then return nil, board.stale() end
         for _, item in ipairs(page.items) do result.items[#result.items + 1] = item.id end
         args.after = page.after
         if page.incomplete or page.reindexing or (args.after and #result.items >= request.limit) then

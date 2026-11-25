@@ -34,11 +34,11 @@ function M.missing_sprint(): error
     return M.problem(errors.NOT_FOUND, "planning_sprint_unavailable", "Sprint not found on this board.")
 end
 
-function M.sprint(board_id: string, item: string, at: integer?): (reads.GetResult?, error?)
+function M.sprint(board_id: string, item: string, snapshot_seq: integer): (reads.GetResult?, error?)
     local result, err = M.get(board_id, item)
     if err or not result then return nil, err end
     if result.item.type ~= "sprint" or result.item.life ~= "live" then return nil, M.missing_sprint() end
-    if result.as_of ~= at then return nil, M.stale() end
+    if result.snapshot_seq ~= snapshot_seq then return nil, M.stale() end
     return result, nil
 end
 

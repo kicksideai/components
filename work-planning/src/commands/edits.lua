@@ -39,7 +39,7 @@ function M.plan_sprint(request: Plan): (commands.ApplyResult?, error?)
     end
     local schema, _, err = board.active(request.board_id)
     if not schema then return nil, err end
-    local sprint, read_err = board.sprint(request.board_id, request.sprint_id, schema.as_of)
+    local sprint, read_err = board.sprint(request.board_id, request.sprint_id, schema.snapshot_seq)
     if not sprint then return nil, read_err end
     if sprint.item.state ~= "planned" and sprint.item.state ~= "active" then
         return nil, board.problem(errors.INVALID, "planning_sprint_ineligible", "Choose a planned or active sprint.")
@@ -61,7 +61,7 @@ function M.move_dates(request: Move): (commands.ApplyResult?, error?)
     if not schema or not plugin then return nil, err end
     local found, read_err = board.get(request.board_id, request.item)
     if not found then return nil, read_err end
-    if found.as_of ~= schema.as_of then return nil, board.stale() end
+    if found.snapshot_seq ~= schema.snapshot_seq then return nil, board.stale() end
     local item_type = found.item.type
     local first, last = "planning_start", "planning_end"
     if item_type ~= "sprint" then

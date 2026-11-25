@@ -21,11 +21,13 @@ entries:
   method: resolve
   imports:
     board_client: kickside.work:client
+    consts: kickside.work:consts
     fixture: app:fixture
+    materializer: kickside.work.persist:materializer
     scoped: app:scoped
     steps: app:steps
     test: wippy.test:test
-  modules: [channel, funcs, sql, time]
+  modules: [channel, ctx, funcs, json, sql, time]
 - name: time_test_sprint_report
   kind: function.lua
   meta: {type: test_support}
@@ -33,11 +35,13 @@ entries:
   method: report
   imports:
     board_client: kickside.work:client
+    consts: kickside.work:consts
     fixture: app:fixture
+    materializer: kickside.work.persist:materializer
     scoped: app:scoped
     steps: app:steps
     test: wippy.test:test
-  modules: [channel, funcs, sql, time]
+  modules: [channel, ctx, funcs, json, sql, time]
 - name: time_test_sprint_reference_access
   kind: security.policy
   groups: [kickside.security.groups:members]

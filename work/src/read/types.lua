@@ -29,7 +29,7 @@ type PluginFeed = ReadStamp & { attachment_id: string, config: JsonObject, boots
 type SchemaGetRequest = { budget: ReadBudget?, board_id: string, generation: integer?, check_plugins: boolean?, include_extensions: boolean? }
 type ConsumerPlacement = { id: string, slot: string, tag: string?, title: string, order: integer, access: string, plugin: string, target: string }
 type SchemaPlugin = domain.PluginView
-type SchemaView = ReadStamp & { pack: JsonObject?, outdated: boolean?, plugins: { SchemaPlugin }?, extensions: { ConsumerPlacement }?, declaration: Declaration, compiled: JsonObject, digest: string, key_prefix: string, migration_error: string? }
+type SchemaView = ReadStamp & { snapshot_seq: integer, pack: JsonObject?, outdated: boolean?, plugins: { SchemaPlugin }?, extensions: { ConsumerPlacement }?, declaration: Declaration, compiled: JsonObject, digest: string, key_prefix: string, migration_error: string? }
 type ItemRef = { id: string?, key: string? }
 type GetRequest = { budget: ReadBudget?, board_id: string?, item: ItemRef, include: { string }?, min_seq: integer? }
 type ApprovalView = { principal: domain.PrincipalDecl, decision: string, at: string }
@@ -46,6 +46,7 @@ type StageRunsRequest = { budget: ReadBudget?, board_id: string, item: ItemRef, 
 type StageRunsResult = ReadStamp & { stage_runs: { StageRun }, after: string? }
 type TransitionView = { id: string, name: string, to: string, require: { string }, region: string? }
 type GetResult = ReadStamp & {
+    snapshot_seq: integer,
     title: string?, description: string?, icon: string?,
     access: domain.BoardAccess,
     field_edit: { [string]: domain.FieldEdit }?,
@@ -76,7 +77,7 @@ type BoardSelection = { string } | string
 type BoardAdmission = { generation: integer, digest: string, caller: domain.AccessCaller? }
 type CrossAdmission = { ids: { string }, boards: { [string]: BoardAdmission }, sort: domain.Sort, reference: boolean }
 type CrossCursor = { id: string, boards: { [string]: domain.Cursor }, frontiers: { [string]: domain.Cursor | boolean }, selection: { string } }
-type QueryPage = ReadStamp & { incomplete: boolean?, group_limited: boolean?, scanned: integer?, groups: { QueryGroup }?, group_after: string?, items: { ItemView }, cursors: { domain.Cursor }, following: domain.Cursor?, after: domain.Cursor?, reindexing: boolean }
+type QueryPage = ReadStamp & { snapshot_seq: integer, incomplete: boolean?, group_limited: boolean?, scanned: integer?, groups: { QueryGroup }?, group_after: string?, items: { ItemView }, cursors: { domain.Cursor }, following: domain.Cursor?, after: domain.Cursor?, reindexing: boolean }
 type ReadBudget = { rows: integer?, deadline: string? }
 type ReadAllowance = { rows: integer, remaining: integer, deadline: domain.Deadline }
 type QueryRequest = { budget: ReadBudget?, include: { string }?, group_by: string?, sub_group_by: string?, group_after: string?, group_limit: integer?, measures: { domain.Measure }?, boards: BoardSelection?, cross_after: CrossCursor?, board_id: string, where: domain.Where?, scopes: { domain.ScopeQuery }?, order: Order?, after: domain.Cursor?, limit: integer?, min_seq: integer?, include_trashed: boolean? }
@@ -90,7 +91,7 @@ type GroupPage = { buckets: { GroupBucket }?, after: string?, limited: boolean, 
 type CrossCandidate = { board: string, index: integer, key: domain.Cursor, item: ItemView }
 type QueryResult = ReadStamp & { incomplete: boolean?, group_limited: boolean?, groups: { QueryGroup }?, group_after: string?, positions: { [string]: ReadStamp }?, cross_after: CrossCursor?, items: { ItemView }, after: domain.Cursor?, reindexing: boolean }
 type EditMember = { item_id: string, version: integer }
-type EditSelection = ReadStamp & { members: { EditMember }, over_limit: boolean? }
+type EditSelection = ReadStamp & { snapshot_seq: integer, members: { EditMember }, over_limit: boolean? }
 type CountResult = ReadStamp & { incomplete: boolean?, total: integer?, estimated: boolean?, reindexing: boolean }
 
 -- Link continuations are opaque and bound to the board and selector.
