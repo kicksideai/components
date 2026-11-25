@@ -110,7 +110,7 @@ entries:
     meta: { type: test, suite: mail_assets }
     source: &assets_source file://assets_test.lua
     method: run
-    modules: &assets_modules [fs, funcs, security, sql, uuid, base64, time, json]
+    modules: &assets_modules [contract, fs, funcs, security, sql, uuid, base64, time, json]
     imports: &assets_imports
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
