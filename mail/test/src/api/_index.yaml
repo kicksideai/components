@@ -89,6 +89,20 @@ entries:
     meta: { type: kickside.security.group_composition }
     group_id: app.mail_api:log_reader
     policies: [kickside.mail.security:log_admin]
+  - name: library_capability_only
+    kind: security.scope
+  - name: library_capability_only_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:library_capability_only
+    policies: [kickside.mail.security:library_access]
+  - name: driver_only
+    kind: security.scope
+  - name: driver_only_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:driver_only
+    policies: [kickside.mail.security:driver_admin]
   - name: delivery
     kind: security.scope
   - name: delivery_composition

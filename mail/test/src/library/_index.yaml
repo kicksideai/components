@@ -63,7 +63,8 @@ entries:
       policies: [kickside.mail.security:module_runtime]
   - name: invoke_access
     kind: security.policy
-    groups: [app.mail_api:editor, app.mail_api:editor_sender, app.mail_api:sender]
+    groups: [app.mail_api:editor, app.mail_api:editor_sender, app.mail_api:sender,
+      app.mail_api:library_capability_only, app.mail_api:driver_only, app.mail_api:delivery_sender]
     policy:
       resources: [app.mail_library:invoke, app.mail_library:foreign_list, app.mail_library:invoke_mailer]
       actions: [funcs.call]

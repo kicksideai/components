@@ -5,6 +5,7 @@ local render = require("render")
 local renderer = require("renderer")
 local templates = require("templates")
 local failure = require("failure")
+local fixtures = require("library_fixtures")
 
 local function valid()
     return { to = {"to@example.org"}, subject = "Status", text = "Ready" }
@@ -35,6 +36,7 @@ end
 
 return { run = test.run_cases(function()
     test.describe("Mail message", function()
+        test.before_all(function() fixtures.await_current_live() end)
         test.it("projects every driver failure to neutral Activity copy", function()
             local cases = {
                 {"provider_rejected", "Ask a mail administrator to check why the message was refused.",

@@ -177,6 +177,72 @@ return {run = test.run_cases(function()
             test.eq(errors.PERMISSION_DENIED, assert(err):kind())
         end)
 
+        test.it("checks library contract methods against the caller's component and send grants", function()
+            local editor = session("editor")
+            local editor_sender = session("editor_sender")
+            local capability = session("library_capability_only")
+            local function executor(who)
+                return assert(funcs.new():with_actor(who.actor):with_scope(who.scope))
+            end
+            local draft = own(fixture("message", "caller-base-switch", "{{ block body() }}Caller{{ end }}"))
+            draft.base, draft.subject = "standard", "Caller permissions"
+            local saved = create(editor, draft)
+            local revision = {kind = draft.kind, name = draft.name, seq = saved.seq}
+            local allowed, denied = executor(editor), executor(capability)
+            for method, input in pairs({read_history = revision, read_revision = revision, asset_content = {name = "logo"}}) do
+                local visible, read_err = library_fixtures.call(allowed, method, input)
+                assert(visible, method .. ": " .. tostring(read_err))
+                local value, err = library_fixtures.call(denied, method, input)
+                test.is_nil(value, method)
+                test.eq("mail_library_read_denied", assert(err):details().code, method)
+            end
+            local write = {kind = draft.kind, name = draft.name, expected_revision = saved.revision}
+            for _, method in ipairs({"reset", "delete"}) do
+                local value, err = library_fixtures.call(denied, method, write)
+                test.is_nil(value, method)
+                test.eq("mail_library_write_denied", assert(err):details().code, method)
+            end
+            local base = {name = draft.name, base = "plain", expected_revision = saved.revision}
+            local preview = assert(library_fixtures.call(allowed, "preview", {message = draft.name, set_base = base}))
+            base.preview_id = assert(preview.preview_id)
+            local updated = assert(library_fixtures.call(allowed, "set_base", base))
+            test.eq("plain", updated.base)
+            library_fixtures.await_live(updated.seq)
+
+            configure()
+            local message = {message = draft.name}
+            local value, err = library_fixtures.call(allowed, "send_test", message)
+            test.is_nil(value)
+            test.eq("mail_send_denied", assert(err):details().code)
+            local queued = assert(library_fixtures.call(executor(editor_sender), "send_test", message))
+            local sent = await_delivery(session("delivery"), queued.message_id)
+            test.eq(editor_sender.email, sent.to[1])
+        end)
+
+        test.it("checks delivery administration methods under driver-only and sender identities", function()
+            local sender, driver = session("sender"), session("driver_only")
+            local both = session("delivery_sender")
+            local function invoke(who, method, input)
+                local executor = assert(funcs.new():with_actor(who.actor):with_scope(who.scope))
+                return library_fixtures.mailer(executor, method, input)
+            end
+            configure()
+            local status = assert(invoke(driver, "delivery_status"))
+            test.is_true(status.ready)
+            local denied, err = invoke(sender, "delivery_status")
+            test.is_nil(denied)
+            test.eq("mail_delivery_denied", assert(err):details().code)
+
+            for _, entry in ipairs({{sender, "mail_delivery_denied"}, {driver, "mail_send_denied"}}) do
+                local value, reason = invoke(entry[1], "send_delivery_test", {})
+                test.is_nil(value)
+                test.eq(entry[2], assert(reason):details().code)
+            end
+            local queued = assert(invoke(both, "send_delivery_test", {}))
+            local sent = await_delivery(driver, queued.message_id)
+            test.eq(both.email, sent.to[1])
+        end)
+
         test.it("authorizes exactly the endpoints in each Mail capability bundle", function()
             local roles = {
                 {who = session("module_only"), allowed = {capabilities = true}},

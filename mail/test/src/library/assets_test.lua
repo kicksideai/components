@@ -362,7 +362,12 @@ local run = test.run_cases(function()
             test.eq("image/png", packaged.content_type)
             local image = {kind = "asset", name = "asset-content-fixture", upload_id = upload("image/gif", gif())}
             owned[1] = image
-            local added = call("create", image)
+            local member = settings.session("library_capability_only")
+            local restricted = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
+            local refused, denied = fixtures.call(restricted, "add_asset", image)
+            test.is_nil(refused)
+            test.eq("mail_library_write_denied", assert(denied):details().code)
+            local added = call("add_asset", image)
             local initial = call("asset_content", {name = image.name})
             test.eq(added.revision, initial.revision)
             test.eq("image/gif", initial.content_type)
@@ -370,7 +375,8 @@ local run = test.run_cases(function()
             local next_bytes = gif() .. "fixture"
             image.upload_id = upload("image/gif", next_bytes)
             image.expected_revision = added.revision
-            local threads = assert(assert(contract.get("kickside.core:threads")):open())
+            local actor = assert(security.new_actor(uploader, {user_id = uploader, security_groups = {"app:mail_editors"}}))
+            local threads = assert(assert(contract.get("kickside.core:threads")):with_actor(actor):open())
             local projection = {thread_id = content.library_component_id(), kind = "kickside.mail:library_tables"}
             assert(threads:pause_projection(projection))
             local replaced, replace_err = fixtures.call(editor, "update", image)

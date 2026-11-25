@@ -173,6 +173,7 @@ entries:
       render: kickside.mail.read:preview
       renderer: kickside.mail.render:render
       failure: kickside.mail.domain:failure
+      library_fixtures: app.mail_library:fixtures
   - name: dep.blocks
     kind: ns.dependency
     component: kickside/blocks
