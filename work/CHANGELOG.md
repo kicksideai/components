@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.52](https://github.com/kicksideai/components/compare/work-v0.1.51...work-v0.1.52) (2026-11-25)
+
+
+### Bug Fixes
+
+* **work:** keep Planning snapshots stable across index rebuilds ([#451](https://github.com/kicksideai/components/issues/451)) ([6fafe2b](https://github.com/kicksideai/components/commit/6fafe2bd2a9ca5c814a13a2c6293b9ba76024831))
+
 ## [0.1.51](https://github.com/kicksideai/components/compare/work-v0.1.50...work-v0.1.51) (2026-11-24)
 
 
