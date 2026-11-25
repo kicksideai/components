@@ -10,7 +10,8 @@ Library edits append to the component thread. History follows the 365-day event
 retention window. The library sync job publishes Jet sets from committed
 projection state on one node. Renders return retryable `mail_library_publishing`
 until the live marker reaches the projection’s template sequence.
-
+Mail explicitly gives a library sync job three attempts. Jobs resolves its default
+attempts from Settings inside the enqueue transaction.
 
 Library summary pages order resources by kind and name in ascending byte order.
 The cursor remains the last resource key. The accompanying total counts all
