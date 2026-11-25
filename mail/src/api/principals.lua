@@ -13,7 +13,8 @@ local function resolve(refs: {types.PrincipalRef}): ({types.DirectoryPrincipal}?
     local result, err = (client :: types.PrincipalDirectory):resolve({refs = refs})
     if err then return nil, err end
     if not result then
-        return nil, errors.new({kind = errors.UNAVAILABLE, message = "Principal directory returns no result"})
+        return nil, errors.new({kind = errors.UNAVAILABLE, retryable = true, message = "Principal directory returns no result",
+            details = {code = "mail_directory_unavailable"}})
     end
     return result.principals, nil
 end
@@ -25,7 +26,11 @@ local function label_rows(fields: {[string]: {types.Record}}): error?
         for _, row in ipairs(rows) do
             local key = row[field]
             if type(key) == "string" and not labels[key] then
-                local principal = identity.principal_of_key(key)
+                local principal, decode_err = identity.principal_of_key(key)
+                if decode_err and (not errors.is(decode_err, errors.INVALID)
+                    or (decode_err:details() or {}).code ~= "declaration") then
+                    return decode_err :: error
+                end
                 local kind = principal and principal.kind or "unknown"
                 local id = principal and principal.id or key
                 labels[key] = {kind = kind, id = id, label = "Unknown account"}
@@ -35,7 +40,7 @@ local function label_rows(fields: {[string]: {types.Record}}): error?
     end
     if #refs > 0 then
         local principals, err = resolve(refs)
-        if err and err:kind() ~= errors.PERMISSION_DENIED then return err end
+        if err then return err end
         if principals then
             for _, item in ipairs(principals) do
                 local label = labels[item.id]

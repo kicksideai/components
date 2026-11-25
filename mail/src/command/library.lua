@@ -94,10 +94,14 @@ end
 local function result(threads_api: types.LibraryThreads, operation: string, requested: {types.LibraryEdit},
     seq: integer): (types.LibrarySaveResult?, error?)
     local complete, err = threads.catch_up(threads_api, seq)
-    local mark = database.with_db(live_repo.get)
-    if not complete and (not mark or mark.projected_seq < seq) then
-        logger:warn("Mail library write is committed and awaiting projection", {seq = seq, error = tostring(err)})
-        return {seq = seq, projected = false, committed = true}, nil
+    if err and not err:retryable() and not errors.is(err, errors.CONFLICT) then return nil, err end
+    if not complete then
+        local mark, mark_err = database.with_db(live_repo.get)
+        if mark_err then return nil, mark_err end
+        if mark.projected_seq < seq then
+            logger:warn("Mail library write is committed and awaiting projection", {seq = seq, error = tostring(err)})
+            return {seq = seq, projected = false, committed = true}, nil
+        end
     end
     notify.nudge()
     local receipt: types.LibrarySaveResult = {seq = seq, projected = true, committed = true, items = {}}
@@ -111,11 +115,13 @@ local function result(threads_api: types.LibraryThreads, operation: string, requ
         end
         return rows, nil
     end)
+    if read_err then return nil, read_err end
     for i = 1, #requested do
         local item = items and items[i]
         if not item then
             item, read_err = thread_events.resource_at(threads_api, seq - #requested + i)
             if read_err then
+                if not errors.is(read_err, errors.NOT_FOUND) then return nil, read_err end
                 logger:warn("Mail library write is committed and its result is unavailable", {seq = seq, error = tostring(read_err)})
                 receipt.items = nil
                 return receipt, nil
@@ -209,7 +215,8 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
     local mark, mark_err = database.with_db(live_repo.get)
     if mark_err then return nil, mark_err end
     if mark.projected_seq < cursor.event_count then
-        local ready = threads.catch_up(api, cursor.event_count)
+        local ready, catch_err = threads.catch_up(api, cursor.event_count)
+        if catch_err and not errors.is(catch_err, errors.CONFLICT) then return nil, catch_err end
         if not ready then return nil, catching_up(cursor.event_count, mark.projected_seq :: integer) end
     end
     local source: types.Resource?

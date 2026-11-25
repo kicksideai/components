@@ -7,8 +7,18 @@ local time = require("time")
 local error_envelope = require("error_envelope")
 
 local redact = require("redact")
+local logger = require("logger")
 
-local M = {response_detail = redact.response_detail}
+local M = {}
+
+function M.response_detail(response: types.HttpResponse, credential: string, basic_user: string?): string?
+    local detail, err = redact.response_detail(response, credential, basic_user)
+    if err then
+        logger:warn("Mail suppressed provider detail after redaction failed",
+            {kind = err:kind(), code = "mail_provider_detail_redaction_failed"})
+    end
+    return detail
+end
 
 local function header(headers: {[string]: string | {string}}, key: string): string?
     for name, value in pairs(headers) do

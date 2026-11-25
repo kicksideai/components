@@ -52,7 +52,7 @@ local function redact(value: string, secret: string): string
     return (value:gsub(secret:gsub("(%W)", "%%%1"), "[redacted]"))
 end
 
-function M.response_detail(response: types.HttpResponse, credential: string, basic_user: string?): string?
+function M.response_detail(response: types.HttpResponse, credential: string, basic_user: string?): (string?, error?)
     local content_type = content_type_header(response.headers) or ""
     local value
     local decoded, decode_err = json.decode(response.body)
@@ -64,17 +64,17 @@ function M.response_detail(response: types.HttpResponse, credential: string, bas
     elseif content_type:lower():match("^text/plain") or (content_type == "" and not response.body:match("^%s*[<{%[]")) then
         value = response.body
     end
-    if type(value) ~= "string" then return nil end
+    if type(value) ~= "string" then return nil, nil end
     local text = redact(text_only(redact(value, credential)), credential)
     if basic_user then
         local encoded, err = base64.encode(basic_user .. ":" .. credential)
-        if err then return nil end
+        if err then return nil, errors.wrap(err, "Cannot safely redact the Basic credential") end
         text = redact(text, encoded :: string)
     end
     text = text:gsub("([Bb][Ee][Aa][Rr][Ee][Rr]%s+)[^%s,;]+", "%1[redacted]")
         :gsub("([Bb][Aa][Ss][Ii][Cc]%s+)[^%s,;]+", "%1[redacted]")
         :gsub("(://)[^%s/@]+:[^%s/@]+@", "%1[redacted]@")
-    return M.clean_detail(text)
+    return M.clean_detail(text), nil
 end
 
 return M

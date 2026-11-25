@@ -5,7 +5,7 @@ entries:
   - name: http
     kind: library.lua
     source: file://http.lua
-    modules: [http_client, json, base64, time]
+    modules: [http_client, json, base64, time, logger]
     imports:
       redact: kickside.mail.domain:redact
       types: kickside.mail:types

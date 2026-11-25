@@ -51,7 +51,7 @@ override:
   kickside.core.jobs:lease_release_signal:source: 'return require("hint")'
   kickside.mail.jobs:owner:modules: []
   kickside.mail.jobs:owner:imports.time: kickside.mail.harness:owner_clock
-  kickside.mail.driver:http:modules: [json, base64, time]
+  kickside.mail.driver:http:modules: [json, base64, time, logger]
   kickside.mail.driver:http:imports.http_client: kickside.mail.harness:http_client
 vars:
   pg_host: localhost

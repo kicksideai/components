@@ -4,7 +4,13 @@ local threads = require("threads")
 local interleave = require("asset_interleave")
 
 return {
-    catch_up = threads.catch_up,
+    catch_up = function(...)
+        if ctx.get("mail_test_catch_up_denied") then
+            return nil, errors.new({kind = errors.PERMISSION_DENIED, retryable = false, message = "Test catch-up refused",
+                details = {code = "fixture_catch_up_denied"}})
+        end
+        return threads.catch_up(...)
+    end,
     replay = threads.replay,
     append = function(...)
         if ctx.get("mail_test_strand_restore") then
