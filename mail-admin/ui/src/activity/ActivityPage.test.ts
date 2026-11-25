@@ -91,7 +91,7 @@ describe('Mail activity', () => {
     wrapper.unmount()
   })
 
-  it('offers delivery settings instead of Send again when the service refused the account', async () => {
+  it('offers Send again whenever Mail says the message can be resent, beside the delivery settings', async () => {
     const refused = { ...failed, last_error: { kind: 'INVALID', code: 'authorization_refused', message: 'Ask a mail administrator to check why the message was refused.' } }
     serve([
       get('/api/v1/mail/library', () => ok({ items: [] })),
@@ -102,7 +102,7 @@ describe('Mail activity', () => {
     const wrapper = await open(`activity/${failedId}`)
     const text = wrapper.find('.mail-failure').text()
     expect(text).toContain('Acme Mail refused to send for this account.')
-    expect(wrapper.findAll('button').some(node => node.text() === 'Send again')).toBe(false)
+    expect(wrapper.findAll('button').some(node => node.text() === 'Send again')).toBe(true)
     expect(wrapper.findAll('button').some(node => node.text() === 'Open delivery settings')).toBe(true)
     wrapper.unmount()
   })

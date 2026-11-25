@@ -12,7 +12,7 @@ import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { activity, isDenied, isMissing } from '../api'
 import { useMail } from '../context'
 import { useReturnFocus } from '../focus'
-import { deliveryFailure, describe, fixedOutsideMail, fullDate, originText, personLabel, statusLabels, statusSeverity } from '../copy'
+import { deliveryFailure, describe, fullDate, originText, personLabel, statusLabels, statusSeverity } from '../copy'
 import { useMailInvalidation } from '../realtime'
 import type { LogMessage, SendReceipt } from '../types'
 
@@ -23,7 +23,6 @@ useReturnFocus(() => !!props.messageId)
 const drawer = ref<HTMLElement>()
 watch(() => !!props.messageId, open => { if (open) void nextTick(() => drawer.value?.focus()) }, { immediate: true })
 
-const settingsFailure = computed(() => !!message.value?.last_error && fixedOutsideMail.has(message.value.last_error.code))
 // A delivery administrator reads what the service said and what to change; everyone else reads Mail's neutral text.
 const failureText = computed(() => {
   const failure = message.value?.last_error
@@ -161,14 +160,13 @@ const technical = computed(() => {
               Sent again as a new message.
               <Button link size="small" class="mail-inline-link" label="Open the new message" @click="go({ name: 'activity', message: receipt.message_id })" />
             </p>
-            <p v-else-if="settingsFailure" class="mail-sub">Sending it again fails the same way until the delivery settings or the account with the service change.
-              <Button v-if="capabilities?.administer_delivery" link size="small" class="mail-inline-link" label="Open delivery settings" @click="host.navigate('/system/settings/mail')" /></p>
             <p v-else-if="!message.can_resend" class="mail-sub">It cannot be sent again because its content was not kept.</p>
             <p v-if="sendError" class="mail-field-error" role="alert">{{ sendError }}</p>
-            <div v-if="capabilities?.send && message.can_resend && !receipt && !settingsFailure">
-              <Button label="Send again" :loading="sending" @click="sendAgain">
+            <div v-if="!receipt" class="mail-failure-actions">
+              <Button v-if="capabilities?.send && message.can_resend" label="Send again" :loading="sending" @click="sendAgain">
                 <template #icon><Icon icon="tabler:send" aria-hidden="true" /></template>
               </Button>
+              <Button v-if="capabilities?.administer_delivery" label="Open delivery settings" severity="secondary" outlined @click="host.navigate('/system/settings/mail')" />
             </div>
           </div>
         </div>

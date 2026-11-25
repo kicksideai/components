@@ -140,11 +140,6 @@ export function deliveryFailure(code: string, service: string, where = 'in Setti
   }
 }
 
-// Failures that come from the delivery settings or the account with the service: sending the same message again
-// fails the same way until something changes there. Mail does not report this itself (see the README).
-export const fixedOutsideMail = new Set(['invalid_config', 'settings_read_failed', 'driver_not_admitted',
-  'invalid_transport_status', 'provider_endpoint_invalid', 'credentials_invalid', 'authorization_refused', 'sender_or_recipient_not_allowed',
-  'from_name_invalid'])
 
 export function describe(error: unknown, fallback: string): string {
   if (!(error instanceof ApiError) || error.status === undefined) return `${fallback} Check your connection and try again.`

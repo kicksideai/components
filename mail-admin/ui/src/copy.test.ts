@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { describe as group, expect, it } from 'vitest'
 import { ApiError } from './api'
-import { deliveryFailure, describe, fixedOutsideMail, originText } from './copy'
+import { deliveryFailure, describe, originText } from './copy'
 
 const refusal = (code: string, message = 'developer text') => new ApiError({ error: message, kind: 'INVALID', details: { code } }, 'Send', 400)
 
@@ -25,11 +25,6 @@ group('Product copy', () => {
     expect(deliveryFailure('quota_exhausted', 'Resend')?.lead).toBe('Resend reports the sending quota is used up.')
     expect(deliveryFailure('message_rejected', 'Mailgun')?.lead).toBe('Mailgun rejected the message itself.')
     expect(deliveryFailure('provider_unavailable', 'Mailgun')).toBeUndefined()
-  })
-
-  it('offers no Send again where only the settings or the service account can fix the failure', () => {
-    for (const code of ['invalid_config', 'credentials_invalid', 'authorization_refused', 'sender_or_recipient_not_allowed', 'from_name_invalid']) expect(fixedOutsideMail.has(code), code).toBe(true)
-    for (const code of ['provider_unavailable', 'rate_limited', 'quota_exhausted', 'message_rejected', 'provider_rejected', 'delivery_failed']) expect(fixedOutsideMail.has(code), code).toBe(false)
   })
 
   it('names every origin Mail records, and a workflow whose title could not be read by its kind', () => {
