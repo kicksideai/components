@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local registry = require("registry")
 local test = require("test")
+local resource = require("resource")
 
 local function cases()
     test.it("uses Jobs' published consumer policy for Mail job producers and workers", function()
@@ -43,6 +44,7 @@ local function cases()
             test.eq(false, schema.additionalProperties)
             test.not_nil(schema.properties.key)
             test.not_nil(schema.properties.revision)
+            test.eq(resource.MAX_NOTE_LENGTH, schema.properties.note.maxLength, name)
             if expected[name] then test.eq(expected[name], schema.properties.change.const) end
             if name == "resource.reset" then
                 test.eq("reset", schema.properties.change.enum[1])

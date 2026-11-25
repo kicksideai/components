@@ -8,11 +8,12 @@ local MAX_NAME_BYTES = 128
 local MAX_DISPLAY_BYTES = 4096
 local MAX_SUBJECT_BYTES = 64 * 1024
 local MAX_SCHEMA_BYTES = 32 * 1024
-local MAX_NOTE_BYTES = 4096
 -- A names lookup resolves at most one library page of references.
 local MAX_LOOKUP_NAMES = 100
 M.MAX_VARIABLE_BYTES = 64 * 1024
 M.MAX_EDITS = 12
+-- A note adds at most 3,000 escaped bytes to a Threads event row.
+M.MAX_NOTE_LENGTH = 500
 -- Bound JSON-escaped snapshots to the Threads event row limit.
 M.MAX_CONTENT_BYTES = 512 * 1024
 
@@ -72,8 +73,11 @@ function M.check_json(value: unknown, maximum: integer, code: string, message: s
 end
 
 function M.check_note(note: unknown): error?
-    if note ~= nil and (type(note) ~= "string" or #note > MAX_NOTE_BYTES or not utf8.len(note)) then
-        return M.error(errors.INVALID, "invalid_revision_note", "A revision note must be UTF-8 text of at most 4096 bytes")
+    if note == nil then return nil end
+    local length = type(note) == "string" and utf8.len(note)
+    if not length or length > M.MAX_NOTE_LENGTH then
+        return M.error(errors.INVALID, "invalid_revision_note",
+            "A revision note must be UTF-8 text of at most " .. M.MAX_NOTE_LENGTH .. " characters")
     end
     return nil
 end

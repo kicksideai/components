@@ -222,4 +222,4 @@ entries:
     source: file://binding_declaration_test.lua
     method: run
     modules: [registry]
-    imports: {test: wippy.test:test}
+    imports: {test: wippy.test:test, resource: kickside.mail.domain:resource}
