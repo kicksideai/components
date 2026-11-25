@@ -1,0 +1,108 @@
+-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local types = require("types")
+local json = require("json")
+local sql = require("sql")
+
+local M = {}
+
+function M.lock(tx: types.Transaction, dialect: string): (boolean?, error?)
+    if dialect == "sqlite" then
+        local _, err = tx:execute("UPDATE mail_library SET revision=revision WHERE 1=0")
+        if err then return nil, err end
+        return true, nil
+    end
+    local _, err = tx:execute("LOCK TABLE mail_library IN SHARE ROW EXCLUSIVE MODE")
+    if err then return nil, err end
+    return true, nil
+end
+
+local function trim(tx: types.Transaction, key: types.ResourceKey): ({types.Record}?, error?)
+    local removed, err = tx:query([[DELETE FROM mail_library_revision WHERE kind=$1 AND name=$2 AND revision <
+        (SELECT revision FROM mail_library_revision WHERE kind=$1 AND name=$2 ORDER BY revision DESC LIMIT 1 OFFSET 24)
+        RETURNING asset_upload_id AS upload_id]], {key.kind, key.name})
+    return removed :: {types.Record}?, err
+end
+
+local function write_asset(tx: types.Transaction, item: types.Resource, change: types.RevisionChange,
+    version: integer): (types.LibraryWrite?, error?)
+    local upload = (item.asset :: types.Asset).upload_id
+    local rows, err = tx:query([[INSERT INTO mail_library_asset
+        (name,title,description,origin,author,created_at,updated_at,upload_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        ON CONFLICT(name) DO UPDATE SET title=excluded.title, description=excluded.description,
+            revision=excluded.revision, origin=excluded.origin, author=excluded.author, created_at=excluded.created_at,
+            updated_at=excluded.updated_at, upload_id=excluded.upload_id
+        RETURNING revision]],
+        {item.name, item.title, item.description, item.origin or sql.NULL, item.author, item.created_at, item.updated_at, upload or sql.NULL})
+    if err then return nil, err end
+    local revision = rows[1].revision :: integer
+    local _, record_err = tx:execute([[INSERT INTO mail_library_revision
+        (kind,name,revision,title,description,html,text,schema_json,samples_json,state,origin,author,created_at,updated_at,note,asset_upload_id,version,action,restored_from)
+        VALUES ('asset',$1,$2,$3,$4,'','','{"type":"object","properties":{}}','{}',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)]],
+        {item.name, revision, item.title, item.description, change.state,
+            item.origin or sql.NULL, item.author, item.created_at, item.updated_at, change.note or sql.NULL,
+            change.state ~= "original" and upload or sql.NULL, version, change.action, change.restored_from or sql.NULL})
+    if record_err then return nil, record_err end
+    local released, trim_err = trim(tx, item)
+    if trim_err then return nil, trim_err end
+    item.revision = revision
+    return {item = item, released = released :: {types.Record}}, nil
+end
+
+function M.write(tx: types.Transaction, item: types.Resource, change: types.RevisionChange): (types.LibraryWrite?, error?)
+    local history, history_err = tx:query([[SELECT version FROM mail_library_revision
+        WHERE kind=$1 AND name=$2 ORDER BY revision DESC LIMIT 1]], {item.kind, item.name})
+    if history_err then return nil, history_err end
+    local version = (history[1] and (history[1].version :: integer) or 0) + 1
+    if item.kind == "asset" then return write_asset(tx, item, change, version) end
+    local encoded_schema, schema_err = json.encode(item.schema)
+    if schema_err then return nil, schema_err end
+    local encoded_samples, sample_err = json.encode(item.samples)
+    if sample_err then return nil, sample_err end
+    local rows, err = tx:query([[INSERT INTO mail_library
+        (kind,name,title,description,html,text,subject,base,schema_json,samples_json,state,origin,author,created_at,updated_at,archived)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        ON CONFLICT(kind,name) DO UPDATE SET
+            title=excluded.title, description=excluded.description, html=excluded.html, text=excluded.text,
+            subject=excluded.subject, base=excluded.base, schema_json=excluded.schema_json, samples_json=excluded.samples_json,
+            revision=excluded.revision, author=excluded.author, updated_at=excluded.updated_at, archived=excluded.archived
+        RETURNING revision]],
+        {item.kind, item.name, item.title, item.description, item.html, item.text, item.subject or sql.NULL,
+        item.base or sql.NULL, encoded_schema, encoded_samples, item.state, item.origin or sql.NULL, item.author,
+        item.created_at, item.updated_at, item.archived == true})
+    if err then return nil, err end
+    item.revision = rows[1].revision :: integer
+    local _, snapshot_err = tx:execute([[INSERT INTO mail_library_revision
+        (kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,state,origin,author,
+            created_at,updated_at,note,version,action,restored_from)
+        SELECT kind,name,revision,title,description,html,text,subject,base,schema_json,samples_json,$1,origin,author,
+            created_at,updated_at,$2,$3,$4,$5 FROM mail_library WHERE revision=$6]],
+        {change.state, change.note or sql.NULL, version, change.action, change.restored_from or sql.NULL, item.revision})
+    if snapshot_err then return nil, snapshot_err end
+    local released, trim_err = trim(tx, item)
+    if trim_err then return nil, trim_err end
+    return {item = item, released = released :: {types.Record}}, nil
+end
+
+function M.remove(tx: types.Transaction, key: types.ResourceKey, deleting: boolean): ({types.Record}?, error?)
+    if key.kind == "asset" then
+        local live, err = tx:query("DELETE FROM mail_library_asset WHERE name=$1 RETURNING upload_id", {key.name})
+        if err then return nil, err end
+        if deleting then
+            local history, history_err = tx:query([[DELETE FROM mail_library_revision WHERE kind='asset' AND name=$1
+                RETURNING asset_upload_id AS upload_id]], {key.name})
+            if history_err then return nil, history_err end
+            for _, row in ipairs(history) do live[#live + 1] = row end
+        end
+        return live :: {types.Record}, nil
+    end
+    if deleting then
+        local _, err = tx:execute("DELETE FROM mail_library_revision WHERE kind=$1 AND name=$2", {key.kind, key.name})
+        if err then return nil, err end
+    end
+    local _, err = tx:execute("DELETE FROM mail_library WHERE kind=$1 AND name=$2", {key.kind, key.name})
+    if err then return nil, err end
+    return {}, nil
+end
+
+return M

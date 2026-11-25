@@ -7,8 +7,6 @@ local store = require("store")
 local resources = require("resources")
 local jet = require("jet")
 local draft = require("draft")
-local globals = require("globals")
-local asset_refs = require("asset_refs")
 
 local M = {}
 
@@ -23,10 +21,10 @@ function M.check_shadow(declared: types.Original): error?
     return nil
 end
 
-local function desired(tx: sql.Transaction): ({[string]: types.JetEntry}?, error?)
+local function desired(tx: types.Transaction): ({[string]: types.JetEntry}?, error?)
     local originals, declaration_err = resources.originals()
     if declaration_err then return nil, declaration_err end
-    local rows, err = store.find(tx, {})
+    local rows, err = store.live_rows(tx)
     if err then return nil, err end
     local entries: {[string]: types.JetEntry} = {}
     for _, item in ipairs(rows) do
@@ -40,7 +38,7 @@ local function desired(tx: sql.Transaction): ({[string]: types.JetEntry}?, error
     return entries, nil
 end
 
-function M.publish(tx: sql.Transaction): (boolean?, error?)
+function M.publish(tx: types.Transaction): (boolean?, error?)
     local entries, err = desired(tx)
     if err then return nil, err end
 
@@ -80,7 +78,7 @@ function M.publish(tx: sql.Transaction): (boolean?, error?)
     return true, nil
 end
 
-local function reconcile(tx: sql.Transaction, dialect: string): (boolean?, error?)
+local function reconcile(tx: types.Transaction, dialect: string): (boolean?, error?)
     local lock_err = store.lock(tx, dialect)
     if lock_err then return nil, lock_err end
     local _, clear_err = draft.clear_workspace()
@@ -93,22 +91,7 @@ function M.reconcile(): (boolean?, error?)
 end
 
 function M.boot(): {status: string, message: string?}
-    local values, read_err = globals.library_samples()
-    if read_err then return {status = "error", message = read_err:message()} end
-    local _, err = database.with_tx(function(tx: sql.Transaction, dialect: string): (boolean?, error?)
-        local _, projection_err = reconcile(tx, dialect)
-        if projection_err then return nil, projection_err end
-        local items, load_err = resources.load(tx)
-        if load_err then return nil, load_err end
-        local assets = asset_refs.from_items(items :: types.ResourceMap)
-        local usage, usage_err = draft.asset_usage(items :: types.ResourceMap, values :: types.RenderGlobals)
-        if usage_err then return nil, usage_err end
-        local save_err = store.save_asset_usage(tx, dialect, assets, usage :: types.AssetUsage)
-        if save_err then return nil, save_err end
-        local prune_err = store.prune_packaged_asset_usage(tx, usage :: types.AssetUsage)
-        if prune_err then return nil, prune_err end
-        return true, nil
-    end)
+    local _, err = M.reconcile()
     if err then return {status = "error", message = err:message()} end
     return {status = "success"}
 end

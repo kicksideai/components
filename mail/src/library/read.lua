@@ -14,19 +14,6 @@ local funcs = require("funcs")
 
 local M = {}
 
-local function read_asset_usage(name: string?): (types.AssetUsage?, error?)
-    local usage, err = database.with_db(function(db: sql.DB): (types.AssetUsage?, error?)
-        return store.asset_usage(db, name)
-    end)
-    if err then return nil, err end
-    local messages, list_err = resources.list({kind = "message"})
-    if list_err then return nil, list_err end
-    local visible: types.ResourceMap = {}
-    for _, item in ipairs(messages) do visible[resources.key(item)] = item end
-    for asset, names in pairs(usage) do usage[asset] = resources.visible_messages(names, visible) end
-    return usage, nil
-end
-
 local function recent_since(): (integer?, error?)
     local config, err = settings.read("kickside.mail")
     if err then return nil, err end
@@ -37,14 +24,14 @@ local function recent_since(): (integer?, error?)
 end
 
 local function used_by(item: types.Resource): (types.UsedBy?, error?)
-    if item.kind == "asset" then
-        local usage, err = read_asset_usage(item.name)
+    if item.kind == "asset" or item.kind == "base" then
+        local originals, err = resources.originals()
         if err then return nil, err end
-        return {messages = usage[item.name] or {}}, nil
-    elseif item.kind == "base" then
-        local messages, read_err = resources.list({kind = "message", base = item.name})
-        if read_err then return nil, read_err end
-        return {messages = resources.names(messages)}, nil
+        return database.with_db(function(db: types.DB): (types.UsedBy?, error?)
+            local keys, read_err = store.referrers(db, item, originals :: types.OriginalMap)
+            if read_err then return nil, read_err end
+            return {messages = store.message_names(keys :: {types.ResourceKey})}, nil
+        end)
     elseif item.kind == "message" then
         local since, since_err = recent_since()
         if since_err then return nil, since_err end
@@ -137,7 +124,7 @@ function M.history(input: types.ResourceKey): ({types.Revision}?, error?)
     if bad_key then return nil, bad_key end
     local _, err = resources.get(input)
     if err then return nil, err end
-    return database.with_db(function(db: sql.DB): ({types.Revision}?, error?)
+    return database.with_db(function(db: types.DB): ({types.Revision}?, error?)
         return store.history(db, input)
     end)
 end

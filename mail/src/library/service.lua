@@ -14,7 +14,6 @@ local realtime = require("realtime")
 local preview_id = require("preview_id")
 local attachments = require("attachments")
 local asset_refs = require("asset_refs")
-local source_refs = require("source_refs")
 local asset_store = require("asset_store")
 local notifier = require("notifier")
 local funcs = require("funcs")
@@ -23,29 +22,6 @@ local logger = require("logger")
 local error_envelope = require("error_envelope")
 
 local M = {}
-
-local function asset_sources(tx: sql.Transaction, name: string, items: types.ResourceMap,
-    originals: types.OriginalMap): ({types.ResourceKey}?, error?)
-    local sources: {types.ResourceKey} = {}
-    local seen: {[string]: boolean} = {}
-    local function add(item: types.ResourceContent)
-        local id = resources.key(item)
-        if not seen[id] and (source_refs.source_reference(item.html, name) or source_refs.source_reference(item.text, name)
-            or source_refs.source_reference(item.subject, name)) then
-            seen[id] = true
-            sources[#sources + 1] = {kind = item.kind, name = item.name}
-        end
-    end
-    for _, item in pairs(items) do add(item) end
-    for _, original in pairs(originals) do add(original.resource) end
-    local pattern = "%" .. name:gsub("([!%%_])", "!%1") .. "%"
-    local revisions, err = tx:query([[SELECT kind,name,html,text,subject FROM mail_library_revision
-        WHERE html LIKE $1 ESCAPE '!' OR text LIKE $1 ESCAPE '!' OR subject LIKE $1 ESCAPE '!']], {pattern})
-    if err then return nil, err end
-    for _, revision in ipairs(revisions) do add((revision :: unknown) :: types.ResourceContent) end
-    table.sort(sources, function(a, b) return resources.key(a) < resources.key(b) end)
-    return sources, nil
-end
 
 local function change(edits: {types.LibraryEdit}, operation: string, receipt: string?): ({types.Resource}?, error?)
     local denied = client.require_library()
@@ -89,34 +65,37 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
     local values, globals_err = globals.library_samples()
     if globals_err then return nil, globals_err end
 
-    local function write(tx: sql.Transaction, dialect: string): ({types.Resource}?, error?)
+    local function write(tx: types.Transaction, dialect: string): ({types.Resource}?, error?)
         local lock_err = store.lock(tx, dialect)
         if lock_err then return nil, lock_err end
         local items, load_err, originals = resources.load(tx)
         if load_err then return nil, load_err end
         local key = keys[1]
-        if operation == "delete" and key.kind == "asset" then
-            local references, usage_err = store.asset_usage(tx, key.name)
-            if usage_err then return nil, usage_err end
-            local messages = resources.visible_messages(references[key.name] or {}, items :: types.ResourceMap)
-            local sources, source_err = asset_sources(tx, key.name, items :: types.ResourceMap, originals :: types.OriginalMap)
-            if source_err then return nil, source_err end
-            if #messages > 0 or #sources > 0 then
-                return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = "Library sources or rendered samples use this mail asset",
-                    details = {code = "mail_resource_in_use", resource = key, messages = messages, resources = sources}})
-            end
-        end
         local candidates: {types.ResourceContent} = {}
         local previous: {types.Resource} = {}
         local restore_versions: {[integer]: integer} = {}
         for i, edit in ipairs(edits) do
+            local id = resources.key(edit.key)
+            if (edit.restore or operation == "create") and not items[id] then
+                local archived, read_err = store.get(tx, edit.key)
+                if read_err then return nil, read_err end
+                if archived and archived.archived then items[id] = archived end
+            end
             local candidate, err, restored_from = edit_ops.prepare(tx, edit, operation, items :: types.ResourceMap, originals :: types.OriginalMap)
             if err then return nil, err end
-            local id = resources.key(edit.key)
             previous[i] = items[id]
             items[id] = candidate :: types.Resource
             candidates[i] = candidate
             if restored_from then restore_versions[i] = restored_from end
+        end
+        if operation == "delete" and key.kind ~= "message" then
+            local sources, ref_err = store.referrers(tx, key, originals :: types.OriginalMap)
+            if ref_err then return nil, ref_err end
+            if #sources > 0 then
+                return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = "Library resources use this mail resource",
+                    details = {code = "mail_resource_in_use", resource = key, messages = store.message_names(sources),
+                        resources = sources}})
+            end
         end
         for _, candidate in ipairs(candidates) do
             local base_err = edit_ops.base_exists(items :: types.ResourceMap, candidate)
@@ -129,43 +108,34 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
             local unbound = preview_id.verify(receipt, candidates, author, operation, time.now():unix())
             if unbound then return nil, unbound end
         end
-        if operation == "delete" and key.kind == "base" then
+        local timestamp = time.now():unix_nano() // 1000000
+        if operation == "delete" and key.kind == "message" then
+            local item = previous[1]
+            item.archived, item.author, item.updated_at = true, author, timestamp
+            local archived, err = store.write(tx, item, {action = "archived", state = item.state, note = edits[1].note})
+            if err then return nil, err end
+            return {archived :: types.Resource}, nil
+        end
+
+        if key.kind ~= "asset" then
             local dependent = edit_ops.dependants(items :: types.ResourceMap, keys, changed)
-            if #dependent ~= 0 then
-                return nil, errors.new({kind = errors.CONFLICT, retryable = false, message = "Messages use this base template",
-                    details = {code = "mail_resource_in_use", resource = key, messages = resources.names(dependent)}})
-            end
+            local _, validation_err = draft.validate(items :: types.ResourceMap, key, candidates, dependent, values :: types.RenderGlobals)
+            if validation_err then return nil, validation_err end
         end
-        local full_usage = false
-        for _, edited in ipairs(keys) do
-            if edited.kind ~= "message" then full_usage = true end
-        end
-        local dependent = edit_ops.dependants(items :: types.ResourceMap, keys, changed, full_usage)
-        local usage, validation_err
-        if key.kind == "asset" then
-            usage, validation_err = draft.asset_usage(items :: types.ResourceMap, values :: types.RenderGlobals)
-        else
-            usage, validation_err = draft.validate(items :: types.ResourceMap, key, candidates, dependent, values :: types.RenderGlobals)
-        end
-        if validation_err then return nil, validation_err end
-        for _, item in ipairs(dependent) do changed[resources.key(item)] = true end
-        local assets = asset_refs.from_items(items :: types.ResourceMap)
         if operation == "delete" then
             local remove_err = store.remove(tx, key, true)
             if remove_err then return nil, remove_err end
-            local usage_err = store.save_asset_usage(tx, dialect, assets, usage :: types.AssetUsage, changed)
-            if usage_err then return nil, usage_err end
             return previous, nil
         end
 
         local results: {types.Resource} = {}
-        local timestamp = time.now():unix_nano() // 1000000
         for i, candidate in ipairs(candidates) do
             local stored = candidate :: types.Resource
             local current, original = previous[i], originals[resources.key(stored)]
             stored.author, stored.updated_at = author, timestamp
             stored.created_at = current and current.created_at or timestamp
             stored.state = original and "customized" or "created"
+            if stored.kind ~= "asset" then stored.archived = false end
             stored.origin = original and original.resource.origin or nil
             stored.origin_label = original and original.resource.origin_label or nil
             if stored.asset and edits[i].content then
@@ -196,20 +166,19 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
             end
             results[i] = item
         end
-        local usage_err = store.save_asset_usage(tx, dialect, assets, usage :: types.AssetUsage, changed)
-        if usage_err then return nil, usage_err end
         if key.kind == "asset" and edits[1].content then
-            local names = (usage :: types.AssetUsage)[key.name] or {}
-            results[1].used_by = {messages = resources.visible_messages(names, items :: types.ResourceMap)}
+            local sources, ref_err = store.referrers(tx, key, originals :: types.OriginalMap)
+            if ref_err then return nil, ref_err end
+            results[1].used_by = {messages = store.message_names(sources :: {types.ResourceKey})}
         end
         return results, nil
     end
 
     local published = false
-    local saved, err = database.with_tx(function(tx: sql.Transaction, dialect: string): ({types.Resource}?, error?)
+    local saved, err = database.with_tx(function(tx: types.Transaction, dialect: string): ({types.Resource}?, error?)
         local result, write_err = write(tx, dialect)
         if write_err then return nil, write_err end
-        if keys[1].kind ~= "asset" then
+        if keys[1].kind ~= "asset" and not (operation == "delete" and keys[1].kind == "message") then
             local _, projection_err = projection.publish(tx)
             if projection_err then
                 return nil, error_envelope.wrap(projection_err, projection_err:message(),

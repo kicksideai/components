@@ -130,10 +130,6 @@ local run = test.run_cases(function()
             local next_bytes = gif() .. "fixture"
             image.upload_id = upload("image/gif", next_bytes)
             image.expected_revision = added.revision
-            local db = assert(sql.get("app:db"))
-            assert(db:execute("UPDATE mail_library_asset SET used_by_json=$1 WHERE name=$2",
-                {'["private-message"]', image.name}))
-            assert(db:release())
             local replaced = call("update", image)
             test.eq(0, #replaced.used_by.messages)
             local current = call("asset_content", image.name)
@@ -224,7 +220,7 @@ local run = test.run_cases(function()
             assert(editor:call(LIBRARY .. "delete", {kind = "asset", name = image.name, expected_revision = added.revision}))
         end)
 
-        test.it("counts CID attributes and protects conditional asset references", function()
+        test.it("protects conditional asset references until the source drops them", function()
             local image = {kind = "asset", name = "conditional-mark", upload_id = upload("image/gif", gif())}
             owned[1] = image
             local added = call("create", image)
@@ -239,26 +235,24 @@ local run = test.run_cases(function()
             local saved = call("create", msg)
             local sample = call("render_draft", {message = msg.name})
             test.is_nil(sample.inline_assets and sample.inline_assets["mail-library-conditional-mark"])
-            test.eq(0, #call("get", image).used_by.messages)
             local live = call("render", {template = msg.name, vars = {show = true}})
             test.not_nil(live.inline_assets["mail-library-conditional-mark"])
             local result, err = editor:call(LIBRARY .. "delete", {kind = "asset", name = image.name, expected_revision = added.revision})
             test.is_nil(result)
+            test.eq(errors.CONFLICT, assert(err):kind())
             test.eq("mail_resource_in_use", assert(err):details().code)
             test.eq(msg.name, err:details().resources[1].name)
+            local used_by = call("get", image).used_by.messages
             msg.html = "{{ block body() }}Plain HTML{{ end }}"
             msg.expected_revision = saved.revision
             saved = call("update", msg)
-            local historic, historic_err = editor:call(LIBRARY .. "delete",
-                {kind = "asset", name = image.name, expected_revision = added.revision})
-            test.is_nil(historic)
-            test.eq("mail_resource_in_use", assert(historic_err):details().code)
+            test.eq(0, #call("get", image).used_by.messages)
             local version = assert(lookup.get(added.asset.upload_id))
             local retained = assert(funcs.call("kickside.mail.outbox:owner", {}))
             test.is_true(retained.success, tostring(retained.error))
             test.is_true(storage:exists(version.storage_path))
-            call("delete", {kind = "message", name = msg.name, expected_revision = saved.revision})
-            assert(editor:call(LIBRARY .. "delete", {kind = "asset", name = image.name, expected_revision = added.revision}))
+            call("delete", {kind = "asset", name = image.name, expected_revision = added.revision})
+            test.eq(msg.name, used_by[1])
             local db = assert(sql.get("app:db"))
             local blocked = "invalid-" .. uuid.v4()
             assert(db:execute([[INSERT INTO mail_asset_file (upload_id,filename,content_type,size_bytes,due_at)

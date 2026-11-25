@@ -28,6 +28,9 @@ function M.resolve(name: unknown): (types.Resource?, error?)
     if err and err:kind() == errors.NOT_FOUND then
         return nil, resources.error(errors.NOT_FOUND, "template_not_found", "Mail template is not declared: " .. name)
     end
+    if item and item.archived then
+        return nil, resources.error(errors.NOT_FOUND, "mail_template_archived", "This mail template is archived", item)
+    end
     return item, err
 end
 

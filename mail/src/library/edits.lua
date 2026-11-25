@@ -38,7 +38,7 @@ function M.dependants(items: types.ResourceMap, keys: {types.ResourceKey}, chang
     return selected
 end
 
-function M.prepare(tx: sql.Transaction, edit: types.LibraryEdit, operation: string,
+function M.prepare(tx: types.Transaction, edit: types.LibraryEdit, operation: string,
     items: types.ResourceMap, originals: types.OriginalMap): (types.ResourceContent?, error?, integer?)
     local key = edit.key
     local id = resources.key(key)

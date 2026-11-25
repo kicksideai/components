@@ -66,7 +66,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
     if vars_err then return nil, vars_err end
     local values, globals_err = globals.read()
     if globals_err then return nil, globals_err end
-    local rendered, render_err = database.with_tx(function(tx: sql.Transaction, dialect: string): (types.Rendered | types.DraftPreview | nil, error?)
+    local rendered, render_err = database.with_tx(function(tx: types.Transaction, dialect: string): (types.Rendered | types.DraftPreview | nil, error?)
         local lock_err = store.lock(tx, dialect)
         if lock_err then return nil, lock_err end
         local items, err, originals = resources.load(tx)

@@ -141,8 +141,8 @@ function M.page(filter: types.ResourceFilter, after: types.ResourceKey?, limit: 
             and resource.matches(item, filter.q and filter.q:lower())
         declarations[#declarations + 1] = {kind = item.kind, name = item.name, base = item.base, selected = selected and 1 or 0}
     end
-    return database.with_db(function(db: sql.DB): (types.LibraryPage?, error?)
-        local page, read_err = store.summary(db, declarations, filter, after, limit)
+    return database.with_db(function(db: types.DB, dialect: string): (types.LibraryPage?, error?)
+        local page, read_err = store.summary(db, dialect, declarations, originals :: types.OriginalMap, filter, after, limit)
         if read_err then return nil, read_err end
         for _, row in ipairs(page.items) do
             local original = originals[M.key(row)]
@@ -161,7 +161,7 @@ end
 
 function M.list(filter: types.ResourceFilter): ({types.Resource}?, error?)
     local q = filter.q and filter.q:lower()
-    return database.with_db(function(db: sql.DB): ({types.Resource}?, error?)
+    return database.with_db(function(db: types.DB): ({types.Resource}?, error?)
         local originals, err = M.originals()
         if err then return nil, err end
         local stored_only = filter.state == "created" or filter.state == "customized"

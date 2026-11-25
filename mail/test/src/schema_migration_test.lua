@@ -6,6 +6,7 @@ local test = require("test")
 local tables = {
     "mail_message", "mail_library", "mail_asset_file", "mail_library_revision",
     "mail_library_asset", "mail_message_asset",
+    "mail_library_reference", "mail_library_preview",
 }
 
 local indexes = {
@@ -14,6 +15,7 @@ local indexes = {
     "mail_message_expiry", "mail_message_template_page", "mail_message_failed_at",
     "mail_library_state", "mail_library_base", "mail_asset_file_due",
     "mail_library_revision_asset", "mail_library_asset_upload", "mail_message_asset_upload",
+    "mail_library_reference_to", "mail_library_preview_expiry",
 }
 
 local function inspect_schema(db_id: string)
@@ -73,7 +75,7 @@ return {run = test.run_cases(function()
         test.it("advertises only current history actions", function()
             local history = assert(registry.get("kickside.mail.traits:library_history"))
             local actions = history.meta.output_schema.properties.items.items.properties.action.enum
-            local expected = {"created", "edited", "base_changed", "reset", "restored"}
+            local expected = {"created", "edited", "base_changed", "reset", "restored", "archived"}
             test.eq(#actions, #expected)
             for index, action in ipairs(expected) do
                 test.eq(actions[index], action)

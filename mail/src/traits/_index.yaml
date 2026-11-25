@@ -547,7 +547,7 @@ entries:
                 revision: *resource_revision
                 version: {type: integer, minimum: 1}
                 state: *resource_state
-                action: {enum: [created, edited, base_changed, reset, restored]}
+                action: {enum: [created, edited, base_changed, reset, restored, archived]}
                 restored_from: {type: integer, minimum: 1}
                 author: *text
                 note: *text

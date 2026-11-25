@@ -1,7 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local sql = require("sql")
 
-type Executor = sql.DB | sql.Transaction
+type DB = sql.DB
+type Executor = DB | sql.Transaction
 type Transaction = sql.Transaction
 type TransactionWork<T> = (sql.Transaction, string) -> (T?, error?)
 type Json = nil | boolean | number | string | {Json} | {[string]: Json}
@@ -84,6 +85,8 @@ type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, 
 type AssetContent = {revision: integer, content_type: string, bytes: string}
 type ResourceKey = {kind: string, name: string}
 type ResourceReferences = {bases: {string}, parts: {string}, assets: {string}}
+type ReferenceClosure = {dependencies: {ResourceKey}, dependants: {ResourceKey}}
+type PreviewRow = {id: string, actor: string, operation: string, digest: string, expected: {[string]: integer}, expires_at: integer}
 type ResourceContent = {
     kind: string, name: string,
     title: string, description: string, html: string, text: string, base: string?,
@@ -95,12 +98,12 @@ type Resource = {
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema: VariableSchema, samples: JsonObject,
     asset: Asset?, original: OriginalSource?, state: string, origin: string?, origin_label: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?, used_by: UsedBy?,
+    archived: boolean?,
 }
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
 type SenderPage = {items: {RecentSender}, next_cursor: string?}
 type AssetUsage = {[string]: {string}}
-type AssetUsageFilter = {dialect: string, assets: {string}, messages: {string}}
 type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}
 type Original = {resource: Resource, entries: {[string]: string}}
 type ResourceMap = {[string]: Resource}
@@ -114,6 +117,7 @@ type AssetWrite = {name: string, upload_id: string, expected_revision: integer?,
 type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?}
 type ResourceRestore = ResourceRevision & {revision: integer}
 type RevisionChange = {action: string, state: string, restored_from: integer?, note: string?}
+type LibraryWrite = {item: Resource, released: {Record}}
 type Revision = RevisionChange & {kind: string, name: string, revision: integer, version: integer,
     content: ResourceContent, author: string, created_at: integer}
 type OriginalRevisions = {[string]: {[string]: integer}}
@@ -135,7 +139,7 @@ type LibraryPage = {items: {LibraryListRow}, next_cursor: string?, total: intege
 type LibraryEdit = {key: ResourceKey, content: ResourceContent?, expected: integer?, base: string?, restore: integer?,
     note: string?, from: ResourceKey?, asset_deadline: integer?}
 type LibraryRow = {
-    asset_upload_id: string?, filename: string?, content_type: string?, size_bytes: integer?, width: integer?, height: integer?,
+    asset_upload_id: string?, filename: string?, content_type: string?, size_bytes: integer?, archived: boolean | integer | nil,
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema_json: string, samples_json: string, state: string,
     origin: string?, revision: integer, author: string, created_at: integer, updated_at: integer, note: string?,
@@ -207,20 +211,20 @@ type HttpAuth = {user: string, pass: string}
 type HttpResponse = {status_code: number, headers: {[string]: string | {string}}, body: string}
 
 return {
-    Executor = Executor, Transaction = Transaction, TransactionWork = TransactionWork, TransportResult = TransportResult,
+    DB = DB, Executor = Executor, Transaction = Transaction, TransactionWork = TransactionWork, TransportResult = TransportResult,
     MessageRef = MessageRef, ListRequest = ListRequest, ListQuery = ListQuery, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, Admission = Admission, AdmissionResult = AdmissionResult,
     MessageInsert = MessageInsert, KeyRow = KeyRow, InsertOutcome = InsertOutcome, Outcome = Outcome,
     DueRow = DueRow, Deadlines = Deadlines, MessageContent = MessageContent, MessagePage = MessagePage, SenderPage = SenderPage,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,
     OwnerResult = OwnerResult, BlockedAsset = BlockedAsset,
-    ResourceKey = ResourceKey, ResourceReferences = ResourceReferences,
+    ResourceKey = ResourceKey, ResourceReferences = ResourceReferences, ReferenceClosure = ReferenceClosure, PreviewRow = PreviewRow,
     ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
-    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, AssetUsageFilter = AssetUsageFilter, UsedBy = UsedBy,
-    LibraryRow = LibraryRow, JetEntry = JetEntry,
+    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,
+    LibraryRow = LibraryRow, LibraryWrite = LibraryWrite, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetReadRequest = AssetReadRequest, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
     TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,

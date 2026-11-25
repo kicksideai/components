@@ -23,24 +23,28 @@ entries:
   - name: asset_store
     kind: library.lua
     source: file://asset_store.lua
-    modules: [sql, time, funcs]
+    modules: [time, funcs]
     imports:
       types: kickside.mail:types
       database: kickside.mail.persist:db
       autoinit: kickside.component:autoinit
+      asset_file_repo: kickside.mail.persist:asset_file_repo
   - name: store
     kind: library.lua
     source: file://store.lua
-    modules: [json, sql]
     imports:
       types: kickside.mail:types
       database: kickside.mail.persist:db
-      canonical_json: kickside.contract:canonical_json
+      library_reader: kickside.mail.persist:library_reader
+      library_repo: kickside.mail.persist:library_repo
+      reference_repo: kickside.mail.persist:reference_repo
+      references: kickside.mail.domain:references
+      resource: kickside.mail.domain:resource
       asset_store: kickside.mail.library:asset_store
   - name: resources
     kind: library.lua
     source: file://resources.lua
-    modules: [registry, sql]
+    modules: [registry]
     imports:
       types: kickside.mail:types
       database: kickside.mail.persist:db
@@ -50,7 +54,7 @@ entries:
   - name: projection
     kind: library.lua
     source: &projection_source file://projection.lua
-    modules: &projection_modules [registry, security, sql]
+    modules: &projection_modules [registry, security]
     imports: &projection_imports
       types: kickside.mail:types
       database: kickside.mail.persist:db
@@ -58,8 +62,6 @@ entries:
       resources: kickside.mail.library:resources
       jet: kickside.mail.domain:jet
       draft: kickside.mail.library:draft
-      globals: kickside.mail.views:globals
-      asset_refs: kickside.mail.domain:assets
   - name: reconcile
     kind: function.lua
     meta:
@@ -116,7 +118,7 @@ entries:
     kind: function.lua
     method: list
     source: &read_source file://read.lua
-    modules: &read_modules [sql, funcs, time]
+    modules: &read_modules [funcs, time]
     imports: &read_imports
       types: kickside.mail:types
       client: kickside.mail:client
@@ -195,7 +197,7 @@ entries:
     kind: function.lua
     method: create
     source: &service_source file://service.lua
-    modules: &service_modules [security, sql, time, uuid, funcs, logger]
+    modules: &service_modules [security, time, uuid, funcs, logger]
     imports: &service_imports
       types: kickside.mail:types
       client: kickside.mail:client
@@ -210,7 +212,6 @@ entries:
       preview_id: kickside.mail.library:preview_id
       attachments: kickside.mail.service:attachments
       asset_refs: kickside.mail.domain:assets
-      source_refs: kickside.mail.domain:references
       asset_store: kickside.mail.library:asset_store
       notifier: kickside.core.retention:notifier
       error_envelope: kickside.contract:error_envelope
@@ -306,7 +307,7 @@ entries:
     kind: function.lua
     method: render_draft
     source: &draft_preview_source file://draft_preview.lua
-    modules: &draft_preview_modules [security, sql, time]
+    modules: &draft_preview_modules [security, time]
     imports: &draft_preview_imports
       types: kickside.mail:types
       client: kickside.mail:client
