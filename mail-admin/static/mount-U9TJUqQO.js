@@ -1,9 +1,9 @@
 import { u as ie, P as ae } from "./wc-runtime-Ch_wJl3O.js";
-import { defineComponent as E, useId as J, openBlock as i, createElementBlock as l, unref as t, createElementVNode as d, toDisplayString as c, createCommentVNode as v, renderSlot as M, useModel as le, useSlots as ne, ref as _, watch as oe, normalizeClass as re, createVNode as a, createBlock as W, Transition as ce, withCtx as f, withDirectives as de, vShow as ue, mergeModels as ve, onMounted as me, createTextVNode as b, shallowRef as P, computed as x, Fragment as ge, createSlots as he } from "vue";
-import { api as K, loadByTagName as ye, host as V } from "@wippy-fe/proxy";
+import { defineComponent as E, useId as J, openBlock as i, createElementBlock as l, unref as t, createElementVNode as c, toDisplayString as d, createCommentVNode as v, renderSlot as M, useModel as le, useSlots as ne, ref as _, watch as oe, normalizeClass as re, createVNode as a, createBlock as W, Transition as ce, withCtx as f, withDirectives as de, vShow as ue, mergeModels as ve, onMounted as me, createTextVNode as b, shallowRef as P, computed as x, Fragment as ge, createSlots as he } from "vue";
+import { api as K, loadByTagName as pe, host as V } from "@wippy-fe/proxy";
 import { Icon as g } from "@iconify/vue";
 import I from "primevue/button";
-import pe from "primevue/select";
+import ye from "primevue/select";
 import z from "primevue/tag";
 import { A as Q, G as ke, H as fe, u as _e, x as be, _ as xe, F as $e, i as we, d as A, B as Se, g as G } from "./latestRequest-9-3hn826.js";
 const Te = ["aria-labelledby"], Ce = {
@@ -25,13 +25,13 @@ const Te = ["aria-labelledby"], Ce = {
       "aria-labelledby": n.title ? t(h) : void 0
     }, [
       n.title ? (i(), l("div", Ce, [
-        d("h2", {
+        c("h2", {
           id: t(h),
           class: "kx-settings-group-title"
-        }, c(n.title), 9, Me),
-        n.count !== void 0 ? (i(), l("span", De, c(n.count), 1)) : v("", !0)
+        }, d(n.title), 9, Me),
+        n.count !== void 0 ? (i(), l("span", De, d(n.count), 1)) : v("", !0)
       ])) : v("", !0),
-      d("div", Ne, [
+      c("div", Ne, [
         M(o.$slots, "default")
       ])
     ], 8, Te));
@@ -56,23 +56,23 @@ const Te = ["aria-labelledby"], Ce = {
   emits: ["update:open"],
   setup(n) {
     const h = n, o = le(n, "open"), u = ne(), m = J(), D = _(o.value);
-    return oe(o, (p) => {
-      p && (D.value = !0);
-    }), (p, $) => (i(), l("article", {
+    return oe(o, (y) => {
+      y && (D.value = !0);
+    }), (y, $) => (i(), l("article", {
       class: re(["kx-settings-item", { "kx-settings-item-open": o.value && t(u).default }])
     }, [
-      d("div", Be, [
-        d("div", Ie, [
-          d("div", Ee, [
-            d("h3", Le, c(n.title), 1),
-            M(p.$slots, "status")
+      c("div", Be, [
+        c("div", Ie, [
+          c("div", Ee, [
+            c("h3", Le, d(n.title), 1),
+            M(y.$slots, "status")
           ]),
-          n.description ? (i(), l("p", Re, c(n.description), 1)) : v("", !0),
+          n.description ? (i(), l("p", Re, d(n.description), 1)) : v("", !0),
           t(u).meta ? (i(), l("p", Ve, [
-            M(p.$slots, "meta")
+            M(y.$slots, "meta")
           ])) : v("", !0)
         ]),
-        d("div", Ae, [
+        c("div", Ae, [
           t(u).default ? (i(), l("button", {
             key: 0,
             type: "button",
@@ -82,13 +82,13 @@ const Te = ["aria-labelledby"], Ce = {
             "aria-label": (n.expandLabel || "Details") + " " + n.title,
             onClick: $[0] || ($[0] = (k) => o.value = !o.value)
           }, [
-            d("span", null, c(n.expandLabel || "Details"), 1),
+            c("span", null, d(n.expandLabel || "Details"), 1),
             a(t(g), {
               icon: "tabler:chevron-down",
               "aria-hidden": "true"
             })
           ], 8, qe)) : v("", !0),
-          M(p.$slots, "actions")
+          M(y.$slots, "actions")
         ])
       ]),
       t(u).default ? (i(), W(ce, {
@@ -102,9 +102,9 @@ const Te = ["aria-labelledby"], Ce = {
             inert: !o.value,
             class: "kx-settings-item-panel"
           }, [
-            d("div", Pe, [
-              d("div", ze, [
-                M(p.$slots, "default")
+            c("div", Pe, [
+              c("div", ze, [
+                M(y.$slots, "default")
               ])
             ])
           ], 8, Fe)), [
@@ -125,11 +125,14 @@ async function Ge(n, h) {
     throw ke(o, "Delivery service");
   }
 }
-const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post("/api/v1/mail/delivery/send-test", {}), "Send test email"), Ue = ["^config"], je = {
+const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post("/api/v1/mail/delivery/send-test", {}), "Send test email"), Ue = {
+  key: 0,
+  class: "mail-provider-frame"
+}, je = ["^config"], Je = {
   key: 1,
   class: "kx-err inline",
   role: "alert"
-}, Je = {
+}, We = {
   key: 2,
   class: "kx-loading",
   role: "status"
@@ -143,77 +146,78 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
     return me(async () => {
       if (!h.value)
         try {
-          await ye(U, { timeoutMs: 8e3 }), h.value = !0;
+          await pe(U, { timeoutMs: 8e3 }), h.value = !0;
         } catch (u) {
           o.value = u instanceof Error ? u.message : String(u);
         }
-    }), (u, m) => h.value ? (i(), l("kickside-settings-provider", {
-      key: 0,
-      class: "mail-provider",
-      "^config": JSON.stringify(n.config)
-    }, null, 8, Ue)) : o.value ? (i(), l("p", je, "The " + c(n.config.title) + " settings could not be loaded. " + c(o.value), 1)) : (i(), l("p", Je, [
+    }), (u, m) => h.value ? (i(), l("div", Ue, [
+      c("kickside-settings-provider", {
+        class: "mail-provider",
+        "^config": JSON.stringify(n.config)
+      }, null, 8, je)
+    ])) : o.value ? (i(), l("p", Je, "The " + d(n.config.title) + " settings could not be loaded. " + d(o.value), 1)) : (i(), l("p", We, [
       a(t(g), {
         icon: "tabler:loader-2",
         class: "spin",
         "aria-hidden": "true"
       }),
-      b("Loading " + c(n.config.title) + " settings…", 1)
+      b("Loading " + d(n.config.title) + " settings…", 1)
     ]));
   }
-}), We = {
+}), Ke = {
   class: "mail-delivery",
   "aria-label": "Mail delivery settings"
-}, Ke = {
+}, Qe = {
   key: 0,
   class: "kx-loading",
   role: "status"
-}, Qe = {
+}, Xe = {
   key: 1,
   class: "kx-notice warn mail-block",
   role: "alert"
-}, Xe = {
+}, Ye = {
   key: 2,
   class: "kx-err mail-error",
   role: "alert"
-}, Ye = {
+}, Ze = {
   key: 0,
   class: "kx-notice warn mail-block",
   role: "status"
-}, Ze = {
+}, et = {
   key: 1,
   class: "kx-notice info mail-block",
   role: "status"
-}, et = { class: "mail-setting-control" }, tt = {
+}, tt = { class: "mail-setting-control" }, st = {
   key: 0,
   class: "mail-kind"
-}, st = { key: 1 }, it = { class: "mail-service-option" }, at = { class: "mail-kind" }, lt = {
+}, it = { key: 1 }, at = { class: "mail-service-option" }, lt = { class: "mail-kind" }, nt = {
   key: 0,
   class: "mail-sub"
-}, nt = {
+}, ot = {
   key: 0,
   class: "mail-field-error",
   role: "alert"
-}, ot = {
+}, rt = {
   key: 0,
   class: "mail-test-result",
   role: "status"
-}, rt = {
+}, ct = {
   key: 0,
   class: "kx-notice error mail-block"
-}, ct = {
+}, dt = {
   key: 1,
   class: "kx-notice mail-block"
-}, dt = {
+}, ut = {
   key: 2,
   class: "kx-notice info mail-block"
-}, ut = {
+}, vt = {
   key: 3,
   class: "kx-notice error mail-block"
-}, vt = { class: "mail-failure-body" }, mt = /* @__PURE__ */ E({
+}, mt = { class: "mail-failure-body" }, gt = /* @__PURE__ */ E({
   __name: "DeliverySettings",
   setup(n) {
     const h = _(!0), o = _(!1), u = _(""), m = P(), D = G();
-    async function p() {
+    async function y() {
       const e = D();
       try {
         const s = await $e.status();
@@ -226,7 +230,7 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
         e() && (h.value = !1);
       }
     }
-    ie(p);
+    ie(y);
     const $ = x(() => m.value?.transports ?? []), k = x(() => $.value.find((e) => e.id === m.value?.driver?.id)), X = x(() => $.value.map((e) => ({
       value: e.id,
       label: e.title,
@@ -253,7 +257,7 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
         } catch (w) {
           He(w) ? T.value = "Someone changed the delivery service while you were here. It shows the current choice now." : N.value = A(w, "The delivery service could not be changed.");
         } finally {
-          await p(), S.value = !1;
+          await y(), S.value = !1;
         }
       }
     }
@@ -265,37 +269,37 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
       title: "Sender",
       icon: "tabler:at",
       help: "Who recipients see the email from, where replies go, and how long Mail keeps the delivery log."
-    }, y = P(), B = _(!1), C = _(""), te = G();
+    }, p = P(), B = _(!1), C = _(""), te = G();
     async function q() {
-      const e = y.value?.message_id;
+      const e = p.value?.message_id;
       if (!e) return;
       const s = te();
       try {
         const r = await Se.get(e);
-        s() && y.value?.message_id === e && (y.value = r);
+        s() && p.value?.message_id === e && (p.value = r);
       } catch {
       }
     }
     _e("mail.activity", () => {
-      y.value?.status === "queued" && q();
+      p.value?.status === "queued" && q();
     });
     async function se() {
-      B.value = !0, C.value = "", y.value = void 0;
+      B.value = !0, C.value = "", p.value = void 0;
       try {
         const e = await Oe();
-        y.value = { message_id: e.message_id, status: "queued" }, await q();
+        p.value = { message_id: e.message_id, status: "queued" }, await q();
       } catch (e) {
         C.value = A(e, "The test email could not be sent.");
       } finally {
-        B.value = !1, p();
+        B.value = !1, y();
       }
     }
     const R = x(() => {
-      const e = y.value?.last_error;
+      const e = p.value?.last_error;
       if (e)
         return be(e.code, m.value?.driver?.label ?? "The service", "above") ?? { lead: "The service did not accept the test.", next: e.message };
     }), F = x(() => k.value ? "" : "Choose a service to send a test.");
-    return (e, s) => (i(), l("section", We, [
+    return (e, s) => (i(), l("section", Ke, [
       a(xe, {
         title: "Mail",
         description: "How email leaves this workspace. Templates and their look are in System → Mail."
@@ -318,45 +322,45 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
         ]),
         _: 1
       }),
-      h.value ? (i(), l("p", Ke, [
+      h.value ? (i(), l("p", Qe, [
         a(t(g), {
           icon: "tabler:loader-2",
           class: "spin",
           "aria-hidden": "true"
         }),
         s[3] || (s[3] = b("Loading delivery settings…", -1))
-      ])) : o.value ? (i(), l("p", Qe, [
+      ])) : o.value ? (i(), l("p", Xe, [
         a(t(g), {
           icon: "tabler:lock",
           "aria-hidden": "true"
         }),
         s[4] || (s[4] = b("Ask an administrator to grant you access to mail delivery.", -1))
-      ])) : u.value && !m.value ? (i(), l("div", Xe, [
-        d("span", null, c(u.value), 1),
+      ])) : u.value && !m.value ? (i(), l("div", Ye, [
+        c("span", null, d(u.value), 1),
         a(t(I), {
           label: "Retry",
           severity: "secondary",
           outlined: "",
           size: "small",
-          onClick: s[1] || (s[1] = (r) => p())
+          onClick: s[1] || (s[1] = (r) => y())
         })
       ])) : m.value ? (i(), l(ge, { key: 3 }, [
-        !m.value.configured && m.value.reason ? (i(), l("p", Ye, [
+        !m.value.configured && m.value.reason ? (i(), l("p", Ze, [
           a(t(g), {
             icon: "tabler:alert-triangle",
             "aria-hidden": "true"
           }),
-          d("span", null, [
-            s[5] || (s[5] = d("strong", null, "Mail is not set up yet.", -1)),
-            b(" " + c(m.value.reason), 1)
+          c("span", null, [
+            s[5] || (s[5] = c("strong", null, "Mail is not set up yet.", -1)),
+            b(" " + d(m.value.reason), 1)
           ])
         ])) : v("", !0),
-        T.value ? (i(), l("p", Ze, [
+        T.value ? (i(), l("p", et, [
           a(t(g), {
             icon: "tabler:circle-check",
             "aria-hidden": "true"
           }),
-          b(c(T.value), 1)
+          b(d(T.value), 1)
         ])) : v("", !0),
         a(H, {
           title: "Delivery service",
@@ -368,8 +372,8 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
               description: Y.value
             }, he({
               actions: f(() => [
-                d("span", et, [
-                  a(t(pe), {
+                c("span", tt, [
+                  a(t(ye), {
                     "model-value": k.value?.id,
                     options: X.value,
                     "option-label": "label",
@@ -384,34 +388,34 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
                     "onUpdate:modelValue": Z
                   }, {
                     value: f(({ value: r, placeholder: w }) => [
-                      r && k.value ? (i(), l("span", tt, [
+                      r && k.value ? (i(), l("span", st, [
                         a(t(g), {
                           icon: k.value.icon,
                           "aria-hidden": "true"
                         }, null, 8, ["icon"]),
-                        b(c(k.value.title), 1)
-                      ])) : (i(), l("span", st, c(w), 1))
+                        b(d(k.value.title), 1)
+                      ])) : (i(), l("span", it, d(w), 1))
                     ]),
                     option: f(({ option: r }) => [
-                      d("span", it, [
-                        d("span", at, [
+                      c("span", at, [
+                        c("span", lt, [
                           a(t(g), {
                             icon: r.icon,
                             "aria-hidden": "true"
                           }, null, 8, ["icon"]),
-                          b(c(r.label), 1)
+                          b(d(r.label), 1)
                         ]),
                         a(t(z), {
                           severity: r.ready ? "success" : "warn",
                           value: r.ready ? "Ready" : "Needs setup",
                           class: "kx-tag-sm"
                         }, null, 8, ["severity", "value"]),
-                        !r.ready && r.reason ? (i(), l("span", lt, c(r.reason), 1)) : v("", !0)
+                        !r.ready && r.reason ? (i(), l("span", nt, d(r.reason), 1)) : v("", !0)
                       ])
                     ]),
                     _: 1
                   }, 8, ["model-value", "options", "loading", "disabled"]),
-                  N.value ? (i(), l("small", nt, c(N.value), 1)) : v("", !0)
+                  N.value ? (i(), l("small", ot, d(N.value), 1)) : v("", !0)
                 ])
               ]),
               _: 2
@@ -431,11 +435,11 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
           ]),
           _: 1
         }),
+        a(j, { config: ee }),
         L.value ? (i(), W(j, {
           key: L.value.namespace,
           config: L.value
         }, null, 8, ["config"])) : v("", !0),
-        a(j, { config: ee }),
         a(H, { title: "Test" }, {
           default: f(() => [
             a(O, {
@@ -462,40 +466,40 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
               ]),
               _: 1
             }, 8, ["description"]),
-            y.value || C.value ? (i(), l("div", ot, [
-              C.value ? (i(), l("p", rt, [
+            p.value || C.value ? (i(), l("div", rt, [
+              C.value ? (i(), l("p", ct, [
                 a(t(g), {
                   icon: "tabler:alert-triangle",
                   "aria-hidden": "true"
                 }),
-                b(c(C.value), 1)
-              ])) : y.value?.status === "queued" ? (i(), l("p", ct, [
+                b(d(C.value), 1)
+              ])) : p.value?.status === "queued" ? (i(), l("p", dt, [
                 a(t(g), {
                   icon: "tabler:loader-2",
                   class: "spin",
                   "aria-hidden": "true"
                 }),
                 s[6] || (s[6] = b("Sending the test…", -1))
-              ])) : y.value?.status === "sent" ? (i(), l("p", dt, [
+              ])) : p.value?.status === "sent" ? (i(), l("p", ut, [
                 a(t(g), {
                   icon: "tabler:circle-check",
                   "aria-hidden": "true"
                 }),
                 s[7] || (s[7] = b("The test was accepted for delivery. Check your inbox.", -1))
-              ])) : y.value?.status === "failed" && R.value ? (i(), l("div", ut, [
+              ])) : p.value?.status === "failed" && R.value ? (i(), l("div", vt, [
                 a(t(g), {
                   icon: "tabler:alert-triangle",
                   "aria-hidden": "true"
                 }),
-                d("div", vt, [
-                  d("strong", null, c(R.value.lead), 1),
-                  d("span", null, c(R.value.next), 1),
+                c("div", mt, [
+                  c("strong", null, d(R.value.lead), 1),
+                  c("span", null, d(R.value.next), 1),
                   a(t(I), {
                     link: "",
                     size: "small",
                     class: "mail-inline-link",
                     label: "Open it in Activity",
-                    onClick: s[2] || (s[2] = (r) => t(V).navigate("/system/mail/activity/" + y.value.message_id))
+                    onClick: s[2] || (s[2] = (r) => t(V).navigate("/system/mail/activity/" + p.value.message_id))
                   })
                 ])
               ])) : v("", !0)
@@ -506,8 +510,8 @@ const He = (n) => n instanceof Q && n.status === 409, Oe = () => fe(() => K.post
       ], 64)) : v("", !0)
     ]));
   }
-}), xt = { rootComponent: mt, plugins: [ae] };
+}), $t = { rootComponent: gt, plugins: [ae] };
 export {
-  xt as config
+  $t as config
 };
-//# sourceMappingURL=mount-rvBc_H30.js.map
+//# sourceMappingURL=mount-U9TJUqQO.js.map
