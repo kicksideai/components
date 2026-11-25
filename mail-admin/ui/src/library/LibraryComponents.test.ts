@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { host } from '@wippy-fe/proxy'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MailAdmin from '../app/MailAdmin.vue'
+import { library as libraryApi } from '../api'
 import { calls, dana, get, ok, post, refuse, resource, revision, row, serve } from '../test/fixtures'
 import { dialogButton } from '../test/mail'
 
@@ -187,6 +188,22 @@ describe('New and duplicate', () => {
     }))
     expect(wrapper.emitted('navigate')?.at(-1)).toEqual(['bases/standard-copy/content'])
     wrapper.unmount()
+  })
+
+  it('reads a committed copy after its projection appears', async () => {
+    const copy = { kind: 'base' as const, name: 'standard-copy', title: 'Standard copy', description: '',
+      from: { kind: 'base' as const, name: 'standard' } }
+    const projected = resource('base', copy.name, { state: 'created', revision: 1, seq: 42 })
+    const read = vi.fn()
+      .mockImplementationOnce(() => refuse(404, { kind: 'NotFound', error: 'Resource is unavailable' }))
+      .mockImplementationOnce(() => ok(projected))
+    serve([
+      post('/api/v1/mail/library/preview', () => ok({ preview_id: 'copy-review' })),
+      post('/api/v1/mail/library', () => ok({ seq: 42, committed: true, projected: false })),
+      get('/api/v1/mail/library/base/standard-copy', read),
+    ])
+    await expect(libraryApi.copy(copy)).resolves.toEqual(projected)
+    expect(read).toHaveBeenCalledTimes(2)
   })
 
   it('refuses a reference that already exists before calling the server', async () => {

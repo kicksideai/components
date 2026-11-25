@@ -63,7 +63,7 @@ async function projectedResource(key: ResourceKey, result: Resource | LibraryRec
       const item = await library.get(key)
       if ((item.seq ?? 0) >= result.seq) return item
     } catch (err) {
-      if (!(err instanceof ApiError) || err.kind !== 'NOT_FOUND') throw err
+      if (!isMissing(err)) throw err
     }
   }
   throw new ApiError({ message: 'Changes were saved. Reload the resource to see the new revision.' }, 'Mail library')
@@ -193,5 +193,5 @@ export function isDenied(error: unknown): boolean {
 }
 
 export function isMissing(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 404 || error.kind === 'NOT_FOUND')
+  return error instanceof ApiError && (error.status === 404 || error.kind === 'NOT_FOUND' || error.kind === 'NotFound')
 }
