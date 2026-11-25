@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const rulesPath = resolve(root, 'scripts/module-rules.mjs')
+const rulesPath = resolve(root, '../scripts/module-rules.mjs')
 const handler = (name) => ({ id: `kickside.work.api:${name}`, kind: 'function.lua', method: 'handler' })
 const endpoint = (name, func = name) => ({ id: `kickside.work.api:${name}.endpoint`, kind: 'http.endpoint', func })
 

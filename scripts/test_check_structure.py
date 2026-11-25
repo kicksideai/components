@@ -116,7 +116,7 @@ class StructureCheckTest(unittest.TestCase):
             shutil.copytree(fixture("good"), root / "mail")
             (root / "mail/src/violation.lua").write_text("return {}\n", encoding="utf-8")
             for path in ("mail/Makefile", "mail/scripts/check-module.mjs",
-                         "scripts/check_structure.py", "work/scripts/module-rules.mjs"):
+                         "scripts/check_structure.py", "scripts/module-rules.mjs"):
                 target = root / path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(repo / path, target)

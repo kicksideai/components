@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { checkDependencies, checkEndpoints, parseYamlDocuments, run } from '../../work/scripts/module-rules.mjs'
+import { checkDependencies, checkEndpoints, parseYamlDocuments, run } from '../../scripts/module-rules.mjs'
 import { spawnSync } from 'node:child_process'
 import { access, readFile, readdir, stat } from 'node:fs/promises'
 import { basename, dirname, extname, relative, resolve, sep } from 'node:path'
