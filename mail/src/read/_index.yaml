@@ -1,0 +1,124 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.read
+entries:
+  - name: settings
+    kind: library.lua
+    meta: {private: true}
+    source: file://settings.lua
+    modules: [contract, env, security]
+    imports:
+      types: kickside.mail:types
+  - name: content
+    kind: library.lua
+    meta: {private: true}
+    source: &content_source file://content.lua
+    modules: &content_modules [contract, fs, funcs, registry]
+    imports: &content_imports
+      types: kickside.mail:types
+      autoinit: kickside.component:autoinit
+      message: kickside.mail.domain:message
+      asset_refs: kickside.mail.domain:assets
+  - name: read_asset_file
+    kind: function.lua
+    meta: {private: true}
+    source: *content_source
+    method: read_asset_file
+    modules: *content_modules
+    imports: *content_imports
+    security:
+      actor: {id: system:kickside.mail.retention}
+      groups: [kickside.mail.security:asset_service]
+      policies:
+        - kickside.mail.security:packaged_assets
+        - kickside.mail.security:asset_provider_calls
+        - kickside.mail.security:outbox_db
+  - name: library
+    kind: library.lua
+    meta: {private: true}
+    source: file://library.lua
+    modules: [contract, time]
+    imports:
+      types: kickside.mail:types
+      client: kickside.mail:client
+      component_types: kickside.component:types
+      component_envelope: kickside.component:envelope
+      error_envelope: kickside.contract:error_envelope
+      database: kickside.mail.persist:db
+      library_reader: kickside.mail.persist:library_reader
+      message_reader: kickside.mail.persist:message_reader
+      reference_repo: kickside.mail.persist:reference_repo
+      originals: kickside.mail.render:originals
+      config: kickside.mail.domain:config
+      policy: kickside.mail.domain:policy
+      resource: kickside.mail.domain:resource
+      references: kickside.mail.domain:references
+      asset_refs: kickside.mail.domain:assets
+      content: kickside.mail.read:content
+      settings: kickside.mail.read:settings
+      keyset: kickside.contract:keyset
+  - name: activity
+    kind: library.lua
+    meta: {private: true}
+    source: file://activity.lua
+    modules: [security, time, uuid]
+    imports:
+      types: kickside.mail:types
+      database: kickside.mail.persist:db
+      message_reader: kickside.mail.persist:message_reader
+      failure: kickside.mail.domain:failure
+      policy: kickside.mail.domain:policy
+      identity: kickside.execution:execution_identity
+  - name: catalog
+    kind: library.lua
+    meta: {private: true}
+    source: file://catalog.lua
+    imports:
+      types: kickside.mail:types
+      library: kickside.mail.read:library
+      jet: kickside.mail.domain:jet
+  - name: preview
+    kind: library.lua
+    meta: {private: true}
+    source: file://preview.lua
+    modules: [base64]
+    imports:
+      types: kickside.mail:types
+      content: kickside.mail.read:content
+      library: kickside.mail.read:library
+      settings: kickside.mail.read:settings
+      message: kickside.mail.domain:message
+      vars: kickside.mail.domain:vars
+      jet: kickside.mail.domain:jet
+      render: kickside.mail.render:render
+      globals: kickside.mail.render:globals
+  - name: delivery
+    kind: library.lua
+    meta: {private: true}
+    source: &delivery_source file://delivery.lua
+    imports: &delivery_imports
+      types: kickside.mail:types
+      settings: kickside.mail.read:settings
+      drivers: kickside.mail:drivers_registry
+      settings_types: kickside.settings:settings_types
+      settings_defs: kickside.settings:settings_defs
+      client: kickside.mail:client
+  - name: delivery_status
+    kind: function.lua
+    meta: {private: true}
+    source: *delivery_source
+    method: status
+    imports: *delivery_imports
+    security:
+      policies: [kickside.mail.security:settings_read, kickside.mail.security:settings_admin_read, kickside.mail.security:driver_dispatch]
+  - name: driver_settings
+    kind: function.lua
+    meta: {private: true}
+    source: *delivery_source
+    method: driver_settings
+    imports: *delivery_imports
+    security:
+      policies:
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:settings_admin_read
+        - kickside.settings:reader_registry

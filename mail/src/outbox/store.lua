@@ -86,20 +86,6 @@ function M.rearm(tx: types.Transaction, row: types.MessageRow, next_at: integer,
     return repo.rearm(tx, row.id, row.job_id, next_at, next_at + policy.RECHECK_MS, cause)
 end
 
-function M.recent_senders(template: string, since: integer): ({types.RecentSender}?, error?)
-    return database.with_db(function(ex: types.Executor): ({types.RecentSender}?, error?)
-        local page, err = reader.recent_senders(ex, template, since)
-        if err then return nil, err end
-        return page.items, nil
-    end)
-end
-
-function M.recent_sender_counts(templates: {string}, since: integer): ({[string]: integer}?, error?)
-    return database.with_db(function(ex: types.Executor): ({[string]: integer}?, error?)
-        return reader.recent_sender_counts(ex, templates, since)
-    end)
-end
-
 function M.content(row: types.MessageRow): (types.Addresses?, {types.AttachmentRef}?, error?)
     local content, err = reader.content(row)
     if err then return nil, nil, err end

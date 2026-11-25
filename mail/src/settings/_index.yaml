@@ -69,7 +69,7 @@ entries:
       message: kickside.mail.domain:message
       drivers: kickside.mail:drivers_registry
       policy: kickside.mail.domain:policy
-      settings: kickside.mail:settings
+      config: kickside.mail.domain:config
   - name: validate_from_name
     kind: function.lua
     source: file://validate.lua
@@ -92,17 +92,6 @@ entries:
     source: file://validate.lua
     method: retention
     imports: *validation_imports
-  - name: delivery_status
-    kind: function.lua
-    source: file://status.lua
-    method: status
-    imports:
-      types: kickside.mail:types
-      settings: kickside.mail:settings
-      drivers: kickside.mail:drivers_registry
-      client: kickside.mail:client
-    security:
-      policies: [kickside.mail.security:settings_read, kickside.mail.security:settings_admin_read, kickside.mail.security:driver_dispatch]
   - name: delivery_drivers
     kind: function.lua
     source: file://drivers.lua
@@ -117,18 +106,3 @@ entries:
         - kickside.mail.security:driver_discovery
         - kickside.mail.security:driver_dispatch
         - kickside.mail.security:driver_settings_call
-  - name: driver_settings
-    kind: function.lua
-    meta: { private: true }
-    source: file://driver_settings.lua
-    method: rows
-    imports:
-      types: kickside.mail:types
-      settings_types: kickside.settings:settings_types
-      settings_defs: kickside.settings:settings_defs
-      settings: kickside.mail:settings
-    security:
-      policies:
-        - kickside.mail.security:settings_read
-        - kickside.mail.security:settings_admin_read
-        - kickside.settings:reader_registry

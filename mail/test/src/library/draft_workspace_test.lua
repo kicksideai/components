@@ -57,7 +57,7 @@ return {run = test.run_cases(function()
                 assert(security.policy("kickside.mail.security:library_access")),
                 assert(security.policy("kickside.mail.security:library_calls")),
             }))
-            actor = assert(security.new_actor("workspace-editor", {}))
+            actor = assert(security.new_actor("workspace-editor", {security_groups = {"app:mail_editors"}}))
             editor = assert(funcs.new():with_actor(actor):with_scope(scope))
             initial = assert(editor:call(NS .. "create", resource("message", MESSAGE, "Live body")))
             owned[1] = {kind = "message", name = MESSAGE}

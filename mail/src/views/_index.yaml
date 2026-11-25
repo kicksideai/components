@@ -331,12 +331,3 @@ entries:
           name: { type: string, minLength: 1, description: Sender name. }
           role: { type: string, description: Sender role. }
       sample: { name: Reporting team, role: Workspace operations }
-  - name: catalog
-    kind: library.lua
-    source: file://catalog.lua
-    imports:
-      types: kickside.mail:types
-      vars: kickside.mail.domain:vars
-      client: kickside.mail:client
-      resources: kickside.mail.library:resources
-      jet: kickside.mail.domain:jet

@@ -2,24 +2,6 @@
 version: "1.0"
 namespace: kickside.mail.library
 entries:
-  - name: read_asset_file
-    kind: function.lua
-    meta: { private: true }
-    source: file://asset_file.lua
-    method: read
-    modules: [registry, fs]
-    imports:
-      types: kickside.mail:types
-      asset_refs: kickside.mail.domain:assets
-      asset_store: kickside.mail.library:asset_store
-      attachments: kickside.mail.service:attachments
-    security:
-      actor: { id: system:kickside.mail.retention }
-      groups: [kickside.mail.security:asset_service]
-      policies:
-        - kickside.mail.security:packaged_assets
-        - kickside.mail.security:asset_provider_calls
-        - kickside.mail.security:outbox_db
   - name: asset_store
     kind: library.lua
     source: file://asset_store.lua
@@ -27,29 +9,26 @@ entries:
     imports:
       types: kickside.mail:types
       database: kickside.mail.persist:db
-      autoinit: kickside.component:autoinit
+      content: kickside.mail.read:content
       asset_file_repo: kickside.mail.persist:asset_file_repo
   - name: store
     kind: library.lua
     source: file://store.lua
     imports:
       types: kickside.mail:types
-      database: kickside.mail.persist:db
       library_reader: kickside.mail.persist:library_reader
       library_repo: kickside.mail.persist:library_repo
       reference_repo: kickside.mail.persist:reference_repo
       references: kickside.mail.domain:references
-      resource: kickside.mail.domain:resource
+      library: kickside.mail.read:library
       asset_store: kickside.mail.library:asset_store
   - name: resources
     kind: library.lua
     source: file://resources.lua
     imports:
       types: kickside.mail:types
-      database: kickside.mail.persist:db
       resource: kickside.mail.domain:resource
-      store: kickside.mail.library:store
-      originals: kickside.mail.render:originals
+      library: kickside.mail.read:library
   - name: preview_id
     kind: library.lua
     source: file://preview_id.lua
@@ -70,22 +49,13 @@ entries:
   - name: list
     kind: function.lua
     method: list
-    source: &read_source file://read.lua
-    modules: &read_modules [funcs, time]
+    source: &read_source file://queries.lua
     imports: &read_imports
-      types: kickside.mail:types
-      client: kickside.mail:client
-      database: kickside.mail.persist:db
-      resources: kickside.mail.library:resources
-      store: kickside.mail.library:store
-      originals: kickside.mail.render:originals
-      outbox: kickside.mail.outbox:store
-      settings: kickside.mail:settings
-      policy: kickside.mail.domain:policy
-      keyset: kickside.contract:keyset
-      asset_refs: kickside.mail.domain:assets
+      library: kickside.mail.read:library
     security: &read_security
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
@@ -95,10 +65,11 @@ entries:
     kind: function.lua
     method: get
     source: *read_source
-    modules: *read_modules
     imports: *read_imports
     security:
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
@@ -108,10 +79,11 @@ entries:
     kind: function.lua
     method: asset_content
     source: *read_source
-    modules: *read_modules
     imports: *read_imports
     security:
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
@@ -120,10 +92,11 @@ entries:
     kind: function.lua
     method: list_page
     source: *read_source
-    modules: *read_modules
     imports: *read_imports
     security:
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
@@ -145,10 +118,10 @@ entries:
       originals: kickside.mail.render:originals
       scratch: kickside.mail.render:scratch
       globals: kickside.mail.render:globals
-      settings: kickside.mail:settings
+      settings: kickside.mail.read:settings
       realtime: kickside.mail:realtime
       preview_id: kickside.mail.library:preview_id
-      attachments: kickside.mail.service:attachments
+      content: kickside.mail.read:content
       asset_refs: kickside.mail.domain:assets
       asset_store: kickside.mail.library:asset_store
       notifier: kickside.core.retention:notifier
@@ -174,7 +147,6 @@ entries:
     kind: function.lua
     method: history
     source: *read_source
-    modules: *read_modules
     imports: *read_imports
     security: *read_security
   - name: restore
@@ -255,12 +227,11 @@ entries:
       edits: kickside.mail.library:edits
       scratch: kickside.mail.render:scratch
       render: kickside.mail.render:render
-      live_preview: kickside.mail.service:live_preview
+      live_preview: kickside.mail.read:preview
       vars: kickside.mail.domain:vars
       globals: kickside.mail.render:globals
-      settings: kickside.mail:settings
+      settings: kickside.mail.read:settings
       preview_id: kickside.mail.library:preview_id
-      attachments: kickside.mail.service:attachments
       message: kickside.mail.domain:message
     security:
       policies:
@@ -297,6 +268,8 @@ entries:
     imports: *draft_preview_imports
     security:
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access

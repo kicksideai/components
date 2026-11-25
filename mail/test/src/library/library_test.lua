@@ -102,7 +102,7 @@ return {run = test.run_cases(function()
         test.it("exposes the shipped Image and Signature to library editors", function()
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
                 assert(security.policy("kickside.mail.security:library_calls"))}))
-            local actor = assert(security.new_actor("parts-editor", {}))
+            local actor = assert(security.new_actor("parts-editor", {security_groups = {"app:mail_editors"}}))
             local editor = assert(funcs.new():with_actor(actor):with_scope(scope))
             local parts = {}
             for _, item in ipairs(assert(editor:call(NS .. "list", {kind = "part"}))) do
@@ -170,7 +170,7 @@ return {run = test.run_cases(function()
             local saved_message = assert(call("create", message))
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
                 assert(security.policy("kickside.mail.security:library_calls"))}))
-            local actor = assert(security.new_actor("mail-editor", {full_name = "Sample Editor"}))
+            local actor = assert(security.new_actor("mail-editor", {full_name = "Sample Editor", security_groups = {"app:mail_editors"}}))
             local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
             local rendered = assert(executor:call(NS .. "render", {template = message.name, vars = message.samples}))
             test.eq("A & <B>", rendered.subject)
@@ -326,7 +326,7 @@ return {run = test.run_cases(function()
         test.it("retains the newest 25 revisions, including reset and restore", function()
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
                 assert(security.policy("kickside.mail.security:library_calls"))}))
-            local actor = assert(security.new_actor("history-editor", {}))
+            local actor = assert(security.new_actor("history-editor", {security_groups = {"app:mail_editors"}}))
             local editor = assert(funcs.new():with_actor(actor):with_scope(scope))
             local function read(method, input)
                 local result, err = editor:call(NS .. method, input)

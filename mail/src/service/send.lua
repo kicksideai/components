@@ -3,6 +3,7 @@ local types = require("types")
 local client = require("client")
 local drivers = require("drivers")
 local settings = require("settings")
+local config = require("config")
 local canonical_json = require("canonical_json")
 local identity = require("identity")
 local logger = require("logger")
@@ -19,7 +20,7 @@ local attachments = require("attachments")
 local recipients = require("recipients")
 
 local function unavailable(): error
-    return settings.missing("Mail delivery requires setup. Ask a mail administrator to check the delivery settings.")
+    return config.setup_error("Mail delivery requires setup. Ask a mail administrator to check the delivery settings.")
 end
 
 local function admit(input: types.SendRequest, rendered: types.Rendered?, resend_of: string?): (types.SendResult?, error?)
@@ -49,7 +50,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     local addresses, recipient_err = recipients.resolve(input)
     if recipient_err then return nil, recipient_err end
 
-    local config, config_err = settings.read("kickside.mail")
+    local config, config_err = settings.mail()
     if config_err then return nil, unavailable() end
     config = config :: types.Settings
     local driver, driver_err = drivers.resolve(config.driver)

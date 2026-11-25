@@ -13,7 +13,6 @@ local scratch = require("scratch")
 local security = require("security")
 local time = require("time")
 local preview_id = require("preview_id")
-local attachments = require("attachments")
 local renderer = require("render")
 local live_preview = require("live_preview")
 
@@ -121,7 +120,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
     if render_err then return nil, render_err end
     local output = rendered :: types.DraftPreview
     if output.html then
-        local inline, inline_err = attachments.preview(output :: types.Rendered, input.attachments)
+        local inline, inline_err = live_preview.inline_assets(output :: types.Rendered, input.attachments)
         if inline_err then return nil, inline_err end
         output.inline_assets = inline
         output.warnings = renderer.warnings(output.html)

@@ -22,7 +22,8 @@ local ALIASES = {
 }
 
 local function caller(id, can_edit, can_send)
-    local actor = assert(security.new_actor(id, {user_id = id, email = ADDRESS}))
+    local groups = can_edit and {"app:mail_editors"} or {}
+    local actor = assert(security.new_actor(id, {user_id = id, email = ADDRESS, security_groups = groups}))
     local policies = {assert(security.policy(POLICY .. "module_access")), assert(security.policy(POLICY .. "module_runtime"))}
     if can_edit then policies[#policies + 1] = assert(security.policy(POLICY .. "library_access")) end
     if can_send then policies[#policies + 1] = assert(security.policy(POLICY .. "send_access")) end

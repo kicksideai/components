@@ -16,7 +16,7 @@ local realtime = require("realtime")
 local attachments = require("attachments")
 
 local function active_driver(): (types.Driver?, error?)
-    local config, err = settings.read("kickside.mail")
+    local config, err = settings.mail()
     if err then return nil, err end
     local mail_settings = config :: types.Settings
     return drivers.resolve(mail_settings.driver)

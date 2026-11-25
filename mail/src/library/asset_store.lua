@@ -2,15 +2,13 @@
 local types = require("types")
 local asset_file_repo = require("asset_file_repo")
 local database = require("database")
-local autoinit = require("autoinit")
+local content = require("content")
 local time = require("time")
 local funcs = require("funcs")
 
 local M = {IMPLEMENTATION = "kickside.mail.binding:library"}
 
-function M.component_id(): string
-    return autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
-end
+M.component_id = content.library_component_id
 
 function M.reserve(asset: types.Asset, deadline: integer): (boolean?, error?)
     return database.with_tx(function(tx: types.Transaction): (boolean?, error?)

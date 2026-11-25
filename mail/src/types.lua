@@ -82,6 +82,9 @@ type OwnerInput = {change: {kind: string?, job_id: string?, owner_locator: Owner
 type BlockedAsset = {component_id: string, error: error}
 type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, needs_continue: boolean?,
     error: error?, blocked: {BlockedAsset}?}
+type ComponentAccessResult = {success: boolean?, error: string?, kind: string?, retryable: boolean?, details: Record?, error_kind: string?}
+type ComponentAccessContract = {get_access_context: (self: ComponentAccessContract,
+    input: {component_id: string, access_mask: integer, include_context: boolean}) -> (ComponentAccessResult?, error?)}
 type AssetContent = {revision: integer, content_type: string, bytes: string}
 type ResourceKey = {kind: string, name: string}
 type ResourceReferences = {bases: {string}, parts: {string}, assets: {string}}
@@ -171,7 +174,7 @@ type DriverSetting = {namespace: string, key: string, value_type: string, is_sec
     value: unknown, default: unknown, title: string?, description: string, order: number?, editable: boolean, schema: unknown}
 type DriverSummary = {id: string, label: string, icon: string, description: string, settings_ns: string,
     settings_view: string?, availability: Availability, settings: {DriverSetting}}
-type Settings = {driver: string, from_address: string, from_name: string, reply_to: string}
+type Settings = {driver: string, from_address: string, from_name: string, reply_to: string, log_retention_days: unknown?}
 type ApiSettings = {api_key: string?}
 type SettingsResult = {success: boolean, values: Record?, overridden: {string}?, error: string?}
 type SettingsContract = {get_namespace: (self: SettingsContract, input: {namespace: string}) -> (SettingsResult?, error?)}
@@ -218,7 +221,7 @@ return {
     MessageInsert = MessageInsert, KeyRow = KeyRow, InsertOutcome = InsertOutcome, Outcome = Outcome,
     DueRow = DueRow, Deadlines = Deadlines, MessageContent = MessageContent, MessagePage = MessagePage, SenderPage = SenderPage,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,
-    OwnerResult = OwnerResult, BlockedAsset = BlockedAsset,
+    OwnerResult = OwnerResult, BlockedAsset = BlockedAsset, ComponentAccessContract = ComponentAccessContract,
     ResourceKey = ResourceKey, ResourceReferences = ResourceReferences, ReferenceClosure = ReferenceClosure, PreviewRow = PreviewRow,
     ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,

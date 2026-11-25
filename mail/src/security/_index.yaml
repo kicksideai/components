@@ -261,7 +261,7 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail.library:read_asset_file]
+      resources: [kickside.mail.read:read_asset_file]
       actions: [funcs.call]
       effect: allow
   - name: site_url
@@ -270,6 +270,23 @@ entries:
     policy:
       resources: [PUBLIC_API_URL]
       actions: [env.get]
+      effect: allow
+  - name: library_component_read
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources:
+        - kickside.component:component_service
+        - kickside.component.binding:component_service_impl
+        - get_access_context
+      actions: [contract.get, contract.open, contract.call, contract.implementations]
+      effect: allow
+  - name: library_component_registry
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.component:db_config, kickside.mail.binding:library]
+      actions: [registry.get]
       effect: allow
   - name: library_access
     kind: security.policy
@@ -475,14 +492,14 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail.settings:delivery_drivers, kickside.mail.settings:delivery_status, kickside.mail.service:delivery_send_test]
+      resources: [kickside.mail.settings:delivery_drivers, kickside.mail.read:delivery_status, kickside.mail.service:delivery_send_test]
       actions: [funcs.call, registry.get]
       effect: allow
   - name: driver_settings_call
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail.settings:driver_settings]
+      resources: [kickside.mail.read:driver_settings]
       actions: [registry.get, funcs.call, funcs.security]
       effect: allow
   - name: realtime_calls

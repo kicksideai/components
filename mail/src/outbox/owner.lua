@@ -4,6 +4,7 @@ local jobs = require("jobs")
 local policy = require("policy")
 local time = require("time")
 local settings = require("settings")
+local config = require("config")
 local store = require("store")
 local types = require("types")
 local realtime = require("realtime")
@@ -83,11 +84,11 @@ local function sweep(now: integer, retention_ms: integer): (types.OwnerResult?, 
 end
 
 local function run(input: types.OwnerInput): types.OwnerResult
-    local config, config_err = settings.read("kickside.mail")
+    local values, config_err = settings.mail()
     if config_err then return {success = false, error = config_err} end
-    local days = policy.retention_days(config.log_retention_days)
+    local days = policy.retention_days(values.log_retention_days)
     if not days then
-        return {success = false, error = settings.missing("Mail delivery log retention days are invalid")}
+        return {success = false, error = config.setup_error("Mail delivery log retention days are invalid")}
     end
     local now = time.now():unix_nano() // 1000000
     local err = reconcile(now, input)

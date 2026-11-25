@@ -70,4 +70,13 @@ function M.refs(content: types.ResourceContent): types.ResourceReferences
     return {bases = sorted(bases), parts = sorted(parts), assets = sorted(assets)}
 end
 
+function M.keys(item: types.ResourceContent): {types.ResourceKey}
+    local refs = M.refs(item)
+    local keys: {types.ResourceKey} = {}
+    for _, name in ipairs(refs.bases) do keys[#keys + 1] = {kind = "base", name = name} end
+    for _, name in ipairs(refs.parts) do keys[#keys + 1] = {kind = "part", name = name} end
+    for _, name in ipairs(refs.assets) do keys[#keys + 1] = {kind = "asset", name = name} end
+    return keys
+end
+
 return M

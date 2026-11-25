@@ -3,7 +3,7 @@ local types = require("types")
 local message = require("message")
 local drivers = require("drivers")
 local policy = require("policy")
-local settings = require("settings")
+local config = require("config")
 
 local function address(input: types.SettingInput): types.SettingValidation
     if input.value == "" or message.address(input.value) then return {valid = true} end
@@ -17,8 +17,10 @@ end
 
 local function api_key(input: types.SettingInput): types.SettingValidation
     if input.value == "" then return {valid = true} end
-    local _, issue = settings.api_key({api_key = input.value :: string})
-    return {valid = issue == nil, error = issue and issue:message() or nil}
+    local issue = config.api_key_issue(input.value)
+    if issue == "api_key_required" then return {valid = false, error = "Add an API key to send mail."} end
+    if issue then return {valid = false, error = "Enter an API key without spaces or line breaks."} end
+    return {valid = true}
 end
 
 local function driver(args: types.SettingInput): (types.SettingValidation?, error?)

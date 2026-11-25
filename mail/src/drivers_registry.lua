@@ -3,7 +3,6 @@ local types = require("types")
 local registry = require("registry")
 local contract = require("contract")
 local funcs = require("funcs")
-local settings = require("settings")
 local config = require("config")
 
 local M = {sender = config.sender, reply_to = config.reply_to}
@@ -43,12 +42,12 @@ end
 
 function M.resolve(id: string?): (types.Driver?, error?)
     if not id or id == "" then
-        return nil, settings.missing("An active mail driver is required", "driver_required", "Choose a delivery service for Mail.")
+        return nil, config.setup_error("An active mail driver is required", "driver_required", "Choose a delivery service for Mail.")
     end
     local drivers, err = M.discover()
     if err then return nil, err end
     if not drivers[id] then
-        return nil, settings.missing("The active mail driver is not installed", "driver_not_installed",
+        return nil, config.setup_error("The active mail driver is not installed", "driver_not_installed",
             "Choose an installed delivery service for Mail.")
     end
     return drivers[id], nil
@@ -78,7 +77,7 @@ end
 function M.check_available(driver: types.Driver): error?
     local state, err = M.availability(driver)
     if err then return err end
-    if not state.available then return settings.missing(state.reason :: string, state.code) end
+    if not state.available then return config.setup_error(state.reason :: string, state.code) end
     local _, open_err = M.transport(driver)
     return open_err
 end

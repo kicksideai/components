@@ -93,6 +93,8 @@ local function caller(policy_ids, id)
         policies[#policies + 1] = assert(security.policy(policy_id))
         if policy_id == "kickside.mail.security:send_access" then
             groups[#groups + 1] = "app:mail_senders"
+        elseif policy_id == "kickside.mail.security:library_access" then
+            groups[#groups + 1] = "app:mail_editors"
         end
     end
     id = id or uuid.v4()

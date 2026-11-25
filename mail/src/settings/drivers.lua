@@ -13,7 +13,7 @@ local function list(): ({items: {types.DriverSummary}}?, error?)
     for _, driver in pairs(installed) do
         local state, state_err = drivers.availability(driver)
         if state_err then return nil, state_err end
-        local fields, fields_err = funcs.call("kickside.mail.settings:driver_settings", driver.settings_ns)
+        local fields, fields_err = funcs.call("kickside.mail.read:driver_settings", driver.settings_ns)
         if fields_err then return nil, fields_err end
         result[#result + 1] = {id = driver.id, label = driver.label, icon = driver.icon,
             description = driver.description, settings_ns = driver.settings_ns, settings_view = driver.settings_view,

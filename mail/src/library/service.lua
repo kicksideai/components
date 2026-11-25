@@ -14,7 +14,7 @@ local globals = require("globals")
 local settings = require("settings")
 local realtime = require("realtime")
 local preview_id = require("preview_id")
-local attachments = require("attachments")
+local content = require("content")
 local asset_refs = require("asset_refs")
 local asset_store = require("asset_store")
 local notifier = require("notifier")
@@ -272,7 +272,7 @@ local function adopt(input: types.AssetWrite, operation: string): (types.Resourc
     elseif input.expected_revision ~= current.revision then
         return nil, edit_ops.conflict(key, current.revision)
     end
-    local _, info, info_err = attachments.upload_info(input.upload_id)
+    local _, info, info_err = content.upload_info(input.upload_id)
     if info_err then return nil, info_err end
     info = info :: types.ContentInfo
     local bad_image = asset_refs.image_error(info.content_type, info.size)

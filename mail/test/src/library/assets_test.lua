@@ -15,6 +15,7 @@ local upload_types = require("upload_types")
 local fixtures = require("fixtures")
 local asset_store = require("asset_store")
 local attachments = require("attachments")
+local content = require("content")
 
 local LIBRARY = "kickside.mail.library:"
 local function setup_actor(groups)
@@ -559,11 +560,11 @@ end)
 
 local function service_content(upload_id)
     assert(security.actor():id() == "system:kickside.mail.retention")
-    local provider, info, err = attachments.upload_info(upload_id)
+    local provider, info, err = content.upload_info(upload_id)
     if err then return nil, err end
-    local content, read_err = attachments.upload_bytes(provider, info.size, 1024)
+    local file, read_err = content.upload_bytes(provider, info.size, 1024)
     if read_err then return nil, read_err end
-    return {component_id = info.source_ref.component_id, bytes = content.content}
+    return {component_id = info.source_ref.component_id, bytes = file.content}
 end
 
 return {run = run, expiry = expiry, service_content = service_content}

@@ -5,7 +5,7 @@ local request = require("request")
 
 local function handler()
     return request.handle(client.require_admin, function(_req)
-        return funcs.call("kickside.mail.settings:delivery_status")
+        return funcs.call("kickside.mail.read:delivery_status")
     end)
 end
 

@@ -76,7 +76,7 @@ entries:
     modules: [security]
     imports:
       test: wippy.test:test
-      preview: kickside.mail.service:live_preview
+      preview: kickside.mail.read:preview
     security:
       policies:
         - app.templates:deny_app_definition

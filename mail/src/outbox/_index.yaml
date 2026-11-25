@@ -17,12 +17,10 @@ entries:
   - name: log
     kind: library.lua
     source: &log_source file://log.lua
-    modules: &log_modules [security, uuid, time]
+    modules: &log_modules [uuid]
     imports: &log_imports
       database: kickside.mail.persist:db
-      identity: kickside.execution:execution_identity
-      failure: kickside.mail.domain:failure
-      policy: kickside.mail.domain:policy
+      activity: kickside.mail.read:activity
       message_reader: kickside.mail.persist:message_reader
       types: kickside.mail:types
   - name: get_message
@@ -57,7 +55,7 @@ entries:
       attachments: kickside.mail.service:attachments
       policy: kickside.mail.domain:policy
       realtime: kickside.mail:realtime
-      settings: kickside.mail:settings
+      settings: kickside.mail.read:settings
       store: kickside.mail.outbox:store
       types: kickside.mail:types
     security:
@@ -75,14 +73,10 @@ entries:
   - name: read_attachments
     kind: function.lua
     meta: { private: true }
-    source: file://../service/attachments.lua
+    source: file://read_attachments.lua
     method: read
-    modules: [contract, funcs, base64]
     imports:
-      client: kickside.mail:client
-      types: kickside.mail:types
-      message: kickside.mail.domain:message
-      asset_refs: kickside.mail.domain:assets
+      attachments: kickside.mail.service:attachments
   - name: owner
     kind: function.lua
     meta: { private: true, type: kickside.retention.owner }
@@ -97,7 +91,8 @@ entries:
       jobs: kickside.core.jobs:jobs
       policy: kickside.mail.domain:policy
       realtime: kickside.mail:realtime
-      settings: kickside.mail:settings
+      settings: kickside.mail.read:settings
+      config: kickside.mail.domain:config
       store: kickside.mail.outbox:store
       types: kickside.mail:types
     security:

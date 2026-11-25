@@ -66,6 +66,7 @@ entries:
       settings: app.mail_api:fixtures
       asset_store: kickside.mail.library:asset_store
       attachments: kickside.mail.service:attachments
+      content: kickside.mail.read:content
   - name: asset_expiry_test
     kind: function.lua
     meta: { type: test, suite: mail_asset_expiry }
@@ -105,3 +106,12 @@ entries:
       resources: [app.mail_library:service_content]
       actions: [funcs.call]
       effect: allow
+  - name: acl_test
+    kind: function.lua
+    meta: { type: test, suite: mail_library_acl }
+    source: file://acl_test.lua
+    method: run
+    modules: [funcs, security, sql, uuid]
+    imports:
+      autoinit: kickside.component:autoinit
+      test: wippy.test:test

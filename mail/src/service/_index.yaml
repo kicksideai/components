@@ -10,10 +10,11 @@ entries:
     imports: &mailer_imports
       types: kickside.mail:types
       client: kickside.mail:client
-      settings: kickside.mail:settings
+      settings: kickside.mail.read:settings
+      config: kickside.mail.domain:config
       drivers: kickside.mail:drivers_registry
       message: kickside.mail.domain:message
-      live_preview: kickside.mail.service:live_preview
+      live_preview: kickside.mail.read:preview
       attachments: kickside.mail.service:attachments
       recipients: kickside.mail.service:recipients
       canonical_json: kickside.contract:canonical_json
@@ -61,54 +62,39 @@ entries:
     security: *send_security
   - name: list_templates
     kind: function.lua
-    source: file://../views/catalog.lua
+    source: &query_source file://queries.lua
     method: list_templates
-    imports: &catalog_imports
-      types: kickside.mail:types
-      vars: kickside.mail.domain:vars
-      client: kickside.mail:client
-      jet: kickside.mail.domain:jet
-      resources: kickside.mail.library:resources
-      realtime: kickside.mail:realtime
+    imports: &query_imports
+      catalog: kickside.mail.read:catalog
+      preview: kickside.mail.read:preview
     security: &catalog_security
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
   - name: get_template
     kind: function.lua
-    source: file://../views/catalog.lua
+    source: *query_source
     method: get_template
-    imports: *catalog_imports
+    imports: *query_imports
     security: *catalog_security
   - name: preview
     kind: function.lua
-    source: &preview_source file://preview.lua
+    source: *query_source
     method: preview
-    imports: &preview_imports
-      types: kickside.mail:types
-      client: kickside.mail:client
-      message: kickside.mail.domain:message
-      render: kickside.mail.render:render
-      catalog: kickside.mail.views:catalog
-      globals: kickside.mail.render:globals
-      jet: kickside.mail.domain:jet
-      resources: kickside.mail.library:resources
-      settings: kickside.mail:settings
-      attachments: kickside.mail.service:attachments
+    imports: *query_imports
     security:
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - kickside.mail.security:site_url
         - kickside.mail.security:settings_read
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
         - kickside.mail.security:asset_bytes
-  - name: live_preview
-    kind: library.lua
-    meta: { private: true, comment: Supplies settings and live library resources to the renderer. }
-    source: *preview_source
-    imports: *preview_imports
   - name: delivery
     kind: library.lua
     source: file://delivery.lua
@@ -120,12 +106,10 @@ entries:
   - name: attachments
     kind: library.lua
     source: file://attachments.lua
-    modules: [contract, funcs, base64]
     imports:
       client: kickside.mail:client
       types: kickside.mail:types
-      message: kickside.mail.domain:message
-      asset_refs: kickside.mail.domain:assets
+      content: kickside.mail.read:content
   - name: recipients
     kind: library.lua
     source: file://recipients.lua

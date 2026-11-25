@@ -73,7 +73,7 @@ Lua callers with **Edit mail library** call functions in `kickside.mail.library`
 
 ## Library images
 
-Add a named image from your completed Uploads file with **Edit mail library** or the `MailAssetAdd` tool. Mail supports PNG, JPEG, and GIF images up to 1 MiB. Supply pixel width and height when known. Mail gets the media type and byte size from Uploads. Only the person who uploaded the source can adopt it into the library. Bind `kickside.mail:library_editor_grant` to the host editor group with `subject_type: group` and `access_mask: 2`.
+Add a named image from your completed Uploads file with **Edit mail library** or the `MailAssetAdd` tool. Mail supports PNG, JPEG, and GIF images up to 1 MiB. Supply pixel width and height when known. Mail gets the media type and byte size from Uploads. Only the person who uploaded the source can adopt it into the library. Bind `kickside.mail:library_editor_grant` to the host editor group with `subject_type: group` and `access_mask: 3`.
 
 Use the `assets` map in any HTML message, base, or part. Use brackets for names containing a hyphen.
 

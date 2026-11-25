@@ -57,6 +57,11 @@ entries:
     kind: security.scope
   - name: mail_editors
     kind: security.scope
+  - name: mail_editors_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app:mail_editors
+    policies: []
   - name: dep.test
     kind: ns.dependency
     component: wippy/test
@@ -160,7 +165,7 @@ entries:
     imports:
       test: wippy.test:test
       message: kickside.mail.domain:message
-      render: kickside.mail.service:live_preview
+      render: kickside.mail.read:preview
       renderer: kickside.mail.render:render
       failure: kickside.mail.domain:failure
   - name: dep.blocks
@@ -177,7 +182,7 @@ entries:
       - { name: "kickside.mail.security:user_security_scope", value: "app:user" }
       - { name: "kickside.mail:target_db", value: "app:db" }
       - { name: "kickside.mail:api_router", value: "app:api" }
-      - { name: "kickside.mail:library_editor_grant", value: {subject_id: "app:mail_editors", subject_type: group, access_mask: 2} }
+      - { name: "kickside.mail:library_editor_grant", value: {subject_id: "app:mail_editors", subject_type: group, access_mask: 3} }
   - name: dep.workflows
     kind: ns.dependency
     component: kickside/workflows

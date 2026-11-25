@@ -18,6 +18,10 @@ workspace:
     kickside/users: ../../../kickside/platform/users
     kickside/doc2md: ../../../converters/doc2md
 override:
+  kickside.mail.binding:library:meta.provision.grants:
+    - {subject_id: "system:kickside.mail.retention", subject_type: user, access_mask: 1}
+    - {subject_id: "wippy.test:runner", subject_type: user, access_mask: 1}
+    - {subject_id: "app:mail_editors", subject_type: group, access_mask: 3}
   kickside.workflows.agent:flows_read:imports.published_catalog: kickside.mail.harness:workflow_catalog_fault
   kickside.mail.library:update:imports.live: app.mail_library:projection_fault
   kickside.mail.library:update:imports.database: app.mail_library:projection_database
