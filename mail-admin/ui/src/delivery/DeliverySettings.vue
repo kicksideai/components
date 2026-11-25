@@ -148,7 +148,7 @@ const testBlocked = computed(() => selected.value ? '' : 'Choose a service to se
       </p>
       <p v-if="notice" class="kx-notice info mail-block" role="status"><Icon icon="tabler:circle-check" aria-hidden="true" />{{ notice }}</p>
 
-      <SettingsGroup title="Delivery service">
+      <SettingsGroup title="Delivery service" class="mail-service-group">
         <SettingsItem title="Service" :description="serviceDescription">
           <template #actions>
             <span class="mail-setting-control">

@@ -269,3 +269,5 @@ h1, h2, h3, p, dl, dd, ol, ul { margin: 0; }
 .mail-failure-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .mail-picker-search { padding: 8px 8px 4px; }
 .mail-picker-more { margin: 0; padding: 6px 12px 8px; font-size: 12px; color: var(--p-text-muted-color); }
+/* The service picker opens inside the shadow root, so its group lets the overlay extend past the rounded list. */
+.mail-delivery .mail-service-group .kx-settings-group-list { overflow: visible; }
