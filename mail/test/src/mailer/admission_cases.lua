@@ -6,6 +6,8 @@ local sql = require("sql")
 local uuid = require("uuid")
 local jobs = require("jobs")
 
+local policy = require("policy")
+
 local function register(support)
     local test = support.test
     local actors = support.actors
@@ -135,7 +137,6 @@ local function register(support)
         no_body(queued.message_id)
     end)
 
-    local policy = require("policy")
 
     for _, fault in ipairs({"refused", "dns", "tls", "connect_timeout", "response_timeout", "response_reset"}) do
         test.it("retries provider HTTP transport failure " .. fault, function()

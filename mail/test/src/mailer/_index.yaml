@@ -139,6 +139,7 @@ entries:
     source: file://admission_cases.lua
     modules: [security, registry, json, sql, uuid]
     imports:
+      policy: kickside.mail.domain:policy
       jobs: kickside.core.jobs:jobs
   - name: delivery_retry_cases
     kind: library.lua
