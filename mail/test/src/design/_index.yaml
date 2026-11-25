@@ -13,3 +13,4 @@ entries:
       blocks: kickside.blocks:blocks
       fixtures: app.mail_library:fixtures
       api_fixtures: app.mail_api:fixtures
+      delivery_wait: app.mail_harness:delivery_wait

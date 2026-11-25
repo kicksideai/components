@@ -1,34 +1,34 @@
 # SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 version: "1.0"
-namespace: kickside.mail.harness
+namespace: app.mail_harness
 entries:
   - name: admitted_open
     kind: security.policy
     groups: [kickside.mail.security:transports]
     policy:
-      resources: [kickside.mail.harness:admitted, kickside.mail.harness:second, kickside.mail.harness:capture]
+      resources: [app.mail_harness:admitted, app.mail_harness:second, app.mail_harness:capture]
       actions: [contract.open]
       effect: allow
   - name: admitted
     kind: contract.binding
     contracts:
       - contract: kickside.mail:transport
-        methods: {send: kickside.mail.harness:send_first, status: kickside.mail.harness:status_first}
+        methods: {send: app.mail_harness:send_first, status: app.mail_harness:status_first}
   - name: second
     kind: contract.binding
     contracts:
       - contract: kickside.mail:transport
-        methods: {send: kickside.mail.harness:send_second, status: kickside.mail.harness:status_second}
+        methods: {send: app.mail_harness:send_second, status: app.mail_harness:status_second}
   - name: capture
     kind: contract.binding
     contracts:
       - contract: kickside.mail:transport
-        methods: {send: kickside.mail.harness:send_capture, status: kickside.mail.harness:status_capture}
+        methods: {send: app.mail_harness:send_capture, status: app.mail_harness:status_capture}
   - name: refused
     kind: contract.binding
     contracts:
       - contract: kickside.mail:transport
-        methods: {send: kickside.mail.harness:send_first, status: kickside.mail.harness:status_first}
+        methods: {send: app.mail_harness:send_first, status: app.mail_harness:status_first}
   - name: send_first
     kind: function.lua
     source: file://transport.lua
@@ -50,7 +50,7 @@ entries:
     modules: *transport_modules
     imports: *transport_imports
     security:
-      policies: [kickside.mail.harness:fixture_db]
+      policies: [app.mail_harness:fixture_db]
   - name: status_first
     kind: function.lua
     source: file://transport.lua
@@ -76,7 +76,7 @@ entries:
   - name: transport_probe_call
     kind: security.policy
     policy:
-      resources: [kickside.mail.harness:transport_probe]
+      resources: [app.mail_harness:transport_probe]
       actions: [funcs.call]
       effect: allow
   - name: transport_probe_contract
@@ -92,8 +92,9 @@ entries:
     modules: [contract, funcs, registry, security]
     imports:
       test: wippy.test:test
+      config: kickside.mail.driver:config
     security:
-      policies: [kickside.mail.harness:transport_probe_contract]
+      policies: [app.mail_harness:transport_probe_contract]
   - name: transports_test
     kind: function.lua
     meta: {type: test, suite: mail_transports}
@@ -118,17 +119,65 @@ entries:
     kind: function.lua
     source: file://mailer_test.lua
     method: probe
-    modules: [contract, funcs, security, registry, json, sql, time, uuid]
+    modules: [contract, funcs, security, json, sql, time, uuid]
     imports:
-      library_fixtures: app.mail_library:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
       test: wippy.test:test
       blocks: kickside.blocks:blocks
       compiler: kickside.workflows.compiler:compiler
-      canonical_json: kickside.contract:canonical_json
       jobs: kickside.core.jobs:jobs
-      policy: kickside.mail.domain:policy
+      database: kickside.mail.persist:db
+      admission_cases: app.mail_harness:admission_cases
+      delivery_retry_cases: app.mail_harness:delivery_retry_cases
+      activity_cases: app.mail_harness:activity_cases
+      delivery_retention_cases: app.mail_harness:delivery_retention_cases
+      automation_cases: app.mail_harness:automation_cases
+      settings_cases: app.mail_harness:settings_cases
+      template_cases: app.mail_harness:template_cases
+  - name: admission_cases
+    kind: library.lua
+    source: file://admission_cases.lua
+    modules: [security, registry, json, sql, uuid]
+    imports:
+      jobs: kickside.core.jobs:jobs
+  - name: delivery_retry_cases
+    kind: library.lua
+    source: file://delivery_retry_cases.lua
+    modules: [security, json, time]
+    imports:
+      jobs: kickside.core.jobs:jobs
+  - name: activity_cases
+    kind: library.lua
+    source: file://activity_cases.lua
+    modules: [security, json, uuid]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+      database: kickside.mail.persist:db
+  - name: delivery_retention_cases
+    kind: library.lua
+    source: file://delivery_retention_cases.lua
+    modules: [funcs, sql, time, uuid]
+    imports:
+      jobs: kickside.core.jobs:jobs
       database: kickside.mail.persist:db
       jobs_cancel: kickside.core.jobs.persist:lifecycle_cancel
+  - name: automation_cases
+    kind: library.lua
+    source: file://automation_cases.lua
+    modules: [security, registry, json]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+  - name: settings_cases
+    kind: library.lua
+    source: file://settings_cases.lua
+    modules: [security, registry]
+  - name: template_cases
+    kind: library.lua
+    source: file://template_cases.lua
+    modules: [security, registry, json, sql, uuid]
+    imports:
+      blocks: kickside.blocks:blocks
+      canonical_json: kickside.contract:canonical_json
   - name: fixture_db
     kind: security.policy
     policy:
@@ -138,7 +187,7 @@ entries:
   - name: caller
     kind: security.policy
     policy:
-      resources: [kickside.mail.harness:probe]
+      resources: [app.mail_harness:probe]
       actions: [funcs.call]
       effect: allow
   - name: external_template
@@ -157,43 +206,51 @@ entries:
         - kickside.users.provisioning:provisioning_get_user
       actions: [registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
       effect: allow
-  - name: admin
+  - name: settings_editor
+    kind: security.scope
+  - name: settings_editor_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_harness:settings_editor
+    policies:
+      - app.mail_harness:caller
+      - app.mail_harness:fixture_db
+      - app.mail_harness:settings_write
+      - app.mail_harness:settings_methods
+      - kickside.settings.security:module_access
+      - kickside.mail.security:driver_admin
+  - name: settings_write
     kind: security.policy
     policy:
-      resources:
-        - kickside.settings:*
-        - kickside.settings.api:put_settings.endpoint
-        - kickside.settings.persist:*
-        - kickside.mail.settings:setting_driver
-        - kickside.mail.settings:setting_from_address
-        - kickside.mail.settings:setting_from_name
-        - kickside.mail.settings:setting_reply_to
-        - kickside.mail.settings:setting_log_retention_days
-        - kickside.mail.settings:validate_driver
-        - kickside.mail.settings:validate_address
-        - kickside.mail.settings:validate_from_name
-        - kickside.mail.settings:validate_retention
-        - app:db
-        - set
-        - unset
-      actions: [access, registry.find, registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security, db.get]
+      resources: [kickside.settings.api:put_settings.endpoint]
+      actions: [access]
+      effect: allow
+  - name: settings_methods
+    kind: security.policy
+    policy:
+      resources: [set, unset]
+      actions: [contract.call]
       effect: allow
   - name: test
     kind: function.lua
     meta: { type: test, suite: mailer }
     source: file://mailer_test.lua
     method: run
-    modules: [funcs, security, contract, registry, json, sql, time, uuid]
+    modules: [funcs, security, contract, json, sql, time, uuid]
     imports:
-      library_fixtures: app.mail_library:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
       test: wippy.test:test
       blocks: kickside.blocks:blocks
       compiler: kickside.workflows.compiler:compiler
-      canonical_json: kickside.contract:canonical_json
       jobs: kickside.core.jobs:jobs
-      policy: kickside.mail.domain:policy
       database: kickside.mail.persist:db
-      jobs_cancel: kickside.core.jobs.persist:lifecycle_cancel
+      admission_cases: app.mail_harness:admission_cases
+      delivery_retry_cases: app.mail_harness:delivery_retry_cases
+      activity_cases: app.mail_harness:activity_cases
+      delivery_retention_cases: app.mail_harness:delivery_retention_cases
+      automation_cases: app.mail_harness:automation_cases
+      settings_cases: app.mail_harness:settings_cases
+      template_cases: app.mail_harness:template_cases
   - name: port_declaration_test
     kind: function.lua
     meta: { type: test, suite: mailer }
@@ -207,3 +264,18 @@ entries:
     kind: library.lua
     source: file://owner_clock.lua
     modules: [ctx, time]
+  - name: delivery_signal_test
+    kind: function.lua
+    meta: {type: test, suite: mail_delivery_signal}
+    source: file://delivery_signal_test.lua
+    method: run
+    modules: [channel, events, funcs, time]
+    imports:
+      delivery_wait: app.mail_harness:delivery_wait
+      test: wippy.test:test
+      api_fixtures: app.mail_api:fixtures
+      library_fixtures: app.mail_library:fixtures
+  - name: delivery_wait
+    kind: library.lua
+    source: file://delivery_wait.lua
+    modules: [channel, events, time]

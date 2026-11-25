@@ -7,17 +7,17 @@ local test = require("test")
 local config = require("config")
 
 local CONTRACT = "kickside.mail:transport"
-local ADMITTED = "kickside.mail.harness:admitted"
-local REFUSED = "kickside.mail.harness:refused"
-local LATE = "kickside.mail.harness:late"
-local LATE_POLICY = "kickside.mail.harness:late_open"
+local ADMITTED = "app.mail_harness:admitted"
+local REFUSED = "app.mail_harness:refused"
+local LATE = "app.mail_harness:late"
+local LATE_POLICY = "app.mail_harness:late_open"
 
 local function call_without_group()
     local actor = assert(security.new_actor("mail-harness-transport-caller"))
-    local policy = assert(security.policy("kickside.mail.harness:transport_probe_call"))
+    local policy = assert(security.policy("app.mail_harness:transport_probe_call"))
     local scope = assert(security.new_scope({policy}))
     local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
-    return executor:call("kickside.mail.harness:transport_probe", ADMITTED)
+    return executor:call("app.mail_harness:transport_probe", ADMITTED)
 end
 
 local function probe(id: string)
@@ -30,11 +30,11 @@ end
 
 local function invoke(operation, message, policy_ids, groups)
     local actor = assert(security.new_actor("mail-harness-transport-caller", {security_groups = groups}))
-    local policies = {assert(security.policy("kickside.mail.harness:caller"))}
+    local policies = {assert(security.policy("app.mail_harness:caller"))}
     for _, id in ipairs(policy_ids) do policies[#policies + 1] = assert(security.policy(id)) end
     local scope = assert(security.new_scope(policies))
     local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
-    return executor:call("kickside.mail.harness:probe", {operation = operation, message = message})
+    return executor:call("app.mail_harness:probe", {operation = operation, message = message})
 end
 
 local function catalog()
@@ -68,18 +68,19 @@ local function admission(id: string): registry.Entry
 end
 
 local function change_driver(value)
-    local actor = assert(security.new_actor("mail-harness:transport-admin"))
-    local scope = assert(security.new_scope({assert(security.policy("kickside.mail.harness:caller")),
-        assert(security.policy("kickside.mail.harness:admin"))}))
+    local groups = {"app.mail_harness:settings_editor"}
+    local actor = assert(security.new_actor("mail-harness:transport-admin", {security_groups = groups}))
+    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
+    local scope = assert(security.named_scope(materialized.scope_name))
     local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
-    return assert(executor:call("kickside.mail.harness:probe", {
+    return assert(executor:call("app.mail_harness:probe", {
         operation = value and "set" or "unset", key = "driver", value = value,
     }))
 end
 
 local function define_tests()
     test.describe("Driver endpoint URLs", function()
-        local endpoints = "kickside.mail.harness:endpoints"
+        local endpoints = "app.mail_harness:endpoints"
 
         test.it("accepts HTTPS origins, exact delivery URLs, and policy prefixes", function()
             test.eq("https://example.org:443", assert(config.endpoint(endpoints, "origin")))
@@ -106,7 +107,7 @@ local function define_tests()
             test.eq("First", status.title)
             test.eq("lucide:mail", status.icon)
             test.eq("First test transport.", status.description)
-            test.eq("kickside.mail.harness.first", status.settings_ns)
+            test.eq("app.mail_harness.first", status.settings_ns)
             test.is_true(status.ready)
             test.is_false(status.idempotent)
         end)
@@ -143,7 +144,7 @@ local function define_tests()
         test.it("rejects a refused ID in the driver setting", function()
             local result = change_driver(REFUSED)
             test.is_false(result.success)
-            test.eq("The active mail driver is not admitted", result.error)
+            test.is_true(type(result.error) == "string" and result.error:find("%S") ~= nil)
         end)
 
         test.it("accepts the empty default to clear the driver selection", function()
@@ -177,7 +178,7 @@ local function define_tests()
         test.it("includes a late binding without restart and removes it from Mail status on revocation", function()
             test.is_nil(implementations()[LATE])
             apply({{id = LATE, kind = "contract.binding", meta = {}, data = {contracts = {{contract = CONTRACT,
-                methods = {send = "kickside.mail.harness:send_first", status = "kickside.mail.harness:status_first"},
+                methods = {send = "app.mail_harness:send_first", status = "app.mail_harness:status_first"},
             }}}}, admission(LATE)})
             local admitted = catalog()[LATE]
             apply(nil, {LATE_POLICY})

@@ -9,6 +9,7 @@ local sql = require("sql")
 local time = require("time")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
+local delivery_wait = require("delivery_wait")
 
 local NS = "kickside.mail.traits:"
 local POLICY = "kickside.mail.security:"
@@ -197,17 +198,13 @@ return {run = test.run_cases(function()
             test.eq(welcome.name, created.name)
 
             configured = true
-            api_fixtures.settings("kickside.mail.harness:capture", "mail@example.org")
+            api_fixtures.settings("app.mail_harness:capture", "mail@example.org")
             local _, bad_send = editor:call(NS .. "send_test", {message = welcome.name, to = {"other@example.org"}})
             test.eq(errors.INVALID, bad_send:kind())
             local queued = ok(editor, "send_test", {message = welcome.name})
-            local deadline = time.now():add("5s")
-            local sent
-            repeat
-                sent = assert(fixtures.mailer(nil, "get_message", queued.message_id))
-                if sent.status ~= "queued" then break end
-                time.sleep("10ms")
-            until time.now():after(deadline)
+            local sent = delivery_wait.terminal(function()
+                return fixtures.mailer(nil, "get_message", queued.message_id)
+            end, "5s")
             test.eq("sent", sent.status, sent.last_error and sent.last_error.message)
             local captured = assert(json.decode(sent.provider_message_id))
             test.eq(1, #captured.to)

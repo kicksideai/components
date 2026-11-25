@@ -2,7 +2,6 @@
 local autoinit = require("autoinit")
 local contract = require("contract")
 local events = require("events")
-local fs = require("fs")
 local funcs = require("funcs")
 local json = require("json")
 local resource = require("resource")
@@ -261,9 +260,6 @@ local function cases()
 
         test.is_true(largest_body >= 6 * limit)
         test.is_true(largest_row <= 4194304)
-        local storage = assert(fs.get("app:uploads"))
-        assert(storage:writefile("l12-snapshot-size.txt", string.format(
-            "body_bytes\tthreads_row_bytes\n%d\t%d\n", largest_body, largest_row)))
     end)
 end
 

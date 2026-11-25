@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 version: "1.0"
-namespace: kickside.realtime
+namespace: app.mail_realtime
 entries:
   - name: fixture_migration
     kind: function.lua
@@ -8,24 +8,23 @@ entries:
     source: file://fixture_migration.lua
     method: migrate
     imports: { migration: wippy.migration:migration }
-  - name: realtime_binding
-    kind: contract.binding
-    contracts:
-      - contract: kickside.contract:realtime
-        default: true
-        methods: { broadcast: kickside.realtime:broadcast, notify: kickside.realtime:notify }
   - name: broadcast
     kind: function.lua
     source: file://broadcast.lua
     method: broadcast
-    modules: [json, security, sql]
+    modules: [events, json, security, sql]
     security:
-      policies: [kickside.mail.harness:fixture_db]
+      policies: [app.mail_harness:fixture_db, app.mail_realtime:fixture_activity_signal]
+  - name: fixture_activity_signal
+    kind: security.policy
+    policy:
+      resources: [mail.fixture]
+      actions: [events.send]
+      effect: allow
   - name: notify
     kind: function.lua
-    source: file://broadcast.lua
+    source: file://notify.lua
     method: notify
-    modules: [json, security, sql]
   - name: notify_test
     kind: function.lua
     meta: {type: test, suite: mail_realtime}

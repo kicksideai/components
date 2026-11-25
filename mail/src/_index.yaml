@@ -72,6 +72,7 @@ entries:
     meta: {value_kind: library.lua, description: Adapter used to read library history events.}
     targets:
       - {entry: kickside.mail.read:history, path: .imports.thread_events}
+      - {entry: kickside.mail.command:retention, path: .imports.thread_events}
   - name: thread_writer
     kind: ns.requirement
     default: kickside.mail.command:threads

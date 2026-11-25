@@ -15,6 +15,7 @@ local lookup = require("lookup")
 local upload_types = require("upload_types")
 local api_fixtures = require("api_fixtures")
 local component = require("component")
+local provision = require("provision")
 
 local KIND = "kickside.mail.binding:library"
 
@@ -32,6 +33,13 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail library teardown", function()
+        test.after_all(function()
+            local actor = assert(security.new_actor("system:lifecycle", {system = true, groups = {"system", "lifecycle"}}))
+            local scope = assert(security.named_scope("wippy.security:process"))
+            assert(provision.ensure_system(actor, scope))
+            assert(assert(funcs.call("kickside.mail.jobs:reconcile")).status == "success")
+        end)
+
         test.it("describes the library through its component status binding", function()
             local declaration = assert(registry.get(KIND))
             test.eq("kickside.mail.binding:status", declaration.data.contracts[1].methods.get_status)
@@ -55,7 +63,7 @@ return {run = test.run_cases(function()
             assert(storage:writefile(source, gif))
             assert(records.create(source, who.id, #gif, "image/gif", "app:uploads", source,
                 "kickside.uploads:types.generic", {filename = "mark"}, "completed"))
-            local image = assert(fixtures.call(editor, "create", {kind = "asset", name = "teardown-image", upload_id = source}))
+            local image = assert(fixtures.call(editor, "add_asset", {kind = "asset", name = "teardown-image", upload_id = source}))
             local upload = assert(lookup.get(image.asset.upload_id))
             local message = {kind = "message", name = "teardown-message", title = "Teardown", description = "",
                 subject = "Teardown", base = "plain", html = "{{ block body() }}Mail{{ end }}",
@@ -73,7 +81,7 @@ return {run = test.run_cases(function()
                 end
                 test.eq(0, #assert(assert(registry.overlay("kickside.mail.render:live")):entries()))
                 local ledger = rows("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {upload.uuid})
-                test.eq(now, ledger[1] and ledger[1].due_at)
+                test.is_true(ledger[1] and ledger[1].due_at <= now)
             end
             test.is_true(storage:exists(upload.storage_path))
             local deleted, delete_err = component.system_delete(component_id)

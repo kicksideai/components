@@ -3,7 +3,6 @@ local autoinit = require("autoinit")
 local funcs = require("funcs")
 local fixtures = require("fixtures")
 local security = require("security")
-local sql = require("sql")
 local test = require("test")
 local uuid = require("uuid")
 
@@ -23,28 +22,31 @@ end
 return {run = test.run_cases(function()
     test.describe("Mail library read authorization", function()
         local actor_id
-        local grant_id
+        local granted
+        local component_id = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
+        local actor = assert(security.new_actor("system:lifecycle", {system = true, groups = {"system", "lifecycle"}}))
+        local owner = assert(funcs.new():with_actor(actor):with_scope(assert(security.named_scope("wippy.security:process"))))
+
+        local function share(method, mask)
+            local result = assert(owner:call("kickside.component.binding:" .. method .. "_subtree_func", {
+                root_component_id = component_id,
+                subject = {subject_id = tostring(actor_id), subject_type = "user"}, access_mask = mask,
+            }))
+            assert(result.success, tostring(result.error))
+        end
 
         test.before_each(function()
             actor_id = uuid.v4()
-            grant_id = nil
+            granted = false
         end)
 
         test.after_each(function()
-            if not grant_id then return end
-            local db = assert(sql.get("app:db"))
-            assert(db:execute("DELETE FROM kickside_component_access WHERE access_id = $1", {grant_id}))
-            assert(db:release())
+            if granted then share("revoke") end
         end)
 
         local function grant(mask)
-            local db = assert(sql.get("app:db"))
-            local component_id = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
-            grant_id = uuid.v4()
-            assert(db:execute([[INSERT INTO kickside_component_access
-                (access_id, subject_id, component_id, source_component_id, access_mask, subject_type)
-                VALUES ($1, $2, $3, $4, $5, 'user')]], {grant_id, actor_id, component_id, component_id, mask}))
-            assert(db:release())
+            share("grant", mask)
+            granted = true
         end
 
         test.it("refuses the Mail capability with only component WRITE", function()

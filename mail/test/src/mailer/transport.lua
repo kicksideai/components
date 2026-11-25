@@ -89,15 +89,15 @@ return {
     end,
     status_first = function()
         return {title = "First", icon = "lucide:mail", description = "First test transport.",
-            settings_ns = "kickside.mail.harness.first", ready = true, idempotent = false}
+            settings_ns = "app.mail_harness.first", ready = true, idempotent = false}
     end,
     status_second = function()
         return {title = "Second", icon = "lucide:mail", description = "Second test transport.",
-            settings_ns = "kickside.mail.harness.second", ready = true, idempotent = false,
+            settings_ns = "app.mail_harness.second", ready = true, idempotent = false,
             max_recipients = 2, max_message_bytes = 100000}
     end,
     status_capture = function()
         return {title = "Capture", icon = "lucide:mail", description = "Captures rendered messages for assertions.",
-            settings_ns = "kickside.mail.harness.capture", ready = true, idempotent = true}
+            settings_ns = "app.mail_harness.capture", ready = true, idempotent = true}
     end,
 }

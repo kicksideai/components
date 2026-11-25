@@ -4,7 +4,7 @@ namespace: app.mail_library
 entries:
   - name: teardown_test
     kind: function.lua
-    meta: {type: test, suite: zz_mail_teardown}
+    meta: {type: test, suite: mail_library_teardown}
     source: file://teardown_test.lua
     method: run
     modules: [contract, fs, funcs, registry, security, sql, time, uuid]
@@ -17,6 +17,7 @@ entries:
       upload_types: kickside.uploads:types
       api_fixtures: app.mail_api:fixtures
       component: kickside.component:component
+      provision: kickside.core.threads:provision
   - name: site_url_storage
     kind: env.storage.static
     values: {PUBLIC_API_URL: "https://example.org"}
@@ -63,7 +64,7 @@ entries:
       policies: [kickside.mail.security:module_runtime]
   - name: invoke_access
     kind: security.policy
-    groups: [app.mail_api:editor, app.mail_api:editor_sender, app.mail_api:sender,
+    groups: [app.mail_api:editor, app.mail_api:editor_sender, app.mail_api:sender, app.mail_api:upload_sender,
       app.mail_api:library_capability_only, app.mail_api:driver_only, app.mail_api:delivery_sender]
     policy:
       resources: [app.mail_library:invoke, app.mail_library:foreign_list, app.mail_library:invoke_mailer]
@@ -74,14 +75,39 @@ entries:
     meta: { type: test, suite: mail_library }
     source: file://library_test.lua
     method: run
-    modules: [contract, funcs, registry, templates, security, sql, uuid]
+    modules: [registry, templates, sql]
     imports:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       jet: kickside.mail.domain:jet
       api_fixtures: app.mail_api:fixtures
-      prune: kickside.core.retention:prune
       autoinit: kickside.component:autoinit
+      publication_cases: app.mail_library:publication_cases
+      resource_cases: app.mail_library:resource_cases
+      history_cases: app.mail_library:history_cases
+  - name: publication_cases
+    kind: library.lua
+    source: file://publication_cases.lua
+    modules: [contract, funcs, registry, sql, uuid]
+    imports:
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      autoinit: kickside.component:autoinit
+  - name: resource_cases
+    kind: library.lua
+    source: file://resource_cases.lua
+    modules: [funcs, registry, security]
+    imports:
+      fixtures: app.mail_library:fixtures
+      jet: kickside.mail.domain:jet
+      api_fixtures: app.mail_api:fixtures
+  - name: history_cases
+    kind: library.lua
+    source: file://history_cases.lua
+    modules: [funcs, security, sql]
+    imports:
+      fixtures: app.mail_library:fixtures
+      prune: kickside.core.retention:prune
   - name: draft_render
     kind: library.lua
     source: file://draft_render.lua
@@ -105,6 +131,7 @@ entries:
     method: run
     modules: &assets_modules [contract, fs, funcs, security, sql, uuid, base64, time, json]
     imports: &assets_imports
+      delivery_wait: app.mail_harness:delivery_wait
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       records: kickside.uploads.persist:upload_record_repo
@@ -116,6 +143,41 @@ entries:
       content: kickside.mail.read:content
       prune: kickside.core.retention:prune
       asset_interleave: app.mail_library:asset_interleave
+      asset_lifetime_cases: app.mail_library:asset_lifetime_cases
+      asset_content_cases: app.mail_library:asset_content_cases
+      asset_delivery_cases: app.mail_library:asset_delivery_cases
+  - name: asset_lifetime_cases
+    kind: library.lua
+    source: file://asset_lifetime_cases.lua
+    modules: [funcs, security, sql, uuid, base64, time]
+    imports:
+      fixtures: app.mail_library:fixtures
+      lookup: kickside.uploads.persist:upload_query_repo
+      settings: app.mail_api:fixtures
+      attachments: kickside.mail.command:attachments
+      content: kickside.mail.read:content
+      asset_interleave: app.mail_library:asset_interleave
+  - name: asset_content_cases
+    kind: library.lua
+    source: file://asset_content_cases.lua
+    modules: [contract, fs, funcs, security, sql, uuid, base64, time, json]
+    imports:
+      fixtures: app.mail_library:fixtures
+      upload_types: kickside.uploads:types
+      lookup: kickside.uploads.persist:upload_query_repo
+      settings: app.mail_api:fixtures
+      attachments: kickside.mail.command:attachments
+      content: kickside.mail.read:content
+  - name: asset_delivery_cases
+    kind: library.lua
+    source: file://asset_delivery_cases.lua
+    modules: [contract, funcs, security, sql, uuid]
+    imports:
+      fixtures: app.mail_library:fixtures
+      upload_types: kickside.uploads:types
+      lookup: kickside.uploads.persist:upload_query_repo
+      settings: app.mail_api:fixtures
+      attachments: kickside.mail.command:attachments
   - name: asset_expiry_test
     kind: function.lua
     meta: { type: test, suite: mail_asset_expiry }
@@ -140,6 +202,7 @@ entries:
   - name: source_fault
     kind: library.lua
     source: file://source_fault.lua
+    modules: [ctx]
     imports:
       thread_events: kickside.mail.read:thread_events
       asset_interleave: app.mail_library:asset_interleave
@@ -180,7 +243,7 @@ entries:
     meta: { type: test, suite: mail_library_acl }
     source: file://acl_test.lua
     method: run
-    modules: [funcs, security, sql, uuid]
+    modules: [funcs, security, uuid]
     imports:
       autoinit: kickside.component:autoinit
       fixtures: app.mail_library:fixtures
@@ -190,7 +253,7 @@ entries:
     meta: {type: test, suite: mail_library_projection}
     source: file://projection_test.lua
     method: run
-    modules: [contract, fs, funcs, json, security, sql, time, uuid]
+    modules: [contract, funcs, json, security, sql, time, uuid]
     imports:
       events: kickside.mail.domain:events
       resource: kickside.mail.domain:resource
@@ -216,7 +279,7 @@ entries:
   - name: projection_editor_context
     kind: security.policy
     policy:
-      resources: "*"
+      resources: [security]
       actions: [contract.security, funcs.security]
       effect: allow
   - name: projection_editor_notifications

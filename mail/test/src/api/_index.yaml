@@ -11,12 +11,46 @@ entries:
     meta: { type: test, suite: mail_api }
     source: file://api_test.lua
     method: run
-    modules: [contract, funcs, http_client, json, registry, security, sql, system, time, uuid]
+    modules: [http_client, json, sql, system, time, uuid]
     imports:
+      delivery_wait: app.mail_harness:delivery_wait
       test: wippy.test:test
       library_fixtures: app.mail_library:fixtures
-      autoinit: kickside.component:autoinit
       fixtures: app.mail_api:fixtures
+      access_cases: app.mail_api:access_cases
+      library_cases: app.mail_api:library_cases
+      image_cases: app.mail_api:image_cases
+      draft_cases: app.mail_api:draft_cases
+      delivery_cases: app.mail_api:delivery_cases
+  - name: access_cases
+    kind: library.lua
+    source: file://access_cases.lua
+    modules: [contract, funcs, http_client, registry]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+  - name: library_cases
+    kind: library.lua
+    source: file://library_cases.lua
+    modules: [funcs, json, registry, security, sql, time, uuid]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+  - name: image_cases
+    kind: library.lua
+    source: file://image_cases.lua
+    modules: [funcs, json, registry]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+  - name: draft_cases
+    kind: library.lua
+    source: file://draft_cases.lua
+    modules: [contract, funcs, http_client, security, sql, time, uuid]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+      autoinit: kickside.component:autoinit
+  - name: delivery_cases
+    kind: library.lua
+    source: file://delivery_cases.lua
+    modules: [json, sql, time]
   - name: sender
     kind: security.scope
   - name: module_only
@@ -43,6 +77,14 @@ entries:
       - kickside.mail.security:send_access
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints
+  - name: upload_sender
+    kind: security.scope
+  - name: upload_sender_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:upload_sender
+    groups: [app.mail_api:sender]
+    policies: [app:uploads_storage_access]
   - name: bundled_template_catalog
     kind: security.policy
     policy:
@@ -130,7 +172,7 @@ entries:
     policies:
       - app.mail_api:settings_admin_access
       - app.mail_api:settings_list_call
-      - kickside.settings.security:module_runtime
+      - kickside.settings.security:module_access
   - name: settings_list_call
     kind: security.policy
     policy:

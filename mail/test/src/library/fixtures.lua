@@ -130,12 +130,8 @@ local function mailer(executor, method, args)
 end
 
 local function render(executor, input)
-    local value, err
-    await(function()
-        value, err = mailer(executor, "preview", input)
-        return not err or (err:details() or {}).code ~= "mail_library_publishing"
-    end, "Mail preview is still fenced")
-    return value, err
+    await_current_live()
+    return mailer(executor, "preview", input)
 end
 
 local function foreign_list(input)

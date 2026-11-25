@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local events = require("events")
 local json = require("json")
 local security = require("security")
 local sql = require("sql")
@@ -16,12 +17,17 @@ local function broadcast(input)
             assert(db:execute("UPDATE mail_realtime_fixture SET observed=$1 WHERE topic=$2 AND subject=$3",
                 {observed, "fixture.refuse_library", name}))
             assert(db:release())
-            return {success = false, error = "L7 fixture refuses library broadcast"}
+            return {success = false, error = "Fixture refuses library broadcast"}
         end
         rows = assert(db:query("SELECT CAST(revision AS TEXT) AS observed FROM mail_library WHERE kind='base' AND name='event-frame'"))
     else
         assert(input.topic == "mail.activity")
         rows = assert(db:query("SELECT status AS observed FROM mail_message WHERE subject='Realtime fixture delivery'"))
+        local messages = assert(db:query([[SELECT id AS message_id,status,attempts FROM mail_message
+            WHERE subject=$1 ORDER BY created_at DESC LIMIT 1]], {"Fixture once"}))
+        assert(db:release())
+        assert(events.send("mail.fixture", "activity", "mail.activity", messages[1] or {}))
+        db = assert(sql.get("app:db"))
     end
     if rows[1] then
         assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
@@ -31,8 +37,4 @@ local function broadcast(input)
     return {success = true}
 end
 
-local function notify()
-    return {success = true}
-end
-
-return {broadcast = broadcast, notify = notify}
+return {broadcast = broadcast}
