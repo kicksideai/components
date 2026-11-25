@@ -4,6 +4,16 @@ local test = require("test")
 local resource = require("resource")
 
 local function cases()
+    test.it("provisions library editors solely through the installed host grant", function()
+        local binding = assert(registry.get("kickside.mail.binding:library"))
+        local grants = {}
+        for _, grant in ipairs(binding.meta.provision.grants) do
+            grants[grant.subject_id] = grant.access_mask
+        end
+        test.eq(3, grants["app:mail_editors"])
+        test.is_nil(grants["wippy.test:runner"])
+    end)
+
     test.it("uses Jobs' published consumer policy for Mail job producers and workers", function()
         local public = "kickside.core.jobs.security:module_access"
         local writer = assert(registry.get("kickside.mail.binding:library_create"))

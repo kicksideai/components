@@ -107,6 +107,9 @@ local function cases()
             test.is_true(allows(editor, editor_scope, "access", "kickside.mail.admin:admin"))
             test.is_false(allows(editor, editor_scope, "access", "kickside.mail.api:activity_list.endpoint"),
                 "Edit mail library alone does not reach Activity")
+            local status, body = get(signed_in({"app:editor", "app:user"}), "/mail/library?limit=1")
+            test.eq(200, status)
+            test.not_nil((body.data :: {[string]: unknown}).items)
         end)
 
         test.it("lists admitted transport status and reads masked settings separately", function()

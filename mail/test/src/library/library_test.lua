@@ -109,8 +109,7 @@ return {run = test.run_cases(function()
             item.html, item.expected_revision = "{{ block body() }}New HTML{{ end }}", saved.revision
             item.preview_id = review({message = item.name, resources = {item}})
             publication_fault(true)
-            local faulty = assert(funcs.new():with_context({mail_test_projection_error = true}))
-            local result, err = fixtures.call(faulty, "update", item)
+            local result, err = fixtures.call(nil, "update", item)
             assert(result, tostring(err))
             test.eq(result.revision, assert(call("get", item)).revision)
             test.eq(2, #assert(call("read_history", item)).items)
@@ -215,7 +214,7 @@ return {run = test.run_cases(function()
                 change.expected_revision = created.revision
                 inputs[i] = {command_id = uuid.v4(), resources = {change}, preview_id = review({resources = {change}})}
             end
-            for i = 1, 2 do futures[i] = assert(fixtures.async(funcs.new(), "save", inputs[i])) end
+            for i = 1, 2 do futures[i] = assert(fixtures.async(fixtures.editor(), "save", inputs[i])) end
             fixtures.await(function() return futures[1]:is_complete() and futures[2]:is_complete() end,
                 "Concurrent library saves did not finish")
             local winner, saved, rejected
@@ -270,7 +269,7 @@ return {run = test.run_cases(function()
             local pending, append_err = fixtures.call(nil, "save", command)
             local before = fixtures.call(nil, "get", part)
             local second, catch_err = fixtures.call(nil, "save", {resources = {draft}, preview_id = receipt})
-            local denied = assert(funcs.new():with_context({mail_test_catch_up_denied = true}))
+            local denied = assert(fixtures.editor():with_context({mail_test_catch_up_denied = true}))
             local denied_write, denied_err = fixtures.call(denied, "save", {resources = {draft}, preview_id = receipt})
             assert(thread:resume_projection(address))
             test.is_nil(denied_write)

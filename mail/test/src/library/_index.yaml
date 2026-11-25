@@ -40,6 +40,7 @@ entries:
     imports: &fixtures_imports
       database: kickside.mail.persist:db
       client: kickside.mail:client
+      api_fixtures: app.mail_api:fixtures
   - name: invoke
     kind: function.lua
     source: *fixtures_source

@@ -6,6 +6,7 @@ local contract = require("contract")
 local registry = require("registry")
 local time = require("time")
 local json = require("json")
+local api_fixtures = require("api_fixtures")
 
 local function await(check, label)
     local deadline = time.now():add(8 * time.SECOND):unix_nano()
@@ -82,17 +83,26 @@ local function remove(keys)
         return true, nil
     end))
     local overlay = assert(registry.overlay("kickside.mail.render:live"))
-    local changes = overlay:changes()
     for _, entry in ipairs(assert(overlay:entries())) do
-        if entry.id == "kickside.mail.projection:marker" then assert(changes:delete(entry.id)) end
+        if entry.id == "kickside.mail.projection:marker" then
+            local changes = overlay:changes()
+            assert(changes:delete(entry.id))
+            assert(changes:apply())
+            break
+        end
     end
-    assert(changes:apply())
     local boot = assert(funcs.call("kickside.mail.jobs:reconcile"))
     assert(boot.status == "success", boot.message)
     await_current_live()
 end
 
 local INVOKE = "app.mail_library:invoke"
+local editor_session
+
+local function editor()
+    editor_session = editor_session or api_fixtures.session("editor")
+    return assert(funcs.new():with_actor(editor_session.actor):with_scope(editor_session.scope))
+end
 
 local function invoke(input)
     local library, err = client.library()
@@ -101,7 +111,7 @@ local function invoke(input)
 end
 
 local function call(executor, method, args)
-    return (executor or funcs.new()):call(INVOKE, {method = method, args = args})
+    return (executor or editor()):call(INVOKE, {method = method, args = args})
 end
 
 local function async(executor, method, args)
@@ -115,6 +125,7 @@ local function invoke_mailer(input)
 end
 
 local function mailer(executor, method, args)
+    if not executor and method == "preview" then executor = editor() end
     return (executor or funcs.new()):call("app.mail_library:invoke_mailer", {method = method, args = args})
 end
 
@@ -135,5 +146,5 @@ local function foreign_list(input)
     return library:list(input)
 end
 
-return {sync_job = sync_job, await_current_live = await_current_live, await_sync_idle = await_sync_idle, await_live = await_live, await_sync_failure = await_sync_failure, await = await, remove = remove, invoke = invoke, call = call, async = async, foreign_list = foreign_list,
+return {sync_job = sync_job, await_current_live = await_current_live, await_sync_idle = await_sync_idle, await_live = await_live, await_sync_failure = await_sync_failure, await = await, remove = remove, invoke = invoke, call = call, async = async, editor = editor, foreign_list = foreign_list,
     render = render, mailer = mailer, invoke_mailer = invoke_mailer}
