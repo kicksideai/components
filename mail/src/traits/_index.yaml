@@ -31,6 +31,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.write]}
       public: true
       title: Send Mail
       llm_alias: MailSend
@@ -50,6 +51,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.read]}
       public: true
       title: List Mail Templates
       llm_alias: MailListTemplates
@@ -64,6 +66,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.read]}
       public: true
       title: Get Mail Template
       llm_alias: MailGetTemplate
@@ -78,6 +81,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.read]}
       public: true
       title: Preview Mail Template
       llm_alias: MailPreview
@@ -120,6 +124,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.read]}
       public: true
       title: List Mail Library
       llm_alias: MailLibraryList
@@ -174,6 +179,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.read]}
       public: true
       title: Read Mail Library Resource
       llm_alias: MailLibraryRead
@@ -247,6 +253,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.read]}
       public: true
       title: Preview Mail Library Draft
       llm_alias: MailLibraryPreview
@@ -378,6 +385,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.write]}
       public: true
       title: Save Mail Library Edits
       llm_alias: MailLibrarySave
@@ -428,6 +436,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.write]}
       public: true
       title: Create Mail Library Resource
       llm_alias: MailLibraryCreate
@@ -471,6 +480,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.write]}
       public: true
       title: Add Mail Library Image
       llm_alias: MailAssetAdd
@@ -510,6 +520,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.write]}
       public: true
       title: Reset Mail Library Resource
       llm_alias: MailLibraryReset
@@ -541,6 +552,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.read]}
       public: true
       title: Read Mail Library History
       llm_alias: MailLibraryHistory
@@ -599,6 +611,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.write]}
       public: true
       title: Restore Mail Library Revision
       llm_alias: MailLibraryRestore
@@ -623,6 +636,7 @@ entries:
     kind: function.lua
     meta:
       type: tool
+      mcp: {required_scopes: [state.write]}
       public: true
       title: Send Mail Test
       llm_alias: MailSendTest
