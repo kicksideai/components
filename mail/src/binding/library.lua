@@ -28,15 +28,20 @@ function M.read_revision(input: types.LibraryRevisionRequest): (types.Revision?,
     return history.revision(input, type(input) == "table" and input.seq or nil)
 end
 
+local function use_asset_method(): error
+    return errors.new({kind = errors.INVALID, retryable = false, message = "Use add_asset for an image upload",
+        details = {code = "invalid_mail_asset"}})
+end
+
 function M.create(input: types.ResourceCreate): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceCreate
-    if fields.kind == "asset" then return assets.adopt((input :: unknown) :: types.AssetWrite, "create") end
+    if fields.kind == "asset" then return nil, use_asset_method() end
     return writer.one(edits.create(input), "create", {preview_id = fields.preview_id, command_id = fields.command_id})
 end
 
 function M.update(input: types.ResourceEdit): (types.Resource?, error?)
     local fields = type(input) == "table" and input or {} :: types.ResourceEdit
-    if fields.kind == "asset" then return assets.adopt((input :: unknown) :: types.AssetWrite, "update") end
+    if fields.kind == "asset" then return nil, use_asset_method() end
     return writer.one(edits.update(input), "update", {preview_id = fields.preview_id, command_id = fields.command_id})
 end
 

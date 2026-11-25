@@ -14,8 +14,7 @@
       "enum": [
         "message",
         "base",
-        "part",
-        "asset"
+        "part"
       ]
     },
     "name": {
@@ -83,8 +82,7 @@
           "enum": [
             "message",
             "base",
-            "part",
-            "asset"
+            "part"
           ]
         },
         "name": {
@@ -103,10 +101,6 @@
     "expected_revision": {
       "type": "integer",
       "minimum": 0
-    },
-    "upload_id": {
-      "type": "string",
-      "format": "uuid"
     }
   },
   "additionalProperties": false

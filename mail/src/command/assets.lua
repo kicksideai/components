@@ -16,15 +16,16 @@ local canonical = require("canonical_json")
 
 local M = {}
 
-function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, error?)
+function M.add(input: types.AssetWrite): (types.Resource?, error?)
     if type(input) ~= "table" then return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide a mail asset upload") end
     local key = {kind = "asset", name = input.name}
-    local bad = operation == "create" and resources.check_input_key(key) or resources.check_key(key)
+    local expected = input.expected_revision
+    local operation = expected == nil and "create" or "update"
+    local bad = expected == nil and resources.check_input_key(key) or resources.check_key(key)
     if bad then return nil, bad end
     local note_err = resources.check_note(input.note)
     if note_err then return nil, note_err end
-    if (input.expected_revision ~= nil or operation == "update") and (type(input.expected_revision) ~= "number"
-        or math.tointeger(input.expected_revision) == nil or input.expected_revision < 0) then
+    if expected ~= nil and (type(expected) ~= "number" or math.tointeger(expected) == nil or expected < 0) then
         return nil, resources.error(errors.INVALID, "invalid_mail_revision", "Provide an expected revision", key)
     end
     local content_err = resources.check_content((input :: unknown) :: types.ResourceContent)
@@ -36,7 +37,7 @@ function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, 
     end
     local denied = library.require_write()
     if denied then return nil, denied end
-    local identity = operation
+    local identity = "add_asset"
     local signature: string?
     if input.command_id then
         local command_id, id_err = edit_rules.command_id(input.command_id)
@@ -50,12 +51,6 @@ function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, 
     end
     local current, read_err = library.lookup(key)
     if read_err and read_err:kind() ~= errors.NOT_FOUND then return nil, read_err end
-    local expected = input.expected_revision
-    if operation == "add_asset" then
-        if not current and expected ~= nil then return nil, edit_rules.missing(key) end
-        expected = expected or (current and current.revision)
-        operation = current and "update" or "create"
-    end
     if operation == "create" then
         if current then return nil, edit_rules.conflict(key, current.revision) end
     elseif not current then
@@ -91,8 +86,5 @@ function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, 
         asset_deadline = deadline}, operation, {command_id = input.command_id, identity_op = identity, command_hash = signature})
 end
 
-function M.add(input: types.AssetWrite): (types.Resource?, error?)
-    return M.adopt(input, "add_asset")
-end
 
 return M
