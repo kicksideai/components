@@ -79,15 +79,22 @@ LAYER_ORDER = [
     ("domain", ("domain",)),
     ("root", ("",)),
 ]
-# Per-module placements keyed by root namespace: folder -> level name from LAYER_ORDER.
-LAYER_OVERRIDES = {
-    "kickside.mail": {"delivery": "jobs", "settings": "jobs", "render": "persist", "driver": "persist"},
-    "kickside.mail.resend": {"transport": "transport"},
-    "kickside.mail.sendgrid": {"transport": "transport"},
-    "kickside.mail.mailgun": {"transport": "transport"},
-    "kickside.work": {"plugins": "persist"},
-    "kickside.pim": {"plugins": "persist"},
+# Module-specific placements and approved exceptions.
+MODULE_RULES = {
+    "kickside.mail": {
+        "layers": {"delivery": "jobs", "settings": "jobs", "render": "persist", "driver": "persist"},
+        "public_libraries": {"kickside.mail.driver:config", "kickside.mail.driver:http"},
+        # MAP-mail decisions 2 and 6 allow typed Mail overlay operations.
+        "overlays": {"kickside.mail.projection": set(), "kickside.mail.draft": {"template.get"}},
+    },
+    "kickside.mail.resend": {"layers": {"transport": "transport"}},
+    "kickside.mail.sendgrid": {"layers": {"transport": "transport"}},
+    "kickside.mail.mailgun": {"layers": {"transport": "transport"}},
+    "kickside.work": {"layers": {"plugins": "persist"}},
+    "kickside.pim": {"layers": {"plugins": "persist"}},
 }
+LAYER_OVERRIDES = {namespace: rules["layers"] for namespace, rules in MODULE_RULES.items()}
+OVERLAY_NAMESPACES = {namespace: rules["overlays"] for namespace, rules in MODULE_RULES.items() if "overlays" in rules}
 LEVEL_RANK = {name: len(LAYER_ORDER) - i for i, (name, _) in enumerate(LAYER_ORDER)}
 TRANSPORT_LEVEL = "transport"
 
@@ -113,10 +120,6 @@ MODULE_ACCESS_ACTIONS = {"registry.get", "registry.find"}
 RUNTIME_ACTIONS = {
     "contract.get", "contract.open", "contract.call", "contract.implementations",
     "contract.security", "funcs.call", "funcs.security",
-}
-# Mail owns these dynamic overlay namespaces without declaring registry indexes (Mail map Q2).
-OVERLAY_NAMESPACES = {
-    "kickside.mail": {"kickside.mail.projection", "kickside.mail.draft"},
 }
 OVERLAY_ENTRY_ACTION = re.compile(r"registry\.overlay\.(?:create|update|delete)\.[a-z0-9_]+(?:\.[a-z0-9_]+)*")
 EXACT_OPERATORS = {"eq"}
@@ -912,8 +915,8 @@ def foreign_private(m, ref, peers, key=None):
     owner = owning_peer(ns, peers)
     if owner is not None:
         entry = owner.by_id.get(ref)
-        if ref in {"kickside.mail.driver:config", "kickside.mail.driver:http"} and entry and entry.kind == "library.lua":
-            # MAP-mail v2 exposes these helpers to transport providers.
+        public_libraries = MODULE_RULES.get(owner.root_ns, {}).get("public_libraries", ())
+        if ref in public_libraries and entry and entry.kind == "library.lua":
             meta = entry.data.get("meta")
             if not isinstance(meta, dict) or not meta.get("private"):
                 return None
@@ -1213,7 +1216,7 @@ def check_s14(m):
                 ns = res[:-2] if res.endswith(":*") else None
                 if ns in overlay_namespaces:
                     if actions and all(
-                        OVERLAY_ENTRY_ACTION.fullmatch(action) or (ns == "kickside.mail.draft" and action == "template.get")
+                        OVERLAY_ENTRY_ACTION.fullmatch(action) or action in overlay_namespaces[ns]
                         for action in actions
                     ):
                         continue
