@@ -156,8 +156,34 @@ type LibraryRow = {
     asset_upload_id: string?, filename: string?, content_type: string?, size_bytes: integer?, archived: boolean | integer | nil,
     kind: string, name: string, title: string, description: string, html: string, text: string,
     base: string?, subject: string?, schema_json: string, samples_json: string, state: string,
-    origin: string?, revision: integer, author: string, created_at: integer, updated_at: integer, note: string?,
+    origin: string?, origin_label: string?, revision: integer, author: string, created_at: integer, updated_at: integer, note: string?,
     version: integer, action: string, restored_from: integer?,
+}
+type EventContent = {title: string, description: string, html: string, text: string, subject: string?,
+    schema: VariableSchema, samples: JsonObject}
+type EventAsset = {upload_id: string, filename: string, content_type: string, size: integer}
+type LibraryEventBody = {
+    key: ResourceKey, revision: integer, author: string, note: string?, change: string,
+    content: EventContent?, base: string?, state: string?, origin: string?, origin_label: string?,
+    preview_id: string?, from: ResourceKey?, previous_base: string?, from_seq: integer?, from_version: integer?,
+    asset: EventAsset?, title: string?, description: string?,
+}
+type LibraryEvent = {type: string, body: LibraryEventBody, subject: string}
+type PrefetchedLibraryEvent = {type: string, body: LibraryEventBody, seq: integer, created_at: string}
+type ProjectionInput = {thread_id: string, range: {from_seq: integer, to_seq: integer}, events: {PrefetchedLibraryEvent}}
+type ProjectedResource = Resource & {last_seq: integer}
+type ProjectedAsset = EventAsset & {
+    name: string, title: string, description: string, origin: string?, origin_label: string?,
+    author: string, revision: integer, last_seq: integer, created_at: integer, updated_at: integer,
+}
+type ProjectedState = {created_at: integer, archived: boolean | integer | nil, upload_id: string?, last_seq: integer}
+type HistoryRow = {seq: integer, kind: string, name: string, version: integer, action: string, author: string,
+    note: string?, restored_from: integer?, at: integer}
+type LiveState = {projected_seq: integer, template_seq: integer}
+type FoldEffect = {
+    upsert: ProjectedResource?, upsert_asset: ProjectedAsset?, archive: boolean?, delete: boolean?,
+    refs: {ResourceKey}?, retire: {upload_id: string, last_seq: integer}?,
+    history: HistoryRow, template_change: boolean,
 }
 type JetEntry = {id: string, kind: string, meta: Record, data: Record}
 type TemplateRequest = {template: string}
@@ -271,6 +297,10 @@ return {
     LibraryHistoryPage = LibraryHistoryPage, LibraryAssetRequest = LibraryAssetRequest, LibrarySaveResult = LibrarySaveResult,
     ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,
     LibraryRow = LibraryRow, LibraryWrite = LibraryWrite, JetEntry = JetEntry,
+    LibraryEvent = LibraryEvent, LibraryEventBody = LibraryEventBody, EventContent = EventContent, EventAsset = EventAsset,
+    PrefetchedLibraryEvent = PrefetchedLibraryEvent, ProjectionInput = ProjectionInput,
+    ProjectedResource = ProjectedResource, ProjectedAsset = ProjectedAsset, ProjectedState = ProjectedState,
+    HistoryRow = HistoryRow, LiveState = LiveState, FoldEffect = FoldEffect,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetReadRequest = AssetReadRequest, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
     DeliveryMessage = DeliveryMessage, TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,

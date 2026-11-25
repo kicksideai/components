@@ -1,0 +1,255 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.events
+entries:
+  - name: resource.created
+    kind: registry.entry
+    meta: &event_meta {type: kickside.core.threads.event}
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change, content, state, preview_id]
+      properties:
+        key: &created_key
+          type: object
+          additionalProperties: false
+          required: [kind, name]
+          properties:
+            kind: {enum: [base, message, part]}
+            name: &name {type: string, pattern: '^[a-z0-9][a-z0-9_-]*$', maxLength: 128}
+        revision: &positive_integer {type: integer, minimum: 1}
+        author: &author {type: string, minLength: 1, maxLength: 256}
+        note: &note {type: string, maxLength: 500}
+        change: {const: created}
+        content: &content
+          type: object
+          additionalProperties: false
+          required: [title, description, html, text, schema, samples]
+          properties:
+            title: &title {type: string, minLength: 1, maxLength: 4096}
+            description: {type: string, maxLength: 524288}
+            html: {type: string, maxLength: 524288}
+            text: {type: string, maxLength: 524288}
+            subject: {type: string, minLength: 1, maxLength: 65536}
+            schema: {type: object}
+            samples: {type: object}
+        base: *name
+        state: {const: created}
+        preview_id: &uuid {type: string, format: uuid}
+        from: *created_key
+      allOf:
+        - &message_faces
+          if: {properties: {key: {properties: {kind: {const: message}}}}}
+          then:
+            required: [base]
+            properties: {content: {required: [subject]}}
+          else:
+            not:
+              anyOf:
+                - required: [base]
+                - properties: {content: {required: [subject]}}
+  - name: resource.updated
+    kind: registry.entry
+    meta: *event_meta
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change, content, state, preview_id]
+      properties:
+        key: *created_key
+        revision: *positive_integer
+        author: *author
+        note: *note
+        change: {const: edited}
+        content: *content
+        base: *name
+        origin: &origin {type: string, minLength: 1, maxLength: 1024}
+        origin_label: &origin_label {type: string, minLength: 1, maxLength: 4096}
+        state: {enum: [created, customized]}
+        preview_id: *uuid
+      allOf:
+        - *message_faces
+        - &customized_origin
+          if: {properties: {state: {const: customized}}}
+          then: {required: [origin, origin_label]}
+          else:
+            not: {anyOf: [{required: [origin]}, {required: [origin_label]}]}
+  - name: resource.base_set
+    kind: registry.entry
+    meta: *event_meta
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change, content, state, base, preview_id]
+      properties:
+        key: &base_set_key
+          type: object
+          additionalProperties: false
+          required: [kind, name]
+          properties:
+            kind: {enum: [message]}
+            name: *name
+        revision: *positive_integer
+        author: *author
+        note: *note
+        change: {const: base_changed}
+        content: *content
+        base: *name
+        origin: *origin
+        origin_label: *origin_label
+        state: {enum: [created, customized]}
+        preview_id: *uuid
+        previous_base: *name
+      allOf:
+        - properties: {content: {required: [subject]}}
+        - *customized_origin
+  - name: resource.reset
+    kind: registry.entry
+    meta: *event_meta
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change, content, state, origin, origin_label]
+      properties:
+        key: &reset_key
+          type: object
+          additionalProperties: false
+          required: [kind, name]
+          properties:
+            kind: {enum: [base, message, part, asset]}
+            name: *name
+        revision: *positive_integer
+        author: *author
+        note: *note
+        change: {const: reset}
+        content: *content
+        base: *name
+        origin: *origin
+        origin_label: *origin_label
+        state: {const: original}
+        preview_id: *uuid
+      allOf:
+        - *message_faces
+        - if: {properties: {key: {properties: {kind: {const: asset}}}}}
+          else: {required: [preview_id]}
+  - name: resource.restored
+    kind: registry.entry
+    meta: *event_meta
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change, content, state, preview_id, from_seq, from_version]
+      properties:
+        key: *created_key
+        revision: *positive_integer
+        author: *author
+        note: *note
+        change: {const: restored}
+        content: *content
+        base: *name
+        origin: *origin
+        origin_label: *origin_label
+        state: {enum: [created, customized]}
+        preview_id: *uuid
+        from_seq: *positive_integer
+        from_version: *positive_integer
+      allOf:
+        - *message_faces
+        - *customized_origin
+  - name: resource.archived
+    kind: registry.entry
+    meta: *event_meta
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change]
+      properties:
+        key: *base_set_key
+        revision: *positive_integer
+        author: *author
+        note: *note
+        change: {const: archived}
+  - name: resource.deleted
+    kind: registry.entry
+    meta: *event_meta
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change]
+      properties:
+        key: &deleted_key
+          type: object
+          additionalProperties: false
+          required: [kind, name]
+          properties:
+            kind: {enum: [base, part]}
+            name: *name
+        revision: *positive_integer
+        author: *author
+        note: *note
+        change: {const: deleted}
+  - name: asset.added
+    kind: registry.entry
+    meta: *event_meta
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change, asset, title, description]
+      properties:
+        key: &added_key
+          type: object
+          additionalProperties: false
+          required: [kind, name]
+          properties:
+            kind: {enum: [asset]}
+            name: *name
+        revision: *positive_integer
+        author: *author
+        note: *note
+        change: {enum: [created, edited]}
+        asset: &asset
+          type: object
+          additionalProperties: false
+          required: [upload_id, filename, content_type, size]
+          properties:
+            upload_id: *uuid
+            filename: {type: string, minLength: 1}
+            content_type: {type: string, minLength: 1}
+            size: *positive_integer
+        title: *title
+        description: {type: string, maxLength: 524288}
+        origin: *origin
+        origin_label: *origin_label
+  - name: asset.restored
+    kind: registry.entry
+    meta: *event_meta
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change, asset, title, description, from_seq, from_version]
+      properties:
+        key: *added_key
+        revision: *positive_integer
+        author: *author
+        note: *note
+        change: {const: restored}
+        asset: *asset
+        title: *title
+        description: {type: string, maxLength: 524288}
+        origin: *origin
+        origin_label: *origin_label
+        from_seq: *positive_integer
+        from_version: *positive_integer
+  - name: asset.removed
+    kind: registry.entry
+    meta: *event_meta
+    schema:
+      type: object
+      additionalProperties: false
+      required: [key, revision, author, change]
+      properties:
+        key: *added_key
+        revision: *positive_integer
+        author: *author
+        note: *note
+        change: {const: deleted}

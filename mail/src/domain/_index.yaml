@@ -61,3 +61,19 @@ entries:
     kind: library.lua
     source: file://edit.lua
     imports: {types: kickside.mail:types, resource: kickside.mail.domain:resource}
+  - name: events
+    kind: library.lua
+    meta: {private: true}
+    source: file://events.lua
+    imports:
+      types: kickside.mail:types
+      resource: kickside.mail.domain:resource
+  - name: fold
+    kind: library.lua
+    meta: {private: true}
+    source: file://fold.lua
+    imports:
+      types: kickside.mail:types
+      events: kickside.mail.domain:events
+      references: kickside.mail.domain:references
+      resource: kickside.mail.domain:resource
