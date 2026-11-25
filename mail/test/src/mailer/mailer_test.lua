@@ -292,6 +292,32 @@ return {
                 test.eq(before.jobs, after.jobs)
             end)
 
+            test.it("returns the stored delivery result without creating another job on replay", function()
+                capture_with(admin)
+                local input = body()
+                input.idempotency_key = uuid.v4()
+                local admitted = assert(invoke(sender, "send", input))
+                local sent = terminal(sender, admitted)
+                test.eq("sent", sent.status)
+                local original_job = persisted(admitted.message_id).job_id
+
+                local replay = assert(invoke(sender, "send", input))
+                test.eq(sent.message_id, replay.message_id)
+                test.eq(sent.status, replay.status)
+                input.text = "Changed body"
+                local value, err = invoke(sender, "send", input)
+                refusal(value, err, errors.CONFLICT, "idempotency_conflict")
+
+                local messages = query("SELECT id, job_id FROM mail_message WHERE sender=$1", {sent.sender})
+                test.eq(1, #messages)
+                test.eq(admitted.message_id, messages[1].id)
+                test.eq(original_job, messages[1].job_id)
+                local jobs_for_message = query("SELECT id FROM kickside_job WHERE owner_kind='mail-message' AND owner_id=$1",
+                    {admitted.message_id})
+                test.eq(1, #jobs_for_message)
+                test.eq(original_job, jobs_for_message[1].id)
+            end)
+
             test.it("rearms the same job after a retryable error and clears bodies when it sends", function()
                 capture_with(admin)
                 local input = body()
@@ -644,6 +670,39 @@ return {
                 for _, q in ipairs({at_limit.q .. "é", "invalid" .. string.char(255), "nul" .. string.char(0)}) do
                     local value, err = invoke(sender, "list_messages", {limit = 1, q = q})
                     refusal(value, err, errors.INVALID, "invalid_request")
+                end
+            end)
+
+            test.it("pages equal Activity timestamps by message ID within the caller's search", function()
+                local timestamp = now_ms()
+                local subject = "Same timestamp"
+                local ids = {uuid.v4(), uuid.v4(), uuid.v4()}
+                table.sort(ids, function(left, right) return left > right end)
+                ids[4] = uuid.v4()
+                local other_id = uuid.v4()
+                assert(database.with_tx(function(tx)
+                    for index, id in ipairs({ids[1], ids[2], ids[3], ids[4], other_id}) do
+                        local created_at = index == 4 and timestamp - 1 or timestamp
+                        local _, err = tx:execute([[INSERT INTO mail_message
+                            (id,created_at,status,finished_at,sent_at,sender,recipients,subject,from_address,attachments)
+                            VALUES ($1,$2,'sent',$2,$2,$3,'{"to":["reader@example.org"]}',$4,'mail@example.org','[]')]],
+                            {id, created_at, index == 5 and other_id or sender_id, subject})
+                        if err then return nil, err end
+                        settlement_rows[#settlement_rows + 1] = {id = id}
+                    end
+                    return true, nil
+                end))
+
+                local request = {limit = 1, status = "sent", q = "same timestamp"}
+                for index, expected in ipairs(ids) do
+                    local page = assert(invoke(sender, "list_messages", request))
+                    test.eq(1, #page.items)
+                    test.eq(expected, page.items[1].message_id)
+                    test.eq(index == 4 and timestamp - 1 or timestamp, page.items[1].created_at)
+                    test.eq(#ids, page.total)
+                    test.eq(index < #ids, page.has_more)
+                    if index < #ids then test.not_nil(page.next_cursor) else test.is_nil(page.next_cursor) end
+                    request.cursor = page.next_cursor
                 end
             end)
 

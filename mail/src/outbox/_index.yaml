@@ -5,9 +5,11 @@ entries:
   - name: store
     kind: library.lua
     source: file://store.lua
-    modules: [sql, json, uuid, time]
+    modules: [uuid, time]
     imports:
       database: kickside.mail.persist:db
+      message_reader: kickside.mail.persist:message_reader
+      message_repo: kickside.mail.persist:message_repo
       jobs: kickside.core.jobs:jobs
       asset_store: kickside.mail.library:asset_store
       policy: kickside.mail.domain:policy
@@ -15,13 +17,13 @@ entries:
   - name: log
     kind: library.lua
     source: &log_source file://log.lua
-    modules: &log_modules [security, sql, uuid, time]
+    modules: &log_modules [security, uuid, time]
     imports: &log_imports
       database: kickside.mail.persist:db
       identity: kickside.execution:execution_identity
       failure: kickside.mail.domain:failure
       policy: kickside.mail.domain:policy
-      store: kickside.mail.outbox:store
+      message_reader: kickside.mail.persist:message_reader
       types: kickside.mail:types
   - name: get_message
     kind: function.lua
@@ -43,7 +45,7 @@ entries:
     meta: { private: true }
     source: file://worker.lua
     method: deliver
-    modules: [sql, logger, time]
+    modules: [logger, time]
     imports:
       database: kickside.mail.persist:db
       drivers: kickside.mail:drivers_registry
@@ -86,10 +88,12 @@ entries:
     meta: { private: true, type: kickside.retention.owner }
     source: file://owner.lua
     method: run
-    modules: [sql, time]
+    modules: [time]
     imports:
       asset_store: kickside.mail.library:asset_store
+      asset_file_repo: kickside.mail.persist:asset_file_repo
       database: kickside.mail.persist:db
+      message_repo: kickside.mail.persist:message_repo
       jobs: kickside.core.jobs:jobs
       policy: kickside.mail.domain:policy
       realtime: kickside.mail:realtime

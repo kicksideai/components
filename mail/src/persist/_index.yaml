@@ -10,3 +10,20 @@ entries:
     imports:
       types: kickside.mail:types
       error_envelope: kickside.contract:error_envelope
+  - name: message_repo
+    kind: library.lua
+    meta: { private: true }
+    source: file://message_repo.lua
+    modules: [json, sql]
+    imports: { types: kickside.mail:types }
+  - name: message_reader
+    kind: library.lua
+    meta: { private: true }
+    source: file://message_reader.lua
+    modules: [json]
+    imports: { types: kickside.mail:types }
+  - name: asset_file_repo
+    kind: library.lua
+    meta: { private: true }
+    source: file://asset_file_repo.lua
+    imports: { types: kickside.mail:types }

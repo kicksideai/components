@@ -2,20 +2,14 @@
 local database = require("database")
 local identity = require("identity")
 local security = require("security")
-local sql = require("sql")
-local store = require("store")
+local reader = require("message_reader")
 local failure = require("failure")
 local policy = require("policy")
 local time = require("time")
 local types = require("types")
 local uuid = require("uuid")
 
-local COLUMNS = [[id, status, created_at, attempts, next_attempt_at, sent_at, finished_at, sender,
-    template, recipients, subject, reply_to, attachments, driver_id, provider_message_id,
-    error_kind, error_code, error_message, provider_detail, origin_kind, origin_id, origin_label, resend_of,
-    CASE WHEN failed_html IS NOT NULL OR failed_text IS NOT NULL THEN 1 ELSE 0 END AS has_failed_content]]
 local ADMIN = "kickside.mail:mailer"
-local SUMMARY_WINDOW = 10000
 
 local function invalid(message: string): error
     return errors.new({kind = errors.INVALID, message = message, retryable = false, details = {code = "invalid_request"}})
@@ -31,8 +25,9 @@ local function viewer(): (string?, error?)
 end
 
 local function message(row: types.MessageRow, admin: boolean): (types.LogMessage?, error?)
-    local addresses, refs, err = store.content(row)
+    local content, err = reader.content(row)
     if err then return nil, err end
+    local addresses = content.addresses
     local last_error: types.MessageError?
     if row.error_kind then
         local code = row.error_code or "delivery_failed"
@@ -47,39 +42,23 @@ local function message(row: types.MessageRow, admin: boolean): (types.LogMessage
         message_id = row.id, status = row.status, created_at = row.created_at, attempts = row.attempts,
         next_attempt_at = row.next_attempt_at, sent_at = row.sent_at, finished_at = row.finished_at,
         sender = row.sender, template = row.template, subject = row.subject, reply_to = row.reply_to,
-        to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, attachments = refs,
+        to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, attachments = content.attachments,
         driver_id = admin and row.driver_id or nil, provider_message_id = admin and row.provider_message_id or nil,
         last_error = last_error,
-        origin = store.origin(row), resend_of = row.resend_of,
+        origin = reader.origin(row), resend_of = row.resend_of,
         can_resend = row.status == "failed" and row.has_failed_content == 1,
     }, nil
-end
-
-local function read_message(message_id: string, columns: string, sender: string?): (types.MessageRow?, error?)
-    if type(message_id) ~= "string" or not uuid.validate(message_id) then
-        return nil, invalid("A message ID is required")
-    end
-    return database.with_db(function(db: sql.DB): (types.MessageRow?, error?)
-        local query = "SELECT " .. columns .. " FROM mail_message WHERE id=$1"
-        local params = {message_id}
-        if sender then
-            query = query .. " AND sender=$2"
-            params[2] = sender
-        end
-        local rows, read_err = db:query(query, params)
-        if read_err then return nil, read_err end
-        if not rows[1] then
-            return nil, errors.new({kind = errors.NOT_FOUND, message = "Mail message not found",
-                retryable = false, details = {code = "message_not_found"}})
-        end
-        return rows[1] :: types.MessageRow, nil
-    end)
 end
 
 local function get_message(message_id: string): (types.LogMessage?, error?)
     local sender, err = viewer()
     if err then return nil, err end
-    local row, read_err = read_message(message_id, COLUMNS, sender)
+    if type(message_id) ~= "string" or not uuid.validate(message_id) then
+        return nil, invalid("A message ID is required")
+    end
+    local row, read_err = database.with_db(function(ex: types.Executor): (types.MessageRow?, error?)
+        return reader.get(ex, message_id, sender)
+    end)
     if read_err then return nil, read_err end
     return message(row :: types.MessageRow, sender == nil)
 end
@@ -87,29 +66,18 @@ end
 local function for_resend(message_id: string): (types.MessageRow?, error?)
     local sender, err = viewer()
     if err then return nil, err end
-    local row, read_err = read_message(message_id, "id,status,template,subject,recipients,reply_to,attachments,failed_html,failed_text", sender)
+    if type(message_id) ~= "string" or not uuid.validate(message_id) then
+        return nil, invalid("A message ID is required")
+    end
+    local row, read_err = database.with_db(function(ex: types.Executor): (types.MessageRow?, error?)
+        return reader.for_resend(ex, message_id, sender)
+    end)
     if read_err then return nil, read_err end
     if row.status ~= "failed" or (not row.failed_html and not row.failed_text) then
         return nil, errors.new({kind = errors.CONFLICT, message = "The message has no failed content to resend",
             retryable = false, details = {code = "mail_content_unavailable"}})
     end
     return row, nil
-end
-
-local function search_clause(dialect: string, needle: string): string
-    if dialect == "postgres" then
-        return "(strpos(lower(subject)," .. needle .. ")>0 OR EXISTS ("
-            .. "SELECT 1 FROM jsonb_each(recipients::jsonb) AS kind "
-            .. "CROSS JOIN LATERAL jsonb_array_elements_text(kind.value) AS address(value) "
-            .. "WHERE strpos(lower(address.value)," .. needle .. ")>0))"
-    end
-    return "(instr(lower(subject)," .. needle .. ")>0 OR EXISTS ("
-        .. "SELECT 1 FROM json_each(recipients) AS kind CROSS JOIN json_each(kind.value) AS address "
-        .. "WHERE instr(lower(address.value)," .. needle .. ")>0))"
-end
-
-local function where(filters: {string}): string
-    return #filters > 0 and " WHERE " .. table.concat(filters, " AND ") or ""
 end
 
 local function list_messages(input: types.ListRequest): (types.ListResult?, error?)
@@ -133,75 +101,39 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
             return nil, invalid("Search must be UTF-8 text of up to 256 characters")
         end
     end
-    local cursor_time, cursor_id
+    local cursor_time: integer?
+    local cursor_id: string?
     if input.cursor ~= nil then
         if type(input.cursor) ~= "string" then return nil, invalid("Invalid delivery log cursor") end
-        cursor_time, cursor_id = input.cursor:match("^(%d+):([%w%-]+)$")
-        cursor_time = cursor_time and math.tointeger(tonumber(cursor_time))
-        if not cursor_time or cursor_time > 9007199254740991 or not uuid.validate(cursor_id) then
+        local timestamp, id = input.cursor:match("^(%d+):([%w%-]+)$")
+        cursor_time = timestamp and math.tointeger(tonumber(timestamp))
+        if not cursor_time or cursor_time > 9007199254740991 or not id or not uuid.validate(id) then
             return nil, invalid("Invalid delivery log cursor")
         end
+        cursor_id = id
     end
     local sender, err = viewer()
     if err then return nil, err end
-    return database.with_db(function(db: sql.DB, dialect: string): (types.ListResult?, error?)
-        local args: {unknown} = {}
-        local filters: {string} = {}
-        local function bind(value: unknown): string
-            args[#args + 1] = value
-            return "$" .. tostring(#args)
-        end
-        local owner = sender and ("sender=" .. bind(sender)) or nil
-        if owner then filters[#filters + 1] = owner end
-        if input.template then filters[#filters + 1] = "template=" .. bind(input.template) end
-        if input.status then filters[#filters + 1] = "status=" .. bind(input.status) end
-        if input.since then filters[#filters + 1] = "created_at>=" .. bind(input.since) end
-        local scope = where(filters)
-        local order = " ORDER BY created_at DESC,id DESC"
-        local bound = " LIMIT " .. tostring(SUMMARY_WINDOW)
-        local search_cte = ""
-        local summary = "SELECT COUNT(*) AS total,0 AS search_limited FROM (SELECT id FROM mail_message"
-            .. scope .. " LIMIT " .. tostring(SUMMARY_WINDOW + 1) .. ") AS counted"
-        local page_source = "mail_message"
-        if input.q and input.q ~= "" then
-            local search = search_clause(dialect, bind(input.q:lower()))
-            search_cte = "search_window AS MATERIALIZED (SELECT id,created_at,subject,recipients FROM mail_message"
-                .. scope .. order .. bound .. "), matches AS MATERIALIZED (SELECT id,created_at FROM search_window WHERE "
-                .. search .. "), "
-            summary = "SELECT COUNT(*) AS total, (SELECT COUNT(*) FROM search_window) AS search_limited FROM matches"
-            filters = {}
-            page_source = "matches"
-        end
-        local now = time.now():unix_nano() // 1000000
-        local start = (now // policy.DAY_MS) * policy.DAY_MS
-        local failures = "SELECT COUNT(*) AS failed_today FROM mail_message WHERE status='failed' AND finished_at>="
-            .. bind(start) .. " AND finished_at<" .. bind(start + policy.DAY_MS)
-        if owner then failures = failures .. " AND " .. owner end
-        if cursor_time then
-            filters[#filters + 1] = "(created_at,id)<(" .. bind(cursor_time) .. "," .. bind(cursor_id) .. ")"
-        end
-        local page_ids = "SELECT id FROM " .. page_source .. where(filters) .. order .. " LIMIT " .. bind(input.limit + 1)
-        local page = "SELECT " .. COLUMNS .. " FROM mail_message WHERE id IN (" .. page_ids .. ")"
-        local query = "WITH " .. search_cte .. "summary AS (" .. summary .. "), failures AS (" .. failures
-            .. "), page AS (" .. page .. ") SELECT page.*,total,search_limited,failed_today FROM summary "
-            .. "CROSS JOIN failures LEFT JOIN page ON 1=1 ORDER BY page.created_at DESC,page.id DESC"
-        local rows, read_err = db:query(query, args)
-        if read_err then return nil, read_err end
-        local size = rows[1].id and #rows or 0
-        local items: {types.LogMessage} = {}
-        for index = 1, math.min(input.limit, size) do
-            local entry, entry_err = message(rows[index] :: types.MessageRow, sender == nil)
-            if entry_err then return nil, entry_err end
-            items[index] = entry :: types.LogMessage
-        end
-        local more = size > input.limit
-        local last = items[#items]
-        local total = rows[1].total :: integer
-        local lower_bound = total > SUMMARY_WINDOW or (rows[1].search_limited :: integer) >= SUMMARY_WINDOW
-        return {items = items, has_more = more, total = math.min(total, SUMMARY_WINDOW),
-            total_is_lower_bound = lower_bound or nil, failed_today = rows[1].failed_today :: integer,
-            next_cursor = more and (tostring(last.created_at) .. ":" .. last.message_id) or nil}, nil
+    local now = time.now():unix_nano() // 1000000
+    local day_start = (now // policy.DAY_MS) * policy.DAY_MS
+    local query: types.ListQuery = {status = input.status, template = input.template, since = input.since,
+        q = input.q, limit = input.limit, before_time = cursor_time, before_id = cursor_id,
+        day_start = day_start, next_day = day_start + policy.DAY_MS}
+    local found, read_err = database.with_db(function(ex: types.Executor, dialect: string): (types.MessagePage?, error?)
+        return reader.page(ex, dialect, query, sender)
     end)
+    if read_err then return nil, read_err end
+    local page = found :: types.MessagePage
+    local items: {types.LogMessage} = {}
+    for index, row in ipairs(page.items) do
+        local entry, entry_err = message(row, sender == nil)
+        if entry_err then return nil, entry_err end
+        items[index] = entry :: types.LogMessage
+    end
+    local last = items[#items]
+    return {items = items, has_more = page.has_more, total = page.total,
+        total_is_lower_bound = page.total_is_lower_bound, failed_today = page.failed_today,
+        next_cursor = page.has_more and (tostring(last.created_at) .. ":" .. last.message_id) or nil}, nil
 end
 
 return {get_message = get_message, list_messages = list_messages, for_resend = for_resend}

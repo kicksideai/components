@@ -4,28 +4,27 @@ local jobs = require("jobs")
 local policy = require("policy")
 local time = require("time")
 local settings = require("settings")
-local sql = require("sql")
 local store = require("store")
 local types = require("types")
 local realtime = require("realtime")
 local asset_store = require("asset_store")
+local asset_file_repo = require("asset_file_repo")
+local repo = require("message_repo")
 
 local INTERRUPTED = {dead = true, cancelled = true, missing = true, done = true}
 
-local function due(now: integer, input: types.OwnerInput): ({types.MessageRow}?, error?)
+local function due(now: integer, input: types.OwnerInput): ({types.DueRow}?, error?)
     local change = input.change
     local locator = change and change.owner_locator
-    return database.with_db(function(db: sql.DB): ({types.MessageRow}?, error?)
-        local rows, err = db:query([[SELECT id, job_id, next_check_at FROM mail_message
-            WHERE status='queued' AND next_check_at<=$1 ORDER BY next_check_at,id LIMIT $2]], {now, policy.BATCH})
+    return database.with_db(function(ex: types.Executor): ({types.DueRow}?, error?)
+        local rows, err = repo.due_checks(ex, now, policy.BATCH)
         if err then return nil, err end
         if locator and locator.kind == store.OWNER_KIND and change.kind == "lease_released" and change.job_id then
-            local hinted, hint_err = db:query([[SELECT id, job_id, next_check_at FROM mail_message
-                WHERE id=$1 AND job_id=$2 AND status='queued' AND next_check_at>$3]], {locator.id, change.job_id, now})
+            local hinted, hint_err = repo.hinted(ex, locator.id, change.job_id, now)
             if hint_err then return nil, hint_err end
-            if hinted[1] then rows[#rows + 1] = hinted[1] end
+            if hinted then rows[#rows + 1] = hinted end
         end
-        return rows :: {types.MessageRow}, nil
+        return rows, nil
     end)
 end
 
@@ -37,7 +36,7 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
     for index, row in ipairs(pending) do ids[index] = row.job_id end
     local states, status_err = jobs.get_job_statuses(ids)
     if status_err then return status_err end
-    local changed, write_err = database.with_tx(function(tx: sql.Transaction, _dialect: string): ({string}?, error?)
+    local changed, write_err = database.with_tx(function(tx: types.Transaction): ({string}?, error?)
         local failed: {string} = {}
         for _, row in ipairs(pending) do
             local status = states[row.job_id] or "missing"
@@ -50,9 +49,7 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
                 })
                 if settled then failed[#failed + 1] = row.id end
             elseif row.next_check_at <= now then
-                _, update_err = tx:execute([[UPDATE mail_message SET next_check_at=$1
-                    WHERE id=$2 AND status='queued' AND next_check_at=$3]],
-                    {now + policy.RECHECK_MS, row.id, row.next_check_at})
+                _, update_err = repo.recheck(tx, row.id, row.next_check_at, now + policy.RECHECK_MS)
             end
             if update_err then return nil, update_err end
         end
@@ -64,30 +61,23 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
 end
 
 local function sweep(now: integer, retention_ms: integer): (types.OwnerResult?, error?)
-    return database.with_tx(function(tx: sql.Transaction, _dialect: string): (types.OwnerResult?, error?)
+    return database.with_tx(function(tx: types.Transaction): (types.OwnerResult?, error?)
         local unlink_err = asset_store.drop_expired_links(tx, now - retention_ms, policy.BATCH, now)
         if unlink_err then return nil, unlink_err end
-        local result, delete_err = tx:execute([[DELETE FROM mail_message WHERE id IN (
-            SELECT id FROM mail_message WHERE finished_at <= $1
-                AND NOT EXISTS (SELECT 1 FROM mail_message_asset WHERE message_id=mail_message.id)
-            ORDER BY finished_at,id LIMIT $2
-        )]], {now - retention_ms, policy.BATCH})
+        local deleted, delete_err = repo.prune_finished(tx, now - retention_ms, policy.BATCH)
         if delete_err then return nil, delete_err end
-        local rows, read_err = tx:query([[SELECT
-            (SELECT next_check_at FROM mail_message WHERE status='queued' ORDER BY next_check_at,id LIMIT 1) AS check_at,
-            (SELECT finished_at FROM mail_message WHERE finished_at IS NOT NULL ORDER BY finished_at,id LIMIT 1) AS finished_at,
-            (SELECT due_at FROM mail_asset_file WHERE due_at IS NOT NULL ORDER BY due_at,upload_id LIMIT 1) AS asset_due_at]])
+        local deadlines, read_err = repo.next_deadlines(tx)
         if read_err then return nil, read_err end
-        local deadlines = rows[1]
-        local next_check = deadlines.check_at :: integer?
-        local earliest = deadlines.finished_at :: integer?
-        local asset_due = deadlines.asset_due_at :: integer?
+        local asset_due, asset_err = asset_file_repo.next_due(tx)
+        if asset_err then return nil, asset_err end
+        local next_check = deadlines.check_at
+        local earliest = deadlines.finished_at
         if asset_due then next_check = next_check and math.min(next_check, asset_due) or asset_due end
         if earliest then
             local expiry = earliest + retention_ms
             next_check = next_check and math.min(next_check, expiry) or expiry
         end
-        return {success = true, deleted = result.rows_affected, deadline_ms = next_check,
+        return {success = true, deleted = deleted, deadline_ms = next_check,
             needs_continue = next_check ~= nil and next_check <= now}, nil
     end)
 end

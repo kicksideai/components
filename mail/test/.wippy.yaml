@@ -25,7 +25,7 @@ override:
   kickside.core.jobs:policy:meta.proc.max_execution: 3s
   kickside.core.jobs:lease_release_signal:imports.hint: kickside.mail.harness:lease_hint
   kickside.core.jobs:lease_release_signal:source: 'return require("hint")'
-  kickside.mail.outbox:owner:modules: [sql]
+  kickside.mail.outbox:owner:modules: []
   kickside.mail.outbox:owner:imports.time: kickside.mail.harness:owner_clock
   kickside.mail.service:delivery:modules: [json, base64, time]
   kickside.mail.service:delivery:imports.http_client: kickside.mail.harness:http_client

@@ -11,3 +11,14 @@ entries:
     imports:
       test: wippy.test:test
       db: kickside.mail.persist:db
+  - name: message_test
+    kind: function.lua
+    meta: { type: test, suite: mail_persist }
+    source: file://message_test.lua
+    method: run
+    modules: [uuid]
+    imports:
+      test: wippy.test:test
+      db: kickside.mail.persist:db
+      reader: kickside.mail.persist:message_reader
+      repo: kickside.mail.persist:message_repo

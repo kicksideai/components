@@ -9,7 +9,6 @@ local logger = require("logger")
 local message = require("message")
 local policy = require("policy")
 local settings = require("settings")
-local sql = require("sql")
 local store = require("store")
 local time = require("time")
 local types = require("types")
@@ -98,7 +97,7 @@ local function deliver(input: types.JobInput): (types.Record?, error?)
             options.rearm = time.unix(next_at // 1000, (next_at % 1000) * 1000000):utc():format("2006-01-02T15:04:05.000Z07:00")
         end
     end
-    local completion, commit_err = database.with_tx(function(tx: sql.Transaction, _dialect: string): (types.JobCompletion?, error?)
+    local completion, commit_err = database.with_tx(function(tx: types.Transaction): (types.JobCompletion?, error?)
         local done, err = jobs.complete_tx(tx, job.id, lease, options)
         if err then return nil, err end
         local changed

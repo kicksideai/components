@@ -2,6 +2,7 @@
 local sql = require("sql")
 
 type Executor = sql.DB | sql.Transaction
+type Transaction = sql.Transaction
 type TransactionWork<T> = (sql.Transaction, string) -> (T?, error?)
 type Json = nil | boolean | number | string | {Json} | {[string]: Json}
 type JsonObject = {[string]: Json}
@@ -36,6 +37,8 @@ type DirectoryPrincipal = PrincipalRef & {label: string}
 type PrincipalDirectory = {resolve: (PrincipalDirectory, {refs: {PrincipalRef}}) -> ({principals: {DirectoryPrincipal}}?, error?)}
 type Capabilities = {send: boolean, edit_library: boolean, administer_delivery: boolean}
 type ListRequest = {status: string?, template: string?, since: integer?, q: string?, limit: integer, cursor: string?}
+type ListQuery = {status: string?, template: string?, since: integer?, q: string?, limit: integer,
+    before_time: integer?, before_id: string?, day_start: integer, next_day: integer}
 type ListResult = {items: {LogMessage}, next_cursor: string?, has_more: boolean, total: integer?, total_is_lower_bound: boolean?, failed_today: integer?}
 type MessageError = {kind: string, code: string, message: string, provider_detail: string?}
 type LogMessage = Addresses & {
@@ -60,6 +63,14 @@ type Admission = Addresses & {
     library_assets: {AssetRef}?, idempotency_key: string?, content_hash: string?, origin: Origin?, resend_of: string?,
 }
 type AdmissionResult = {message: SendResult, inserted: boolean}
+type MessageInsert = Admission & {id: string, created_at: integer, next_check_at: integer}
+type KeyRow = {id: string, status: string, content_hash: string?}
+type InsertOutcome = KeyRow & {inserted: boolean}
+type Outcome = {delivered: TransportResult?, cause: MessageError?}
+type DueRow = {id: string, job_id: string, next_check_at: integer}
+type Deadlines = {check_at: integer?, finished_at: integer?}
+type MessageContent = {addresses: Addresses, attachments: {AttachmentRef}}
+type MessagePage = {items: {MessageRow}, has_more: boolean, total: integer, total_is_lower_bound: boolean?, failed_today: integer}
 type Job = {id: string, lease_token: string, execution_seq: integer}
 type JobInput = {job: Job, payload: {message_id: string}}
 type Lease = {token: string, execution_seq: integer}
@@ -87,6 +98,7 @@ type Resource = {
 }
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
+type SenderPage = {items: {RecentSender}, next_cursor: string?}
 type AssetUsage = {[string]: {string}}
 type AssetUsageFilter = {dialect: string, assets: {string}, messages: {string}}
 type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}
@@ -195,9 +207,11 @@ type HttpAuth = {user: string, pass: string}
 type HttpResponse = {status_code: number, headers: {[string]: string | {string}}, body: string}
 
 return {
-    Executor = Executor, TransactionWork = TransactionWork, TransportResult = TransportResult,
-    MessageRef = MessageRef, ListRequest = ListRequest, ListResult = ListResult, LogMessage = LogMessage,
+    Executor = Executor, Transaction = Transaction, TransactionWork = TransactionWork, TransportResult = TransportResult,
+    MessageRef = MessageRef, ListRequest = ListRequest, ListQuery = ListQuery, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, Admission = Admission, AdmissionResult = AdmissionResult,
+    MessageInsert = MessageInsert, KeyRow = KeyRow, InsertOutcome = InsertOutcome, Outcome = Outcome,
+    DueRow = DueRow, Deadlines = Deadlines, MessageContent = MessageContent, MessagePage = MessagePage, SenderPage = SenderPage,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,
     OwnerResult = OwnerResult, BlockedAsset = BlockedAsset,
     ResourceKey = ResourceKey, ResourceReferences = ResourceReferences,
