@@ -2,7 +2,8 @@
 import type { BoardAccess, Holder, Declaration, Field, Process, Schema } from '../../types'
 import { effectiveMigration } from './process'
 import { ApiError, formatApiError } from '../../transport'
-export interface SchemaChange { code: string; class: string; what: string; detail?: string; to?: string; count?: number }
+export type FieldResolution = 'keep' | 'archive' | 'drop'
+export interface SchemaChange { code: string; class: string; what: string; detail?: string; to?: string; count?: number; path?: string; item_type?: string; resolution?: FieldResolution }
 export interface SchemaPlan { generation: number; class: string; changes: SchemaChange[]; refused: SchemaChange[]; migration?: string }
 export type PluginConfigs = Record<string, Record<string, unknown>>
 export const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
@@ -99,11 +100,18 @@ export function requestDeclaration(draft: Declaration, original: Declaration): D
   else delete out.remove
   return out
 }
-export function reviewSnapshot(declaration: Declaration, generation: number, configs: PluginConfigs) {
-  const serialized = JSON.stringify({ declaration, configs })
-  return { declaration: clone(declaration), expected_generation: generation, plugin_configs: clone(configs),
-    matches: (current: Declaration, currentGeneration: number, currentConfigs: PluginConfigs) => generation === currentGeneration && serialized === JSON.stringify({ declaration: current, configs: currentConfigs }) }
+// Keep is the default and is never sent; only Archive and Drop resolve a removal.
+export function chosenResolutions(choices: Record<string, FieldResolution>): Record<string, FieldResolution> {
+  return Object.fromEntries(Object.entries(choices).filter(([, choice]) => choice !== 'keep'))
 }
+export function reviewSnapshot(declaration: Declaration, generation: number, configs: PluginConfigs, choices: Record<string, FieldResolution> = {}) {
+  const resolutions = chosenResolutions(choices)
+  const serialized = JSON.stringify({ declaration, configs, resolutions })
+  return { declaration: clone(declaration), expected_generation: generation, plugin_configs: clone(configs), resolutions: clone(resolutions),
+    matches: (current: Declaration, currentGeneration: number, currentConfigs: PluginConfigs, currentChoices: Record<string, FieldResolution> = {}) => generation === currentGeneration
+      && serialized === JSON.stringify({ declaration: current, configs: currentConfigs, resolutions: chosenResolutions(currentChoices) }) }
+}
+export const fieldRemovals = (plan?: SchemaPlan) => [...plan?.refused ?? [], ...plan?.changes ?? []].filter(change => change.what === 'field.remove' && change.path)
 export function normalizeSchema(view: Schema): Schema {
   const out = clone(view)
   const order = [...new Set(out.declaration.item_types?.flatMap(type => type.fields) ?? [])]
@@ -129,7 +137,7 @@ export type RemovalKind = 'fields' | 'item_types' | 'processes' | 'relation_type
 export type RemovalGuard = (kind: RemovalKind, id: string) => Promise<string | undefined>
 export function removalReason(plan: SchemaPlan, kind: RemovalKind, id: string): string | undefined {
   const codes = [id, `item_type ${id}`, `relation ${id}`, `process ${id}`]
-  const blocked = plan.refused.filter(change => codes.includes(change.code))
+  const blocked = plan.refused.filter(change => codes.includes(change.code) && change.what !== 'field.remove')
   if (kind === 'fields') blocked.push(...plan.changes.filter(change => change.code === id && change.what === 'removed' && change.class === 'semantic'))
   return blocked.length ? blocked.map(changeReason).join(' ') : undefined
 }

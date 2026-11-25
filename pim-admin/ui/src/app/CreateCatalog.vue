@@ -2,22 +2,30 @@
 <script setup lang="ts">
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { Icon } from '@iconify/vue'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import AdminError from '../shared/AdminError.vue'
 import { presentError } from '../shared/transport'
 import NativeDialog from '../shared/NativeDialog.vue'
 import { pim } from '../api'
-defineProps<{ visible: boolean }>()
+const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ close: []; created: [id: string] }>()
 const title = ref(''), error = ref<ReturnType<typeof presentError>>(), busy = ref(false)
+let idempotencyKey: string
+watch(() => props.visible, visible => {
+  if (visible) {
+    const words = crypto.getRandomValues(new Uint32Array(4))
+    idempotencyKey = Array.from(words, word => word.toString(16).padStart(8, '0')).join('')
+  }
+}, { immediate: true })
+
 async function create() {
   const name = title.value.trim()
   if (!name || busy.value) return
   busy.value = true; error.value = undefined
   try {
-    const result = await pim.createCatalog(name)
+    const result = await pim.createCatalog(name, idempotencyKey)
     title.value = ''; emit('close'); emit('created', result.catalog_id)
   } catch (e) { error.value = presentError(e, 'Could not create the catalog.') }
   finally { busy.value = false }

@@ -687,6 +687,16 @@ entries:
           vocabularies: [ { code: zones } ]
           aspects: [ { namespace: placement, attributes: [ { code: zone, type: kickside.pim.types:select, vocabulary: zones, index: key } ] } ]
 
+  - name: shelf_replacement_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      attachment: app:empty_plugin_attachment
+      title: Replacement Shelf
+      schema:
+        template:
+          aspects: [ { namespace: shelf, attributes: [ { code: bin, type: kickside.pim.types:identifier, index: key } ] } ]
+
   - name: contributed_text_type
     kind: registry.entry
     meta: { type: kickside.pim.type, form: text, title: Plugin-owned text }
@@ -1579,12 +1589,20 @@ entries:
       plugins: kickside.pim.extensions:plugins
       types: kickside.pim:types
 
+  - name: probe_numeric_category_plugin
+    kind: registry.entry
+    meta:
+      type: kickside.pim.plugin
+      comment: Harness manifest - a category that is not text.
+      category: 3
+      attachment: app:probe_shelf_attachment
   - name: probe_shelf_plugin
     kind: registry.entry
     meta:
       type: kickside.pim.plugin
       comment: Harness manifest - per-catalog shelf settings.
       title: Shelf
+      category: Stock
       settings: app.probe_shelf
       attachment: app:probe_shelf_attachment
       config_schema:

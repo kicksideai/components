@@ -6,9 +6,12 @@ import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import Menu from 'primevue/menu'
 import type { MenuItem } from 'primevue/menuitem'
-import Tag from 'primevue/tag'
-import { onScopeDispose, ref, shallowRef } from 'vue'
-import { statusSeverity, type PresentationContext } from '../presentation/context'
+import { onDeactivated, onScopeDispose, ref, shallowRef } from 'vue'
+import { principalRef, statusSeverity, type PresentationContext } from '../presentation/context'
+import IssueAssignee from '../presentation/IssueAssignee.vue'
+import IssuePriority from '../presentation/IssuePriority.vue'
+import IssueStatus from '../presentation/IssueStatus.vue'
+import IssueType from '../presentation/IssueType.vue'
 import { titleOf, type Cursor, type ItemSummary, type QueryPage, type WorkOperation } from '../presentation/query'
 
 import { workFailure } from '../work/errors'
@@ -27,13 +30,17 @@ const props = defineProps<{
   sprints: (item: string, after?: Cursor) => Promise<SprintChoices>
 }>()
 const emit = defineEmits<{
-  open: [item: string], page: [direction: -1 | 1], edit: [item: ItemSummary], apply: [operations: WorkOperation[]],
+  open: [item: ItemSummary], page: [direction: -1 | 1], edit: [item: ItemSummary], apply: [operations: WorkOperation[]],
 }>()
 const menu = ref<InstanceType<typeof Menu>>()
 const actions = shallowRef<MenuItem[]>([])
 const viewport = ref<HTMLElement>()
 let menuRequest = 0
 onScopeDispose(() => { menuRequest++ })
+onDeactivated(() => {
+  menuRequest++
+  menu.value?.hide()
+})
 
 function status(item: ItemSummary) {
   return typeof item.state === 'string' ? item.state : Object.values(item.state).join(', ')
@@ -83,32 +90,39 @@ defineExpose({ restore })
       <Column header="Issue">
         <template #body="{ data }">
           <div class="kanban-backlog-issue" :data-backlog-id="data.id">
-            <Button class="kanban-backlog-title" text size="small" severity="secondary"
-              :aria-label="data.key + ' ' + titleOf(data)" @click="emit('open', data.id)">
+            <IssueType :type="data.type" :label="context.typeLabels[data.type]" />
+            <button type="button" class="kanban-backlog-title kx-focus-outline"
+              :aria-label="data.key + ' ' + titleOf(data)" :title="titleOf(data)" @click="emit('open', data)">
               <span class="kanban-backlog-key">{{ data.key }}</span>
               <span class="kanban-backlog-summary" dir="auto">{{ titleOf(data) }}</span>
-            </Button>
+            </button>
           </div>
         </template>
       </Column>
       <Column header="Status" header-class="kanban-backlog-status" body-class="kanban-backlog-status">
         <template #body="{ data }">
-          <Tag class="kx-tag-sm" :value="context.statusLabels[status(data)] ?? status(data)"
-            :severity="statusSeverity(context.statuses.find(state => state.id === status(data)))" />
+          <IssueStatus :label="context.statusLabels[status(data)] ?? status(data)"
+            :tone="statusSeverity(context.statuses.find(state => state.id === status(data)))" />
         </template>
       </Column>
       <Column header="Priority" header-class="kanban-backlog-secondary" body-class="kanban-backlog-secondary">
         <template #body="{ data }">
-          <Tag v-if="data.values.priority" class="kx-tag-sm"
-            :severity="data.values.priority === 'highest' ? 'danger' : data.values.priority === 'high' ? 'warn' : 'secondary'"
-            :value="context.priorityLabels[data.values.priority] ?? data.values.priority" />
+          <IssuePriority v-if="typeof data.values.priority === 'string'" :priority="data.values.priority"
+            :label="context.priorityLabels[data.values.priority]" text />
+          <span v-else class="kanban-empty-value">—</span>
         </template>
       </Column>
       <Column header="Assignee" header-class="kanban-backlog-secondary" body-class="kanban-backlog-secondary">
-        <template #body="{ data }">{{ person(data) ?? '—' }}</template>
+        <template #body="{ data }">
+          <IssueAssignee v-if="principalRef(data.values.assignee)" :id="principalRef(data.values.assignee)!.id" :name="person(data)" text />
+          <span v-else class="kanban-empty-value">—</span>
+        </template>
       </Column>
       <Column header="Points" header-class="kanban-backlog-secondary" body-class="kanban-backlog-secondary">
-        <template #body="{ data }">{{ data.values.story_points ?? '—' }}</template>
+        <template #body="{ data }">
+          <span v-if="typeof data.values.story_points === 'number'" class="kanban-points">{{ data.values.story_points }}</span>
+          <span v-else class="kanban-empty-value">—</span>
+        </template>
       </Column>
       <Column v-if="writable && (canEdit || planning)" header-class="kanban-backlog-actions" body-class="kanban-backlog-actions">
         <template #header><span class="kanban-visually-hidden">Actions</span></template>

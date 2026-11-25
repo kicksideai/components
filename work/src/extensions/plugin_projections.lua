@@ -14,6 +14,7 @@ local values = require("values")
 local jobs = require("jobs")
 local consts = require("consts")
 local limits = require("limits")
+local append = require("append")
 local M = {}
 local PREFIX = "kickside.work.plugin:"
 
@@ -111,7 +112,23 @@ local function converge(board_id: string, row: types.PluginState, settings: type
     return (progress.registered or 0) >= #projections, nil
 end
 
-function M.batch(input: { board_id: string }): ({ done: boolean }?, error?)
+local function rebuild(board_id: string, request: local_types.Rebuild): (local_types.BatchResult?, error?)
+    local _, aerr = component.validate_access(board_id, component.ACCESS.ADMIN)
+    if aerr then return nil, aerr end
+    local client, err = threads.open()
+    if err or not client then return nil, err end
+    local subject = "plugin:" .. request.plugin
+    local seq, serr = append.writes(client, board_id, { { group = subject, ops = {}, caller_expect = true,
+        expect_subject = "schema", expect_version = request.schema_version, events = { {
+            type = consts.EVENTS.PLUGIN_REBUILD, subject = subject, trace_context = request.trace_context,
+            body = { plugin = request.plugin },
+        } } } })
+    if serr then return nil, serr end
+    return { seq = seq }, nil
+end
+
+function M.batch(input: { board_id: string, rebuild: local_types.Rebuild? }): (local_types.BatchResult?, error?)
+    if input.rebuild then return rebuild(input.board_id, input.rebuild) end
     local settings, settings_err = limits.read()
     if settings_err or not settings then return nil, settings_err end
     local _, aerr = component.validate_access(input.board_id, component.ACCESS.WRITE)

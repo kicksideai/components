@@ -16,7 +16,8 @@ local function decode(raw: domain.Row): (domain.PluginState?, error?)
     return { plugin = row.plugin :: string, attachment_id = row.attachment_id :: string,
         revision = row.revision :: integer, applied_revision = row.applied_revision :: integer,
         impl_id = row.impl_id :: string, config = row.config :: domain.JsonObject, active = row.active == 1,
-        lifecycle = row.lifecycle :: domain.PluginLifecycle, progress = row.progress :: domain.PluginProgress }, nil
+        lifecycle = row.lifecycle :: domain.PluginLifecycle, progress = row.progress :: domain.PluginProgress,
+        stored_progress = raw.progress :: string }, nil
 end
 
 function M.active(tx: storage.Executor, board_id: string, plugin: string): (domain.PluginState?, error?)
@@ -85,24 +86,49 @@ end
 function M.finish(board_id: string, row: domain.PluginState, lifecycle: domain.PluginLifecycle): error?
     local db, err = store.open()
     if not db then return err end
-    local query = "UPDATE kickside_work_plugin SET lifecycle = $1, progress = $2, applied_revision = $3 WHERE board_id = $4 AND plugin = $5 AND revision = $6"
+    local query = "UPDATE kickside_work_plugin SET lifecycle = $1, progress = $2, applied_revision = $3 WHERE board_id = $4 AND plugin = $5 AND revision = $6 AND progress = $7"
     if not row.active and lifecycle.state == "ready" then query = "DELETE FROM kickside_work_plugin WHERE revision = $1 AND board_id = $2 AND plugin = $3" end
     local params: domain.SqlParams = { json.encode(lifecycle), json.encode(row.progress),
-        lifecycle.state == "pending" and row.applied_revision or row.revision, board_id, row.plugin, row.revision }
+        lifecycle.state == "pending" and row.applied_revision or row.revision, board_id, row.plugin, row.revision, row.stored_progress }
     if not row.active and lifecycle.state == "ready" then params = { row.revision, board_id, row.plugin } end
     local _, uerr = db:execute(query, params)
     local _, rerr = db:release()
     return uerr or rerr
 end
 
-function M.enroll(tx: sql.Transaction, dialect: string, board_id: string): (string?, error?)
-    local rows, err = M.list(tx, board_id, true)
-    if err then return nil, err end
-    if #(rows or {}) == 0 then return nil, nil end
+local function enqueue(tx: sql.Transaction, dialect: string, board_id: string): (string?, error?)
     local job, jerr = jobs.enqueue_tx(tx, dialect, { namespace = "kickside.work", scope = "plugins", key = board_id,
         owner_locator = { kind = "component", id = board_id }, slot = true, demand = true,
         job_type = "kickside.work.jobs:plugins", immutable_payload = { board_id = board_id } })
     if jerr then return nil, jerr end
     return job.id :: string, nil
+end
+
+function M.enroll(tx: sql.Transaction, dialect: string, board_id: string): (string?, error?)
+    local rows, err = M.list(tx, board_id, true, 1)
+    if err then return nil, err end
+    if #(rows or {}) == 0 then return nil, nil end
+    return enqueue(tx, dialect, board_id)
+end
+
+function M.refresh_page(tx: sql.Transaction, dialect: string, plugin: string, after: string, limit: integer, refresh: string): ({ next: string?, enrolled: boolean }?, error?)
+    local rows, err = tx:query([[SELECT board_id FROM kickside_work_plugin
+        WHERE plugin = $1 AND active = 1 AND board_id > $2 ORDER BY board_id LIMIT $3]], { plugin, after, limit })
+    if err or not rows then return nil, err end
+    local enrolled = false
+    for _, row in ipairs(rows) do
+        local board_id = row.board_id :: string
+        -- A new refresh token fences a lifecycle batch holding progress from the old manifest.
+        local updated, uerr = tx:query([[UPDATE kickside_work_plugin SET applied_revision = 0, progress = $1, lifecycle = '{"state":"pending"}'
+            WHERE board_id = $2 AND plugin = $3 AND active = 1 RETURNING board_id]], { refresh, board_id, plugin })
+        if uerr then return nil, uerr end
+        if updated and updated[1] then
+            local _, jerr = enqueue(tx, dialect, board_id)
+            if jerr then return nil, jerr end
+            enrolled = true
+        end
+        after = board_id
+    end
+    return { next = #rows == limit and after or nil, enrolled = enrolled }, nil
 end
 return M

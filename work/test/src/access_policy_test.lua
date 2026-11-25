@@ -44,6 +44,14 @@ local MEMBER_ENDPOINTS = {
     ["kickside.work.api:get_view.endpoint"] = true,
     ["kickside.work.api:list_views.endpoint"] = true,
 }
+local PLANNING_ENDPOINTS = {
+    ["kickside.work.planning.api:plan_sprint.endpoint"] = true,
+    ["kickside.work.planning.api:move_dates.endpoint"] = true,
+    ["kickside.work.planning.api:check_capacity.endpoint"] = true,
+    ["kickside.work.planning.api:set_capacity.endpoint"] = true,
+    ["kickside.work.planning.api:workload.endpoint"] = true,
+    ["kickside.work.planning.api:roadmap.endpoint"] = true,
+}
 local ADMIN_ENDPOINTS = {
     ["kickside.work.api:pack_plan.endpoint"] = true,
     ["kickside.work.api:pack_apply.endpoint"] = true,
@@ -76,7 +84,7 @@ local function exact(policy_id: string, expected: { [string]: boolean })
             test.eq(policy:evaluate(actor, "access", id), expected[id] and "allow" or "undefined", id)
         end
     end
-    test.eq(seen, 44)
+    test.eq(seen, 50)
     test.eq(policy:evaluate(actor, "access", "kickside.work.api:get.endpoint.unlisted"), "undefined")
 end
 
@@ -225,6 +233,7 @@ local function define()
                 ["kickside.work.api.sprints:plan_adoption.endpoint"] = true,
                 ["kickside.work.api.sprints:apply_adoption.endpoint"] = true,
             })
+            exact("kickside.work.planning.api:endpoint_access", PLANNING_ENDPOINTS)
         end)
 
         test.it("publishes a member policy and an administration policy that include private ones", function()
@@ -300,6 +309,10 @@ local function define()
                 { "POST", "/api/work/sprints/plan_close" },
                 { "POST", "/api/work/sprints/close" },
             }
+            for id in pairs(PLANNING_ENDPOINTS) do
+                local endpoint = assert(registry.get(id))
+                cases[#cases + 1] = { endpoint.data.method, "/api" .. endpoint.data.path }
+            end
             for _, c in ipairs(cases) do
                 local res, err = http_client.request(c[1], gateway.url(c[2]), {
                     body = "{}", headers = { ["Content-Type"] = "application/json" },

@@ -131,10 +131,12 @@ same transition inspector. Installed checks and query filters come from Work
 registry metadata. Each plugin row places its title and description beside the
 activation switch. Turning on a plugin opens its row. A badge below the description
 signals a pending change, configuration needed, or a health issue. An invalid
-configuration shows its first field error even when the row is collapsed. Required
-fields are marked, and manifest suggestions appear beside the control. Only entered
-overrides are sent for newly activated plugins, so Work can apply deployment
-settings to omitted optional fields. Technical details shows projection health and
+configuration shows its first field error even when the row is collapsed and
+blocks review. Plugin, packed creation and field type configuration render in the
+shared `wc-schema-form` from the manifest schema, including its titles, help and
+defaults. Fields that declare `x-choices: board_item_types` choose from the board's
+item types. Only entered overrides are sent for newly activated plugins, so Work can
+apply deployment settings to omitted optional fields. Technical details shows projection health and
 indexed progress. Reset projection explains the effect and asks for confirmation
 before starting recovery.
 
@@ -177,7 +179,9 @@ initial installation share pack planning/apply, frozen generation/maps/conflict
 choices, and initial configuration forms. Invalid configuration blocks Apply.
 Review shows the target version and the plan's saved views, automations, traits and required plugins.
 New board and Install pack can reload discovery and show unavailable choices with
-their reasons. Work decides whether a board is eligible, including emptiness.
+their reasons. Install pack presents its choices in a scrollable list within the
+dialog so scrolling keeps the choices available. Work decides whether a board
+is eligible, including emptiness.
 An accepted installation shows the operation status and both identifiers.
 Continuing uses the same reviewed request and operation key.
 Packed creation uses the same configuration editor as Install pack, with the title and schema from discovery. Values still travel under the exact manifest ID, join the frozen retry identity, and are validated by Work before admission. Empty board sends no plugin configuration.

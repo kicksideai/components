@@ -8,11 +8,11 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
 import Select from 'primevue/select'
-import Textarea from 'primevue/textarea'
 import { computed, ref, useId, watch } from 'vue'
 import { principal } from './principals'
 import type { Field, FieldValue, Reference, Scalar } from './types'
-import { title } from './model'
+import MarkdownEditor from './MarkdownEditor.vue'
+import { richTextFields, title } from './model'
 import { queryIssues, type IssueWork } from './work'
 import { useCursorPage } from './cursor'
 
@@ -31,7 +31,7 @@ const id = useId()
 const root = ref<HTMLElement>()
 const picker = ref(false)
 const pickerError = ref(false)
-const isLong = computed(() => ['description', 'acceptance_criteria', 'planning_goal'].includes(props.field.code))
+const isLong = computed(() => richTextFields.includes(props.field.code))
 const many = computed(() => ['set', 'list'].includes(props.field.cardinality ?? ''))
 const isPrincipal = computed(() => props.field.type === 'principal' || props.field.form === 'principal')
 const isItem = computed(() => props.field.type === 'item')
@@ -173,7 +173,8 @@ defineExpose({ focus })
       :update-model-type="field.config?.format === 'date' ? 'string' : 'date'" @update:model-value="dateChanged" />
     <Checkbox v-else-if="field.form === 'bool'" :input-id="id" :model-value="modelValue === true" binary
       :disabled="disabled" @update:model-value="set" />
-    <Textarea v-else-if="isLong" :id="id" :model-value="stringValue" :required="required" :disabled="disabled" rows="4" fluid @update:model-value="set" />
+    <MarkdownEditor v-else-if="isLong" :model-value="stringValue ?? ''" :label="field.title" :disabled="disabled"
+      :placeholder="'Write ' + field.title.toLowerCase() + '…'" @update:model-value="set" />
     <InputText v-else :id="id" :model-value="stringValue" :required="required" :disabled="disabled" :autofocus="autofocus" dir="auto"
       fluid @update:model-value="set" />
   </div>

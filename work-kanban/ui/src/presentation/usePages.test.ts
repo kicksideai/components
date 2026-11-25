@@ -106,6 +106,35 @@ it('retains a Backlog cursor on the same board when changing to another tab and 
   } finally { env.stop() }
 })
 
+it('keeps a loaded Board page until a live event invalidates it', async () => {
+  const env = fixture()
+  try {
+    const boardView = { ...view, view_id: 'board', view: { type: 'kanban_board', group_by: 'state' } }
+    env.read.mockResolvedValue({ views: [view, boardView] })
+    const grouped: QueryPage = { as_of: 9, items: [], groups: [{ field: 'state', value: 'todo', count: 1, items: [item] }] }
+    env.tab.value = 'board'
+    env.run.mockResolvedValueOnce(grouped)
+    await env.pages.refresh()
+    env.pages.visible.value = ['todo']
+    env.tab.value = 'backlog'
+    env.run.mockResolvedValueOnce({ as_of: 10, items: [item] })
+    await env.pages.refresh()
+    env.tab.value = 'board'
+    env.pages.activate()
+    expect(env.pages.fetching.value).toBe(false)
+    expect(env.run).toHaveBeenCalledTimes(2)
+    expect(env.pages.lanes.value[0]?.columns[0]?.items).toEqual([item])
+    env.tab.value = 'search'
+    await env.pages.refresh({ revalidate: false, minSeq: 11 })
+    env.tab.value = 'board'
+    env.read.mockResolvedValueOnce({ ...grouped, as_of: 11 })
+    env.pages.activate()
+    await vi.waitFor(() => expect(env.pages.fetching.value).toBe(false))
+    expect(env.pages.lanes.value[0]?.columns[0]?.asOf).toBe(11)
+    expect(env.read.mock.calls.at(-1)?.[2].min_seq).toBe(11)
+  } finally { env.stop() }
+})
+
 it('refreshes a visible cursor window beyond Work’s 200-row grouped page limit', async () => {
   const env = fixture()
   const fixtureItems = Array.from({ length: 228 }, (_, index) => ({ ...item, id: 'issue-' + index }))

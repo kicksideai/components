@@ -220,6 +220,43 @@ local function define()
         end)
     end)
     test.describe("planning plugin adoption", function()
+        test.it("refuses to save an absent issue type with the same finding as schema review", function()
+            local admin = scoped.admin()
+            local board = custom_board(admin)
+            local plugins = { { use = PLUGIN } }
+            assert(board.call("apply_schema", { declaration = { plugins = plugins } }))
+            local config = { issue_types = { "absent_epic" } }
+            local plan = admin.http("POST", admin.route(board.id, "plan_schema"), {
+                declaration = { plugins = plugins }, plugin_configs = { [PLUGIN] = config },
+            })
+            test.eq(plan.status, 400, plan.raw)
+            test.eq(plan.body.kind, errors.INVALID)
+            test.eq(plan.body.details.code, "invalid_schema")
+            test.eq(plan.body.details.item_type, "absent_epic")
+
+            local reply = admin.http("POST", admin.route(board.id, "configure_plugin"), { plugin = PLUGIN, config = config })
+            local plugin = assert(find(assert(board.call("get_schema", {})).plugins, PLUGIN, "plugin"))
+            local persisted = plugin.config and plugin.config.issue_types and plugin.config.issue_types[1]
+            test.eq(reply.status, 400, reply.raw .. " persisted issue type: " .. tostring(persisted))
+            test.eq(reply.body.kind, plan.body.kind)
+            test.eq(reply.body.details.code, plan.body.details.code)
+            test.eq(reply.body.details.item_type, plan.body.details.item_type)
+            test.is_nil(persisted)
+        end)
+
+        test.it("refuses the pack's own item types through the declared configuration schema", function()
+            local admin = scoped.admin()
+            local board = custom_board(admin)
+            local plugins = { { use = PLUGIN } }
+            assert(board.call("apply_schema", { declaration = { plugins = plugins } }))
+            for _, own in ipairs({ "issue", "sprint", "milestone" }) do
+                local reply = admin.http("POST", admin.route(board.id, "configure_plugin"), { plugin = PLUGIN, config = { issue_types = { own } } })
+                test.eq(reply.status, 400, reply.raw)
+                test.eq(reply.body.kind, errors.INVALID)
+                test.eq(reply.body.details.code, "plugin_config_invalid", reply.raw)
+            end
+        end)
+
         test.it("provisions a board-owned root attachment and reaps it on board deletion", function()
             local admin = scoped.admin()
             local board = custom_board(admin)
@@ -318,6 +355,28 @@ local function define()
             local ready, owner_err = planning(owner, "plan_close", { board_id = board.id, sprint_id = source })
             assert(ready, steps.detail(owner_err))
             test.eq(#ready.snapshot.members, 1)
+        end)
+
+        test.it("filters and counts sprint membership by the reader's visibility", function()
+            local owner, holder = scoped.admin(), scoped.member()
+            local board = create_board(owner)
+            local source = sprint(board, "sprint", true)
+            assert(board.call("apply_schema", { declaration = {
+                fields = { { code = "level", form = "text", index = "key" } },
+                item_types = { { id = "issue", process = "planning_issue", fields = { "title", "current_sprint", "milestone", "level" } } },
+                visibility = { field = "level", levels = { { id = "private", holders = { { user = holder.id } } } } },
+            } }))
+            steps.rebuilt(board.id, "reindex")
+            assert(board.call("grant", { subject_id = holder.id, mask = 3 }))
+            local created = assert(holder.call("apply", { ops = { { op = "create", type = "issue", values = {
+                title = "Restricted sprint member", level = "private", current_sprint = { board = board.id, item = source },
+            } } } }, board.id)).outcomes[1]
+            test.eq(created.status, "applied")
+            local request = { where = { field = "current_sprint", op = "eq", value = { board = board.id, item = source } } }
+            test.eq(assert(holder.call("query", request, board.id)).items[1].id, created.item)
+            test.eq(assert(holder.call("count", request, board.id)).total, 1)
+            test.eq(#assert(board.call("query", request)).items, 0)
+            test.eq(assert(board.call("count", request)).total, 0)
         end)
 
         test.it("requires write access to the sprint reference on every affected item", function()

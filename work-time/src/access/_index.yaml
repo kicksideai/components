@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.time.access
+entries:
+- name: access
+  kind: library.lua
+  source: file://access.lua
+  modules: [sql, security]
+  imports:
+    work: kickside.work:types
+    identity: kickside.execution:execution_identity
+    work_access: kickside.work.read:access
+    principals: kickside.work.read:principals
+    item_view: kickside.work.read:item_view
+    work_store: kickside.work.persist:store
+    plugin_rows: kickside.work.persist:plugin_rows
+    config: kickside.work.time:config

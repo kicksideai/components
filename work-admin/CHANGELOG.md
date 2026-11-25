@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.29](https://github.com/kicksideai/components/compare/work-admin-v0.1.28...work-admin-v0.1.29) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-admin:** keep install pack choices clickable ([#444](https://github.com/kicksideai/components/issues/444)) ([5af18cb](https://github.com/kicksideai/components/commit/5af18cb12162ca433e0019cae35c2695d719a7f0))
+
+## [0.1.28](https://github.com/kicksideai/components/compare/work-admin-v0.1.27...work-admin-v0.1.28) (2026-11-24)
+
+
+### Bug Fixes
+
+* plugin configuration reads only the manifest and the shared schema form ([#434](https://github.com/kicksideai/components/issues/434)) ([f9237a0](https://github.com/kicksideai/components/commit/f9237a03d01ff5640a81945c6ffa84bd3dfd3559))
+
+## [0.1.27](https://github.com/kicksideai/components/compare/work-admin-v0.1.26...work-admin-v0.1.27) (2026-11-24)
+
+
+### Features
+
+* group plugins by purpose in Work and PIM administration ([#415](https://github.com/kicksideai/components/issues/415)) ([cfc263e](https://github.com/kicksideai/components/commit/cfc263ed9c5586c935a9b07be8cc1e94a88360a5))
+
 ## [0.1.26](https://github.com/kicksideai/components/compare/work-admin-v0.1.25...work-admin-v0.1.26) (2026-11-23)
 
 

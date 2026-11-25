@@ -1,0 +1,649 @@
+{
+  "definitions": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "page": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "group_by": {
+      "type": "string",
+      "enum": [
+        "board",
+        "person_week",
+        "sprint"
+      ]
+    },
+    "create": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$time_ref": "id"
+        },
+        "item": {
+          "$time_ref": "id"
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "work_date": {
+          "$time_ref": "date"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 8192
+        },
+        "key": {
+          "$time_ref": "id"
+        }
+      },
+      "required": [
+        "board_id",
+        "item",
+        "minutes",
+        "work_date",
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "edit": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$time_ref": "id"
+        },
+        "id": {
+          "$time_ref": "id"
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "work_date": {
+          "$time_ref": "date"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 8192
+        }
+      },
+      "required": [
+        "board_id",
+        "id",
+        "expected_version"
+      ],
+      "additionalProperties": false
+    },
+    "delete": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$time_ref": "id"
+        },
+        "id": {
+          "$time_ref": "id"
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "board_id",
+        "id",
+        "expected_version"
+      ],
+      "additionalProperties": false
+    },
+    "created": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$time_ref": "id"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "replayed"
+      ],
+      "additionalProperties": false
+    },
+    "changed": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$time_ref": "id"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "list": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$time_ref": "id"
+        },
+        "item": {
+          "$time_ref": "id"
+        },
+        "from": {
+          "$time_ref": "date"
+        },
+        "to": {
+          "$time_ref": "date"
+        },
+        "person": {
+          "$time_ref": "id"
+        },
+        "cursor": {
+          "$time_ref": "cursor"
+        },
+        "limit": {
+          "$time_ref": "page"
+        },
+        "sort": {
+          "type": "string",
+          "enum": ["oldest", "newest"],
+          "description": "Sort by work date and entry ID. Defaults to oldest first."
+        }
+      },
+      "required": [
+        "board_id"
+      ],
+      "additionalProperties": false
+    },
+    "totals": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$time_ref": "id"
+        },
+        "item": {
+          "$time_ref": "id"
+        },
+        "from": {
+          "$time_ref": "date"
+        },
+        "to": {
+          "$time_ref": "date"
+        },
+        "person": {
+          "$time_ref": "id"
+        },
+        "cursor": {
+          "$time_ref": "cursor"
+        },
+        "limit": {
+          "$time_ref": "page"
+        },
+        "sprint": {
+          "$time_ref": "id"
+        },
+        "group_by": {
+          "$time_ref": "group_by"
+        }
+      },
+      "required": [
+        "board_id"
+      ],
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$time_ref": "id"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$time_ref": "id"
+          },
+          "minItems": 1,
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "board_id",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "estimate_fields": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$time_ref": "id"
+        }
+      },
+      "required": [
+        "board_id"
+      ],
+      "additionalProperties": false
+    },
+    "estimates": {
+      "type": "object",
+      "properties": {
+        "original": {
+          "$time_ref": "id"
+        },
+        "remaining": {
+          "$time_ref": "id"
+        }
+      },
+      "required": [
+        "original",
+        "remaining"
+      ],
+      "additionalProperties": false
+    },
+    "entry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$time_ref": "id"
+        },
+        "item": {
+          "$time_ref": "id"
+        },
+        "person": {
+          "$time_ref": "id"
+        },
+        "person_name": {
+          "type": "string"
+        },
+        "work_date": {
+          "$time_ref": "date"
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 8192
+        },
+        "sprint": {
+          "$time_ref": "id"
+        },
+        "can_edit": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "item",
+        "person",
+        "work_date",
+        "minutes",
+        "version",
+        "can_edit"
+      ],
+      "additionalProperties": false
+    },
+    "listing": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$time_ref": "entry"
+          }
+        },
+        "cursor": {
+          "$time_ref": "cursor"
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "additionalProperties": false
+    },
+    "item_summary": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$time_ref": "id"
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entry_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "original_minutes": {
+          "type": "integer"
+        },
+        "remaining_minutes": {
+          "type": "integer"
+        },
+        "over_estimate": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "item",
+        "minutes",
+        "entry_count",
+        "over_estimate"
+      ],
+      "additionalProperties": false
+    },
+    "summaries": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$time_ref": "item_summary"
+          }
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "group": {
+      "type": "object",
+      "properties": {
+        "board_id": {
+          "$time_ref": "id"
+        },
+        "sprint": {
+          "$time_ref": "id"
+        },
+        "person": {
+          "$time_ref": "id"
+        },
+        "person_name": {
+          "type": "string"
+        },
+        "week": {
+          "$time_ref": "date"
+        },
+        "entry_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "original_minutes": {
+          "type": "integer"
+        },
+        "points": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "board_id",
+        "entry_count",
+        "minutes"
+      ],
+      "additionalProperties": false
+    },
+    "report": {
+      "type": "object",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "$time_ref": "group"
+          }
+        },
+        "cursor": {
+          "$time_ref": "cursor"
+        },
+        "coverage": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "limited"
+          ]
+        },
+        "direct_minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "subtree_minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entry_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "original_minutes": {
+          "type": "integer"
+        },
+        "remaining_minutes": {
+          "type": "integer"
+        },
+        "over_estimate": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "coverage"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "operations": [
+    {
+      "method": "create",
+      "output": "created",
+      "title": "Log time on a Work item",
+      "tool": "WorkLogTime",
+      "entry": "log_time",
+      "access": "write",
+      "http": "POST",
+      "path": "worklogs"
+    },
+    {
+      "method": "edit",
+      "output": "changed",
+      "title": "Edit a versioned worklog",
+      "tool": "WorkEditWorklog",
+      "entry": "edit_worklog",
+      "access": "write",
+      "http": "PATCH",
+      "path": "worklogs/{id}"
+    },
+    {
+      "method": "delete",
+      "output": "changed",
+      "title": "Delete a versioned worklog",
+      "tool": "WorkDeleteWorklog",
+      "entry": "delete_worklog",
+      "access": "write",
+      "http": "DELETE",
+      "path": "worklogs/{id}"
+    },
+    {
+      "method": "list",
+      "output": "listing",
+      "title": "List visible Work time entries",
+      "tool": "WorkListWorklogs",
+      "entry": "list_worklogs",
+      "access": "read",
+      "http": "GET",
+      "path": "worklogs"
+    },
+    {
+      "method": "totals",
+      "output": "report",
+      "title": "Read Work time totals",
+      "sprint_report": true,
+      "tool": "WorkTimeTotals",
+      "entry": "time_totals",
+      "access": "read",
+      "http": "POST",
+      "path": "totals"
+    },
+    {
+      "method": "summary",
+      "output": "summaries",
+      "title": "Read direct time and estimates for a batch of items",
+      "http": "POST",
+      "path": "summary"
+    },
+    {
+      "method": "export",
+      "input": "totals",
+      "title": "Export a page of visible timesheet rows",
+      "sprint_report": true,
+      "http": "GET",
+      "path": "export.csv"
+    },
+    {
+      "method": "estimate_fields",
+      "output": "estimates",
+      "title": "Discover the active Time estimate field codes"
+    }
+  ],
+  "fixtures": {
+    "create": {
+      "valid": [
+        {
+          "board_id": "board",
+          "item": "item",
+          "minutes": 15,
+          "work_date": "2026-11-21",
+          "key": "retry"
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "item": "item",
+          "minutes": 15,
+          "work_date": "2026-11-21",
+          "key": "retry",
+          "person": "another"
+        },
+        {
+          "board_id": "board",
+          "item": "item",
+          "minutes": 0,
+          "work_date": "2026-11-21",
+          "key": "retry"
+        }
+      ]
+    },
+    "edit": {
+      "valid": [
+        {
+          "board_id": "board",
+          "id": "entry",
+          "expected_version": 1,
+          "note": ""
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "id": "entry",
+          "expected_version": 0,
+          "minutes": 30
+        }
+      ]
+    },
+    "list": {
+      "valid": [
+        {
+          "board_id": "board",
+          "item": "item"
+        },
+        {
+          "board_id": "board",
+          "sort": "newest"
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "limit": 101
+        },
+        {
+          "board_id": "board",
+          "sort": "descending"
+        }
+      ]
+    },
+    "summary": {
+      "valid": [
+        {
+          "board_id": "board",
+          "items": [
+            "item"
+          ]
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "items": []
+        }
+      ]
+    },
+    "totals": {
+      "valid": [
+        {
+          "board_id": "board",
+          "from": "2026-11-12",
+          "to": "2026-11-21",
+          "group_by": "person_week"
+        }
+      ],
+      "invalid": [
+        {
+          "board_id": "board",
+          "group_by": "user"
+        }
+      ]
+    }
+  }
+}

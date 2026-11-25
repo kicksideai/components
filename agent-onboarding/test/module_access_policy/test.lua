@@ -89,8 +89,11 @@ local function define_tests()
             local store = assert(memory_stores.get(memory.component_id))
             test.eq(store.kb_type, "memory")
             test.eq(store.embedding_model, "class:embed")
-            test.is_nil(next(store.config), "personal memory has no explicit settings")
             local defaults = assert(memory_config.defaults())
+            -- Onboarding supplies the Memory engine's declared defaults explicitly.
+            -- The stored config must match those defaults exactly.
+            for key, value in pairs(defaults) do test.eq(store.config[key], value, key) end
+            for key in pairs(store.config) do test.not_nil(defaults[key], "unexpected memory setting: " .. key) end
             local effective = assert(memory_config.effective(store.config))
             for key, value in pairs(defaults) do test.eq(effective[key], value, key) end
             local agent = member_call(actor, "agent", agent_id).agent

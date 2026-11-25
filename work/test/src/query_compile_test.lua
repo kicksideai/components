@@ -191,8 +191,9 @@ local function define()
             local t = fixture(h)
             exec(h, "DROP TABLE IF EXISTS rt_stock")
             exec(h, "CREATE TABLE rt_stock (board_id TEXT NOT NULL, item_id TEXT NOT NULL, available INTEGER NOT NULL)")
-            exec(h, "INSERT INTO rt_stock (board_id, item_id, available) VALUES ($1, $2, $3), ($4, $5, $6), ($7, $8, $9)",
-                { OWNER, "r01", 4, OWNER, "r02", 0, "other", "r03", 9 })
+            exec(h, "CREATE INDEX rt_stock_item ON rt_stock (board_id, item_id)")
+            exec(h, "INSERT INTO rt_stock (board_id, item_id, available) VALUES ($1, 'r01', 4), ($1, 'r01', 5), ($1, 'r02', 0), ('other', 'r03', 9)",
+                { OWNER })
             local admitted = assert(scopes.admit(reader("read"), { { id = "app:stock", where = { available = { gt = 0 } } } }))
             local found = ids(h, t, {}, { admitted = admitted })
             test.eq(#found, 1)

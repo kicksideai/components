@@ -157,13 +157,13 @@ Lockfiles: `docscout/ui/package-lock.json`
 
 License: LicenseRef-KickSide-Community-1.0
 
-Lockfiles: `mail-admin/ui/package-lock.json`
+Lockfiles: `mail-admin/ui/package-lock.json`, `pim-admin/ui/package-lock.json`, `work-admin/ui/package-lock.json`
 
 ### npm: @kickside/ui-kit@1.7.8
 
 License: LicenseRef-KickSide-Community-1.0
 
-Lockfiles: `pim-admin/ui/package-lock.json`, `work-admin/ui/package-lock.json`, `work-kanban/ui/package-lock.json`
+Lockfiles: `work-kanban/ui/package-lock.json`
 
 ### npm: @lezer/common@1.5.6
 

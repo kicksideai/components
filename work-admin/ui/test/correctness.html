@@ -17,7 +17,7 @@
     window.__WIPPY_APP_API__ = {
       config: {}, api: { get: path => request(path), post: request },
       on: (topic, fn) => { if (!listeners.has(topic)) listeners.set(topic, new Set()); listeners.get(topic).add(fn); return () => listeners.get(topic).delete(fn) },
-      loadByTagName: async () => undefined,
+      loadByTagName: async tag => { if (tag === 'wc-schema-form') await import('/.wippy/widgets/schema_form.js?declare-tag=wc-schema-form') },
       host: { confirm: options => new Promise(resolve => {
         const dialog = document.querySelector('#confirm')
         dialog.querySelector('h2').textContent = options.header

@@ -25,7 +25,7 @@ const dependencies = entries.filter(entry => entry.kind === 'ns.dependency')
 const work = dependencies.find(dep => dep.component === 'kickside/work')
 const minimumWork = work.version.match(/^>=(\d+\.\d+\.\d+)$/)?.[1]
 assert(minimumWork, 'Work must declare a minimum version')
-assert.equal(dependencies.find(dep => dep.component === 'kickside/widgets')?.version, '>=0.1.72')
+assert.equal(dependencies.find(dep => dep.component === 'kickside/widgets')?.version, '>=0.1.75')
 for (const dep of dependencies.filter(dep => dep !== work && dep.component !== 'kickside/widgets')) {
   assert.equal(dep.version, '*', dep.id)
 }
@@ -71,7 +71,7 @@ assert.equal(harness.workspace.replacements['kickside/work-admin'], '..')
 assert.equal(harness.workspace.replacements['kickside/work'], '../../work')
 assert(Object.keys(harness.workspace.replacements).every(id => ['kickside/work-admin', 'kickside/work', 'kickside/agent-onboarding', 'kickside/sso', 'kickside/dashboard'].includes(id)))
 const lock = parse(read('test/wippy.lock'))
-const floors = { 'kickside/component': '0.3.20', 'kickside/core': '0.3.17', 'kickside/jobs': '0.1.80', 'kickside/widgets': '0.1.72' }
+const floors = { 'kickside/component': '0.3.20', 'kickside/core': '0.3.17', 'kickside/jobs': '0.1.80', 'kickside/widgets': '0.1.75' }
 const version = value => value.split('.').map(Number)
 for (const [name, floor] of Object.entries(floors)) {
   const current = version(lock.modules.find(module => module.name === name).version), minimum = version(floor)

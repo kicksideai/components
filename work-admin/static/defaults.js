@@ -1,8 +1,8 @@
-import { defineComponent as k, ref as n, onMounted as u, openBlock as t, createElementBlock as o, createElementVNode as l, createVNode as c, unref as s, createTextVNode as m } from "vue";
-import { e as f, c as g } from "./mount-Dm-3vIEJ.js";
+import { defineComponent as k, ref as n, onMounted as u, openBlock as t, createElementBlock as o, createElementVNode as l, createVNode as d, unref as s, createTextVNode as m } from "vue";
+import { e as f, d as g } from "./mount-BjEzswH5.js";
 import "pinia";
 import { host as v, define as y } from "@wippy-fe/proxy";
-import d from "primevue/button";
+import c from "primevue/button";
 const w = {
   class: "work-stack work-pane",
   "aria-label": "Work application defaults"
@@ -24,7 +24,7 @@ const w = {
     return u(r), (C, e) => (t(), o("section", w, [
       l("div", _, [
         e[1] || (e[1] = l("p", { class: "work-muted work-small work-spacer" }, "Manage individual boards in Work Admin.", -1)),
-        c(s(d), {
+        d(s(c), {
           label: "Board settings",
           severity: "secondary",
           outlined: "",
@@ -36,7 +36,7 @@ const w = {
         config: s(p)
       }, null, 8, b)) : i.value ? (t(), o("p", W, "Loading application settings…")) : (t(), o("p", x, [
         e[2] || (e[2] = m("Application settings are unavailable.", -1)),
-        c(s(d), {
+        d(s(c), {
           label: "Retry",
           severity: "secondary",
           outlined: "",

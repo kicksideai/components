@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local board_client = require("board_client")
 local reads = require("reads")
+local projection_feed = require("projection_feed")
 local storage = require("storage")
 local sql = require("sql")
 local types = require("types")
@@ -83,8 +84,9 @@ local function run(input: types.ProjectionRequest): (types.ProjectionResult?, er
         and current.registration == config.start_seq
     local page: reads.PluginFeed? = nil
     if scope and not state.retired and (not state.building or same) then
-        local request: reads.PluginFeedRequest = { board_id = id, plugin = PLUGIN, kind = PROJECTION, token = same and state.token or nil }
-        local response, feed_err = assert(board.plugin_feed)(board, request)
+        local request: reads.PluginFeedRequest = { board_id = id, plugin = PLUGIN, kind = PROJECTION,
+            attachment_id = attachment, projection_id = input.projection.id, token = same and state.token or nil }
+        local response, feed_err = projection_feed.page(request)
         if feed_err or not response then return nil, feed_err end
         page = response :: reads.PluginFeed
         if page.generation ~= schema.generation or page.attachment_id ~= attachment then

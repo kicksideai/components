@@ -83,8 +83,8 @@ const rows = (changes: SchemaChange[]) => changes.map(change => {
   }
   return { change, ...copy }
 })
-const changes = computed(() => rows(props.plan?.changes.filter(change => change.class !== 'refused') ?? []))
-const refusals = computed(() => rows(props.plan?.refused ?? []))
+const changes = computed(() => rows(props.plan?.changes.filter(change => change.class !== 'refused' && change.what !== 'field.remove') ?? []))
+const refusals = computed(() => rows(props.plan?.refused.filter(change => change.what !== 'field.remove') ?? []))
 const migrationAdvice = computed(() => {
   const message = props.plan?.migration
   if (!message || !refusals.value.length) return message

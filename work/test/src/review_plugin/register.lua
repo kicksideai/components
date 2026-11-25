@@ -5,11 +5,13 @@ local board = require("board")
 local component = require("component")
 local scopes = require("scopes")
 local types = require("types")
+local projection_feed = require("projection_feed")
 local M = {}
 local PLUGIN = "app.review_plugin:plugin"
 local REGISTER = "app.review_plugin:register"
 type Map = { [string]: unknown }
-type Worker = { thread_id: string, projection: { kind: string, body: Map },
+type WorkerBody = Map & { worker_config: { attachment_id: string }, token: string? }
+type Worker = { thread_id: string, projection: { id: string, kind: string, body: WorkerBody },
     range: { from_seq: integer, to_seq: integer }, events: { Map }? }
 
 function M.initialize(): (boolean?, error?)
@@ -50,10 +52,10 @@ end
 
 function M.state(input: Worker): (Map?, error?)
     local body = input.projection.body
-    local raw, ferr = board.call("plugin_feed", { board_id = input.thread_id, plugin = PLUGIN,
+    local feed, ferr = projection_feed.page({ board_id = input.thread_id, plugin = PLUGIN,
+        attachment_id = body.worker_config.attachment_id, projection_id = input.projection.id,
         kind = REGISTER, token = body.token })
-    if ferr or not raw then return nil, ferr end
-    local feed = raw :: types.PluginFeed
+    if ferr or not feed then return nil, ferr end
     local db = assert(sql.get("app:db"))
     local tx, terr = db:begin()
     if terr or not tx then db:release(); return nil, terr end

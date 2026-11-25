@@ -1,0 +1,280 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+# Generated from src/contracts/vocabulary.json.
+version: '1.0'
+namespace: kickside.work.time.api
+entries:
+- name: api_router
+  kind: ns.requirement
+  meta: {value_kind: http.router, comment: The authenticated router used by Work.}
+  targets:
+  - {entry: 'kickside.work.time.api:create.endpoint', path: .meta.router}
+  - {entry: 'kickside.work.time.api:edit.endpoint', path: .meta.router}
+  - {entry: 'kickside.work.time.api:delete.endpoint', path: .meta.router}
+  - {entry: 'kickside.work.time.api:list.endpoint', path: .meta.router}
+  - {entry: 'kickside.work.time.api:totals.endpoint', path: .meta.router}
+  - {entry: 'kickside.work.time.api:summary.endpoint', path: .meta.router}
+  - {entry: 'kickside.work.time.api:export.endpoint', path: .meta.router}
+- name: handle_create
+  kind: function.lua
+  source: file://contract.lua
+  method: create
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: log_time
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: 'Log time on a Work item'
+    llm_alias: WorkLogTime
+    llm_description: 'Log time on a Work item'
+    mcp: {required_scopes: [state.write]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"minutes":{"type":"integer","minimum":1},"work_date":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"note":{"type":"string","maxLength":8192},"key":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id","item","minutes","work_date","key"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"id":{"type":"string","minLength":1,"maxLength":255},"version":{"type":"integer","minimum":1},"replayed":{"type":"boolean"},"success":{"type":"boolean","const":true}},"required":["id","version","replayed","success"],"additionalProperties":false}'
+  source: file://tools.lua
+  method: create
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: http_create
+  kind: function.lua
+  source: file://http.lua
+  method: create
+  modules: [http, json]
+  imports:
+    handlers: kickside.work.time.api:handlers
+    schemas: kickside.work.time.contracts:schemas
+    access: kickside.work.api:access
+    csv: kickside.work.time.api:csv
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: create.endpoint
+  kind: http.endpoint
+  method: POST
+  func: http_create
+  path: /work/boards/{board}/time/worklogs
+- name: handle_edit
+  kind: function.lua
+  source: file://contract.lua
+  method: edit
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: edit_worklog
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: 'Edit a versioned worklog'
+    llm_alias: WorkEditWorklog
+    llm_description: 'Edit a versioned worklog'
+    mcp: {required_scopes: [state.write]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"id":{"type":"string","minLength":1,"maxLength":255},"expected_version":{"type":"integer","minimum":1},"minutes":{"type":"integer","minimum":1},"work_date":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"note":{"type":"string","maxLength":8192}},"required":["board_id","id","expected_version"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"id":{"type":"string","minLength":1,"maxLength":255},"version":{"type":"integer","minimum":1},"success":{"type":"boolean","const":true}},"required":["id","version","success"],"additionalProperties":false}'
+  source: file://tools.lua
+  method: edit
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: http_edit
+  kind: function.lua
+  source: file://http.lua
+  method: edit
+  modules: [http, json]
+  imports:
+    handlers: kickside.work.time.api:handlers
+    schemas: kickside.work.time.contracts:schemas
+    access: kickside.work.api:access
+    csv: kickside.work.time.api:csv
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: edit.endpoint
+  kind: http.endpoint
+  method: PATCH
+  func: http_edit
+  path: /work/boards/{board}/time/worklogs/{id}
+- name: handle_delete
+  kind: function.lua
+  source: file://contract.lua
+  method: delete
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: delete_worklog
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: 'Delete a versioned worklog'
+    llm_alias: WorkDeleteWorklog
+    llm_description: 'Delete a versioned worklog'
+    mcp: {required_scopes: [state.write]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"id":{"type":"string","minLength":1,"maxLength":255},"expected_version":{"type":"integer","minimum":1}},"required":["board_id","id","expected_version"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"id":{"type":"string","minLength":1,"maxLength":255},"version":{"type":"integer","minimum":1},"success":{"type":"boolean","const":true}},"required":["id","version","success"],"additionalProperties":false}'
+  source: file://tools.lua
+  method: delete
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: http_delete
+  kind: function.lua
+  source: file://http.lua
+  method: delete
+  modules: [http, json]
+  imports:
+    handlers: kickside.work.time.api:handlers
+    schemas: kickside.work.time.contracts:schemas
+    access: kickside.work.api:access
+    csv: kickside.work.time.api:csv
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: delete.endpoint
+  kind: http.endpoint
+  method: DELETE
+  func: http_delete
+  path: /work/boards/{board}/time/worklogs/{id}
+- name: handle_list
+  kind: function.lua
+  source: file://contract.lua
+  method: list
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: list_worklogs
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: 'List visible Work time entries'
+    llm_alias: WorkListWorklogs
+    llm_description: 'List visible Work time entries'
+    mcp: {required_scopes: [state.read]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"from":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"to":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"person":{"type":"string","minLength":1,"maxLength":255},"cursor":{"type":"string","minLength":1,"maxLength":4096},"limit":{"type":"integer","minimum":1,"maximum":100},"sort":{"type":"string","enum":["oldest","newest"],"description":"Sort by work date and entry ID. Defaults to oldest first."}},"required":["board_id"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"entries":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"person":{"type":"string","minLength":1,"maxLength":255},"person_name":{"type":"string"},"work_date":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"minutes":{"type":"integer","minimum":1},"version":{"type":"integer","minimum":1},"note":{"type":"string","maxLength":8192},"sprint":{"type":"string","minLength":1,"maxLength":255},"can_edit":{"type":"boolean"}},"required":["id","item","person","work_date","minutes","version","can_edit"],"additionalProperties":false}},"cursor":{"type":"string","minLength":1,"maxLength":4096},"success":{"type":"boolean","const":true}},"required":["entries","success"],"additionalProperties":false}'
+  source: file://tools.lua
+  method: list
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: http_list
+  kind: function.lua
+  source: file://http.lua
+  method: list
+  modules: [http, json]
+  imports:
+    handlers: kickside.work.time.api:handlers
+    schemas: kickside.work.time.contracts:schemas
+    access: kickside.work.api:access
+    csv: kickside.work.time.api:csv
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: list.endpoint
+  kind: http.endpoint
+  method: GET
+  func: http_list
+  path: /work/boards/{board}/time/worklogs
+- name: handle_totals
+  kind: function.lua
+  source: file://contract.lua
+  method: totals
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access, kickside.work.time.worklogs:sprint_discovery]
+- name: time_totals
+  kind: function.lua
+  meta:
+    type: tool
+    public: true
+    title: 'Read Work time totals'
+    llm_alias: WorkTimeTotals
+    llm_description: 'Read Work time totals'
+    mcp: {required_scopes: [state.read]}
+    input_schema: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"from":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"to":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"person":{"type":"string","minLength":1,"maxLength":255},"cursor":{"type":"string","minLength":1,"maxLength":4096},"limit":{"type":"integer","minimum":1,"maximum":100},"sprint":{"type":"string","minLength":1,"maxLength":255},"group_by":{"type":"string","enum":["board","person_week","sprint"]}},"required":["board_id"],"additionalProperties":false}'
+    output_schema: '{"type":"object","properties":{"groups":{"type":"array","items":{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint":{"type":"string","minLength":1,"maxLength":255},"person":{"type":"string","minLength":1,"maxLength":255},"person_name":{"type":"string"},"week":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"entry_count":{"type":"integer","minimum":0},"minutes":{"type":"integer","minimum":0},"original_minutes":{"type":"integer"},"points":{"type":"number"}},"required":["board_id","entry_count","minutes"],"additionalProperties":false}},"cursor":{"type":"string","minLength":1,"maxLength":4096},"coverage":{"type":"string","enum":["complete","limited"]},"direct_minutes":{"type":"integer","minimum":0},"subtree_minutes":{"type":"integer","minimum":0},"entry_count":{"type":"integer","minimum":0},"original_minutes":{"type":"integer"},"remaining_minutes":{"type":"integer"},"over_estimate":{"type":"boolean"},"success":{"type":"boolean","const":true}},"required":["coverage","success"],"additionalProperties":false}'
+  source: file://tools.lua
+  method: totals
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access, kickside.work.time.worklogs:sprint_discovery]
+- name: http_totals
+  kind: function.lua
+  source: file://http.lua
+  method: totals
+  modules: [http, json]
+  imports:
+    handlers: kickside.work.time.api:handlers
+    schemas: kickside.work.time.contracts:schemas
+    access: kickside.work.api:access
+    csv: kickside.work.time.api:csv
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access, kickside.work.time.worklogs:sprint_discovery]
+- name: totals.endpoint
+  kind: http.endpoint
+  method: POST
+  func: http_totals
+  path: /work/boards/{board}/time/totals
+- name: handle_summary
+  kind: function.lua
+  source: file://contract.lua
+  method: summary
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: http_summary
+  kind: function.lua
+  source: file://http.lua
+  method: summary
+  modules: [http, json]
+  imports:
+    handlers: kickside.work.time.api:handlers
+    schemas: kickside.work.time.contracts:schemas
+    access: kickside.work.api:access
+    csv: kickside.work.time.api:csv
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: summary.endpoint
+  kind: http.endpoint
+  method: POST
+  func: http_summary
+  path: /work/boards/{board}/time/summary
+- name: http_export
+  kind: function.lua
+  source: file://http.lua
+  method: export
+  modules: [http, json]
+  imports:
+    handlers: kickside.work.time.api:handlers
+    schemas: kickside.work.time.contracts:schemas
+    access: kickside.work.api:access
+    csv: kickside.work.time.api:csv
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access, kickside.work.time.worklogs:sprint_discovery]
+- name: export.endpoint
+  kind: http.endpoint
+  method: GET
+  func: http_export
+  path: /work/boards/{board}/time/export.csv
+- name: handle_estimate_fields
+  kind: function.lua
+  source: file://contract.lua
+  method: estimate_fields
+  imports: {handlers: 'kickside.work.time.api:handlers'}
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: transport_access
+  kind: security.policy
+  meta: {private: true}
+  groups: []
+  policy:
+    resources: ['kickside.work.time:time', 'kickside.work.time:time_binding', 'kickside.work.time:estimate_fields', 'kickside.work.time:estimate_fields_binding', 'kickside.work.time.api:handle_create', 'kickside.work.time.api:handle_edit', 'kickside.work.time.api:handle_delete', 'kickside.work.time.api:handle_list', 'kickside.work.time.api:handle_totals', 'kickside.work.time.api:handle_summary', 'kickside.work.time.api:handle_estimate_fields', 'kickside.work.time.api:log_time', 'kickside.work.time.api:edit_worklog', 'kickside.work.time.api:delete_worklog', 'kickside.work.time.api:list_worklogs', 'kickside.work.time.api:time_totals']
+    actions: [registry.get, registry.find, contract.get, contract.open, contract.call, funcs.call]
+    effect: allow
+- name: endpoint_access
+  kind: security.policy
+  meta: {private: true}
+  groups: []
+  policy:
+    resources: ['kickside.work.time.api:create.endpoint', 'kickside.work.time.api:edit.endpoint', 'kickside.work.time.api:delete.endpoint', 'kickside.work.time.api:list.endpoint', 'kickside.work.time.api:totals.endpoint', 'kickside.work.time.api:summary.endpoint', 'kickside.work.time.api:export.endpoint']
+    actions: [access]
+    effect: allow

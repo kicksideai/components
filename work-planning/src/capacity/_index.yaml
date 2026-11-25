@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.planning.capacity
+entries:
+- name: initial_storage
+  kind: function.lua
+  meta:
+    type: migration
+    tags: [work-planning]
+    timestamp: '2026-11-23T22:30:00Z'
+  source: file://initial_storage.lua
+  method: migrate
+  imports:
+    migration: wippy.migration:migration
+- name: storage
+  kind: library.lua
+  source: file://storage.lua
+  imports:
+    lifecycle: kickside.work.persist:lifecycle
+    work_store: kickside.work.persist:store
+    work_reads: kickside.work.read:types
+- name: mapping
+  kind: library.lua
+  source: file://mapping.lua
+  imports:
+    work: kickside.work:types
+    types: kickside.work.planning:types
+- name: reads
+  kind: library.lua
+  source: file://reads.lua
+  modules: [contract]
+  imports:
+    board_client: kickside.work:client
+    work: kickside.work:types
+    work_reads: kickside.work.read:types
+    query: kickside.work.read:query
+    budget: kickside.work.read:budget
+    storage: kickside.work.planning.capacity:storage
+    mapping: kickside.work.planning.capacity:mapping
+    types: kickside.work.planning:types
+- name: project
+  kind: function.lua
+  meta: {type: projection.worker}
+  source: file://lifecycle.lua
+  method: run
+  imports:
+    projection_feed: kickside.work.extensions:plugin_feed
+    storage: kickside.work.planning.capacity:storage
+- name: worker_access
+  kind: security.policy
+  groups: [wippy.security:process]
+  policy:
+    resources: [kickside.work.planning.capacity:project]
+    actions: [registry.get, funcs.call]
+    effect: allow
+- name: worker_discovery
+  kind: security.policy
+  groups: []
+  policy:
+    resources: [kickside.work.planning.capacity:project]
+    actions: [registry.get]
+    effect: allow
+- name: user_security_scope
+  kind: ns.requirement
+  meta: {value_kind: security.scope}
+  default: kickside.security.groups:members
+  targets:
+  - {entry: 'kickside.work.planning.capacity:worker_discovery', path: '.groups +='}

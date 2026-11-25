@@ -8,7 +8,7 @@ entries:
 - name: dep.work
   kind: ns.dependency
   component: kickside/work
-  version: '>=0.1.17'
+  version: '>=0.1.49'
 - name: dep.index
   kind: ns.dependency
   component: kickside/search-index
@@ -39,8 +39,9 @@ entries:
     type: kickside.work.plugin
     interface_version: 1
     title: Work Search
-    description: Lexical search for Work issue keys, titles and descriptions.
-    icon: search
+    description: Lets people find items by key, title or description.
+    icon: tabler:search
+    category: Search
     attachment: kickside.work_search:attachment
     seams: [kickside.work_search:text, kickside.work_search:key]
     projections:
@@ -86,11 +87,14 @@ entries:
   source: file://resolver.lua
   method: resolve_ids
   modules: [ctx, security, time]
-  imports: &search_imports
+  imports:
+    access: kickside.work.read:access
     board_client: kickside.work:client
     reads: kickside.work.read:types
     storage: kickside.work_search:storage
     types: kickside.work_search:types
+    work: kickside.work:types
+    work_store: kickside.work.persist:store
   security:
     policies: &storage_policies [kickside.work_search:storage_config_access, kickside.work_search:storage_db_access]
 - name: project
@@ -99,7 +103,12 @@ entries:
   source: file://projection.lua
   method: run
   modules: [sql, uuid]
-  imports: *search_imports
+  imports:
+    board_client: kickside.work:client
+    projection_feed: kickside.work.extensions:plugin_feed
+    reads: kickside.work.read:types
+    storage: kickside.work_search:storage
+    types: kickside.work_search:types
   security:
     policies: *storage_policies
 - name: delete_attachment
@@ -150,6 +159,8 @@ entries:
   modules: [sql, registry, json]
   imports:
     index: kickside.search_index:index
+    access_rows: kickside.work.persist:access_rows
+    work: kickside.work:types
 - name: 01_search
   kind: function.lua
   meta:

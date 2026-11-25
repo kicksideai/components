@@ -114,9 +114,45 @@ local function define()
             test.eq(tonumber(assert(db:query("SELECT f" .. f.id .. "_number AS v FROM " .. tables.names(h.id).item, {}))[1].v), 4)
             db:release()
             local calls_before_config = provider.observe(h.id).calls
-            test.eq(admin.http("POST", "/" .. h.id .. "/configure_plugin", { plugin = "app:schema_provider", config = { extra = true } }).status, 200)
-            test.eq(provider.observe(h.id).calls, calls_before_config)
-            test.is_true(admin.http("POST", "/" .. h.id .. "/get_schema", { check_plugins = true }).body.data.plugins[1].outdated)
+            local configured = admin.http("POST", "/" .. h.id .. "/configure_plugin", { plugin = "app:schema_provider", config = { extra = true } })
+            test.eq(configured.status, 200, configured.raw)
+            test.eq(configured.body.data.attachment_id, view.body.data.plugins[1].attachment_id)
+            test.is_true(provider.observe(h.id).calls > calls_before_config)
+            test.not_nil(field(h, "configured"))
+            local current = assert(h.call("get_schema", {}))
+            test.is_true(current.plugins[1].config.extra)
+            test.is_true(current.as_of >= configured.body.data.as_of)
+            test.is_true(not admin.http("POST", "/" .. h.id .. "/get_schema", { check_plugins = true }).body.data.plugins[1].outdated)
+
+            local populated = steps.create(h, "task", { configured = 9 })
+            local refused = admin.http("POST", "/" .. h.id .. "/configure_plugin", { plugin = "app:schema_provider", config = { extra = false } })
+            test.eq(refused.status, 400, refused.raw)
+            test.eq(refused.body.details.code, "migration_required")
+            test.eq(refused.body.details.changes[1].what, "field.remove")
+            test.is_true(assert(h.call("get_schema", {})).plugins[1].config.extra)
+            test.eq(assert(steps.get(h, populated)).item.values.configured, 9)
+        end)
+
+        test.it("writes non-schema settings without resolving providers or changing the generation", function()
+            local admin = scoped.admin()
+            local h = scoped.board(admin)
+            provider.seed(h.id, fragment())
+            assert(h.call("apply_schema", { declaration = { plugins = { { use = "app:schema_provider" }, { use = "app:work_plugin" } } } }))
+            local before = assert(h.call("get_schema", {}))
+            provider.seed(h.id, fragment(), "offline")
+            local calls = provider.observe(h.id).calls
+            local configured = assert(h.call("configure_plugin", { plugin = "app:work_plugin", config = { threshold = 12 } }))
+            local after = assert(h.call("get_schema", {}))
+            test.eq(after.generation, before.generation)
+            test.eq(provider.observe(h.id).calls, calls)
+            for _, plugin in ipairs(after.plugins) do
+                if plugin.plugin == "app:work_plugin" then
+                    test.eq(plugin.attachment_id, configured.attachment_id)
+                    test.eq(plugin.config.threshold, 12)
+                    return
+                end
+            end
+            error("configured attachment missing from schema view")
         end)
 
         test.it("keeps plugin field ids and held values across an explicit rename", function()

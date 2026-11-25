@@ -2,10 +2,13 @@
 local ctx = require("ctx")
 local security = require("security")
 local time = require("time")
+local access = require("access")
 local board_client = require("board_client")
 local reads = require("reads")
 local storage = require("storage")
 local types = require("types")
+local work = require("work")
+local work_store = require("work_store")
 
 local PLUGIN = "kickside.work_search:plugin"
 local PROJECTION = "kickside.work_search:items"
@@ -18,11 +21,37 @@ local function pending(code: string, message: string): error
     return errors.new({ kind = errors.UNAVAILABLE, retryable = true, message = message, details = { code = code } })
 end
 
+local function candidates(attachment: string, selected: types.Selection, query: string, deadline: string): ({ storage.Candidate }?, error?)
+    if not selected.restricted then
+        return storage.candidates(attachment, selected.generation, selected.scope, query, VERIFICATION_LIMIT)
+    end
+    type Snapshot = reads.ReadStamp & { rows: { storage.Candidate } }
+    local result, err = access.with_snapshot(selected.board_id, selected.as_of,
+        function(tx: reads.Executor, board: work.Board, dialect: string): (Snapshot?, error?)
+            if board.generation ~= selected.generation or board.applied_seq ~= selected.as_of then
+                return nil, pending("search_snapshot_changed", "Work changed while verifying search candidates")
+            end
+            local source, source_err = work_store.db_id()
+            if source_err then return nil, source_err end
+            local target, target_err = storage.db_id()
+            if target_err then return nil, target_err end
+            if source ~= target then
+                return nil, errors.new({ kind = errors.UNAVAILABLE, message = "Search on a restricted board requires the Work database",
+                    details = { code = "search_visibility_database" } })
+            end
+            local rows, read_err = storage.visible_candidates(tx, dialect, attachment, board, selected.scope, query, VERIFICATION_LIMIT)
+            if read_err or not rows then return nil, read_err end
+            return { rows = rows }, nil
+        end, nil, { deadline = deadline })
+    if err or not result then return nil, err end
+    return result.rows, nil
+end
+
 local function resolve_ids(request: types.ResolverRequest): ({ ids: { string } }?, error?)
     local selected = ctx.get("work_search") :: types.Selection?
     if not security.can("kickside.work.search.resolve", "kickside.work:search_resolver")
         or not selected or selected.board_id ~= request.board_id or (selected.scope ~= TEXT and selected.scope ~= KEY)
-        or not selected.generation or not selected.as_of then
+        or not selected.generation or not selected.as_of or type(selected.restricted) ~= "boolean" then
         return nil, errors.new({ kind = errors.PERMISSION_DENIED, message = "Work Search requires an adopted Work query scope",
             details = { code = "search_path_required" } })
     end
@@ -38,7 +67,7 @@ local function resolve_ids(request: types.ResolverRequest): ({ ids: { string } }
     end
 
     local deadline = time.now():utc():add(1500 * time.MILLISECOND):format(time.RFC3339NANO)
-    local rows, index_err = storage.candidates(context.attachment_id, selected.generation, selected.scope, request.query, VERIFICATION_LIMIT)
+    local rows, index_err = candidates(context.attachment_id, selected, request.query, deadline)
     if index_err or not rows then return nil, index_err end
     local query = assert(board.query)
     local ids: { string } = {}

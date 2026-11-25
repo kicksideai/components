@@ -63,7 +63,7 @@ local function define()
                 for _, code in ipairs(item_type.fields) do if code ~= "title" then kept[#kept + 1] = code end end
                 item_type.fields = kept
             end
-            assert(h.call("apply_schema", { declaration = { remove = { fields = { "title" } }, item_types = retired.item_types } }))
+            steps.archive_fields(h, { remove = { fields = { "title" } }, item_types = retired.item_types })
             local _, err = h.call("query", { where = { field = "title", op = "eq", value = "indexed later" } })
             test.eq(err:kind(), errors.INVALID); test.eq(err:details().field, "title"); test.eq(err:details().code, "unknown_field")
             db = assert(store.open())

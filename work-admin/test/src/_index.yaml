@@ -396,3 +396,31 @@ entries:
   - { name: 'wippy.session:api_router', value: 'app:api' }
   - { name: 'wippy.session:env_storage', value: 'app:env_storage' }
   - { name: 'wippy.session:delegation_func_id', value: 'userspace.dataflow.session:delegate' }
+- name: widgets_fixture
+  kind: fs.directory
+  meta:
+    comment: Locked widgets bundle for the UI browser fixture.
+  directory: ../ui/.wippy/widgets
+  auto_init: true
+- name: widgets_fixture_access
+  kind: security.policy
+  meta:
+    comment: Lets the fixture export read the widgets bundle and write the fixture copy.
+  policy:
+    resources: [kickside.widgets:ui_fs, app:widgets_fixture]
+    actions: [fs.get]
+    effect: allow
+- name: export_widgets
+  kind: process.lua
+  meta:
+    comment: Copies the locked widgets bundle into the UI browser fixture.
+    command:
+      name: widgets-fixture
+      short: Copy the locked widgets bundle into the UI browser fixture
+      security:
+        actor:
+          id: app:widgets_fixture
+        policies: [app:widgets_fixture_access]
+  source: file://widgets_fixture.lua
+  method: main
+  modules: [fs, io]

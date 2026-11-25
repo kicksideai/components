@@ -6,12 +6,11 @@ import BuilderDimensions from './BuilderDimensions.vue'
 import BuilderFamilies from './BuilderFamilies.vue'
 import BuilderVocabularies from './BuilderVocabularies.vue'
 import BuilderChannels from './BuilderChannels.vue'
-import BuilderPlugins from './BuilderPlugins.vue'
 import { createSchema, definitionFixtures } from '../../test/fixtures'
 
 for (const [name, component] of [
   ['fields', BuilderFields], ['dimensions', BuilderDimensions], ['families', BuilderFamilies],
-  ['vocabularies', BuilderVocabularies], ['channels and sources', BuilderChannels], ['plugins and scopes', BuilderPlugins],
+  ['vocabularies', BuilderVocabularies], ['channels and sources', BuilderChannels],
 ] as const) {
   it(`gives ${name} one shared column template with headings and stable cells`, () => {
     const { draft, options } = definitionFixtures()

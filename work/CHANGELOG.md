@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.1.52](https://github.com/kicksideai/components/compare/work-v0.1.51...work-v0.1.52) (2026-11-25)
+
+
+### Bug Fixes
+
+* **work:** keep Planning snapshots stable across index rebuilds ([#451](https://github.com/kicksideai/components/issues/451)) ([6fafe2b](https://github.com/kicksideai/components/commit/6fafe2bd2a9ca5c814a13a2c6293b9ba76024831))
+
+## [0.1.51](https://github.com/kicksideai/components/compare/work-v0.1.50...work-v0.1.51) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** reconcile plugin projections on Hub updates ([#448](https://github.com/kicksideai/components/issues/448)) ([f100eb6](https://github.com/kicksideai/components/commit/f100eb63cb9d82377eaedbc49ab600b1e2980fc4))
+
+## [0.1.50](https://github.com/kicksideai/components/compare/work-v0.1.49...work-v0.1.50) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** probe plugin scopes by item key ([#433](https://github.com/kicksideai/components/issues/433)) ([f65a935](https://github.com/kicksideai/components/commit/f65a935c69dfc0e515a051be7d9d98400e162321))
+
+## [0.1.49](https://github.com/kicksideai/components/compare/work-v0.1.48...work-v0.1.49) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** keep plugin projections current for restricted items ([#432](https://github.com/kicksideai/components/issues/432)) ([5e8b193](https://github.com/kicksideai/components/commit/5e8b1939b361a9b0d87c539df6a91452c380a0a2))
+
+## [0.1.48](https://github.com/kicksideai/components/compare/work-v0.1.47...work-v0.1.48) (2026-11-24)
+
+
+### Features
+
+* group plugins by purpose in Work and PIM administration ([#415](https://github.com/kicksideai/components/issues/415)) ([cfc263e](https://github.com/kicksideai/components/commit/cfc263ed9c5586c935a9b07be8cc1e94a88360a5))
+
+## [0.1.47](https://github.com/kicksideai/components/compare/work-v0.1.46...work-v0.1.47) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** validate provider configuration through schema admission ([#422](https://github.com/kicksideai/components/issues/422)) ([fa1f1f3](https://github.com/kicksideai/components/commit/fa1f1f3b408a2d63163a71f2705ed80f928c1b4f))
+
+## [0.1.46](https://github.com/kicksideai/components/compare/work-v0.1.45...work-v0.1.46) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** require review before removing populated fields ([#414](https://github.com/kicksideai/components/issues/414)) ([1b3c70d](https://github.com/kicksideai/components/commit/1b3c70d4481be97950fbca93494268e2a34d008b))
+
 ## [0.1.45](https://github.com/kicksideai/components/compare/work-v0.1.44...work-v0.1.45) (2026-11-23)
 
 

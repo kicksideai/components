@@ -229,6 +229,7 @@ entries:
     test: wippy.test:test
     manifests: kickside.work.domain:manifests
     plugins: kickside.work.domain:plugins
+    plugin_views: kickside.work.read:plugins
     types: kickside.work:types
 - name: filter_test
   kind: function.lua
@@ -348,3 +349,10 @@ entries:
     fixture: app:fixture
     steps: app:steps
     store: kickside.work.persist:store
+- name: retention_clock
+  kind: library.lua
+  source: file://../retention_clock.lua
+  modules: [ctx, time]
+  imports:
+    real: kickside.work.domain:clock
+    types: kickside.work:types

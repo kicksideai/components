@@ -1,5 +1,50 @@
 # Changelog
 
+## [0.1.11](https://github.com/kicksideai/components/compare/work-planning-v0.1.10...work-planning-v0.1.11) (2026-11-25)
+
+
+### Bug Fixes
+
+* **work:** keep Planning snapshots stable across index rebuilds ([#451](https://github.com/kicksideai/components/issues/451)) ([6fafe2b](https://github.com/kicksideai/components/commit/6fafe2bd2a9ca5c814a13a2c6293b9ba76024831))
+
+## [0.1.10](https://github.com/kicksideai/components/compare/work-planning-v0.1.9...work-planning-v0.1.10) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-planning:** read Time estimates through the canonical contract client ([#450](https://github.com/kicksideai/components/issues/450)) ([82ed5a2](https://github.com/kicksideai/components/commit/82ed5a2b7cdf5e19e3e25c1d5f00ffb748ada059))
+
+## [0.1.9](https://github.com/kicksideai/components/compare/work-planning-v0.1.8...work-planning-v0.1.9) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-planning:** restore typed Time estimate dispatch ([#447](https://github.com/kicksideai/components/issues/447)) ([78a7165](https://github.com/kicksideai/components/commit/78a716529e05dafb93ca999735ef8192bf091f9e))
+
+## [0.1.8](https://github.com/kicksideai/components/compare/work-planning-v0.1.7...work-planning-v0.1.8) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-planning:** apply sprint plans and dates through Work ([#440](https://github.com/kicksideai/components/issues/440)) ([e4847c7](https://github.com/kicksideai/components/commit/e4847c7bcd3eb8b631de20c2b7b0e3d7cea73100))
+* **work-planning:** expose workload and roadmap reads ([#441](https://github.com/kicksideai/components/issues/441)) ([9dae337](https://github.com/kicksideai/components/commit/9dae337e4bb924747374fdb9cd320e4463dfece5))
+* **work-planning:** store sprint capacity and map planning fields ([#419](https://github.com/kicksideai/components/issues/419)) ([588d3c2](https://github.com/kicksideai/components/commit/588d3c2c080d6d18f5106a78b5e0ec0f4cbd7a15))
+* **work-planning:** type capacity estimate errors and gate strict lint ([#443](https://github.com/kicksideai/components/issues/443)) ([b7b68a3](https://github.com/kicksideai/components/commit/b7b68a36d99f67309a655b61be71b171e504b8e6))
+
+## [0.1.7](https://github.com/kicksideai/components/compare/work-planning-v0.1.6...work-planning-v0.1.7) (2026-11-24)
+
+
+### Bug Fixes
+
+* plugin configuration reads only the manifest and the shared schema form ([#434](https://github.com/kicksideai/components/issues/434)) ([f9237a0](https://github.com/kicksideai/components/commit/f9237a03d01ff5640a81945c6ffa84bd3dfd3559))
+
+## [0.1.6](https://github.com/kicksideai/components/compare/work-planning-v0.1.5...work-planning-v0.1.6) (2026-11-24)
+
+
+### Features
+
+* group plugins by purpose in Work and PIM administration ([#415](https://github.com/kicksideai/components/issues/415)) ([cfc263e](https://github.com/kicksideai/components/commit/cfc263ed9c5586c935a9b07be8cc1e94a88360a5))
+
 ## [0.1.5](https://github.com/kicksideai/components/compare/work-planning-v0.1.4...work-planning-v0.1.5) (2026-11-22)
 
 

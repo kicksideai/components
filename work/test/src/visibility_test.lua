@@ -178,16 +178,13 @@ local function define()
                 { method = "list_changes", request = {} }, { method = "list_history", request = {} },
                 { method = "explain", request = {} }, { method = "run_view", request = { view_id = view } },
             }
-            local covered = { list = true, get_schema = true, plugin_context = true, plugin_feed = true, schema_options = true }
+            local covered = { list = true, get_schema = true, plugin_context = true, schema_options = true }
             for _, session in ipairs({ outside, holder, inside, admin, outsider }) do
-                for _, method in ipairs({ "plugin_context", "plugin_feed" }) do
-                    local value = { board_id = h.id, plugin = "app:work_plugin" }
-                    if method == "plugin_feed" then value.kind = "app:item_fold" end
-                    local context, err = session.call("contract_request", { contract = "kickside.work:board", method = method, value = value })
-                    test.is_nil(context)
-                    test.not_nil(err)
-                    test.eq(err:kind(), session == outsider and errors.PERMISSION_DENIED or errors.NOT_FOUND)
-                end
+                local value = { board_id = h.id, plugin = "app:work_plugin" }
+                local context, err = session.call("contract_request", { contract = "kickside.work:board", method = "plugin_context", value = value })
+                test.is_nil(context)
+                test.not_nil(err)
+                test.eq(err:kind(), session == outsider and errors.PERMISSION_DENIED or errors.NOT_FOUND)
                 local options, oerr = session.call("contract_request", { contract = "kickside.work:board", method = "schema_options", value = { board_id = h.id } })
                 if session == admin then test.is_nil(oerr); test.not_nil(options.plugins)
                 else test.is_nil(options); test.eq(oerr:kind(), errors.PERMISSION_DENIED) end
@@ -623,9 +620,9 @@ local function define()
             local held = false
             for _, entry in ipairs(prior.entries) do if entry.field == "secret" then held = true end end
             test.is_true(held)
-            assert(h.call("apply_schema", { declaration = { remove = { fields = { "secret" } }, item_types = {
+            steps.archive_fields(h, { remove = { fields = { "secret" } }, item_types = {
                 { id = "task", process = "flow", fields = { "title", "level", "owner" }, parent_types = { false, "task" } },
-            } } }))
+            } })
             local history = assert(member.call("list_history", { item = { id = id } }, h.id))
             for _, entry in ipairs(history.entries) do test.is_true(entry.before ~= 77); test.is_true(entry.after ~= 77) end
         end)

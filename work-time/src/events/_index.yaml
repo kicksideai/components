@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.time.events
+entries:
+- name: worklog.changed
+  kind: registry.entry
+  meta: {type: kickside.core.threads.event, output_kind: 'kickside.work.time:attachment'}
+  schema: &payload
+    type: object
+    additionalProperties: false
+    required: [board_id, change_kind]
+    properties:
+      board_id: {type: string, minLength: 1}
+      change_kind: {type: string, enum: [create, edit, delete, estimate]}
+- name: time.over_estimate
+  kind: registry.entry
+  meta: {type: kickside.core.threads.event, output_kind: 'kickside.work.time:attachment'}
+  schema: *payload
+- name: worklog_changed_port
+  kind: registry.entry
+  meta: {type: kickside.automation.port, title: Work time logged or changed, group: Work}
+  binding: kickside.work.time:attachment
+  event: kickside.work.time.events:worklog.changed
+  config_schema: &source
+    thread_id:
+      type: string
+      picker: wc-component-picker
+      class: work_time
+      role: primary
+      required: true
+      title: Work Time attachment
+- name: over_estimate_port
+  kind: registry.entry
+  meta: {type: kickside.automation.port, title: Work time over estimate, group: Work}
+  binding: kickside.work.time:attachment
+  event: kickside.work.time.events:time.over_estimate
+  config_schema: *source
+- name: writer
+  kind: library.lua
+  source: file://writer.lua
+  modules: [sql, hash]
+  imports:
+    append: kickside.core.threads.persist:append

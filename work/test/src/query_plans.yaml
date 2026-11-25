@@ -41,7 +41,8 @@ entries:
     board_column: board_id
     item_column: item_id
     match: [content]
-    filters: {}
+    filters:
+      content: {column: content, type: text, ops: [eq]}
 - name: query_text_search_write
   kind: function.lua
   method: run

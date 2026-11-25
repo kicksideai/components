@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.6](https://github.com/kicksideai/components/compare/work-search-v0.1.5...work-search-v0.1.6) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work:** keep plugin projections current for restricted items ([#432](https://github.com/kicksideai/components/issues/432)) ([5e8b193](https://github.com/kicksideai/components/commit/5e8b1939b361a9b0d87c539df6a91452c380a0a2))
+
+## [0.1.5](https://github.com/kicksideai/components/compare/work-search-v0.1.4...work-search-v0.1.5) (2026-11-24)
+
+
+### Features
+
+* group plugins by purpose in Work and PIM administration ([#415](https://github.com/kicksideai/components/issues/415)) ([cfc263e](https://github.com/kicksideai/components/commit/cfc263ed9c5586c935a9b07be8cc1e94a88360a5))
+
 ## [0.1.4](https://github.com/kicksideai/components/compare/work-search-v0.1.3...work-search-v0.1.4) (2026-11-22)
 
 

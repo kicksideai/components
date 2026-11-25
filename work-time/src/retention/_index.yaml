@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.time.retention
+entries:
+- name: owner
+  kind: function.lua
+  meta:
+    type: kickside.retention.owner
+    comment: Drains expired worklogs and retired Time scopes.
+  source: file://owner.lua
+  method: run
+  modules: [sql, time]
+  imports:
+    storage: kickside.work.time:storage
+    rows: kickside.work.time.worklogs:rows
+    types: kickside.work.time.worklogs:types
+    dates: kickside.work.time.worklogs:input
+    work_store: kickside.work.persist:store
+    comparison: kickside.work.time.projection:comparison
+  security:
+    actor: {id: 'system:kickside.work.time.retention'}
+    policies: &storage [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: delete_attachment
+  kind: function.lua
+  meta: {private: true}
+  source: file://teardown.lua
+  method: delete
+  modules: [ctx, sql, time]
+  imports:
+    component: kickside.component:component
+    storage: kickside.work.time:storage
+    rows: kickside.work.time.worklogs:rows
+  security:
+    policies: *storage

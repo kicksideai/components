@@ -123,11 +123,11 @@ type PluginError = { kind: string, code: string?, message: string, floor: intege
 type PluginProblem = { code: string, message: string, field: string? }
 type PluginLifecycle = { state: string, error: PluginError? }
 type PluginProjectionState = { last_seq: integer, start_seq: integer?, parked: boolean, bootstrapping: boolean, error: unknown? }
-type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
+type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, category: string?, installed: boolean, active: boolean,
     attachment_id: string?, config: JsonObject?, config_schema: JsonObject?, requires: { string }, tools: { string },
     lifecycle: PluginLifecycle, projections: { [string]: PluginProjectionState }, problem: PluginProblem?,
     version: string?, digest: string?, outdated: boolean? }
-type Plugin = { interface_version: integer, tools: { string }, projections: { PluginProjection }, id: string, title: string?, description: string?, icon: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?, requires: { string }, seams: { string } }
+type Plugin = { interface_version: integer, tools: { string }, projections: { PluginProjection }, id: string, title: string?, description: string?, icon: string?, category: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?, requires: { string }, seams: { string } }
 -- ProviderResult is what a schema_provider binding answers.
 type ProviderResult = { fragment: JsonObject, version: string? }
 type Provider = { resolve: (self: Provider, request: JsonObject) -> (unknown, error?) }
@@ -188,9 +188,9 @@ type SettingRule = { default: integer, min: integer, max: integer }
 type PolicyDecl = { stage_timeout: string?, stage_max_visits: integer?, comments_per_item: integer?, wip: Wip?, audit: string?, audit_days: integer?, trash_days: integer?, tombstone_days: integer?, interval_days: integer? }
 type PluginOwners = { [string]: { [string]: string } }
 type PluginDecl = { schema: PluginSchema?, use: string, attachment_kind: string?, attachment_id: string? }
-type PluginProgress = { projection_after: string?, scanned: boolean?, registered: integer? }
+type PluginProgress = { projection_after: string?, scanned: boolean?, registered: integer?, refresh: string? }
 type PluginAttachment = { plugin: string, attachment_id: string, impl_id: string, config: JsonObject }
-type PluginState = { plugin: string, attachment_id: string, impl_id: string, config: JsonObject, active: boolean, revision: integer, applied_revision: integer, lifecycle: PluginLifecycle, progress: PluginProgress }
+type PluginState = { plugin: string, attachment_id: string, impl_id: string, config: JsonObject, active: boolean, revision: integer, applied_revision: integer, lifecycle: PluginLifecycle, progress: PluginProgress, stored_progress: string? }
 type StateMaps = { [string]: { [string]: string } }
 type RemoveDecl = { fields: { string }?, item_types: { string }?, processes: { string }?, relation_types: { string }?, visibility: boolean? }
 type Declaration = {
@@ -263,7 +263,9 @@ type Model = {
     relations: { [string]: Relation }, processes: { [string]: Process },
 }
 
-type SchemaChange = { code: string, class: string, what: string, detail: string?, to: string?, count: integer? }
+type SchemaChange = { code: string, class: string, what: string, detail: string?, to: string?, count: integer?,
+    path: string?, item_type: string?, resolution: string? }
+type FieldRemoval = { path: string, field: Field, item_type: string? }
 -- states counts the items holding each state, by item type.
 type Usage = { fields: { [integer]: integer }, items: integer, types: { [string]: integer }, links: { [string]: integer }, states: { [string]: { [string]: integer } } }
 type StateUsageTarget = { item_type: string, state: string }
@@ -273,7 +275,7 @@ type UsageTargets = { item_types: { string }, links: { string }, states: { State
 type Board = { memberships: Memberships?, pack: string?, pack_version: string?, pack_digest: string?, pack_base: JsonObject?, caller_error: error?,
     schema_version: integer,
     dialect: string?, caller: AccessCaller?, board_id: string, key_prefix: string, generation: integer, compiled: Compiled, model: Model, digest: string,
-    applied_seq: integer, counter: integer,
+    applied_seq: integer, snapshot_seq: integer, counter: integer,
     tombstone_floor_seq: integer, layout: Layout?,
 }
 type Cell = { p: Value?, c: integer? }
@@ -386,7 +388,7 @@ return { SearchResults = SearchResults, StageBindingRequest = StageBindingReques
     TransitionDefinitions = TransitionDefinitions, TransitionProof = TransitionProof,
     TransitionAdoptionSpec = TransitionAdoptionSpec, TransitionAdoptionCohort = TransitionAdoptionCohort,
     TransitionAdoptionReview = TransitionAdoptionReview, TransitionAdoptionResult = TransitionAdoptionResult,
-    Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets,
+    Usage = Usage, StateUsageTarget = StateUsageTarget, UsageTargets = UsageTargets, FieldRemoval = FieldRemoval,
     Board = Board, Cell = Cell, Document = Document, Item = Item, LinkRow = LinkRow, InboundLink = InboundLink,
     CommentRow = CommentRow, CommentPosition = CommentPosition, LinkPosition = LinkPosition, ChangeRow = ChangeRow, IntervalRow = IntervalRow,
 

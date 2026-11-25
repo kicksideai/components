@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+# Generated from src/contracts/vocabulary.json.
+version: '1.0'
+namespace: kickside.work.planning
+entries:
+- name: planning
+  kind: contract.definition
+  methods:
+  - name: plan_sprint
+    description: 'Plan sprint membership'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint_id":{"type":"string","minLength":1,"maxLength":255},"key":{"type":"string","minLength":1,"maxLength":255},"changes":{"type":"array","items":{"type":"object","properties":{"item":{"type":"string","minLength":1,"maxLength":255},"expected_version":{"type":"integer","minimum":1,"maximum":9007199254740991},"sprint_id":{"anyOf":[{"type":"string","minLength":1,"maxLength":255},{"type":"null"}],"description":"The sprint being planned. Null or an omitted assignment sends the item to the backlog."}},"required":["item","expected_version"],"additionalProperties":false},"minItems":1,"maxItems":200}},"required":["board_id","sprint_id","key","changes"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object"},"minItems":0,"maxItems":200},"applied":{"type":"boolean"},"seq":{"type":"integer","minimum":0},"as_of":{"type":"integer","minimum":0},"replayed":{"type":"boolean"}},"required":["outcomes","applied"],"additionalProperties":false}'
+  - name: move_dates
+    description: 'Move Planning dates'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"key":{"type":"string","minLength":1,"maxLength":255},"expected_version":{"type":"integer","minimum":1,"maximum":9007199254740991},"start":{"type":"string","minLength":10,"maxLength":30},"finish":{"type":"string","minLength":10,"maxLength":30}},"required":["board_id","item","key","expected_version","start","finish"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"outcomes":{"type":"array","items":{"type":"object"},"minItems":0,"maxItems":200},"applied":{"type":"boolean"},"seq":{"type":"integer","minimum":0},"as_of":{"type":"integer","minimum":0},"replayed":{"type":"boolean"}},"required":["outcomes","applied"],"additionalProperties":false}'
+  - name: check_capacity
+    description: 'Check sprint capacity'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint_id":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id","sprint_id"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"unit":{"type":"string","enum":["minutes","points"]},"version":{"type":"integer","minimum":1,"maximum":9007199254740991},"rows":{"type":"array","items":{"type":"object","properties":{"load":{"type":"number"},"items":{"type":"integer","minimum":0},"missing_estimates":{"type":"integer","minimum":0},"person":{"type":"string","minLength":1,"maxLength":255},"capacity":{"type":"number","minimum":0,"maximum":9007199254740991}},"required":["load","items","missing_estimates","person"],"additionalProperties":false}},"total":{"type":"object","properties":{"load":{"type":"number"},"items":{"type":"integer","minimum":0},"missing_estimates":{"type":"integer","minimum":0},"capacity":{"type":"number","minimum":0}},"required":["load","items","missing_estimates"],"additionalProperties":false},"unassigned":{"type":"object","properties":{"load":{"type":"number"},"items":{"type":"integer","minimum":0},"missing_estimates":{"type":"integer","minimum":0},"capacity":{"type":"number","minimum":0,"maximum":9007199254740991}},"required":["load","items","missing_estimates"],"additionalProperties":false},"estimates_available":{"type":"boolean"},"caller_visible":{"type":"boolean","const":true},"incomplete":{"type":"boolean"},"as_of":{"type":"integer","minimum":0}},"required":["rows","total","unassigned","estimates_available","caller_visible","incomplete","as_of"],"additionalProperties":false}'
+  - name: set_capacity
+    description: 'Set sprint capacity'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint_id":{"type":"string","minLength":1,"maxLength":255},"expected_version":{"type":"integer","minimum":0,"maximum":9007199254740990,"description":"Use zero when capacity has never been set for this sprint."},"unit":{"type":"string","enum":["minutes","points"]},"rows":{"type":"array","items":{"type":"object","properties":{"person":{"type":"string","minLength":1,"maxLength":255},"amount":{"type":"number","minimum":0,"maximum":9007199254740991}},"required":["person","amount"],"additionalProperties":false},"minItems":0,"maxItems":200}},"required":["board_id","sprint_id","expected_version","unit","rows"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"version":{"type":"integer","minimum":1,"maximum":9007199254740991},"unit":{"type":"string","enum":["minutes","points"]}},"required":["version","unit"],"additionalProperties":false}'
+  - name: workload
+    description: 'Read sprint workload'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint_id":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id","sprint_id"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"unit":{"type":"string","enum":["minutes","points"]},"version":{"type":"integer","minimum":1,"maximum":9007199254740991},"rows":{"type":"array","items":{"type":"object","properties":{"load":{"type":"number"},"items":{"type":"integer","minimum":0},"missing_estimates":{"type":"integer","minimum":0},"person":{"type":"string","minLength":1,"maxLength":255},"capacity":{"type":"number","minimum":0,"maximum":9007199254740991}},"required":["load","items","missing_estimates","person"],"additionalProperties":false}},"total":{"type":"object","properties":{"load":{"type":"number"},"items":{"type":"integer","minimum":0},"missing_estimates":{"type":"integer","minimum":0},"capacity":{"type":"number","minimum":0}},"required":["load","items","missing_estimates"],"additionalProperties":false},"unassigned":{"type":"object","properties":{"load":{"type":"number"},"items":{"type":"integer","minimum":0},"missing_estimates":{"type":"integer","minimum":0},"capacity":{"type":"number","minimum":0,"maximum":9007199254740991}},"required":["load","items","missing_estimates"],"additionalProperties":false},"estimates_available":{"type":"boolean"},"caller_visible":{"type":"boolean","const":true},"incomplete":{"type":"boolean"},"as_of":{"type":"integer","minimum":0}},"required":["rows","total","unassigned","estimates_available","caller_visible","incomplete","as_of"],"additionalProperties":false}'
+  - name: roadmap
+    description: 'Read roadmap field mappings'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"types":{"type":"object","additionalProperties":{"type":"object","properties":{"start":{"type":"string","minLength":1,"maxLength":255},"finish":{"type":"string","minLength":1,"maxLength":255},"progress_field":{"type":"string","minLength":1,"maxLength":255},"membership":{"type":"string","minLength":1,"maxLength":255}},"required":["start","finish"],"additionalProperties":false}}},"required":["types"],"additionalProperties":false}'
+- name: planning_binding
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work.planning:planning
+    default: true
+    methods:
+      plan_sprint: kickside.work.planning.api:handle_plan_sprint
+      move_dates: kickside.work.planning.api:handle_move_dates
+      check_capacity: kickside.work.planning.api:handle_check_capacity
+      set_capacity: kickside.work.planning.api:handle_set_capacity
+      workload: kickside.work.planning.api:handle_workload
+      roadmap: kickside.work.planning.api:handle_roadmap
+- name: sprint_reference
+  kind: contract.definition
+  methods:
+  - name: resolve
+    description: 'Resolve a work date to a readable sprint'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"item":{"type":"string","minLength":1,"maxLength":255},"work_date":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"sprint_id":{"type":"string","minLength":1,"maxLength":255}},"required":["board_id","item","work_date"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"sprint_id":{"type":"string","minLength":1,"maxLength":255}},"required":[],"additionalProperties":false}'
+  - name: report
+    description: 'Read bounded sprint membership for a time report'
+    input_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"board_id":{"type":"string","minLength":1,"maxLength":255},"sprint_id":{"type":"string","minLength":1,"maxLength":255},"limit":{"type":"integer","minimum":1,"maximum":4096}},"required":["board_id","sprint_id","limit"],"additionalProperties":false}'
+    output_schemas:
+    - format: application/schema+json
+      definition: '{"type":"object","properties":{"items":{"type":"array","items":{"type":"string","minLength":1,"maxLength":255},"minItems":0,"maxItems":4096},"as_of":{"type":"integer","minimum":0},"coverage":{"type":"string","enum":["complete","limited"]},"unit":{"type":"string","enum":["minutes","points"]},"points_field":{"type":"string","minLength":1,"maxLength":255}},"required":["items","as_of","coverage","unit"],"additionalProperties":false}'
+- name: sprint_reference_binding
+  kind: contract.binding
+  contracts:
+  - contract: kickside.work.planning:sprint_reference
+    default: true
+    methods:
+      resolve: kickside.work.planning.api:handle_resolve
+      report: kickside.work.planning.api:handle_report

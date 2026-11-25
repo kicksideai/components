@@ -12,7 +12,7 @@ entries:
   kind: ns.dependency
   component: kickside/work
 - name: dep.kickside.widgets
-  version: '>=0.1.72'
+  version: '>=0.1.75'
   kind: ns.dependency
   component: kickside/widgets
 - name: dep.kickside.component

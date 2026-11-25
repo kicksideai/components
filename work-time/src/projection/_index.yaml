@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.time.projection
+entries:
+- name: worker
+  kind: function.lua
+  meta: {type: projection.worker}
+  source: file://worker.lua
+  method: run
+  modules: [sql, time]
+  imports:
+    work: kickside.work:types
+    reads: kickside.work.read:types
+    projection_feed: kickside.work.extensions:plugin_feed
+    work_store: kickside.work.persist:store
+    plugin_rows: kickside.work.persist:plugin_rows
+    storage: kickside.work.time:storage
+    rows: kickside.work.time.worklogs:rows
+    types: kickside.work.time.worklogs:types
+    writer: kickside.work.time.events:writer
+    comparison: kickside.work.time.projection:comparison
+  security:
+    policies: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+- name: comparison
+  kind: library.lua
+  source: file://comparison.lua
+  imports:
+    work: kickside.work:types
+    document: kickside.work.domain:document
+- name: worker_access
+  kind: security.policy
+  groups: [wippy.security:process]
+  policy:
+    resources: [kickside.work.time.projection:worker]
+    actions: [registry.get, funcs.call]
+    effect: allow
+- name: worker_discovery
+  kind: security.policy
+  groups: [wippy.security:process]
+  policy:
+    resources: [kickside.work.time:storage_config_access, kickside.work.time:storage_db_access]
+    actions: [registry.get]
+    effect: allow

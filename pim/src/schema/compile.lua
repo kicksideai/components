@@ -31,6 +31,7 @@ local function digest(value: unknown): string
 end
 
 local CODE = "^[a-z][a-z0-9_]*$"
+local CATALOG_OWNER = "catalog"
 
 -- shape_problem validates a field's value shape and recursively checks its
 -- record members against the same effective vocabulary map.
@@ -225,36 +226,41 @@ end
 type OwnedAspect = { decl: types.AspectDecl, plugin: string? }
 -- Contributed is what the catalog declares followed by what its chosen plugins
 -- contribute, in plugin id order.
-type Contributed = { aspects: { OwnedAspect }, vocabularies: { types.VocabularyDecl } }
+type Contributed = { aspects: { OwnedAspect }, vocabularies: { types.VocabularyDecl }, owners: types.SchemaOwners }
+
+local function owner_label(owner: string): string
+    return owner == CATALOG_OWNER and "the catalog" or "plugin " .. owner
+end
 
 -- contributed lists the catalog's own aspects and vocabularies, then those of
 -- each chosen plugin's resolved schema. A namespace or vocabulary two parties
 -- declare is refused by name, and a plugin attribute carries no id.
 local function contributed(declaration: types.Declaration): (Contributed?, error?)
-    local out: Contributed = { aspects = {}, vocabularies = {} }
-    local aspect_owner: { [string]: string } = {}
-    local vocabulary_owner: { [string]: string } = {}
-    local function add(owner: string, plugin: string?, fragment: types.Fragment): error?
+    local out: Contributed = { aspects = {}, vocabularies = {}, owners = { aspects = {}, vocabularies = {} } }
+    local aspect_owner, vocabulary_owner = out.owners.aspects, out.owners.vocabularies
+    local function add(plugin: string?, fragment: types.Fragment): error?
+        local owner = plugin or CATALOG_OWNER
+        local label = owner_label(owner)
         for _, v in ipairs(fragment.vocabularies or {}) do
             local code = tostring(v.code)
-            if vocabulary_owner[code] then return invalid(owner .. ": vocabulary " .. code .. " is declared by " .. vocabulary_owner[code]) end
+            if vocabulary_owner[code] then return invalid(label .. ": vocabulary " .. code .. " is declared by " .. owner_label(vocabulary_owner[code])) end
             vocabulary_owner[code] = owner
             out.vocabularies[#out.vocabularies + 1] = v
         end
         for _, a in ipairs(fragment.aspects or {}) do
             local ns = tostring(a.namespace)
-            if aspect_owner[ns] then return invalid(owner .. ": aspect " .. ns .. " is declared by " .. aspect_owner[ns]) end
+            if aspect_owner[ns] then return invalid(label .. ": aspect " .. ns .. " is declared by " .. owner_label(aspect_owner[ns])) end
             aspect_owner[ns] = owner
             if plugin then
                 for _, attr in ipairs(a.attributes or {}) do
-                    if attr.id ~= nil then return invalid(owner .. ": attribute " .. ns .. "." .. tostring(attr.code) .. " carries an id") end
+                    if attr.id ~= nil then return invalid(label .. ": attribute " .. ns .. "." .. tostring(attr.code) .. " carries an id") end
                 end
             end
             out.aspects[#out.aspects + 1] = { decl = a, plugin = plugin }
         end
         return nil
     end
-    local own_err = add("the catalog", nil, { aspects = declaration.aspects, vocabularies = declaration.vocabularies })
+    local own_err = add(nil, { aspects = declaration.aspects, vocabularies = declaration.vocabularies })
     if own_err then return nil, own_err end
     local entries: { types.PluginEntry } = {}
     for _, entry in ipairs(declaration.plugins or {}) do entries[#entries + 1] = entry end
@@ -262,11 +268,31 @@ local function contributed(declaration: types.Declaration): (Contributed?, error
     for _, entry in ipairs(entries) do
         local id, copy = entry.use, entry.schema
         if copy then
-            local perr = add("plugin " .. id, id, copy.fragment :: types.Fragment)
+            local perr = add(id, copy.fragment :: types.Fragment)
             if perr then return nil, perr end
         end
     end
     return out, nil
+end
+
+local function retain_owners(kind: string, previous: { [string]: string }, proposed: { [string]: string }): error?
+    local changed: string? = nil
+    for name, owner in pairs(previous) do
+        local claimant = proposed[name]
+        if claimant == nil then
+            proposed[name] = owner
+        elseif claimant ~= owner and (not changed or name < changed) then
+            changed = name
+        end
+    end
+    if changed then
+        local before, after = previous[changed], proposed[changed]
+        return invalid("The " .. kind .. " " .. changed .. " belongs to " .. owner_label(before) ..
+            " and cannot be claimed by " .. owner_label(after) .. ".", {
+                code = "schema_owner_changed", kind = kind, name = changed, previous_owner = before, proposed_owner = after,
+            })
+    end
+    return nil
 end
 
 local function compile_vocabularies(declared: { types.VocabularyDecl }): ({ [string]: types.Vocabulary }?, error?)
@@ -457,7 +483,8 @@ local function compile_families(declaration: types.Declaration, set: AspectSet, 
 end
 
 -- compile(prev, declaration, lookups) returns the compiled model or an error.
-function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookups: lookups_types.Lookups): (types.Compiled?, error?)
+function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookups: lookups_types.Lookups,
+        previous_declaration: types.Declaration?): (types.Compiled?, error?)
     if type(declaration) ~= "table" then return nil, invalid("declaration required") end
     local dims, derr = contexts.compile_dimensions(declaration.dimensions)
     if derr then return nil, derr end
@@ -467,6 +494,19 @@ function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookup
 
     local declared, cerr = contributed(declaration)
     if cerr or not declared then return nil, cerr end
+    if prev then
+        local previous = prev.schema_owners
+        if not previous then
+            if not previous_declaration then return nil, invalid("previous catalog declaration required") end
+            local prior, err = contributed(previous_declaration)
+            if not prior then return nil, err end
+            previous = prior.owners
+        end
+        local owners = declared.owners
+        local owner_err = retain_owners("aspect", previous.aspects, owners.aspects)
+            or retain_owners("vocabulary", previous.vocabularies, owners.vocabularies)
+        if owner_err then return nil, owner_err end
+    end
     local vocabularies, verr = compile_vocabularies(declared.vocabularies)
     if verr or not vocabularies then return nil, verr end
     local set, aerr = compile_aspects(declared.aspects, prev, dimlist, dimset, vocabularies, lookups)
@@ -501,7 +541,7 @@ function M.compile(prev: types.Compiled?, declaration: types.Declaration, lookup
         policy = overrides, has_assets = has_assets,
         dimensions = public_dims, vocabularies = vocabularies, aspects = set.aspects,
         attributes = set.attributes, families = families, sources = sources, channels = channels, scopes = scopes, plugins = plugins,
-        layout = columns_of,
+        schema_owners = declared.owners, layout = columns_of,
         next_attribute_id = set.next_id, layout_digest = "", digest = "",
     }
     compiled.layout_digest = digest(compiled.layout)

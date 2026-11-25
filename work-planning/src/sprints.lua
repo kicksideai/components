@@ -84,7 +84,7 @@ local function can_close(schema: reads.SchemaView, source: reads.GetResult): (bo
         local held, err = board_client.call("get_schema", { board_id = item.board_id, generation = item.process_generation })
         if err or not held then return false, err end
         local retained = held :: reads.SchemaView
-        if retained.as_of ~= schema.as_of or retained.generation ~= item.process_generation then return false, stale() end
+        if retained.snapshot_seq ~= schema.snapshot_seq or retained.generation ~= item.process_generation then return false, stale() end
         process = item_process(retained.compiled :: work.Compiled, item.type)
     end
     if not process or process.generation ~= item.process_generation then return false, nil end
@@ -112,7 +112,7 @@ function M.plan_close(input: unknown): (types.Preview?, error?)
     if source.item.type ~= "sprint" or source.item.state ~= "active" or source.item.life ~= "live" then
         return nil, problem(errors.INVALID, "planning_sprint_inactive", "Choose an active sprint.")
     end
-    if source.as_of ~= schema.as_of or source.generation ~= schema.generation then return nil, stale() end
+    if source.snapshot_seq ~= schema.snapshot_seq or source.generation ~= schema.generation then return nil, stale() end
     local allowed, close_err = can_close(schema, source)
     if close_err then return nil, close_err end
     if not allowed then
@@ -124,16 +124,16 @@ function M.plan_close(input: unknown): (types.Preview?, error?)
         if target_err and target_err:kind() ~= errors.NOT_FOUND then return nil, target_err end
         if not target or target.item.type ~= "sprint" or target.item.life ~= "live"
             or (target.item.state ~= "planned" and target.item.state ~= "active") then return nil, ineligible() end
-        if target.as_of ~= source.as_of or target.generation ~= source.generation then return nil, stale() end
+        if target.snapshot_seq ~= source.snapshot_seq or target.generation ~= source.generation then return nil, stale() end
     end
     local selected, select_err = members(request)
     if select_err or not selected then return nil, select_err end
-    if selected.as_of ~= source.as_of or selected.generation ~= source.generation then return nil, stale() end
+    if selected.snapshot_seq ~= source.snapshot_seq or selected.generation ~= source.generation then return nil, stale() end
     if selected.over_limit then
         return nil, problem(errors.INVALID, "planning_rollover_limit", "Use Work bulk to reduce unfinished membership to 199 issues, then preview again.")
     end
     local snapshot: types.Snapshot = { board_id = request.board_id, sprint_id = request.sprint_id, rollover_id = request.rollover_id,
-        head = source.as_of :: integer, generation = source.generation :: integer, sprint_version = source.item.version, members = selected.members }
+        head = selected.as_of :: integer, generation = source.generation :: integer, sprint_version = source.item.version, members = selected.members }
     local token, token_err = codec.seal(digest(snapshot), token_context(snapshot.board_id))
     if token_err or not token then return nil, token_err end
     return { snapshot = snapshot, token = token }, nil

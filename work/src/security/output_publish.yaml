@@ -10,6 +10,7 @@ entries:
     producers:
     - kickside.work.service:create
     - kickside.work.service:apply_schema
+    - kickside.work.service:configure_plugin
     - kickside.work.service:apply_transition_adoption
     - kickside.work.jobs:operation_batch
   policy:
@@ -17,6 +18,17 @@ entries:
     - kickside.work.command:command.recorded
     - kickside.work.events:schema.applied
     - kickside.work.events:prefix.claimed
+    actions: threads.output.publish
+    effect: allow
+- name: schema_drop_output_publish
+  kind: security.policy
+  meta:
+    private: true
+    service_only: true
+    producers:
+    - kickside.work.service:apply_schema
+  policy:
+    resources: kickside.work.events:item.changed
     actions: threads.output.publish
     effect: allow
 - name: apply_output_publish

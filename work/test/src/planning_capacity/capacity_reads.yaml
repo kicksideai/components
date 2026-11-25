@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: capacity_reads
+  kind: function.lua
+  meta: {type: test, suite: kickside_work_planning_capacity, timeout: 120s}
+  source: file://capacity_reads.lua
+  method: run
+  modules: [funcs, security]
+  imports:
+    test: wippy.test:test
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps
+    store: kickside.work.persist:store
+- name: capacity_report_call
+  kind: function.lua
+  source: |
+    local reads = require("reads")
+    return { run = function(request) return reads[request.method](request.input) end }
+  method: run
+  imports:
+    reads: kickside.work.planning.capacity:reads
+- name: capacity_test_call
+  kind: security.policy
+  groups: []
+  policy:
+    resources: [app:capacity_report_call]
+    actions: [funcs.call, funcs.security]
+    effect: allow

@@ -11,9 +11,11 @@ type ApplyAdoptionRequest = { review: work.TransitionAdoptionReview, token: stri
 type SchemaRequest = { config: { issue_types: { string }? } }
 type ItemTypeExtension = { id: string, fields: { string } }
 type SchemaResult = { fragment: { item_types: { ItemTypeExtension } } }
+type EstimateFields = { original: string, remaining: string }
 
 return {
     PreviewRequest = PreviewRequest, Snapshot = Snapshot, Preview = Preview, CloseRequest = CloseRequest,
     AdoptionRequest = AdoptionRequest, ApplyAdoptionRequest = ApplyAdoptionRequest,
     SchemaRequest = SchemaRequest, ItemTypeExtension = ItemTypeExtension, SchemaResult = SchemaResult,
+    EstimateFields = EstimateFields,
 }

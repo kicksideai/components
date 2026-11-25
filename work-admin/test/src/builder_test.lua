@@ -30,25 +30,55 @@ local function cases()
                 test.eq(explained.body.data.access.admin, actor.admin)
             end
         end)
-        test.it("classifies stored-value field and item-type removals before an editor changes its draft", function()
+        test.it("refuses populated removals and applies a reviewed field archive", function()
             local owner = session.admin()
             local id = create(owner, fixture.declaration())
             local created = owner.post(path(id, "apply"), { ops = { { op = "create", type = "task", values = { title = "Keep this value" } } }, mode = "atomic", key = (uuid.v4()) })
             test.eq(created.status, 200, json.encode(created.body)); test.is_true(created.body.data.applied)
+            local item = { id = created.body.data.outcomes[1].item }
             local schema = owner.post(path(id, "get_schema"), {}).body.data
             local removed = owner.post(path(id, "plan_schema"), { expected_generation = schema.generation, declaration = { remove = { item_types = { "task" } } } })
             test.eq(removed.status, 200, json.encode(removed.body))
             test.eq(removed.body.data.class, "refused")
             test.eq(removed.body.data.refused[1].code, "item_type task")
-            local field = owner.post(path(id, "plan_schema"), { expected_generation = schema.generation, declaration = {
-                remove = { fields = { "title" } }, item_types = { { id = "task", process = "delivery", fields = {} } } } })
-            test.eq(field.status, 200, json.encode(field.body))
-            local held = false
-            for _, change in ipairs(field.body.data.changes) do
-                if change.code == "title" and change.what == "removed" and change.class == "semantic" then held = true end
-            end
-            test.is_true(held, "the editor keeps fields whose removal changes stored values")
+
+            local draft = { remove = { fields = { "title" } }, item_types = { { id = "task", process = "delivery", fields = {} } } }
+            local request: Map = { declaration = draft, expected_generation = schema.generation }
+            local plan = owner.post(path(id, "plan_schema"), request)
+            test.eq(plan.status, 200, json.encode(plan.body))
+            test.eq(plan.body.data.class, "refused")
+            test.eq(#plan.body.data.refused, 1)
+            local refusal = plan.body.data.refused[1]
+            test.eq(refusal.code, "title")
+            test.eq(refusal.what, "field.remove")
+            test.eq(refusal.class, "refused")
+            test.eq(refusal.resolution, "keep")
+            test.eq(refusal.count, 1)
+            local removal_path = refusal.path :: string
+            test.is_true(type(removal_path) == "string" and removal_path ~= "")
+
+            local rejected = owner.post(path(id, "apply_schema"), request)
+            test.eq(rejected.status, 400, json.encode(rejected.body))
+            test.eq(rejected.body.details.code, "migration_required")
+            test.eq(rejected.body.details.changes[1].path, removal_path)
             test.eq(owner.post(path(id, "get_schema"), {}).body.data.generation, schema.generation)
+            local kept = owner.post(path(id, "get"), { item = item })
+            test.eq(kept.status, 200, json.encode(kept.body))
+            test.eq(kept.body.data.item.values.title, "Keep this value")
+
+            request.resolutions = { [removal_path] = "archive" }
+            local reviewed = owner.post(path(id, "plan_schema"), request)
+            test.eq(reviewed.status, 200, json.encode(reviewed.body))
+            test.eq(reviewed.body.data.class, "semantic")
+            test.eq(#reviewed.body.data.refused, 0)
+            request.key = uuid.v4()
+            local applied = owner.post(path(id, "apply_schema"), request)
+            test.eq(applied.status, 200, json.encode(applied.body))
+            test.eq(applied.body.data.generation, schema.generation + 1)
+            local archived = owner.post(path(id, "get"), { item = item })
+            test.eq(archived.status, 200, json.encode(archived.body))
+            test.is_nil(archived.body.data.item.values.title)
+            test.eq(archived.body.data.item.version, kept.body.data.item.version)
         end)
         test.it("persists board metadata through update and list with independent ADMIN access", function()
             local owner, writer, administrator = session.admin(), session.admin(), session.admin()

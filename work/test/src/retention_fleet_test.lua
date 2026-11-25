@@ -28,8 +28,8 @@ local function define()
                     assert(db:execute("DELETE FROM kickside_thread WHERE id=$1", { id }))
                 end
                 assert(db:execute([[INSERT INTO kickside_work_board
-                    (board_id,key_prefix,generation,schema_version,compiled,digest,applied_seq,counter,tombstone_floor_seq,created_at,updated_at)
-                    SELECT $1,key_prefix,generation,schema_version,compiled,digest,0,0,0,created_at,updated_at
+                    (board_id,key_prefix,generation,schema_version,compiled,digest,applied_seq,snapshot_seq,counter,tombstone_floor_seq,created_at,updated_at)
+                    SELECT $1,key_prefix,generation,schema_version,compiled,digest,0,0,0,0,created_at,updated_at
                     FROM kickside_work_board WHERE board_id=$2]], { id, sample.id }))
             end
             insert(1)

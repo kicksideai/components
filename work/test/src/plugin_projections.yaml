@@ -22,8 +22,8 @@ entries:
   source: file://plugin_projection_worker.lua
   method: run
   modules: [sql, security, ctx, json]
-  imports:
-    board: kickside.work:client
+  imports: &fold_worker_imports
+    projection_feed: kickside.work.extensions:plugin_feed
     component: kickside.component:component
 - name: plugin_event_worker
   kind: function.lua
@@ -31,9 +31,7 @@ entries:
   source: file://plugin_projection_worker.lua
   method: events
   modules: [sql, security, ctx, json]
-  imports:
-    board: kickside.work:client
-    component: kickside.component:component
+  imports: *fold_worker_imports
 - name: event_projection_plugin
   kind: registry.entry
   meta:
@@ -69,6 +67,7 @@ entries:
     match: [item_id]
     filters:
       seq: { column: seq, type: integer, ops: [eq] }
+      marker: { column: marker, type: text, ops: [eq] }
 - name: missing_worker_plugin
   kind: registry.entry
   meta:
@@ -103,9 +102,7 @@ entries:
   source: file://plugin_projection_worker.lua
   method: delete
   modules: [ctx, sql, security, json]
-  imports:
-    board: kickside.work:client
-    component: kickside.component:component
+  imports: *fold_worker_imports
 - name: credential_plugin
   kind: registry.entry
   meta:
@@ -131,6 +128,7 @@ entries:
     title: Contract
     description: Contract fixture
     icon: puzzle
+    category: Testing
     attachment: app:fold_attachment
     config_schema:
       type: object
@@ -199,3 +197,10 @@ entries:
     - app:credential_attachment
     actions: [registry.get, contract.get, contract.open]
     effect: allow
+- name: numeric_category_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    interface_version: 1
+    category: 3
+    attachment: app:fold_attachment

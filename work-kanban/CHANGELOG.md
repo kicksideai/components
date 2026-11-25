@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.5](https://github.com/kicksideai/components/compare/work-kanban-v0.1.4...work-kanban-v0.1.5) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-kanban:** rich text descriptions, comments and activity ([#420](https://github.com/kicksideai/components/issues/420)) ([b081fd1](https://github.com/kicksideai/components/commit/b081fd1201a01faf25efa29a4c41b1881e56cf68))
+
+## [0.1.4](https://github.com/kicksideai/components/compare/work-kanban-v0.1.3...work-kanban-v0.1.4) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-kanban:** native page anatomy, spacing rhythm and faster views ([#416](https://github.com/kicksideai/components/issues/416)) ([6ab6dfd](https://github.com/kicksideai/components/commit/6ab6dfd14c0f69478d9d3c51fac269197b551e79))
+
+## [0.1.3](https://github.com/kicksideai/components/compare/work-kanban-v0.1.2...work-kanban-v0.1.3) (2026-11-24)
+
+
+### Bug Fixes
+
+* **work-kanban:** keep the board steady with an issue open ([#411](https://github.com/kicksideai/components/issues/411)) ([83306ea](https://github.com/kicksideai/components/commit/83306eaf8b376cdfb9f546138d846ce6504c95d0))
+
 ## [0.1.2](https://github.com/kicksideai/components/compare/work-kanban-v0.1.1...work-kanban-v0.1.2) (2026-11-24)
 
 

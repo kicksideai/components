@@ -80,7 +80,15 @@ export interface Detail {
 
 export type QueryCursor = string | Record<string, unknown>
 export interface ItemPage { items: Issue[]; after?: QueryCursor; incomplete?: boolean; reindexing?: boolean }
-export interface Comment { id: string; body: string; author: string; created_at: string }
+export interface Comment {
+  id: string
+  body: string
+  author: string
+  created_at: string
+  edited_at?: string
+  version?: number
+  mentions?: Principal[]
+}
 export type LinkEndpoint = (Reference & { board: string }) | { unavailable: true }
 export interface Link { type: string; source: LinkEndpoint; target: LinkEndpoint }
 export interface History {

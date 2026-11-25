@@ -32,7 +32,7 @@ const budgetExceeded=(field:Value)=>{
        <span v-if="!field.missing" class="chip" aria-label="Completeness">{{field.complete===true?'Complete':field.complete===false?'Incomplete':'Completeness unknown'}}</span></span>
        <Icon :icon="open===field.path?'tabler:chevron-up':'tabler:chevron-down'" class="value-caret"/>
       </button>
-      <NestedValue v-if="!field.failed&&!field.missing&&complex(field.value)" class="structured-value" :value="field.value" :schema="field.value_schema"/>
+      <NestedValue v-if="open===field.path&&!field.failed&&!field.missing&&complex(field.value)" class="structured-value" :value="field.value" :schema="field.value_schema"/>
       <FieldFailure v-if="field.failed" :error="field.error"/>
       <div v-show="open===field.path&&!field.failed" class="evidence">
        <NestedValue v-if="!field.failed&&!field.missing&&!complex(field.value)" :value="field.value" :schema="field.value_schema"/>

@@ -103,12 +103,12 @@ local function define()
             end
             test.is_true(methods.schema_options == true)
             test.eq(assert(registry.get("kickside.work.traits:schema_options")).data.method, "schema_options")
-            for _, method in ipairs({ "plugin_context", "plugin_feed" }) do
-                test.is_true(methods[method] == true, method)
-                test.eq(#assert(registry.find({ [".id"] = "kickside.work.traits:" .. method })), 0, "host admission adds no tool")
-            end
+            test.is_true(methods.plugin_context == true)
+            test.eq(#assert(registry.find({ [".id"] = "kickside.work.traits:plugin_context" })), 0, "host admission adds no tool")
+            test.is_nil(methods.plugin_feed)
+            test.eq(assert(registry.get("kickside.work.extensions:plugin_feed")).kind, "library.lua")
             test.is_true(methods.delete == true, "board teardown contract")
-            test.eq(#definition.data.methods, #expected + 4)
+            test.eq(#definition.data.methods, #expected + 3)
             test.eq(assert(registry.get("kickside.work:types")).kind, "library.lua")
             test.eq(assert(registry.get("kickside.work.api:access")).kind, "library.lua")
         end)
@@ -133,7 +133,9 @@ local function define()
             local literal_types = { boolean = true, number = true, integer = true, string = true, object = true, array = true }
             local expected = { ["kickside.work:target_db"] = true, ["kickside.work:api_router"] = true,
                 ["kickside.work:registry_admin_grant"] = true, ["kickside.work:board_event_retention_days"] = true,
-                ["kickside.work.security:user_security_scope"] = true, ["kickside.work.planning:user_security_scope"] = true }
+                ["kickside.work.security:user_security_scope"] = true, ["kickside.work.planning:user_security_scope"] = true,
+                ["kickside.work.planning:target_db"] = true, ["kickside.work.planning.capacity:user_security_scope"] = true,
+                ["kickside.work.planning.api:api_router"] = true, ["kickside.work.planning.api:user_security_scope"] = true }
             for _, entry in ipairs(requirements) do
                 if tostring(entry.id):match("^kickside%.work[.:]") then
                     test.is_true(expected[tostring(entry.id)] == true, tostring(entry.id))
@@ -145,6 +147,15 @@ local function define()
                 local endpoint = assert(registry.get("kickside.work.api.sprints:" .. method .. ".endpoint"))
                 test.eq(endpoint.meta.router, work_router)
             end
+            local planning_router = assert(registry.get("kickside.work.planning.api:api_router"))
+            local planning_targets = {}
+            for _, target in ipairs(planning_router.data.targets) do planning_targets[target.entry] = target.path end
+            for _, method in ipairs({ "plan_sprint", "move_dates", "check_capacity", "set_capacity", "workload", "roadmap" }) do
+                local id = "kickside.work.planning.api:" .. method .. ".endpoint"
+                test.eq(planning_targets[id], ".meta.router", id)
+                test.eq(assert(registry.get(id)).meta.router, work_router, id)
+            end
+            test.eq(#planning_router.data.targets, 6)
             local binding = assert(registry.get("kickside.work.binding:board"))
             test.is_nil(binding.meta.component)
             test.eq(binding.meta.retention.event_days, 17)

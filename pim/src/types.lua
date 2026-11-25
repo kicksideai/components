@@ -108,13 +108,13 @@ type PluginSchema = { fragment: JsonObject, version: string?, digest: string }
 -- Registry metadata authored by a plugin, before the host applies defaults.
 type PluginProjectionDeclaration = { kind: string, worker_ref: string, input: "state" | "events", revision: integer?, events: { string }? }
 type PluginManifest = {
-    type: "kickside.pim.plugin", interface_version: integer?, title: string?, description: string?, icon: string?, settings: string?,
+    type: "kickside.pim.plugin", interface_version: integer?, title: string?, description: string?, icon: string?, category: string?, settings: string?,
     attachment: string, config_schema: JsonObject?, schema: PluginSchemaSource?, projections: { PluginProjectionDeclaration }?,
     tools: { string }?, requires: { string }?, seams: { string }?,
 }
 -- Plugin is a loaded kickside.pim.plugin manifest.
 type Plugin = {
-    id: string, interface_version: integer, title: string?, description: string?, icon: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?,
+    id: string, interface_version: integer, title: string?, description: string?, icon: string?, category: string?, settings: string?, attachment: string?, config_schema: JsonObject, schema: PluginSchemaSource?,
     projections: { PluginProjection }?, tools: { string }?, requires: { string }?, seams: { string }?,
 }
 type PluginLifecycleError = {
@@ -141,7 +141,7 @@ type PluginFeedRequest = { catalog_id: string, plugin: string, kind: string, tok
 type PluginFeed = { attachment_id: string, config: JsonObject, bootstrap: boolean, gap: FeedGap?, changes: { ChangeItem }, token: string, done: boolean }
 type PluginContext = ReadStamp & { attachment_id: string?, config: JsonObject, lifecycle: PluginLifecycle, projections: { [string]: PluginProjectionState }, retention: { event_days: integer } }
 type PluginReferences = { fields: { string }, scopes: { string }, checks: { string }, plugins: { string }, shell_bindings: { string } }
-type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, installed: boolean, active: boolean,
+type PluginView = { plugin: string, interface_version: integer?, title: string?, description: string?, icon: string?, category: string?, installed: boolean, active: boolean,
     attachment_id: string?, config: JsonObject?, requires: { string }, tools: { string }, lifecycle: PluginLifecycle,
     projections: { [string]: PluginProjectionState }, problem: PluginProblem?, references: PluginReferences? }
 
@@ -151,12 +151,14 @@ type PluginView = { plugin: string, interface_version: integer?, title: string?,
 type Column = { attribute_id: integer, ctx: string, kind: string, column: string }
 type Layout = { columns: { Column }, sets: { Column }, search: { Column }, flags: { Column } }
 type RebuildStorage = { active: Layout, other: { base: string, layout: Layout, retired_after: string? }? }
+-- First owners by aspect namespace and vocabulary code, including removed names.
+type SchemaOwners = { aspects: { [string]: string }, vocabularies: { [string]: string } }
 type Compiled = {
     policy: PolicyOverrides,
     dimensions: { Dimension }, vocabularies: { [string]: Vocabulary }, aspects: { [string]: Aspect },
     attributes: { [string]: Attribute }, families: { [string]: Family }, sources: { [string]: Source },
     channels: { [string]: Channel }, scopes: { [string]: boolean }, plugins: { [string]: PluginEntry }, seam_owners: { [string]: string }?,
-    layout: Layout, next_attribute_id: integer, layout_digest: string, digest: string,
+    schema_owners: SchemaOwners?, layout: Layout, next_attribute_id: integer, layout_digest: string, digest: string,
     by_id: { [integer]: Attribute }?, has_assets: boolean?,
 }
 type Catalog = {
@@ -524,7 +526,7 @@ return {
     PolicyDecl = PolicyDecl, Declaration = Declaration, Attribute = Attribute, Dimension = Dimension,
     Level = Level, Requirement = Requirement, Check = Check, Family = Family, Channel = Channel,
     Aspect = Aspect, Source = Source, Vocabulary = Vocabulary, Column = Column, Layout = Layout, RebuildStorage = RebuildStorage,
-    Compiled = Compiled, Catalog = Catalog, Product = Product, Lineage = Lineage, Resolution = Resolution,
+    SchemaOwners = SchemaOwners, Compiled = Compiled, Catalog = Catalog, Product = Product, Lineage = Lineage, Resolution = Resolution,
     PatchStep = PatchStep, Receipt = Receipt, SchemaBody = SchemaBody, ProductBody = ProductBody, ProductPatchBody = ProductPatchBody,
     ModelReleaseBody = ModelReleaseBody, ModelReleaseEvent = ModelReleaseEvent, TermBody = TermBody, ReleaseBody = ReleaseBody, WithdrawBody = WithdrawBody, EventBody = EventBody,
     External = External, Event = Event, SchemaEvent = SchemaEvent, ProductCreatedBody = ProductCreatedBody, CreatedEvent = CreatedEvent,

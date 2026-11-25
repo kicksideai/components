@@ -9,7 +9,11 @@ import { parseYamlDocuments, run } from '../../../scripts/module-rules.mjs'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const capture = `
 local direction, engine = arg[2], arg[3]
-local db = { query = function() return arg[4] == "bound" and {{ name = "ui_app" }} or {}, nil end, execute = function(_, statement, params)
+local db = { query = function()
+    if arg[4] == "bound" then return {{ name = "ui_app" }}, nil end
+    if arg[4] == "snapshot" then return {{ name = "snapshot_seq" }}, nil end
+    return {}, nil
+end, execute = function(_, statement, params)
     for i, value in ipairs(params or {}) do statement = statement:gsub("%$" .. i, "'" .. value .. "'") end
     io.write(statement, "\\0"); return {}, nil
 end }
@@ -75,9 +79,55 @@ print(json.dumps([row, indexes]))
   ])
 })
 
+test('Work adds the active plugin attachment index through its published migration', async () => {
+  const index = 'CREATE INDEX kickside_work_plugin_active ON kickside_work_plugin (plugin, board_id) WHERE active = 1'
+  for (const engine of ['sqlite', 'postgres']) {
+    const up = await statements('04_plugin_attachments', 'up', engine)
+    assert.ok(up.includes(index), `Work migration 04 must create the active plugin attachment index on ${engine}`)
+  }
+})
+
+test('Work upgrades pre-04 boards through the published plugin index and snapshot migrations', async () => {
+  const initial = await statements('01_work', 'up')
+  const plugin = await statements('04_plugin_attachments', 'up')
+  const migration = await statements('05_snapshot_seq', 'up')
+  const result = await run('python3', ['-c', `
+import json,sqlite3,sys
+initial,plugin,migration=json.load(sys.stdin)
+db=sqlite3.connect(':memory:')
+for sql in initial:
+  db.execute(sql)
+db.execute("INSERT INTO kickside_work_board (board_id,key_prefix,generation,schema_version,compiled,digest,applied_seq,counter,tombstone_floor_seq,created_at,updated_at) VALUES ('old','W',1,1,'{}','digest',73,0,0,'','')")
+for sql in plugin + migration:
+  db.execute(sql)
+print(json.dumps([db.execute("SELECT snapshot_seq FROM kickside_work_board WHERE board_id='old'").fetchone(), db.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='kickside_work_plugin_active'").fetchone()]))
+`], {}, JSON.stringify([initial, plugin, migration]))
+  assert.deepEqual(JSON.parse(result), [[73], ['kickside_work_plugin_active']])
+})
+
+test('Work upgrades boards already on migration 04 and creates both structures on a fresh install', async () => {
+  const initial = await statements('01_work', 'up')
+  const plugin = await statements('04_plugin_attachments', 'up')
+  const migration = await statements('05_snapshot_seq', 'up')
+  const result = await run('python3', ['-c', `
+import json,sqlite3,sys
+initial,plugin,migration=json.load(sys.stdin)
+def indexes(db): return [row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='kickside_work_plugin_active'")]
+old=sqlite3.connect(':memory:')
+for sql in initial + plugin: old.execute(sql)
+old.execute("INSERT INTO kickside_work_board (board_id,key_prefix,generation,schema_version,compiled,digest,applied_seq,counter,tombstone_floor_seq,created_at,updated_at) VALUES ('old','W',1,1,'{}','digest',11,0,0,'','')")
+for sql in migration: old.execute(sql)
+fresh=sqlite3.connect(':memory:')
+for sql in initial + plugin + migration: fresh.execute(sql)
+print(json.dumps([[old.execute("SELECT snapshot_seq FROM kickside_work_board WHERE board_id='old'").fetchone(), indexes(old)], [bool(fresh.execute("PRAGMA table_info(kickside_work_board)").fetchall()), indexes(fresh)]]))
+`], {}, JSON.stringify([initial, plugin, migration]))
+  assert.deepEqual(JSON.parse(result), [[[11], ['kickside_work_plugin_active']], [true, ['kickside_work_plugin_active']]])
+})
+
 test('Work rollback removes every fixed table including board metadata', async () => {
-  const up = [...await statements('01_work', 'up'), ...await statements('02_board_ui_app', 'up'), ...await statements('03_move_alias_indexes', 'up')]
-  const down = [...await statements('03_move_alias_indexes', 'down'), ...await statements('02_board_ui_app', 'down'), ...await statements('01_work', 'down')]
+  const names = ['01_work', '02_board_ui_app', '03_move_alias_indexes']
+  const up = (await Promise.all(names.map(name => statements(name, 'up')))).flat()
+  const down = (await Promise.all(names.toReversed().map(name => statements(name, 'down')))).flat()
   const result = await run('python3', ['-c', `
 import json, sqlite3, sys
 up, down = json.load(sys.stdin)

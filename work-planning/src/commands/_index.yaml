@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.planning.commands
+entries:
+- name: board
+  kind: library.lua
+  source: file://board.lua
+  imports:
+    client: kickside.work:client
+    reads: kickside.work.read:types
+    work: kickside.work:types
+- name: edits
+  kind: library.lua
+  source: file://edits.lua
+  imports:
+    board: kickside.work.planning.commands:board
+    client: kickside.work:client
+    commands: kickside.work.command:types
+    mapping: kickside.work.planning.capacity:mapping
+    values: kickside.work.domain:values
+    work: kickside.work:types
+- name: capacity
+  kind: library.lua
+  source: file://capacity.lua
+  modules: [sql]
+  imports:
+    board: kickside.work.planning.commands:board
+    bulk: kickside.work.persist:bulk
+    identity: kickside.execution:execution_identity
+    lifecycle: kickside.work.persist:lifecycle
+    storage: kickside.work.planning.capacity:storage
+    work: kickside.work:types
+- name: sprint_reference
+  kind: library.lua
+  source: file://sprint_reference.lua
+  imports:
+    board: kickside.work.planning.commands:board
+    budget: kickside.work.read:budget
+    mapping: kickside.work.planning.capacity:mapping
+    query: kickside.work.read:query
+    reads: kickside.work.read:types
+    storage: kickside.work.planning.capacity:storage
+    values: kickside.work.domain:values
+    work: kickside.work:types

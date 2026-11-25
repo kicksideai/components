@@ -4,9 +4,14 @@ local reads = require("reads")
 type Pair = { projection: { id: string, body: unknown }, cursor: { last_seq: integer, status: string, last_error: unknown? } }
 type Config = { board_id: string, plugin: string, attachment_id: string, config: domain.JsonObject,
     input: string, start_seq: integer, revision: integer }
-type Body = { worker_config: Config, token: string? }
+type Body = { worker_config: Config, token: string?, meta: { worker_ref: string }? }
 type FeedToken = { projection_id: string, start_seq: integer, cursor: reads.ChangesCursor?, bootstrapping: boolean }
-type FeedRegistration = reads.ReadStamp & { id: string, start_seq: integer }
 type Definition = { id: string, kind: string, projection_key: string, body: unknown }
 type Page = { projections: { Definition }, projections_has_more: boolean, projections_cursor: string? }
-return { FeedRegistration = FeedRegistration, FeedToken = FeedToken, Config = Config, Body = Body, Definition = Definition, Page = Page, Pair = Pair }
+type Rebuild = { plugin: string, schema_version: integer, trace_context: domain.TraceContext? }
+type BatchResult = { done: boolean?, inspected: integer?, seq: integer? }
+type Manifest = { meta: unknown, data: unknown, owner: string, version: string? }
+type Catalog = { [string]: Manifest }
+type Migrations = { [string]: { [string]: { string } } }
+return { FeedToken = FeedToken, Config = Config, Body = Body, Definition = Definition, Page = Page, Pair = Pair,
+    Rebuild = Rebuild, BatchResult = BatchResult, Catalog = Catalog, Migrations = Migrations }

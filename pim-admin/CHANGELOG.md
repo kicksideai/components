@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.26](https://github.com/kicksideai/components/compare/pim-admin-v0.1.25...pim-admin-v0.1.26) (2026-11-25)
+
+
+### Bug Fixes
+
+* **pim-admin:** replay catalog creation retries ([#457](https://github.com/kicksideai/components/issues/457)) ([6d386a8](https://github.com/kicksideai/components/commit/6d386a8f3d5147dd5ff23edab514565687100d59))
+
+## [0.1.25](https://github.com/kicksideai/components/compare/pim-admin-v0.1.24...pim-admin-v0.1.25) (2026-11-24)
+
+
+### Bug Fixes
+
+* plugin configuration reads only the manifest and the shared schema form ([#434](https://github.com/kicksideai/components/issues/434)) ([f9237a0](https://github.com/kicksideai/components/commit/f9237a03d01ff5640a81945c6ffa84bd3dfd3559))
+
+## [0.1.24](https://github.com/kicksideai/components/compare/pim-admin-v0.1.23...pim-admin-v0.1.24) (2026-11-24)
+
+
+### Features
+
+* group plugins by purpose in Work and PIM administration ([#415](https://github.com/kicksideai/components/issues/415)) ([cfc263e](https://github.com/kicksideai/components/commit/cfc263ed9c5586c935a9b07be8cc1e94a88360a5))
+
 ## [0.1.23](https://github.com/kicksideai/components/compare/pim-admin-v0.1.22...pim-admin-v0.1.23) (2026-11-23)
 
 

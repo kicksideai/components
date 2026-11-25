@@ -4,6 +4,7 @@
 local funcs = require("funcs")
 local jobs = require("jobs")
 local sql = require("sql")
+local hash = require("hash")
 local consts = require("consts")
 local clock = require("clock")
 local store = require("store")
@@ -14,13 +15,16 @@ local rollup_rows = require("rollup_rows")
 local schema = require("schema")
 local declaration = require("declaration")
 local changes = require("changes")
+local field_removals = require("field_removals")
 local guard = require("guard")
 local receipts = require("receipts")
 local domain = require("domain")
 local types = require("types")
 
 local plugin_schema = require("plugin_schema")
-local configure = require("configure")
+local plugins = require("plugins")
+local defaults = require("defaults")
+local plugin_rows = require("plugin_rows")
 local fields = require("fields")
 local peers = require("peers")
 local values = require("values")
@@ -95,6 +99,53 @@ local function references_match(field: domain.Field, target_type: string, item: 
     return true, nil
 end
 
+local function compile_schema(db: sql.DB, board_id: string, generation: integer, snapshot: types.SchemaSnapshot,
+    effective: domain.Declaration, request: types.SchemaRequest): ({ compiled: domain.Compiled, config_changes: { domain.SchemaChange } }?, error?)
+    local current = snapshot.board and snapshot.board.compiled
+    local configured, config_err = plugin_rows.list(db, board_id)
+    if config_err then return nil, config_err end
+    local config_changes: { domain.SchemaChange } = {}
+    local configs: { [string]: domain.JsonObject } = {}
+    local listed: { [string]: boolean } = {}
+    for _, entry in ipairs(effective.plugins or {}) do listed[entry.use] = true end
+    for _, row in ipairs(configured or {}) do
+        if row.active then configs[row.plugin] = row.config end
+    end
+    for id, config in pairs(request.plugin_configs or {}) do
+        if not listed[id] then return nil, guard.invalid("configuration names an unlisted plugin", { code = "plugin_unlisted" }) end
+        if configs[id] and not values.equal(configs[id], config) then
+            config_changes[#config_changes + 1] = { what = "plugin.config", class = "cosmetic", code = id }
+        end
+        configs[id] = config
+    end
+    if request.declaration.plugins ~= nil or next(request.plugin_configs or {}) ~= nil then
+        local previous = snapshot.declaration
+        local resolved, err = plugins.compile(effective.plugins, configs, board_id, previous and previous.plugins)
+        if err then return nil, err end
+        effective.plugins = resolved
+        for _, plugin in ipairs(effective.plugins or {}) do plugin.attachment_kind = nil end
+    end
+    local removal_err = plugin_schema.check_removal(effective, current)
+    if removal_err then return nil, removal_err end
+    local composed, owners, compose_err = plugin_schema.compose(effective, current)
+    if compose_err or not composed or not owners then return nil, compose_err end
+    local settings, setting_err = defaults.read()
+    if setting_err or not settings then return nil, setting_err end
+    local built, cerr = schema.compile(current, composed, generation, configs, settings :: domain.JsonObject)
+    if cerr or not built then return nil, cerr end
+    plugin_schema.stamp(built, owners)
+    for _, plugin in ipairs(built.plugins or {}) do
+        local previous_plugin: domain.PluginDecl? = nil
+        for _, old in ipairs(current and current.plugins or {}) do if old.use == plugin.use then previous_plugin = old end end
+        if previous_plugin then plugin.attachment_id = previous_plugin.attachment_id
+        else
+            local digest = tostring(hash.sha256(board_id .. "\0" .. plugin.use .. "\0" .. generation))
+            plugin.attachment_id = digest:sub(1, 8) .. "-" .. digest:sub(9, 12) .. "-5" .. digest:sub(14, 16) .. "-8" .. digest:sub(18, 20) .. "-" .. digest:sub(21, 32)
+        end
+    end
+    return { compiled = built, config_changes = config_changes }, nil
+end
+
 -- plan_schema compiles and classifies a declaration against the board state at
 -- the command head; plan_schema returns it, apply_schema appends it.
 local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id: string, request: types.SchemaRequest, frozen: types.SchemaPlan?, creating: boolean?): (types.SchemaPlan?, error?)
@@ -116,7 +167,7 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
         local merged, merr = declaration.merge(previous, request.declaration)
         if merr or not merged then return nil, merr end
         effective = merged
-        local prepared, prepare_err = configure.prepare_schema(db, board_id, generation + 1, snapshot, effective, request)
+        local prepared, prepare_err = compile_schema(db, board_id, generation + 1, snapshot, effective, request)
         if prepare_err or not prepared then return nil, prepare_err end
         compiled, config_changes = prepared.compiled, prepared.config_changes
     end
@@ -127,7 +178,7 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     if limit_err then return nil, limit_err end
     declaration.stamp(effective, compiled)
     local digest = schema.digest(compiled)
-    if board and board.digest == digest and request.pack == nil and #config_changes == 0 then
+    if board and board.digest == digest and request.pack == nil and #config_changes == 0 and not next(request.resolutions or {}) then
         return { generation = generation, class = "unchanged", changes = {}, refused = {}, declaration = effective,
             compiled = compiled, digest = digest, unchanged = true, claim = false, migrates = false, maps = {} }, nil
     end
@@ -137,6 +188,19 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
         local loaded, uerr = store.usage(db, board_id, changes.usage_targets(board.model, next_model))
         if uerr or not loaded then return nil, uerr end
         usage = loaded
+    end
+    local removals: { domain.SchemaChange } = {}
+    local drops: { types.FieldDrop }? = nil
+    if board then
+        local findings, patches, keep, review_err = field_removals.review(db, board, next_model, usage, request.resolutions, request.expected_generation)
+        if review_err or not findings then return nil, review_err end
+        if keep then
+            return { generation = generation, class = "unchanged", changes = {}, refused = {}, declaration = previous or effective,
+                compiled = board.compiled, digest = board.digest, unchanged = true, claim = false, migrates = false, maps = {} }, nil
+        end
+        removals, drops = findings, patches
+    elseif next(request.resolutions or {}) then
+        return nil, guard.invalid("the initial schema has no field removals", { code = "invalid_field_resolution" })
     end
     local claim: boolean = false
     if not board or board.key_prefix ~= compiled.key_prefix then
@@ -151,6 +215,14 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     for _, p in ipairs(request.declaration.processes or {}) do maps[p.id] = p.map or {} end
     local delta, delta_err = changes.changes(board and board.compiled or nil, compiled, usage, maps)
     if delta_err or not delta then return nil, delta_err end
+    local removed_definitions: { [string]: domain.SchemaChange } = {}
+    for _, removal in ipairs(removals) do
+        if not removal.item_type then removed_definitions[removal.code] = removal
+        else delta[#delta + 1] = removal end
+    end
+    for index, change in ipairs(delta) do
+        if change.what == "removed" and removed_definitions[change.code] then delta[index] = removed_definitions[change.code] end
+    end
     table.sort(config_changes, function(a, b) return a.code < b.code end)
     for _, change in ipairs(config_changes) do table.insert(delta, change) end
     local refused: { domain.SchemaChange } = {}
@@ -218,9 +290,10 @@ local function plan_schema(db: sql.DB, snapshot: types.SchemaSnapshot, board_id:
     for _, c in ipairs(delta) do
         if c.class == "refused" then refused[#refused + 1] = c end
     end
-    return { generation = generation + 1, class = #refused > 0 and "refused" or changes.classify(board and board.compiled or nil, delta), changes = delta,
+    return { generation = generation + 1, class = #refused > 0 and "refused" or changes.classify(board and board.compiled or nil, delta),
+        changes = delta :: { domain.SchemaChange },
         refused = refused, declaration = effective, compiled = compiled, digest = digest, unchanged = false, claim = claim,
-        maps = maps, migrates = usage.items > 0 and migrating(board, compiled, generation + 1) }, nil
+        maps = maps, drops = drops, migrates = usage.items > 0 and migrating(board, compiled, generation + 1) }, nil
 end
 
 local MIGRATION = "add the new field or option, copy the values with apply commands, then remove the old one"
@@ -242,6 +315,11 @@ end
 
 -- migration_hint names the way out of the refused changes: a state map when only states are removed.
 local function migration_hint(refused: { domain.SchemaChange }): string
+    for _, c in ipairs(refused) do
+        if c.what == "field.remove" then
+            return "review the field removal and choose keep, archive or drop with the current schema generation"
+        end
+    end
     for _, c in ipairs(refused) do
         if c.what == "config.item_type" and c.detail then
             return "correct the affected field references or make their targets readable, then retry the schema plan"
@@ -302,7 +380,9 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
     if request.key ~= nil then
         if request.key == "" then return nil, guard.invalid("key must not be empty") end
         marker = "schema/" .. request.key
-        hashed = receipts.request_hash({ op = "schema", board_id = board_id, pack = request.pack, declaration = request.declaration, expected_generation = request.expected_generation, source = request.source or "api", origin = request.origin, plugin_configs = request.plugin_configs, reviewed = reviewed and reviewed.fingerprint })
+        hashed = receipts.request_hash({ op = "schema", board_id = board_id, pack = request.pack, declaration = request.declaration,
+            expected_generation = request.expected_generation, source = request.source or "api", origin = request.origin,
+            plugin_configs = request.plugin_configs, resolutions = request.resolutions, reviewed = reviewed and reviewed.fingerprint })
     end
     local function replay(): (types.SchemaResult?, error?)
         if not marker or not hashed then return nil, nil end
@@ -367,12 +447,21 @@ function M.apply_schema(request: types.SchemaRequest, frozen: types.SchemaPlan?,
         local event: domain.Event = { type = EV.SCHEMA_APPLIED, subject = "schema", body = { generation = plan.generation,
             pack = request.pack, plugin_configs = request.plugin_configs, declaration = plan.declaration, compiled = plan.compiled, digest = plan.digest, class = plan.class, changes = plan.changes,
             claim_version = claim_version, migrates = plan.migrates or nil, maps = plan.maps } }
-        receipts.decorate(event, guard.actor_id(), guard.stamp_now(), request.source or "api", request.origin, request.trace_context)
+        local actor, at, source = guard.actor_id(), guard.stamp_now(), request.source or "api"
+        receipts.decorate(event, actor, at, source, request.origin, request.trace_context)
         if marker and hashed then
             event.body.command_key = marker
             receipts.mark({ event }, marker, { request_hash = hashed, result = result :: domain.JsonObject })
         end
-        local write: types.Write = { group = "schema", events = { event }, ops = {}, expect_head = head, caller_expect = false }
+        local events: { domain.Event } = {}
+        for _, drop in ipairs(plan.drops or {}) do
+            local change: domain.Event = { type = EV.ITEM_CHANGED, subject = "i:" .. drop.item,
+                body = { item = drop.item, patch = drop.patch, schema_generation = plan.generation - 1 } }
+            receipts.decorate(change, actor, at, source, request.origin, request.trace_context)
+            events[#events + 1] = change
+        end
+        events[#events + 1] = event
+        local write: types.Write = { group = "schema", events = events, ops = {}, expect_head = head, caller_expect = false }
         local writes: { types.Write } = plan.unchanged and {} or { write }
         if marker and hashed and plan.unchanged then
             local receipt = receipts.claim(board_id, marker, hashed, result :: domain.JsonObject, head)

@@ -16,7 +16,6 @@ local related = require("related")
 local configure = require("configure")
 local update = require("update")
 local plugin_access = require("plugin_access")
-local plugin_feed = require("plugin_feed")
 
 local cross_board = require("cross_board")
 local M = {}
@@ -73,15 +72,6 @@ function M.plugin_context(input: unknown): (reads.PluginContext?, error?)
     local err = requests.parse("plugin_context", input)
     if err then return nil, err end
     return plugin_access.context(input :: reads.PluginContextRequest)
-end
-
-function M.plugin_feed(input: unknown): (reads.PluginFeed?, error?)
-    local err = requests.parse("plugin_feed", input)
-    if err then return nil, err end
-    local request = input :: reads.PluginFeedRequest
-    local admission, aerr = plugin_access.active(request)
-    if aerr or not admission then return nil, aerr end
-    return plugin_feed.page(request, admission)
 end
 
 function M.schema_options(input: unknown): (reads.PluginOptions?, error?)

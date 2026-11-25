@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: work_time_lifecycle_registration_test
+  kind: function.lua
+  meta: {type: test, suite: work_time_lifecycle, timeout: 120s}
+  source: file://lifecycle_registration_test.lua
+  method: run
+  modules: [registry]
+  imports:
+    scoped: app:scoped
+    steps: app:steps
+    test: wippy.test:test
+- name: work_time_lifecycle_test
+  kind: function.lua
+  meta: {type: test, suite: work_time_lifecycle, timeout: 240s}
+  source: file://lifecycle_test.lua
+  method: run
+  modules: [funcs, sql, time, json]
+  imports:
+    scoped: app:scoped
+    steps: app:steps
+    fixture: app:fixture
+    test: wippy.test:test
+- name: time_test_scope_plugin
+  kind: registry.entry
+  meta:
+    type: kickside.work.plugin
+    interface_version: 1
+    attachment: app:time_test_scope_attachment
+    seams: [app:time_test_scope]
+- name: time_test_scope_attachment
+  kind: contract.binding
+  meta: {class: [time_test_scope], placement: {parents: [root], fixed: true}}
+  contracts:
+  - contract: kickside.contract:component
+    methods: {get_status: 'kickside.core.threads:thread_status'}
+- name: time_test_scope
+  kind: registry.entry
+  meta:
+    type: kickside.work.scope
+    plugin: app:time_test_scope_plugin
+    table: kickside_work_time_total
+    board_column: board_id
+    item_column: item_id
+    filters:
+      over_estimate: {column: over_estimate, type: integer, ops: [eq]}
+- name: time_test_scope_access
+  kind: security.policy
+  groups: [kickside.security.groups:members, wippy.security:process]
+  policy:
+    resources: [app:time_test_scope_plugin, app:time_test_scope, app:time_test_scope_attachment]
+    actions: [registry.get, contract.get, contract.open]
+    effect: allow

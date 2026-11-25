@@ -126,6 +126,7 @@ Native error codes identify conditions across entrypoints. Local infrastructure 
 | Required plugin is not active, or deactivation leaves a dependent active | `INVALID` | `plugin_required` | false |
 | Schema names a seam without its owning plugin active | `INVALID` | `plugin_seam_unowned` | false |
 | Deactivation leaves an owned seam in the schema | `INVALID` | `plugin_seam_in_use` | false |
+| A schema proposal changes the owner of an aspect or vocabulary | `INVALID` | `schema_owner_changed` | false |
 | Effective plugin configuration fails `config_schema` | `INVALID` | `plugin_config_invalid` | false |
 | Plugin is inactive on the catalog | `NOT_FOUND` | `plugin_inactive` | false |
 | Type id names no type entry | `INVALID` | `unknown_type` | false |
@@ -415,6 +416,7 @@ One `registry.entry`, `meta.type: kickside.pim.plugin`, declares a plugin.
 | Field | Meaning |
 |---|---|
 | `title`, `description`, `icon` | display |
+| `category` | optional purpose heading that groups the plugin in catalog administration |
 | `attachment` | binding id of the plugin's attachment component kind; required |
 | `config_schema` | JSON schema of the per-catalog configuration; no secret-annotated property at any depth (properties, items, allOf/anyOf/oneOf, `$defs`, local `$ref`); secrecy comes from the schema annotation, never from a property's name |
 | `settings` | deployment defaults for configuration values only; a deployment default never activates a plugin |
@@ -500,7 +502,7 @@ One entry shape applies wherever plugin state is answered (`get_schema.plugins`,
 a list, and the options listing):
 
 ```
-{ plugin: <id>, interface_version?: integer, title, description, icon, installed: boolean, active: boolean,
+{ plugin: <id>, interface_version?: integer, title, description, icon, category?, installed: boolean, active: boolean,
   attachment_id?: string, config?: object,          -- the validated effective configuration
   requires: [..], tools: [..],
   lifecycle: { state: "pending" | "ready" | "failed", error?: { kind, code, message, field?, projection?, start_seq?, max_pruned_seq? } },
@@ -544,11 +546,16 @@ copy the catalog holds - and stores the answer on the membership entry as
 catalog's own aspects: its attributes keep their ids by code across
 resolutions, carry `plugin` in `get_schema.attributes`, index like any other
 attribute (layout columns, rebuild) and are adopted by families like any
-other aspect. A namespace or vocabulary both the catalog and a plugin, or
-two plugins, declare is refused by name; a fragment attribute carrying an id
-is refused; a request carrying `schema` on an entry is refused unless the
-copy equals the one the catalog holds, so the declaration `get_schema`
-answers re-applies as `unchanged`.
+other aspect. An aspect namespace or vocabulary code has one owner in a
+catalog. The compiler records its first owner, either the catalog or a plugin
+ID, across generations, including after removal. Only that owner can declare
+the name again. Planning and applying a proposal with a different owner return
+`schema_owner_changed` with `kind` (`aspect` or `vocabulary`), `name`,
+`previous_owner` and `proposed_owner`. The literal `catalog` identifies
+catalog-owned names. The compiler also rejects duplicate declarations by name
+and fragment attributes carrying an ID. A request can carry `schema` on an
+entry only if the copy equals the one the catalog holds, so the declaration
+`get_schema` answers re-applies as `unchanged`.
 
 The copy is catalog data: the fold never calls a provider, a plugin release
 or a change in the provider's own store reaches a catalog only when an ADMIN

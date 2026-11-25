@@ -4,6 +4,7 @@ import {mount} from '@vue/test-utils'
 vi.mock('@iconify/vue',()=>({Icon:{template:'<svg aria-hidden="true"/>'}}))
 vi.mock('@wippy-fe/proxy',()=>({loadByTagName:async()=>{}}))
 import Builder from './Builder.vue'
+import StageNode from './StageNode.vue'
 import {newConfig,newField} from '../config'
 function build(){const config=newConfig();config.fields=[{...newField(),name:'total',type:'number'}];return mount(Builder,{props:{config,retention:'2h',result:null,title:'Invoice reader',description:''},attachTo:document.body})}
 beforeEach(()=>localStorage.clear())
@@ -79,6 +80,20 @@ describe('Builder panel',()=>{
   expect(w.get('#fields-body').isVisible()).toBe(false);expect(w.get('.block-peek').text()).toBe('total')
   w.unmount()
  })
+ it('keeps a large output preview out of the field editing path until requested',async()=>{
+  const config=newConfig()
+  config.fields=Array.from({length:20},(_,index)=>({...newField(),name:`field_${index+1}`,description:`Field ${index+1} description`}))
+  const w=mount(Builder,{props:{config,retention:'2h',result:null,title:'Large extractor',description:''},attachTo:document.body})
+  const preview=w.get('.shape-preview')
+  expect(preview.attributes('open')).toBeUndefined()
+  expect(preview.get('summary').text()).toContain('Output preview')
+  expect(w.findAll('.shape-tree-node')).toHaveLength(20)
+  await preview.get('summary').trigger('click')
+  expect(preview.attributes('open')).toBeDefined()
+  expect(w.get('[aria-label="Output shape"]').text()).toContain('field_20')
+  expect(w.get('[aria-label="Example output"]').text()).toContain('field_20')
+  w.unmount()
+ })
  it('stretches the panel from the keyboard and remembers the width',async()=>{
   const w=build()
   const handle=w.get('[role=separator]')
@@ -97,6 +112,19 @@ describe('Builder panel',()=>{
   const branches=w.findAll('.branches .branch')
   expect(branches.map(b=>b.get('.branch-label').text())).toEqual(['Evidence','Deep fields'])
   expect(branches[0].text()).toContain('Scout loop');expect(branches[1].text()).toContain('Deep analysis')
+  w.unmount()
+ })
+})
+
+describe('Stage summaries',()=>{
+ it('bounds long stage chip lists while exposing the omitted names',()=>{
+  const config=newConfig()
+  config.fields=Array.from({length:4},(_,index)=>({...newField(),name:`field_${index+1}`,search_hints:`Find field ${index+1}`}))
+  config.stages.prefetch.queries=Array.from({length:4},(_,index)=>({name:`Query ${index+1}`,query:`Find field ${index+1}`,chunks:5}))
+  const w=mount(StageNode,{props:{stage:'prefetch',config,active:false}})
+  expect(w.findAll('.chips>.chip')).toHaveLength(4)
+  expect(w.get('.chip-overflow').text()).toBe('+5 more')
+  expect(w.get('.chip-overflow').attributes('title')).toContain('field_4')
   w.unmount()
  })
 })

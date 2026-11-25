@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 # Work Planning
 
-Work Planning requires `kickside/work` 0.1.33 or newer for command-owned sprint
-closure, state-restricted sprint references, and stock-board adoption.
+Work Planning requires `kickside/work` 0.1.52 or newer for reads that stay
+consistent across index rebuilds.
 
 Install `kickside.work.planning:pack` through Work pack plan and apply. On a new
 board, Work board creation can install it in the same request. Installation
@@ -21,7 +21,10 @@ planned or active sprint. Issues can retain an existing reference to a closed
 sprint.
 On a populated board, use the same pack plan with
 `plugin_configs["kickside.work.planning:plugin"].issue_types` set to the IDs
-of any custom issue types that should gain these fields. The plan describes
+of any custom issue types that should gain these fields. The configuration
+schema refuses the pack's own `issue`, `sprint` and `milestone` types and
+declares `x-choices: board_item_types`, so administration offers the board's
+item types as choices. The plan describes
 schema changes and identifies conflicts that require explicit resolutions.
 Pass the same configuration to apply with the planned generation and resolved
 choices. Adopted types keep their existing process and items.
@@ -73,3 +76,21 @@ a new review. Retrying the same review and key returns the original receipt.
 Work records the adoption as one schema generation. Existing sprints keep
 their process generation and history, and milestones keep ordinary closure.
 Sprint closure then uses Planning's preview and commit.
+
+## Read sprint workload and roadmap fields
+
+Both reads require board READ and an active Planning attachment. Workload also
+requires a readable live sprint on that board and includes only unfinished work
+visible to the caller. Roadmap returns the board's field mappings for milestones
+and configured epic types. Use Work's caller-visible item reads to load the
+items for those mappings.
+
+- `POST /api/v1/work/planning/workload` accepts `board_id` and `sprint_id`.
+  `WorkReadWorkload` returns the per-person, total, and unassigned workload,
+  with capacity, estimate availability, and coverage from Planning's sprint read.
+- `POST /api/v1/work/planning/roadmap` accepts `board_id`.
+  `WorkReadRoadmap` returns `types`, keyed by item type, with `start`, `finish`,
+  and optional `progress_field` and `membership` field codes.
+
+The agent and MCP tools use the same inputs and caller permissions as HTTP.
+Both MCP tools require `state.read`.

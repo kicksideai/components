@@ -89,6 +89,7 @@ entries:
   modules:
   - funcs
   - sql
+  - hash
   imports:
     limits: kickside.work.settings:limits
     layout: kickside.work.domain:layout
@@ -102,16 +103,35 @@ entries:
     schema: kickside.work.domain:schema
     declaration: kickside.work.domain:declaration
     changes: kickside.work.domain:changes
+    field_removals: kickside.work.command:field_removals
     guard: kickside.work.command:guard
     receipts: kickside.work.command:receipts
     domain: kickside.work:types
     types: kickside.work.command:types
     rollup_rows: kickside.work.persist:rollup_rows
     plugin_schema: kickside.work.domain:plugin_schema
-    configure: kickside.work.command:configure
+    plugins: kickside.work.domain:plugins
+    defaults: kickside.work.settings:defaults
+    plugin_rows: kickside.work.persist:plugin_rows
     peers: kickside.work.read:peers
     values: kickside.work.domain:values
     fields: kickside.work.domain:fields
+- name: field_removals
+  kind: library.lua
+  source: file://field_removals.lua
+  modules:
+  - sql
+  imports:
+    changes: kickside.work.domain:changes
+    clock: kickside.work.domain:clock
+    consts: kickside.work:consts
+    document: kickside.work.domain:document
+    guard: kickside.work.command:guard
+    layout: kickside.work.domain:layout
+    limits: kickside.work.settings:limits
+    store: kickside.work.persist:store
+    domain: kickside.work:types
+    types: kickside.work.command:types
 - name: apply_ops
   kind: library.lua
   meta:
@@ -212,23 +232,17 @@ entries:
 - name: configure
   kind: library.lua
   source: file://configure.lua
-  modules:
-  - sql
-  - hash
+  modules: [funcs]
   imports:
     limits: kickside.work.settings:limits
     manifests: kickside.work.domain:manifests
     plugins: kickside.work.domain:plugins
-    plugin_schema: kickside.work.domain:plugin_schema
-    schema: kickside.work.domain:schema
-    values: kickside.work.domain:values
-    defaults: kickside.work.settings:defaults
+    schema_commands: kickside.work.command:schema_commands
     plugin_rows: kickside.work.persist:plugin_rows
     threads: kickside.work.persist:threads
     append: kickside.work.persist:append
     receipts: kickside.work.command:receipts
     guard: kickside.work.command:guard
-    clock: kickside.work.domain:clock
     consts: kickside.work:consts
     domain: kickside.work:types
     types: kickside.work.command:types

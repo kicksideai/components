@@ -7,7 +7,7 @@ import {MAX_SHAPE_DEPTH,type Shape,type Property,type Field} from '../config'
 import {shapeKey,typeIcon,type Trail} from '../shape-builder'
 const props=defineProps<{shape:Shape;field:number;trail:Trail;path:string;selected:string;readonly?:boolean;first?:boolean;last?:boolean;error?:string}>()
 const emit=defineEmits<{select:[field:number,trail:Trail];add:[field:number,trail:Trail];reorder:[field:number,trail:Trail,delta:number]}>()
-const descriptionId=useId(),menuId=useId()
+const menuId=useId()
 const menu=ref<InstanceType<typeof Menu>>(),menuOpen=ref(false)
 const reorderActions=computed(()=>[
  {label:'Move up',disabled:props.first,command:()=>emit('reorder',props.field,props.trail,-1)},
@@ -32,10 +32,9 @@ function keys(event:KeyboardEvent){
   <div class="row-item" :class="{active:selected===shapeKey(field,trail)}">
    <button v-if="expandable" class="tree-toggle kx-iconbtn kx-focus-outline" type="button" :aria-label="`${open?'Collapse':'Expand'} ${path}`" :aria-expanded="open" @click="open=!open"><Icon :icon="open?'tabler:chevron-down':'tabler:chevron-right'"/></button>
    <span v-else class="tree-indent"/>
-   <button type="button" class="row-main kx-focus-halo" :aria-label="`Edit ${path}`" :aria-describedby="descriptionId" :aria-current="selected===shapeKey(field,trail)?'true':undefined" @click="emit('select',field,trail)">
+   <button type="button" class="row-main kx-focus-halo" :aria-label="`Edit ${path}`" :aria-current="selected===shapeKey(field,trail)?'true':undefined" @click="emit('select',field,trail)">
     <span class="row-copy">
      <span class="row-name"><Icon :icon="typeIcon(shape.type)" aria-hidden="true"/><span class="row-label" :title="name">{{name}}</span><Icon v-if="error" icon="tabler:alert-circle" class="row-warn" :aria-label="error" :title="error"/></span>
-     <span :id="descriptionId" class="row-desc" :class="{missing:!shape.description}" :title="shape.description||undefined">{{shape.description||'No description'}}</span>
     </span>
     <span class="field-badges">
      <span class="chip field-type">{{shape.type}}</span>

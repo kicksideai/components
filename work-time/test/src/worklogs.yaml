@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: work_time_worklogs_test
+  kind: function.lua
+  meta: {type: test, suite: work_time_worklogs, timeout: 600s}
+  source: file://worklogs_test.lua
+  method: run
+  modules: [funcs, sql, time, json]
+  imports:
+    test: wippy.test:test
+    scoped: app:scoped
+    steps: app:steps
+    fixture: app:fixture

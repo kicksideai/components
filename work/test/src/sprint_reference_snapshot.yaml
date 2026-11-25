@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: app
+entries:
+- name: sprint_reference_snapshot_probe
+  kind: library.lua
+  source: file://sprint_reference_snapshot_probe.lua
+  modules: [ctx, json]
+  imports:
+    client: kickside.work:client
+    consts: kickside.work:consts
+    materializer: kickside.work.persist:materializer
+    store: kickside.work.persist:store
+    work: kickside.work:types
+- name: sprint_reference_snapshot_test
+  kind: function.lua
+  meta: {type: test, suite: planning_sprint_reference_snapshot, timeout: 60s}
+  source: file://sprint_reference_snapshot_test.lua
+  method: run
+  modules: [funcs]
+  imports:
+    fixture: app:fixture
+    scoped: app:scoped
+    steps: app:steps
+    test: wippy.test:test

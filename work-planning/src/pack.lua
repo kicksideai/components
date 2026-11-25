@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
 local work = require("work")
+local mapping = require("mapping")
 local M = {}
 
 function M.date_order(input: work.GuardRequest): work.GuardResult
@@ -12,20 +13,27 @@ function M.date_order(input: work.GuardRequest): work.GuardResult
     return { allow = true, findings = {} }
 end
 
-function M.adopt_fields(input: types.SchemaRequest): (types.SchemaResult?, error?)
+function M.adopt_fields(input: { config: mapping.Config }): (types.SchemaResult?, error?)
     local extensions: { types.ItemTypeExtension } = {}
+    local by_type: { [string]: types.ItemTypeExtension } = {}
     for _, id in ipairs(input.config.issue_types or {}) do
-        if id == "issue" or id == "sprint" or id == "milestone" then
-            return nil, errors.new({ kind = errors.INVALID, message = "Adoption requires a custom issue type.", details = { code = "planning_invalid_issue_type" } })
+        local extension = { id = id, fields = { "current_sprint", "milestone" } }
+        extensions[#extensions + 1], by_type[id] = extension, extension
+    end
+    for _, id in ipairs(input.config.epic_types or {}) do
+        if id == "sprint" or id == "milestone" then
+            return nil, errors.new({ kind = errors.INVALID, message = "Planning periods already have dates.",
+                details = { code = "planning_invalid_epic_type", item_type = id } })
         end
-        extensions[#extensions + 1] = { id = id, fields = { "current_sprint", "milestone" } }
+        local extension = by_type[id]
+        if not extension then
+            extension = { id = id, fields = {} }
+            extensions[#extensions + 1] = extension
+        end
+        extension.fields[#extension.fields + 1] = "planning_start"
+        if not input.config.epic_due_field then extension.fields[#extension.fields + 1] = "planning_end" end
     end
     return { fragment = { item_types = extensions } }, nil
-end
-
--- Planning stores everything in the board, so attachment teardown has no plugin data to remove.
-function M.delete(): { success: boolean }
-    return { success = true }
 end
 
 return M

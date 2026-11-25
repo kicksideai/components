@@ -1,9 +1,11 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
+import EmptyState from '@kickside/ui-kit/EmptyState.vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import { computed, ref, useId, watch } from 'vue'
+import KanbanSkeleton from '../app/KanbanSkeleton.vue'
 import IssueResults from '../issue/IssueResults.vue'
 import { useCursorPage, workRows } from '../issue/cursor'
 import { compiledSchema } from '../issue/model'
@@ -71,10 +73,10 @@ watch(() => props.sequence, () => { if (criteria.value && loaded.value) void res
         <label :for="id + '-query'">Search issues</label>
         <InputText :id="id + '-query'" type="search" :model-value="text" placeholder="Key, title, or description" fluid @update:model-value="setText" />
       </div>
-      <div v-if="savedViews.length || moreViews || viewsError">
+      <div>
         <label :for="id + '-views'">Saved search</label>
         <Select :input-id="id + '-views'" aria-label="Saved search" :model-value="selection" :options="savedViews" option-label="title" option-value="view_id"
-          :loading="loadingViews" placeholder="Choose a saved search" show-clear fluid @update:model-value="setView">
+          :aria-busy="loadingViews" placeholder="Choose a saved search" show-clear fluid @update:model-value="setView">
           <template #footer>
             <span v-if="viewsError" role="alert">Could not load saved searches.</span>
             <Button v-if="moreViews || viewsError" type="button" text size="small"
@@ -89,8 +91,8 @@ watch(() => props.sequence, () => { if (criteria.value && loaded.value) void res
         <small v-if="searchProblem(error).code">{{ searchProblem(error).code }}</small>
         <Button type="button" label="Retry search" text size="small" @click="results.retry()" />
       </div>
-      <p v-else-if="!loaded" class="kx-loading" role="status">Searching issues…</p>
-      <p v-else-if="!rows.length" class="kx-empty-sub" role="status">No matching issues.</p>
+      <KanbanSkeleton v-else-if="!loaded" variant="rows" label="Searching issues…" />
+      <EmptyState v-else-if="!rows.length" icon="tabler:search" title="No matching issues." role="status" />
       <IssueResults v-if="rows.length" :rows="rows" :schema="schema" details="search" label="Search results" @open="emit('open', $event)" />
       <Button v-if="after" type="button" severity="secondary" outlined size="small" label="Load more"
         :loading="pending" @click="results.load(true)" />

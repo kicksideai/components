@@ -15,7 +15,6 @@ entries:
     cross_board: kickside.work.read:cross_board
     reader: kickside.work.read:reader
     plugin_access: kickside.work.read:plugin_access
-    plugin_feed: kickside.work.extensions:plugin_feed
     feeds: kickside.work.read:feeds
     create: kickside.work.command:create
     locate: kickside.work.command:locate
@@ -76,6 +75,7 @@ entries:
     policies:
     - kickside.work.security:sync_call
     - kickside.work.security:schema_output_publish
+    - kickside.work.security:schema_drop_output_publish
 - name: resume_migration
   kind: function.lua
   meta:
@@ -221,7 +221,6 @@ entries:
       list_stage_runs: kickside.work.service:list_stage_runs
       explain: kickside.work.service:explain
       plugin_context: kickside.work.service:plugin_context
-      plugin_feed: kickside.work.service:plugin_feed
       schema_options: kickside.work.service:schema_options
       configure_plugin: kickside.work.service:configure_plugin
       approve: kickside.work.service:approve
@@ -292,7 +291,9 @@ entries:
   security:
     policies:
     - kickside.work.security:sync_call
+    - kickside.work.security:schema_output_publish
     - kickside.work.security:plugin_output_publish
+    - kickside.work.security:plugin_batch_call
 - name: types
   kind: library.lua
   modules: [sql]
@@ -488,12 +489,6 @@ entries:
   source: file://board.lua
   method: schema_options
   imports: *id001
-- name: plugin_feed
-  kind: function.lua
-  source: file://board.lua
-  method: plugin_feed
-  imports: *id001
-
 - name: list_stage_runs
   kind: function.lua
   meta:

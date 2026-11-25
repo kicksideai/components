@@ -31,6 +31,7 @@ export interface ItemSummary {
   key: string
   type: string
   state: string | Record<string, string>
+  parent?: string
   version: number
   values: Record<string, Json>
 }
@@ -128,21 +129,40 @@ export function bucketQuery(query: ReturnType<typeof queryFor>, bucket: BucketPo
   }
 }
 
-export async function findView(work: Pick<WorkClient, 'boardRead'>, board: string, type: 'kanban_board' | 'kanban_backlog') {
+export type ViewReader = (type: 'kanban_board' | 'kanban_backlog') => Promise<SavedView>
+
+export function createViewReader(work: Pick<WorkClient, 'boardRead'>, board: string): ViewReader {
+  const views = new Map<string, SavedView>()
   let after: string | undefined
-  do {
+  let exhausted = false
+  let pending: Promise<void> | undefined
+
+  async function load() {
     const page: { views: (SavedView | { status: string })[], after?: string } =
       await work.boardRead(board, 'list_views', { limit: 50, after })
-    const match = (page.views ?? []).find((entry): entry is SavedView => 'view' in entry && entry.view?.type === type)
+    for (const entry of Array.isArray(page.views) ? page.views : []) {
+      if (!('view' in entry)) continue
+      const type = entry.view?.type
+      if ((type === 'kanban_board' || type === 'kanban_backlog') && !views.has(type)) views.set(type, entry)
+    }
+    after = page.after
+    exhausted = !after
+  }
+
+  return async type => {
+    while (!views.has(type) && !exhausted) {
+      pending ??= load().finally(() => { pending = undefined })
+      await pending
+    }
+    const match = views.get(type)
     if (match) {
       if (match.view.boards || (type === 'kanban_board' && match.view.group_by !== 'state')) {
         throw new Error('This saved view no longer selects a single Kanban board.')
       }
       return match
     }
-    after = page.after
-  } while (after)
-  throw new Error(type === 'kanban_board' ? 'This board needs a shared Board view.' : 'This board needs a shared Backlog view.')
+    throw new Error(type === 'kanban_board' ? 'This board needs a shared Board view.' : 'This board needs a shared Backlog view.')
+  }
 }
 
 export type ViewTab = 'board' | 'backlog'

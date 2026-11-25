@@ -4,6 +4,7 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import CreateBoard from './CreateBoard.vue'
+import { schemaForm } from '../test/controls'
 import { work } from '../api'
 import { ApiError } from '../transport'
 vi.mock('../api', () => ({ work: { createBoard: vi.fn(), packs: vi.fn(), updateBoard: vi.fn() } }))
@@ -96,18 +97,22 @@ it('sends initial pack plugin configuration and freezes its retry identity until
   expect(w.find('textarea').exists()).toBe(false)
   await w.get('form').trigger('submit'); await flushPromises()
   expect(work.createBoard).not.toHaveBeenCalled()
-  const input = w.get('input[aria-label="Destination folder"]')
-  await input.setValue('Documents')
+  const form = schemaForm(w)
+  expect(form.schema()).toEqual({ type: 'object', properties: { folder: { title: 'Destination folder', type: 'string', minLength: 2 } }, required: ['folder'] })
+  await form.report({ folder: 'A value is required.' })
+  await w.get('form').trigger('submit'); await flushPromises()
+  expect(work.createBoard).not.toHaveBeenCalled()
+  await form.change({ folder: 'Documents' }); await form.report()
   await w.get('form').trigger('submit'); await flushPromises()
   expect(vi.mocked(work.createBoard).mock.calls[0][3]).toMatchObject({ plugin_configs: { 'app:log': { folder: 'Documents' } } })
   expect(w.get('[role=alert]').text()).toContain('Error code: configuration_refused')
   const key = vi.mocked(work.createBoard).mock.calls[0][2]
   await w.get('form').trigger('submit'); await flushPromises()
   expect(vi.mocked(work.createBoard).mock.calls[1][2]).toBe(key)
-  await input.setValue('')
+  await form.change({}); await form.report({ folder: 'A value is required.' })
   await w.get('form').trigger('submit'); await flushPromises()
   expect(work.createBoard).toHaveBeenCalledTimes(2)
-  await input.setValue('Archive')
+  await form.change({ folder: 'Archive' }); await form.report()
   await w.get('form').trigger('submit'); await flushPromises()
   expect(vi.mocked(work.createBoard).mock.calls[2][2]).not.toBe(key)
   await w.getComponent(SelectButton).setValue('')

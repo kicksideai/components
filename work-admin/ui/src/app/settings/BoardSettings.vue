@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
-import Select from 'primevue/select'
+import Listbox from 'primevue/listbox'
 import NativeDialog from '../../NativeDialog.vue'
 import { computed, provide, nextTick, onUnmounted, reactive, ref, useId, watch } from 'vue'
 import Button from 'primevue/button'
@@ -16,7 +16,8 @@ import type { BoardRow, Declaration, AdminOptions, ItemType, Process, Schema, St
 import { useNavigate } from '../route'
 import { humanize } from '../../forms'
 import { settings } from './api'
-import { validationIssues, removalReason, clone, normalizeSchema, processMigration, requestDeclaration, reviewSnapshot, type PluginConfigs, type SchemaPlan, type RemovalKind, removeEntry } from './model'
+import { validationIssues, removalReason, clone, normalizeSchema, processMigration, requestDeclaration, reviewSnapshot, fieldRemovals, type FieldResolution, type PluginConfigs, type SchemaPlan, type RemovalKind, removeEntry } from './model'
+import FieldRemovals from './FieldRemovals.vue'
 import FieldsEditor from './FieldsEditor.vue'
 import TypesEditor from './TypesEditor.vue'
 import ProcessEditor from './ProcessEditor.vue'
@@ -137,16 +138,10 @@ function closeReview() {
   schemaReviewError.value = ''
   pack.clearReviewError()
   confirmedRenames.value = false
+  dropConfirmed.value = false
 }
 async function openReview(opener?: HTMLElement) {
   if (!showDraftActions.value) return
-  if (widgetInvalid.value.size) {
-    if (tab.value !== 'Plugins') {
-      setLocation('Plugins')
-      await nextTick()
-    }
-    if (pluginEditor.value && !await pluginEditor.value.reportValidity()) return
-  }
   if (!validForm() || invalid.value.size) return
   reviewOpener.value = opener
   reviewOpen.value = true
@@ -174,23 +169,19 @@ watch(tab, section => {
   if (authorized.value && section === 'Workflow') void loadCounts(props.boardId)
 })
 const schemaPlan = ref<SchemaPlan>(), reviewed = ref<ReturnType<typeof reviewSnapshot>>(), applyKey = ref('')
+const fieldChoices = ref<Record<string, FieldResolution>>({}), dropConfirmed = ref(false)
+const removals = computed(() => pack.request ? [] : fieldRemovals(schemaPlan.value))
+const removalsResolved = computed(() => removals.value.every(change => change.resolution !== 'keep')
+  && (!removals.value.some(change => change.resolution === 'drop') || dropConfirmed.value))
 const serverIssues = ref<import('./model').SchemaChange[]>([])
 const checkingRemoval = ref(false), editorVersion = ref(0)
 const invalid = ref(new Set<string>()), editor = ref<HTMLFormElement>()
-const pluginEditor = ref<InstanceType<typeof PluginsEditor>>()
-const widgetInvalid = ref(new Set<string>())
-const blockingErrors = computed(() => [...invalid.value].some(key => !widgetInvalid.value.has(key)))
-function widgetValidity(key: string, valid: boolean) {
-  const id = 'plugin:' + key
-  if (valid) widgetInvalid.value.delete(id)
-  else widgetInvalid.value.add(id)
-}
 const beginRead = latestRequest(), beginReview = latestRequest()
 const request = computed(() => requestDeclaration(draft.value, schema.value?.declaration ?? {}))
-const schemaDirty = computed(() => invalid.value.size > 0 || widgetInvalid.value.size > 0 || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(requestDeclaration(schema.value.declaration, schema.value.declaration)) || Object.keys(configs.value).length > 0))
+const schemaDirty = computed(() => invalid.value.size > 0 || !!schema.value && (JSON.stringify(request.value) !== JSON.stringify(requestDeclaration(schema.value.declaration, schema.value.declaration)) || Object.keys(configs.value).length > 0))
 const migrationPending = computed(() => !!latest.value?.migration_error || board.value?.status === 'migrating')
 const stale = computed(() => !!schema.value && !!latest.value && schema.value.generation !== latest.value.generation)
-const canReview = () => authorized.value && !stale.value && !invalid.value.size && !widgetInvalid.value.size
+const canReview = () => authorized.value && !stale.value && !invalid.value.size
 const pack = reactive(usePackReview({
   boardId: () => props.boardId, schema, configs, busy,
   schemaDirty: () => schemaDirty.value, migrationPending: () => migrationPending.value, canReview,
@@ -199,6 +190,12 @@ const pack = reactive(usePackReview({
   clearSaved: () => { saved.value = '' },
   applied: reloadApplied,
 }))
+const installedPack = computed(() => {
+  const current = schema.value?.pack
+  if (!current) return undefined
+  return { id: current.id, version: current.version, title: pack.title, description: pack.installed?.description,
+    requires: pack.installed?.requires ?? [], outdated: schema.value?.outdated, canUpgrade: pack.upgradeAvailable && pack.canManage, upgradeReason: pack.upgradeReason }
+})
 const plan = computed(() => pack.request ? pack.plan : schemaPlan.value)
 const reviewError = computed(() => pack.request ? pack.reviewError : schemaReviewError.value)
 const issues = computed(() => [...serverIssues.value, ...(plan.value?.refused ?? [])])
@@ -207,7 +204,7 @@ const showDraftActions = computed(() => dirty.value && !(pack.inProgress && pack
 const metadataDirty = ref(false)
 const unsaved = computed(() => dirty.value || metadataDirty.value)
 watch(unsaved, value => emit('dirty-change', value), { immediate: true, flush: 'sync' })
-const canSchemaApply = computed(() => (!occupiedChanges.value.renamed.length || confirmedRenames.value) && canReview() && !busy.value && !checkingRemoval.value && !migrationPending.value && schemaPlan.value && (schemaPlan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && schemaPlan.value.class !== 'refused' && !schemaPlan.value.refused.length && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value))
+const canSchemaApply = computed(() => (!occupiedChanges.value.renamed.length || confirmedRenames.value) && canReview() && !busy.value && !checkingRemoval.value && !migrationPending.value && schemaPlan.value && (schemaPlan.value.changes.length > 0 || Object.keys(configs.value).length > 0) && schemaPlan.value.class !== 'refused' && !schemaPlan.value.refused.length && removalsResolved.value && reviewed.value?.matches(request.value, schema.value?.generation ?? -1, configs.value, fieldChoices.value))
 const canApply = computed(() => pack.request ? pack.canApply : canSchemaApply.value)
 const isReviewed = computed(() => pack.request ? pack.isReviewed : !!schemaPlan.value)
 const confirmedRenames = ref(false)
@@ -249,10 +246,16 @@ function invalidate() {
   applyKey.value = ''
   pack.invalidate()
 }
-watch([request, configs], invalidate, { deep: true, flush: 'sync' })
+watch([request, configs], () => { fieldChoices.value = {}; dropConfirmed.value = false; invalidate() }, { deep: true, flush: 'sync' })
+function chooseRemoval(path: string, choice: FieldResolution) {
+  fieldChoices.value = { ...fieldChoices.value, [path]: choice }
+  dropConfirmed.value = false
+  invalidate()
+  void review()
+}
 watch(dirty, value => { if (value) saved.value = '' })
 function validity(key: string, valid: boolean) { if (valid) invalid.value.delete(key); else invalid.value.add(key); invalidate() }
-function reset(view: Schema) { pack.clear(); creation.value = undefined; editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); widgetInvalid.value.clear(); invalidate() }
+function reset(view: Schema) { pack.clear(); creation.value = undefined; editorVersion.value++; schema.value = view; draft.value = clone(view.declaration); configs.value = {}; invalid.value.clear(); invalidate() }
 async function load(force = false) {
   const current = beginRead()
   try {
@@ -300,7 +303,7 @@ function validForm() {
 async function review() {
   if (pack.request) return pack.review()
   if (!schema.value || busy.value || !canReview()) return
-  const current = beginReview(), snapshot = reviewSnapshot(request.value, schema.value.generation, configs.value)
+  const current = beginReview(), snapshot = reviewSnapshot(request.value, schema.value.generation, configs.value, fieldChoices.value)
   busy.value = true; schemaReviewError.value = ''; saved.value = ''
   try {
     const changedName = (snapshot.declaration.processes ?? []).some(process =>
@@ -315,7 +318,7 @@ async function review() {
       schemaReviewError.value = 'Could not check which items use the renamed states. Check the impact again.'
       return
     }
-    if (!current() || invalid.value.size || !snapshot.matches(request.value, schema.value.generation, configs.value)) return
+    if (!current() || invalid.value.size || !snapshot.matches(request.value, schema.value.generation, configs.value, fieldChoices.value)) return
     schemaPlan.value = response; reviewed.value = snapshot; applyKey.value = crypto.randomUUID(); reviewOpen.value = true
   } catch (e) { if (current()) { invalidate(); schemaReviewError.value = formatApiError(e, 'Could not review changes.'); serverIssues.value = validationIssues(e, request.value) } }
   finally { busy.value = false }
@@ -364,7 +367,7 @@ async function guardRemoval(kind: RemovalKind, id: string): Promise<string | und
     if (!authorized.value || stale.value || schema.value.generation !== generation || JSON.stringify(request.value) !== before) return 'The draft changes during the check. Try the removal again.'
     const refusal = removalReason(response, kind, id)
     if (refusal) return refusal
-    if (response.class === 'refused') return 'Resolve the blocked changes in your draft before removing this definition.'
+    if (response.refused.some(change => change.what !== 'field.remove')) return 'Resolve the blocked changes in your draft before removing this definition.'
   } catch (e) { return formatApiError(e, 'Could not check this removal.') }
   finally { checkingRemoval.value = false }
 }
@@ -375,7 +378,7 @@ async function back() {
 }
 function discard() { resetGeneration = undefined; if (latest.value) reset(latest.value); saved.value = ''; error.value = ''; closeReview() }
 
-watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; pack.reset(); schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); widgetInvalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; creation.value = undefined; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
+watch(() => props.boardId, () => { metadataDirty.value = false; resetGeneration = undefined; pack.reset(); schema.value = undefined; latest.value = undefined; board.value = undefined; configs.value = {}; invalid.value.clear(); beginCounts(); stateCounts.value = undefined; fieldType.value = ''; creation.value = undefined; visited.value = new Set(['General']); openRoute('General'); closeReview(); authorized.value = false; loading.value = true; void load(true) })
 watch([() => props.route, () => props.boardId], ([route]) => {
   if (route === undefined) return
   const [key, row] = route.split('/')
@@ -404,7 +407,7 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
                 <template #icon><Icon icon="tabler:refresh" aria-hidden="true" /></template>
               </Button>
               <SettingsDraftActions v-if="showDraftActions" :busy="busy" :discard-disabled="checkingRemoval"
-                :review-disabled="checkingRemoval || migrationPending || stale || blockingErrors"
+                :review-disabled="checkingRemoval || migrationPending || stale || invalid.size > 0"
                 @discard="discard" @review="openReview" />
             </template>
           </SettingsSectionHead>
@@ -465,9 +468,9 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
                   :draft="draft" :board="board" :busy="busy" @validity="validity('visibility', $event)" />
 
                 <section v-if="visited.has('Plugins')" v-show="tab === 'Plugins'" class="work-ia-section">
-                  <PluginsEditor ref="pluginEditor" :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"
-                    :filters="options?.filters" :configs="configs" :disabled="busy" @configured="invalidate(); load()" @refresh="load()" @review="openReview"
-                    @validity="(key, valid) => validity('plugin:' + key, valid)" @widget-validity="widgetValidity" />
+                  <PluginsEditor :board-id="boardId" :draft="draft" :schema="latest ?? schema" :options="options?.schema_options.plugins ?? []"
+                    :filters="options?.filters" :configs="configs" :disabled="busy" :pack="installedPack" @configured="invalidate(); load()" @refresh="load()" @review="openReview" @upgrade="pack.upgrade"
+                    @validity="(key, valid) => validity('plugin:' + key, valid)" />
                 </section>
               </fieldset>
             </form>
@@ -482,6 +485,8 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
                   <ProcessMigration v-if="reviewOpen && !pack.request && (occupiedChanges.removed.length || occupiedChanges.renamed.length)"
                     :removed="occupiedChanges.removed" :renamed="occupiedChanges.renamed" :disabled="busy || checkingRemoval"
                     v-model:confirmed="confirmedRenames" @destination="setDestination" />
+                  <FieldRemovals v-if="reviewOpen && removals.length" :removals="removals" :original="schema.declaration" :draft="request"
+                    :choices="fieldChoices" :disabled="busy" v-model:drop-confirmed="dropConfirmed" @choose="chooseRemoval" />
                   <PluginsEditor v-if="reviewOpen && pack.request && pack.plugins.length" :board-id="boardId" :draft="{ plugins: pack.plugins }" :schema="latest ?? schema"
                     :options="options?.schema_options.plugins.filter(plugin => pack.plugins.some(selected => selected.use === plugin.plugin)) ?? []"
                     :configs="configs" :disabled="busy" activation-locked @validity="(key, valid) => validity('pack-plugin:' + key, valid)" />
@@ -515,14 +520,12 @@ onUnmounted(() => { stop(); beginRead(); beginReview(); beginCounts(); pack.inva
           <p role="alert">{{ pack.error }}</p>
           <Button label="Reload packs" severity="secondary" outlined @click="pack.load()" />
         </div>
-        <label v-else-if="pack.choices.length" class="work-stack work-tight">Pack
-          <Select v-model="pack.installPack" aria-label="Pack to install" appendTo="self" optionLabel="title" optionValue="id" optionDisabled="disabled" :options="pack.choices"
-            :pt="{ option: ({ context }) => ({ 'aria-label': [context.option.title, context.option.unavailable].filter(Boolean).join('. ') }) }">
-            <template #option="{ option }">
-              <span>{{ option.title }}<small v-if="option.unavailable" class="work-pack-unavailable work-block">{{ option.unavailable }}</small></span>
-            </template>
-          </Select>
-        </label>
+        <Listbox v-else-if="pack.choices.length" v-model="pack.installPack" aria-label="Pack to install"
+          dataKey="id" :optionLabel="option => [option.title, option.unavailable].filter(Boolean).join('. ')" optionValue="id" optionDisabled="disabled" :options="pack.choices">
+          <template #option="{ option }">
+            <span>{{ option.title }}<small v-if="option.unavailable" class="work-pack-unavailable work-block">{{ option.unavailable }}</small></span>
+          </template>
+        </Listbox>
         <p v-else class="work-muted">No available packs were found.</p>
         <footer class="work-dialog-actions"><Button label="Cancel" severity="secondary" outlined @click="pack.installing = false" /><Button type="submit" label="Review pack" :disabled="!pack.installChoice || !pack.canManage || pack.loading || !!pack.error" /></footer>
       </form>

@@ -3,6 +3,7 @@ import { expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { api } from '@wippy-fe/proxy'
 import CreateBoard from './CreateBoard.vue'
+import { schemaForm } from '../test/controls'
 it('sends the wizard create body through the declared HTTP boundary then updates metadata', async () => {
   vi.mocked(api.get).mockResolvedValue({ data: { success: true, data: { packs: [] } } })
   vi.mocked(api.post).mockImplementation(async (path: string, body: unknown) => {
@@ -31,7 +32,9 @@ it('includes exact initial plugin configuration in the packed creation HTTP body
   const w = mount(CreateBoard, { props: { visible: true } }); await flushPromises()
   await w.get('#board-title').setValue('Configured board'); await w.get('form').trigger('submit')
   await w.getComponent(SelectButton).setValue('app:pack')
-  await w.get('input[aria-label="Folder"]').setValue('Documents')
+  await flushPromises()
+  const form = schemaForm(w)
+  await form.change({ folder: 'Documents' }); await form.report()
   await w.get('form').trigger('submit'); await flushPromises()
   expect(w.emitted('created')).toEqual([['configured']]); w.unmount()
 })

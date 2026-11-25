@@ -93,6 +93,56 @@ local function define()
             assert(changes:apply())
         end
 
+        test.it("reconciles existing attachments when a plugin update replaces a projection", function()
+            local boards = { fixture.board(), fixture.board() }
+            local attachments_before, heads = {}, {}
+            for i, h in ipairs(boards) do
+                activate(h, true, { marker = "saved" })
+                local item = steps.create(h, "task")
+                ready(h, false)
+                attachments_before[i] = view(h).attachment_id
+                heads[i] = assert(steps.get(h, item)).item.updated_seq
+            end
+
+            revise(PLUGIN, function(meta)
+                meta.projections = { { kind = "app:updated_fold", worker_ref = "func://app:plugin_projection_worker", input = "state" } }
+            end)
+
+            for i, h in ipairs(boards) do
+                steps.wait_for("updated projection catches up on the existing attachment", function(): boolean
+                    local state = view(h).projections["app:updated_fold"]
+                    return state ~= nil and state.error == nil and not state.bootstrapping and state.last_seq >= heads[i]
+                end)
+                local _, body = projection(h, "app:updated_fold")
+                test.eq(body.worker_config.attachment_id, attachments_before[i])
+                test.eq(body.worker_config.config.marker, "saved")
+                for _, p in ipairs(assert(h.call("plugin_projections", {})).projections) do
+                    test.is_true(p.kind ~= "app:item_fold")
+                end
+            end
+        end)
+
+        test.it("lets a board admin resync an active plugin through HTTP", function()
+            local admin, member = scoped.admin(), scoped.member()
+            local h = scoped.board(admin)
+            assert(h.call("grant", { subject_id = member.id, mask = 1 }))
+            activate(h, true, { marker = "saved" })
+            ready(h, false)
+            local id = projection(h, "app:item_fold")
+            local path = admin.route(h.id, "configure_plugin")
+            test.eq(member.http("POST", path, { plugin = PLUGIN }).status, 403)
+            local reply = admin.http("POST", path, { plugin = PLUGIN })
+            test.eq(reply.status, 200, reply.raw)
+            test.eq(reply.body.data.attachment_id, view(h).attachment_id)
+            local seq = reply.body.data.seq :: integer
+            steps.wait_for("board admin resync catches up", function(): boolean
+                return view(h).projections["app:item_fold"].last_seq >= seq
+            end)
+            local after, body = projection(h, "app:item_fold")
+            test.eq(after, id)
+            test.eq(body.worker_config.config.marker, "saved")
+        end)
+
         test.it("refuses an unknown manifest interface before loading its declarations", function()
             local h = fixture.board()
             local plugin = "app:event_projection_plugin"
@@ -246,7 +296,7 @@ local function define()
             activate(h, true)
             ready(h, false)
             local request: Map = { plugin = PLUGIN, kind = "app:item_fold" }
-            local first = assert(h.call("plugin_feed", request))
+            local first = assert(h.call("projection_feed_probe", request))
             test.eq(#first.changes, 1)
             test.eq(first.changes[1].key, h.prefix .. "-1")
             test.is_true(first.done)
@@ -255,7 +305,7 @@ local function define()
             local prefix = fixture.fresh_prefix()
             assert(h.call("apply_schema", { declaration = { key_prefix = prefix } }))
             test.eq(assert(steps.get(h, id)).item.key, prefix .. "-1")
-            local page = assert(h.call("plugin_feed", request))
+            local page = assert(h.call("projection_feed_probe", request))
             test.eq(#page.changes, 1, "state feed advanced without updating the item's key")
             test.eq(page.changes[1].key, prefix .. "-1")
         end)
@@ -478,36 +528,41 @@ local function define()
             local tail: { Map } = {}
             for _ = 1, 5 do tail[#tail + 1] = { op = "create", type = "task", values = {} } end
             assert(h.call("apply", { ops = tail }))
-            local _, inactive = h.call("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold" })
+            local _, inactive = h.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold" })
             test.eq(inactive:kind(), errors.NOT_FOUND); test.eq(inactive:details().code, "plugin_inactive")
             activate(h, true)
             ready(h, false)
-            local first = assert(h.call("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold" }))
+            local first = assert(h.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold" }))
             test.eq(#first.changes, 200); test.is_false(first.done); test.is_true(first.bootstrap)
             test.not_nil(first.attachment_id); test.not_nil(first.config)
-            local second = assert(h.call("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold", token = first.token }))
+            local second = assert(h.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold", token = first.token }))
             test.eq(#second.changes, 5); test.is_true(second.done); test.is_true(second.bootstrap)
-            local third = assert(h.call("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold", token = second.token }))
+            local third = assert(h.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold", token = second.token }))
             test.eq(#third.changes, 0); test.is_true(third.done); test.is_false(third.bootstrap)
-            local _, malformed = h.call("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold", token = "malformed" })
+            local _, malformed = h.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold", token = "malformed" })
             test.eq(malformed:kind(), errors.INVALID)
-            local _, undeclared = h.call("plugin_feed", { plugin = PLUGIN, kind = "app:other" })
+            local _, undeclared = h.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:other", attachment_id = first.attachment_id })
             test.eq(undeclared:kind(), errors.INVALID); test.eq(undeclared:details().code, "plugin_projection_invalid")
             local reader = fixture.user(h)
-            local _, denied = reader("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold" })
+            local _, denied = reader("events", {})
             test.eq(denied:kind(), errors.PERMISSION_DENIED)
             local other = fixture.board()
             activate(other, true); ready(other, false)
-            local _, foreign = other.call("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold", token = second.token })
+            local _, foreign = other.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold", token = second.token })
             test.eq(foreign:kind(), errors.INVALID)
+            local _, foreign_attachment = other.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold", attachment_id = first.attachment_id })
+            test.eq(foreign_attachment:details().code, "plugin_projection_binding")
+            local _, foreign_registration = other.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold",
+                projection_id = projection(h, "app:item_fold") })
+            test.eq(foreign_registration:details().code, "plugin_projection_binding")
             local db = assert(sql.get("app:db"))
             assert(db:execute("UPDATE kickside_work_board SET tombstone_floor_seq = applied_seq WHERE board_id=$1", { h.id }))
             db:release()
-            local reset = assert(h.call("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold", token = first.token }))
+            local reset = assert(h.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold", token = first.token }))
             test.is_true(reset.bootstrap); test.eq(#reset.changes, 200); test.is_false(reset.done)
             test.eq(#rows(h), 205)
         end)
-        test.it("resumes plugin state delivery after a hidden row ends a page", function()
+        test.it("keeps restricted projection pages off the caller read surface", function()
             local owner = scoped.admin()
             local declaration = fixture.declaration(fixture.fresh_prefix())
             declaration.fields[7] = { code = "level", form = "text", index = "key" }
@@ -521,17 +576,29 @@ local function define()
             local hidden = steps.create(h, "task", { level = "internal" })
             activate(h, true)
             ready(h, false)
-            local request: Map = { plugin = PLUGIN, kind = "app:item_fold" }
-            local first = assert(reader("plugin_feed", request))
-            test.eq(#first.changes, 0)
+            local request: Map = { plugin = PLUGIN, kind = "app:item_fold", board_id = h.id }
+            local first = assert(h.call("projection_feed_probe", request))
+            test.eq(first.changes[1].item_id, hidden)
             test.is_nil(first.token:find(hidden, 1, true))
+            local _, body = projection(h, "app:item_fold")
+            test.is_nil(body.token:find(hidden, 1, true))
+            for _, caller in ipairs({ reader, h.call }) do
+                local exposed, err = caller("contract_request", { contract = "kickside.work:board", method = "plugin_feed", value = request })
+                test.is_nil(exposed)
+                test.not_nil(err)
+                local direct, direct_err = caller("direct", { target = "kickside.work.extensions:plugin_feed", input = request })
+                test.is_nil(direct)
+                test.not_nil(direct_err)
+            end
+            local public = assert(reader("list_changes", {}))
+            test.eq(#public.items, 0)
+            test.is_nil((json.encode(public.next):find(hidden, 1, true)))
 
             local visible = steps.create(h, "task")
-            request.token = first.token
-            local next_page, err = reader("plugin_feed", request)
+            local next_page, err = reader("list_changes", { cursor = public.next })
             assert(next_page, steps.detail(err))
-            test.eq(#next_page.changes, 1)
-            test.eq(next_page.changes[1].item_id, visible)
+            test.eq(#next_page.items, 1)
+            test.eq(next_page.items[1].item_id, visible)
             local _, raw_err = reader("events", {})
             test.eq(raw_err:kind(), errors.PERMISSION_DENIED)
         end)
@@ -544,7 +611,7 @@ local function define()
             test.eq(rows(h)[1].marker, "initial")
             assert(h.call("configure_plugin", { plugin = PLUGIN, config = { marker = "reconfigured" } }))
             steps.wait_for("config replay", function(): boolean return #rows(h) > 0 and rows(h)[1].marker == "reconfigured" end)
-            local _, stale = h.call("plugin_feed", { plugin = PLUGIN, kind = "app:item_fold", token = original.token })
+            local _, stale = h.call("projection_feed_probe", { plugin = PLUGIN, kind = "app:item_fold", token = original.token })
             test.eq(stale:kind(), errors.INVALID)
             test.eq(#rows(h), 1)
             test.eq(tonumber(rows(h)[1].deliveries), 2)
@@ -580,6 +647,49 @@ local function define()
             test.is_true(view(h).projections["app:item_fold"].parked)
             test.eq(view(h).projections["app:item_fold"].last_seq, state.last_seq)
         end)
+        test.it("matches a holder's restricted edit in a caught-up plugin scope", function()
+            local owner, holder = scoped.admin(), scoped.member()
+            local declaration = fixture.declaration(fixture.fresh_prefix())
+            declaration.fields[7] = { code = "level", form = "text", index = "key" }
+            declaration.item_types[3].fields[4] = "level"
+            declaration.visibility = { field = "level", levels = {
+                { id = "private", holders = { { user = holder.id } } },
+            } }
+            declaration.plugins = { { use = PLUGIN } }
+            declaration.scopes = { "app:fold_scope" }
+            local h = scoped.board(owner, declaration)
+            assert(h.call("grant", { subject_id = holder.id, mask = 3 }))
+            local public = steps.create(h, "task", { title = "Public anchor" })
+            local created = assert(holder.call("apply", { ops = { { op = "create", type = "task",
+                values = { title = "Restricted estimate", level = "private", estimate = 100 } } } }, h.id)).outcomes[1]
+            test.eq(created.status, "applied")
+            local item = created.item
+            local hidden, hidden_err = h.call("get", { item = { id = item } })
+            test.is_nil(hidden)
+            test.eq(hidden_err:kind(), errors.NOT_FOUND)
+            ready(h, false)
+            local scopes = { { id = "app:fold_scope", where = { marker = { eq = "over_estimate" } } } }
+            test.eq(#assert(holder.call("query", { scopes = scopes }, h.id)).items, 0)
+
+            local edited = assert(holder.call("apply", { ops = { { op = "set", item = item, values = { estimate = 50 } } } }, h.id)).outcomes[1]
+            test.eq(edited.status, "applied")
+            local visible = assert(holder.call("get", { item = { id = item } }, h.id))
+            test.eq(visible.item.values.estimate, 50)
+            steps.one(h, { op = "comment", item = public, body = "Advance the state feed" })
+            steps.wait_for("plugin projection to acknowledge the restricted edit", function(): boolean
+                return view(h).projections["app:item_fold"].last_seq >= visible.as_of
+            end)
+
+            local request = { scopes = scopes, min_seq = visible.as_of }
+            local matches = assert(holder.call("query", request, h.id)).items
+            test.eq(#matches, 1)
+            test.eq(matches[1].id, item)
+            test.eq(assert(holder.call("count", request, h.id)).total, 1)
+            test.eq(#assert(h.call("query", request)).items, 0)
+            test.eq(assert(h.call("count", request)).total, 0)
+            test.eq(#assert(h.call("query", { where = { match = item }, min_seq = visible.as_of })).items, 0)
+        end)
+
         test.it("fences plugin scope reads until the backing projection catches up", function()
             local admin, member = scoped.admin(), scoped.member()
             local h = scoped.board(admin)
@@ -659,16 +769,8 @@ local function define()
             steps.create(h, "task", {})
             activate(h, true)
             ready(h, false)
-            local original = assert(h.call("declaration", { id = PLUGIN }))
-            local revised = assert(h.call("declaration", { id = PLUGIN }))
-            revised.meta.projections[1].revision = 2
-            local registry = require("registry")
-            local changes = assert(registry.snapshot()):changes()
-            changes:update(revised); assert(changes:apply())
-            assert(h.call("plugin_sync", {}))
+            revise(PLUGIN, function(meta) meta.projections[1].revision = 2 end)
             steps.wait_for("revision rebuild", function(): boolean return #rows(h) == 1 and tonumber(rows(h)[1].deliveries) == 2 end)
-            changes = assert(registry.snapshot()):changes()
-            changes:update(original); assert(changes:apply())
             local events = assert(h.call("events", {})).events
             local rebuilt = 0
             for _, event in ipairs(events) do if event.type == "kickside.work.events:plugin.rebuild" then rebuilt = rebuilt + 1 end end

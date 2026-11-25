@@ -54,12 +54,12 @@ local function apply_schema(tx: sql.Transaction, dialect: string, board: types.B
     local err: error?
     local encoded = json.encode(compiled)
     if not board then
-        err = fold_batch.exec(tx, [[INSERT INTO kickside_work_board (board_id, key_prefix, generation, schema_version, compiled, digest, layout, applied_seq, counter,
+        err = fold_batch.exec(tx, [[INSERT INTO kickside_work_board (board_id, key_prefix, generation, schema_version, compiled, digest, layout, applied_seq, snapshot_seq, counter,
                 tombstone_floor_seq, created_at, updated_at)
-            VALUES ($1, $2, $3, 1, $4, $5, NULL, 0, 0, 0, $6, $6)]], { board_id, compiled.key_prefix, body.generation, encoded, body.digest, at })
+            VALUES ($1, $2, $3, 1, $4, $5, NULL, 0, 0, 0, 0, $6, $6)]], { board_id, compiled.key_prefix, body.generation, encoded, body.digest, at })
         if err then return nil, errors.wrap(err, "board insert failed") end
         board = { schema_version = 1, board_id = board_id, key_prefix = compiled.key_prefix, generation = body.generation, compiled = compiled,
-            model = schema.model(compiled), digest = body.digest, applied_seq = 0, counter = 0, tombstone_floor_seq = 0 }
+            model = schema.model(compiled), digest = body.digest, applied_seq = 0, snapshot_seq = 0, counter = 0, tombstone_floor_seq = 0 }
     else
         err = fold_batch.exec(tx, [[UPDATE kickside_work_board SET key_prefix = $1, generation = $2, schema_version = schema_version + 1, compiled = $3, digest = $4, updated_at = $5
             WHERE board_id = $6]], { compiled.key_prefix, body.generation, encoded, body.digest, at, board_id })

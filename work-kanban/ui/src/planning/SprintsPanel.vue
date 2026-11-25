@@ -7,6 +7,7 @@ import AccordionPanel from 'primevue/accordionpanel'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { computed, ref, shallowRef, watch } from 'vue'
+import KanbanSkeleton from '../app/KanbanSkeleton.vue'
 import IssueResults from '../issue/IssueResults.vue'
 import { useCursorPage } from '../issue/cursor'
 import { compiledSchema, issuePageLimit, issueProblem, title } from '../issue/model'
@@ -38,6 +39,7 @@ const active = periodPage('active')
 const upcoming = periodPage('planned')
 const closed = periodPage('closed')
 const periods = { active, planned: upcoming, closed }
+
 const destinations = computed(() => [...upcoming.rows.value, ...active.rows.value])
 
 const members = useCursorPage((after?: QueryCursor) => queryIssues(props.work, props.board.board_id, {
@@ -59,6 +61,7 @@ const totals = useCursorPage(async (groupAfter?: string) => {
   )
   return { rows: data.groups ?? [], after: data.group_after }
 }, row => row.value?.item ?? 'backlog', denied)
+const loadingPeriods = computed(() => [active, upcoming, closed, totals].some(page => page.pending.value && !page.loaded.value))
 const counts = computed(() => new Map(totals.rows.value.map(row => [row.value?.item ?? 'backlog', row])))
 
 interface Panel { id: string; sprint?: Issue; state?: PeriodState; label: string; dates?: string }
@@ -87,12 +90,19 @@ function total(id: string) {
   return count + (count === 1 ? ' issue' : ' issues') + (row?.measures?.points == null ? '' : ' · ' + row.measures.points + ' pts')
 }
 
+// Sprint totals size the placeholder like the rows Work returns.
+function expectedRows(id: string) {
+  const count = counts.value.get(id)?.count
+  return count === undefined ? 5 : Math.max(1, Math.min(count, issuePageLimit) + Number(count > issuePageLimit))
+}
+
 async function load() {
   const board = props.board.board_id
+  const remaining = Promise.all([upcoming.load(), closed.load(), totals.load()])
   await active.load()
   if (props.board.board_id !== board) return
   if (!selected.value) selected.value = active.rows.value[0]?.id ?? 'backlog'
-  await Promise.all([upcoming.load(), closed.load(), totals.load()])
+  await remaining
 }
 function refresh() {
   return Promise.all([load(), selected.value ? members.load() : undefined])
@@ -101,8 +111,7 @@ defineExpose({ refresh })
 function closedSprint(sequence?: number) {
   closing.value = undefined
   emit('changed', sequence)
-  void load()
-  if (selected.value) void members.load()
+  if (sequence === undefined) void refresh()
 }
 
 watch(() => props.board.board_id, () => {
@@ -123,8 +132,8 @@ watch(() => props.sequence, () => {
 
 <template>
   <section class="kanban-sprints" aria-label="Sprint planning">
-    <p v-if="active.pending.value && !active.loaded.value" class="kx-loading" role="status">Loading sprints…</p>
-    <Accordion :value="selected" @update:value="select">
+    <KanbanSkeleton v-if="loadingPeriods" variant="rows" label="Loading sprints…" />
+    <Accordion v-else :value="selected" @update:value="select">
       <AccordionPanel v-for="row in panels" :key="row.id" :value="row.id" :data-sprint="row.id">
         <AccordionHeader>
           <span class="kanban-sprint-summary">
@@ -141,7 +150,8 @@ watch(() => props.sequence, () => {
               {{ issueProblem(memberError).message }}
               <Button text type="button" size="small" label="Retry issues" @click="members.retry()" />
             </div>
-            <p v-else-if="memberPending && !memberLoaded" class="kx-loading" role="status">Loading issues…</p>
+            <KanbanSkeleton v-else-if="memberPending && !memberLoaded" variant="rows" label="Loading sprint issues…"
+              :rows="expectedRows(row.id)" />
             <p v-else-if="memberLoaded && !rows.length" class="kx-empty-sub">No issues in this {{ row.sprint ? 'sprint' : 'backlog' }}.</p>
             <IssueResults v-if="rows.length" :rows="rows" :schema="schema" details="planning" label="Sprint issues" @open="emit('open', $event)" />
             <Button v-if="after" type="button" severity="secondary" outlined size="small" label="Load more issues"

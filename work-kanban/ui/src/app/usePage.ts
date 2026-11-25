@@ -2,7 +2,7 @@
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import { computed, onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue'
 import { checkPlacements } from '../extensions/placements'
-import { findView, runFirstViewPage, viewType, type FirstViewRead } from '../presentation/query'
+import { createViewReader, runFirstViewPage, viewType, type FirstViewRead, type ViewReader } from '../presentation/query'
 import { boardPath, dismissIssue, issuePath, kanbanRoot, switchBoard, type KanbanRoute, type KanbanTab, type Navigate } from '../route'
 import { isAccessLoss, planningPlugin, searchPlugin, WorkError, type WorkClient } from '../work/client'
 import { BoardDirectory } from '../work/directory'
@@ -19,6 +19,8 @@ export function availableTabs(schema?: BoardSchema, access?: BoardAccess): Kanba
   return items
 }
 
+const visitedBoards = 3
+
 export function usePage(
   route: Readonly<Ref<KanbanRoute | undefined>>,
   work: Pick<WorkClient, 'boards' | 'schema' | 'boardRead' | 'runView'>,
@@ -32,6 +34,7 @@ export function usePage(
   const boards = shallowRef<BoardOption[]>([])
   const board = shallowRef<BoardOption>()
   const schema = shallowRef<BoardSchema>()
+  const readView = shallowRef<ViewReader>()
   const firstView = shallowRef<FirstViewRead>()
   const loading = ref(false)
   const error = shallowRef<unknown>()
@@ -40,6 +43,15 @@ export function usePage(
   const pagingError = shallowRef<unknown>()
   const hasMore = ref(true)
   const allowedTabs = computed(() => availableTabs(schema.value, board.value?.access))
+  const visited = new Map<string, { board: BoardOption, schema: BoardSchema, readView?: ViewReader }>()
+
+  function remember() {
+    const id = board.value?.board_id
+    if (!id || !schema.value) return
+    visited.delete(id)
+    visited.set(id, { board: board.value!, schema: schema.value, readView: readView.value })
+    while (visited.size > visitedBoards) visited.delete(visited.keys().next().value!)
+  }
 
   function syncDirectory() {
     boards.value = directory.boards
@@ -56,6 +68,7 @@ export function usePage(
   function clearSelection() {
     board.value = undefined
     schema.value = undefined
+    readView.value = undefined
     firstView.value = undefined
     setSubscription()
   }
@@ -69,7 +82,20 @@ export function usePage(
     }
     const requested = selected ?? active.board
     const changing = requested !== board.value?.board_id || !board.value
-    if (changing) clearSelection()
+    const known = changing && !revalidate && requested ? visited.get(requested) : undefined
+    if (changing) {
+      remember()
+      clearSelection()
+    }
+    if (known) {
+      board.value = known.board
+      schema.value = known.schema
+      readView.value = known.readView
+      setSubscription(known.board.board_id)
+      if (active.board !== known.board.board_id) {
+        navigate({ path: boardPath(switchBoard(active, known.board.board_id, availableTabs(known.schema, known.board.access))) })
+      }
+    }
     missing.value = false
     error.value = undefined
     loading.value = true
@@ -77,21 +103,28 @@ export function usePage(
     let found: BoardOption | undefined
     const tab = active.tab === 'board' || active.tab === 'backlog' ? active.tab : undefined
     const selection = source.resolve(requested)
-    function readView(id: string) {
-      if (changing && tab) return findView(work, id, viewType(tab))
+    function prepareView(id: string, lookup: ViewReader) {
+      if (!changing || known || !tab) return
+      const view = lookup(viewType(tab))
+      const page = view.then(saved => {
+        if (current() && route.value?.tab === tab) return runFirstViewPage(work, tab, saved)
+      })
+      void view.catch(() => {})
+      void page.catch(() => {})
+      return { board: id, tab, view, page }
     }
     const earlySchema = requested ? work.schema(requested) : undefined
-    const earlyView = requested ? readView(requested) : undefined
-    // The directory can reject the selection before these reads finish. Their
-    // original promises still carry errors to the page or presentation reader.
+    const earlyReader = requested && (changing && !known || revalidate) ? createViewReader(work, requested) : undefined
+    const earlyView = requested && earlyReader ? prepareView(requested, earlyReader) : undefined
+    // The directory can complete after the schema read rejects.
     void earlySchema?.catch(() => {})
-    void earlyView?.catch(() => {})
     try {
       found = await selection
       if (!current()) return
       directory = source
       syncDirectory()
       if (!found) {
+        if (requested) visited.delete(requested)
         clearSelection()
         missing.value = !!requested
         return
@@ -100,29 +133,26 @@ export function usePage(
         setSubscription()
         board.value = found
         schema.value = undefined
+        readView.value = undefined
         return
       }
       const snapshot = earlySchema ?? work.schema(found.board_id)
-      const view = earlyView ?? readView(found.board_id)
-      if (tab && view) {
-        const page = view.then(saved => {
-          if (current() && route.value?.tab === tab) return runFirstViewPage(work, tab, saved)
-        })
-        void page.catch(() => {})
-        firstView.value = { board: found.board_id, tab, view, page }
-      }
+      const lookup = earlyReader ?? (changing && !known || revalidate ? createViewReader(work, found.board_id) : readView.value)
+      firstView.value = earlyView ?? (lookup && prepareView(found.board_id, lookup))
       setSubscription(found.board_id)
       const next = await snapshot
       if (!current()) return
+      readView.value = lookup
       board.value = found
       schema.value = next
-      if (!active.board || selected && active.board !== found.board_id) {
+      if (!known && (!active.board || selected && active.board !== found.board_id)) {
         const target = switchBoard(active, found.board_id, availableTabs(next, found.access))
         navigate({ path: boardPath(target) })
       }
     } catch (problem) {
       if (!current()) return
       if (isAccessLoss(problem)) {
+        if (requested) visited.delete(requested)
         clearSelection()
         if (found && problem instanceof WorkError && problem.status !== 401) directory.remove(found.board_id)
         else directory = new BoardDirectory(work.boards)
@@ -188,7 +218,7 @@ export function usePage(
   }
 
   return {
-    boards, board, schema, firstView, allowedTabs, loading, error, missing, paging, pagingError, hasMore,
+    boards, board, schema, firstView, readView, allowedTabs, loading, error, missing, paging, pagingError, hasMore,
     refresh, loadMore, openTab, openIssue, closeIssue, links,
     select: (id: string) => id !== board.value?.board_id ? refresh(false, id) : undefined,
     created: (id: string) => refresh(true, id),

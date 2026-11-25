@@ -253,7 +253,7 @@ return { run = test.run_cases(function()
             table.remove(declaration.fields :: { Map }, 1)
             for _, item_type in ipairs(declaration.item_types) do table.remove(item_type.fields, 1) end
             declaration.remove = { fields = { "title" } }
-            assert(h.call("apply_schema", { declaration = declaration }))
+            steps.archive_fields(h, declaration)
             assert(h.call("apply_schema", { declaration = fixture.declaration(h.prefix) }))
             local _, stale = instantiate(h, first, "after")
             code(stale, "template_schema_changed")

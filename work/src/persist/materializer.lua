@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 -- Folds board events into the work tables. Runs inside the projection
--- transaction; board.applied_seq covers every event at or below it.
+-- transaction; board.applied_seq covers every event at or below it, and
+-- board.snapshot_seq tracks the last Work event other than an index rebuild.
 local json = require("json")
 local clock = require("clock")
 local sql = require("sql")
@@ -63,6 +64,7 @@ function M.fold(tx: sql.Transaction, dialect: string, board_id: string, events: 
     local metadata, meta_err = board_meta.get(tx, board_id)
     if meta_err then return nil, meta_err end
     local applied = math.max(board and board.applied_seq or 0, metadata and metadata.applied_seq or 0)
+    local snapshot_seq = board and board.snapshot_seq or 0
     local batch: types.FoldBatch = { cache = {}, dirty = {}, history = {}, rows = 0, written = {}, board_id = board_id, usage = {} }
     local parsed: { types.FoldEvent } = {}
     local ids: { string } = {}
@@ -155,6 +157,7 @@ function M.fold(tx: sql.Transaction, dialect: string, board_id: string, events: 
                 err = fold_items.apply_comment(tx, board, event, batch)
             end
             if err then return nil, errors.wrap(err, "fold of event " .. tostring(event.seq) .. " failed") end
+            if event.type ~= EV.INDEX_REBUILT then snapshot_seq = event.seq end
             if board and event.type ~= EV.BOARD_UPDATED and event.type ~= EV.PLUGIN_CONFIGURED and event.type ~= EV.INDEX_REBUILT and event.type ~= EV.SCHEMA_APPLIED and event.type ~= EV.ROLLUPS_RECOMPUTED then
                 err = fold_rollup.observe(tx, board, batch, event)
                 if err then return nil, err end
@@ -178,10 +181,10 @@ function M.fold(tx: sql.Transaction, dialect: string, board_id: string, events: 
         local due = clock.deadline(0).ns // 1000000
         -- This checkpoint commits with the rows that can change eligibility.
         -- A coalesced Core wake can therefore recover their board from storage.
-        err = fold_batch.exec(tx, [[UPDATE kickside_work_board SET applied_seq = $1, counter = $2,
-            retention_due_ms = CASE WHEN retention_due_ms IS NULL OR retention_due_ms > $3
-                THEN $3 ELSE retention_due_ms END
-            WHERE board_id = $4]], { result.last_seq, board.counter, due, board_id })
+        err = fold_batch.exec(tx, [[UPDATE kickside_work_board SET applied_seq = $1, snapshot_seq = $2, counter = $3,
+            retention_due_ms = CASE WHEN retention_due_ms IS NULL OR retention_due_ms > $4
+                THEN $4 ELSE retention_due_ms END
+            WHERE board_id = $5]], { result.last_seq, snapshot_seq, board.counter, due, board_id })
         if err then return nil, err end
     end
     return result, nil

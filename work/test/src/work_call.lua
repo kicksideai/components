@@ -14,6 +14,8 @@ local api_access = require("api_access")
 local component_envelope = require("component_envelope")
 local threads = require("threads")
 local uuid = require("uuid")
+local json = require("json")
+local projection_feed = require("projection_feed")
 
 local M = {}
 
@@ -30,7 +32,7 @@ function M.register_schemaless(): (unknown, error?)
     return { board_id = id }, nil
 end
 
-local BOARD_METHODS = { schema_options = true, plugin_context = true, plugin_feed = true, list_packs = true, pack_plan = true, pack_apply = true, update = true, move_status = true, bulk = true, bulk_status = true, cancel_bulk = true, plan_move = true, move = true, approve = true, report = true, create = true, list = true, get_schema = true, plan_schema = true, apply_schema = true, apply = true,
+local BOARD_METHODS = { schema_options = true, plugin_context = true, list_packs = true, pack_plan = true, pack_apply = true, update = true, move_status = true, bulk = true, bulk_status = true, cancel_bulk = true, plan_move = true, move = true, approve = true, report = true, create = true, list = true, get_schema = true, plan_schema = true, apply_schema = true, apply = true,
     list_links = true, list_comments = true, list_stage_runs = true, configure_plugin = true, explain = true, query = true, count = true, get = true, list_changes = true, list_history = true, get_time_in_state = true, resume_migration = true }
 
 type Service = { [string]: (Service, unknown) -> (unknown, error?) }
@@ -130,6 +132,17 @@ function M.run(input: unknown): (unknown, error?)
         local threads, err = open("kickside.core:threads")
         if not threads then return nil, err end
         return invoke(threads, "list_projections", { thread_id = id, limit = 1000 })
+    end
+    if op == "projection_feed_probe" then
+        local client, err = threads.open()
+        if not client then return nil, err end
+        local pair = client:get_projection_cursor({ thread_id = id, kind = req.kind,
+            projection_key = "kickside.work.plugin:" .. req.plugin })
+        local projection = pair and pair.projection
+        local body = projection and json.decode(projection.body)
+        return projection_feed.page({ board_id = id, plugin = req.plugin, kind = req.kind, token = req.token,
+            projection_id = req.projection_id or (projection and projection.id) or "",
+            attachment_id = req.attachment_id or (body and body.worker_config.attachment_id) or "" })
     end
     if op == "settle" then
         local threads, err = open("kickside.core:threads")

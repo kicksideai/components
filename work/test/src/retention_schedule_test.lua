@@ -117,22 +117,27 @@ local function define()
         end)
 
         test.it("serves an elapsed board deadline ahead of the rest of discovery", function()
-            local h = first_of_trash_boards()
+            local a, b = trash_board(), trash_board()
+            local h = a.id < b.id and a or b
             batch_board = h
             local id = steps.create(h, "task")
             steps.retention_sweep()
             assert(h.call("set_setting", { namespace = "kickside.work", key = "cleanup_batch", value = 1 }))
-            local future = clock.deadline(5000)
-            trash_at(h, id, future.at)
+            -- Projection writes elsewhere in the harness use the real clock.
+            local at = "2000-01-01T00:00:00.123456789Z"
+            local deadline_ms = assert(time.parse(time.RFC3339, at)):unix_nano() // 1000000 + 1
+            trash_at(h, id, at)
             start_at(h)
-            local visited = steps.retention_run()
+            local visited = steps.retention_run(deadline_ms - 1)
             test.is_true(visited.needs_continue)
-            test.eq(visited.deadline_ms, future.ns // 1000000 + 1)
+            test.eq(visited.deadline_ms, deadline_ms)
             test.eq(life(h, id), "trashed")
-            steps.wait_for("deadline during discovery", function(): boolean
-                return clock.deadline(0).ns // 1000000 >= visited.deadline_ms
-            end)
-            steps.retention_run()
+            local db = assert(store.open())
+            local position = assert(db:query("SELECT board_after, inclusive FROM kickside_work_retention WHERE owner_id='work'", {}))[1]
+            db:release()
+            test.eq(position.board_after, h.id, "discovery has passed the target")
+            test.eq(store.int(position.inclusive), 0)
+            steps.retention_run(deadline_ms)
             test.eq(life(h, id), "purged", "the next callback must serve the elapsed deadline")
         end)
 
@@ -176,17 +181,31 @@ local function define()
 
         test.it("reports eligibility that crosses the cutoff while another item is being purged", function()
             local h = trash_board()
+            local other = trash_board()
             local expired, next_item = steps.create(h, "task"), steps.create(h, "task")
             steps.retention_sweep()
             trash_at(h, expired, clock.offset(-60))
             local future = clock.deadline(5000)
+            local expected_deadline = future.ns // 1000000 + 1
+            local other_deadline = expected_deadline - 1
             trash_at(h, next_item, future.at)
             append_probe.wait_on_purge(h.id, expired, future.at)
             start_at(h)
+            -- Another board has an earlier wake outside this discovery page.
+            local db = assert(store.open())
+            assert(db:execute("UPDATE kickside_work_board SET retention_due_ms=$1 WHERE board_id=$2",
+                { other_deadline, other.id }))
+            assert(db:execute("UPDATE kickside_work_retention SET board_through=$1 WHERE owner_id='work'", { h.id }))
+            db:release()
             local result = steps.retention_run()
+            db = assert(store.open())
+            local scheduled = assert(db:query("SELECT retention_due_ms FROM kickside_work_board WHERE board_id=$1", { h.id }))[1]
+            db:release()
+            test.eq(store.int(scheduled.retention_due_ms), expected_deadline)
+            test.is_true(assert(store.int(result.deadline_ms)) <= other_deadline, "the owner must cover the earlier wake")
+            test.is_true(result.needs_continue, "a deadline elapsed during the pass")
             test.eq(life(h, expired), "purged")
             test.eq(life(h, next_item), "trashed", "the target was future-eligible at collection")
-            test.eq(result.deadline_ms, future.ns // 1000000 + 1)
         end)
         test.it("collects future-eligible trash at the reported deadline without another change", function()
             local pid,err=process.spawn_monitored(NAME,"app:processes")

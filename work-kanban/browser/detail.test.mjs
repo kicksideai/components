@@ -5,7 +5,8 @@ import { createRequire } from 'node:module'
 import { afterAll, beforeAll, expect, test } from 'vitest'
 
 const origin = 'http://localhost:' + process.env.KANBAN_FIRE_PORT
-const { board, fleet: [small], child, story, epic, extreme, off, sprintMember, nextSprint, sprintBoard = small } = JSON.parse(await readFile(process.env.KANBAN_FIRE_FIXTURE, 'utf8'))
+const apiOrigin = 'http://127.0.0.1:' + (process.env.KANBAN_FIRE_HTTP_PORT ?? process.env.KANBAN_FIRE_PORT)
+const { board, fleet: [small], child, story, epic, extreme, off } = JSON.parse(await readFile(process.env.KANBAN_FIRE_FIXTURE, 'utf8'))
 const artifacts = process.env.KANBAN_FIRE_EVIDENCE
 let browser
 
@@ -66,8 +67,8 @@ test('creates an issue with Work’s root default, patches in the drawer, posts 
     await issue.getByRole('textbox', { name: 'Add a comment' }).fill('Fire verifies the drawer comment.')
     await button(issue, 'Post comment').click()
     await issue.getByText('Fire verifies the drawer comment.', { exact: true }).waitFor()
-    await issue.getByRole('tab', { name: 'History' }).click()
-    await issue.getByRole('listitem').filter({ hasText: summary + ' reviewed' }).getByText('Changed Summary', { exact: true }).waitFor()
+    await button(issue, 'History').click()
+    await issue.getByRole('listitem').filter({ hasText: summary + ' reviewed' }).getByText(/changed Summary/).first().waitFor()
     expect(errors).toEqual([])
   } finally {
     await context.close()
@@ -80,18 +81,18 @@ test('keeps the neighbor rank in the atomic move when the drawer collects Resolu
     const idempotencyKey = crypto.randomUUID()
     const suffix = idempotencyKey.slice(0, 8)
     const headers = { authorization: 'Bearer ' + process.env.KANBAN_FIRE_OWNER }
-    const created = await page.request.post(origin + '/api/v1/work/boards', {
+    const created = await page.request.post(apiOrigin + '/api/v1/work/boards', {
       headers,
       data: {
         title: 'Ranked transition fixture ' + suffix, idempotency_key: idempotencyKey,
         pack: 'kickside.work.kanban:pack', version: '1.0.0', starter: false,
       },
     })
-    expect(created.ok()).toBe(true)
+    expect(created.ok(), 'rank fixture board creation returned HTTP ' + created.status()).toBe(true)
     const { data: { board_id: rankBoard } } = await created.json()
-    const endpoint = origin + '/api/v1/work/boards/' + rankBoard + '/apply'
+    const path = '/api/v1/work/boards/' + rankBoard + '/apply'
     const apply = async ops => {
-      const response = await page.request.post(endpoint, { headers, data: { key: crypto.randomUUID(), mode: 'atomic', ops } })
+      const response = await page.request.post(apiOrigin + path, { headers, data: { key: crypto.randomUUID(), mode: 'atomic', ops } })
       expect(response.ok()).toBe(true)
       const { data } = await response.json()
       expect(data.outcomes.every(row => row.status === 'applied')).toBe(true)
@@ -116,7 +117,7 @@ test('keeps the neighbor rank in the atomic move when the drawer collects Resolu
     await issue.getByRole('heading', { name: 'Confirm status change' }).waitFor()
     await issue.getByRole('combobox', { name: 'Resolution', exact: true }).click()
     await shell.getByRole('option', { name: 'Fixed', exact: true }).click()
-    const response = page.waitForResponse(result => result.url() === endpoint
+    const response = page.waitForResponse(result => new URL(result.url()).pathname === path
       && result.request().postDataJSON()?.ops?.[0]?.item === source.item)
     await button(issue, 'Confirm move').click()
     const result = await response
@@ -148,7 +149,10 @@ test('reads parents without card pages and pages an authorized dense Relationshi
     await issue.getByText('Fixture Reviewer 01', { exact: true }).first().waitFor()
     await issue.getByRole('button', { name: /Show 8 more Reviewers/ }).click()
     await issue.getByText('Fixture Reviewer 12', { exact: true }).waitFor()
+    const response = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/list_links'))
     await issue.getByRole('tab', { name: 'Relationships' }).click()
+    const listed = await response
+    expect(listed.ok(), 'relationship request returned HTTP ' + listed.status()).toBe(true)
     const links = issue.getByRole('link', { name: /open linked issue/ })
     await links.first().waitFor()
     expect(await links.count()).toBe(20)
@@ -200,7 +204,7 @@ test('a reader can trace an issue while Work rejects a direct write', async () =
     expect(await button(app, 'Create issue').count()).toBe(0)
     expect(await issue.getByRole('textbox', { name: 'Add a comment' }).count()).toBe(0)
     await issue.getByRole('tab', { name: 'Relationships' }).click()
-    const denied = await page.request.post(origin + '/api/v1/work/boards/' + board + '/apply', {
+    const denied = await page.request.post(apiOrigin + '/api/v1/work/boards/' + board + '/apply', {
       headers: { authorization: 'Bearer ' + process.env.KANBAN_FIRE_READER },
       data: { key: crypto.randomUUID(), mode: 'atomic', ops: [{ op: 'set', item: child, values: { title: 'Unauthorized' } }] },
     })
@@ -212,8 +216,38 @@ test('a reader can trace an issue while Work rejects a direct write', async () =
 }, 40_000)
 
 test('previews and commits the same Planning snapshot and rolls unfinished work forward', async () => {
-  const { app, page, context, errors } = await open({ path: route(sprintBoard, 'sprints') })
+  const { app, page, context, errors } = await open({ path: route(small) })
   try {
+    const headers = { authorization: 'Bearer ' + process.env.KANBAN_FIRE_OWNER }
+    const key = crypto.randomUUID()
+    const create = await page.request.post(apiOrigin + '/api/v1/work/boards', {
+      headers,
+      data: {
+        title: 'Sprint close fixture ' + key.slice(0, 8), idempotency_key: key,
+        pack: 'kickside.work.kanban:pack', version: '1.0.0', starter: false,
+        plugin_configs: { 'kickside.work.planning:plugin': { issue_types: ['epic', 'story', 'task', 'bug', 'sub_task'] } },
+      },
+    })
+    expect(create.ok(), 'sprint fixture board creation returned HTTP ' + create.status()).toBe(true)
+    const { data: { board_id: sprintBoard } } = await create.json()
+    const apply = async ops => {
+      const response = await page.request.post(apiOrigin + '/api/v1/work/boards/' + sprintBoard + '/apply', {
+        headers, data: { key: crypto.randomUUID(), mode: 'atomic', ops },
+      })
+      expect(response.ok(), 'sprint fixture write returned HTTP ' + response.status()).toBe(true)
+      const { data } = await response.json()
+      expect(data.outcomes.map(row => row.status)).toEqual(ops.map(() => 'applied'))
+      return data.outcomes.map(row => row.item)
+    }
+    const [currentSprint, nextSprint] = await apply([
+      { op: 'create', type: 'sprint', values: { name: 'Current sprint fixture', planning_start: '2026-11-01', planning_end: '2026-11-30' } },
+      { op: 'create', type: 'sprint', values: { name: 'Next sprint fixture', planning_start: '2026-12-01', planning_end: '2026-12-31' } },
+    ])
+    await apply([{ op: 'transition', item: currentSprint, transition: 'start' }])
+    const [sprintMember] = await apply([{
+      op: 'create', type: 'epic', values: { title: 'Sprint rollover issue', current_sprint: { board: sprintBoard, item: currentSprint } },
+    }])
+    await page.goto(origin + route(sprintBoard, 'sprints'), { waitUntil: 'domcontentloaded' })
     await app.getByText('Current sprint fixture', { exact: true }).waitFor()
     await app.getByRole('button', { name: /Sprint rollover issue/ }).waitFor()
     const previewAnswer = page.waitForResponse(response => response.url().endsWith('/sprints/plan_close') && response.ok())
@@ -226,8 +260,8 @@ test('previews and commits the same Planning snapshot and rolls unfinished work 
     await button(dialog, 'Close sprint').click()
     expect((await commit).postDataJSON()).toMatchObject({ snapshot: preview.snapshot, token: preview.token, key: expect.any(String) })
     await dialog.waitFor({ state: 'hidden' })
-    const response = await page.request.post(origin + '/api/v1/work/boards/' + sprintBoard + '/get', {
-      headers: { authorization: 'Bearer ' + process.env.KANBAN_FIRE_OWNER }, data: { item: { id: sprintMember } },
+    const response = await page.request.post(apiOrigin + '/api/v1/work/boards/' + sprintBoard + '/get', {
+      headers, data: { item: { id: sprintMember } },
     })
     expect((await response.json()).data.item.values.current_sprint.item).toBe(nextSprint)
     expect(errors).toEqual([])
@@ -250,7 +284,7 @@ test('keeps the board and Backlog available on an inactive Search deep link', as
   }
 }, 30_000)
 
-test('keeps the System tab treatment and aligns the Kanban tabs with the toolbar controls', async () => {
+test('uses the same tab treatment as System', async () => {
   const { app, shell, page, context, errors } = await open({ path: route(small) })
   const nav = shell.getByRole('navigation', { name: 'Main navigation' })
   const readTab = tab => tab.evaluate(node => {
@@ -279,9 +313,8 @@ test('keeps the System tab treatment and aligns the Kanban tabs with the toolbar
       await shell.getByRole('heading', { name, exact: true }).first().waitFor()
       await page.screenshot({ path: join(artifacts, 'fire-reference-' + name.toLowerCase() + '.png') })
     }
-    const toolbar = { display: 'flex', padding: '0px 8px', fontSize: '14px', fontWeight: '500', height: 34 }
-    expect(board).toEqual({ ...selected, ...toolbar })
-    expect(backlog).toEqual({ ...unselected, ...toolbar })
+    expect(board).toEqual(selected)
+    expect(backlog).toEqual(unselected)
     expect(errors).toEqual([])
   } finally {
     await context.close()

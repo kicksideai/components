@@ -5,9 +5,13 @@ import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import Button from 'primevue/button'
 import Popover from 'primevue/popover'
-import Tag from 'primevue/tag'
-import { computed, nextTick, onMounted, onScopeDispose, ref, shallowReactive, shallowRef, useId, watch } from 'vue'
+import { computed, nextTick, onScopeDispose, ref, shallowReactive, shallowRef, useId, watch } from 'vue'
+import KanbanSkeleton from '../app/KanbanSkeleton.vue'
 import type { MovePlan } from '../board/move'
+import { principalRef, statusSeverity } from '../presentation/context'
+import IssueStatus from '../presentation/IssueStatus.vue'
+import IssueType from '../presentation/IssueType.vue'
+import { titleOf, type ItemSummary } from '../presentation/query'
 import { issuePath, kanbanRoot } from '../route'
 import { isAccessLoss } from '../work/client'
 import type { BoardOption, BoardSchema } from '../work/types'
@@ -16,14 +20,16 @@ import IssueField from './IssueField.vue'
 import IssueStreams from './IssueStreams.vue'
 import { workRows } from './cursor'
 import { compiledSchema, fieldChanges, isCommon, issueProblem, KeyedWrite, provided, stateLabel, statusChoices, title, transitionInputs, visibleFields } from './model'
-import { usePrincipalNames } from './principals'
+import { principal, usePrincipalNames } from './principals'
 import type { Detail, Field, FieldValue, Issue, Operation, Transition, Values } from './types'
 import { applyIssue, readIssue, type IssueWork } from './work'
 import { usePanelSize } from './usePanelSize'
 
 const props = defineProps<{
   board: BoardOption; schema: BoardSchema; work: IssueWork; issue?: string; sequence?: number;
-  plannedMove?: MovePlan; fullPage?: boolean; copyStatus?: string;
+  plannedMove?: MovePlan; fullPage?: boolean; copyStatus?: string; surface?: HTMLElement;
+  summaryItem?: ItemSummary; summaryAssignee?: string;
+  initialIssue?: (board: string, issue: string, writable: boolean, minSeq?: number) => ReturnType<typeof readIssue> | undefined;
 }>()
 const emit = defineEmits<{
   close: []; open: [id: string, board?: string]; copy: []; changed: [sequence?: number]; denied: [problem: unknown]; moveFinished: [];
@@ -35,11 +41,14 @@ const loading = ref(false)
 const parentError = shallowRef<unknown>()
 const readError = shallowRef<unknown>()
 const writeError = shallowRef<unknown>()
-const panel = ref<HTMLElement>()
-const pane = usePanelSize(panel)
+const pane = usePanelSize(() => props.surface)
 const statusPopover = ref<InstanceType<typeof Popover>>()
 const statusOpen = ref(false)
 const header = ref<HTMLElement>()
+const scrolled = ref(false)
+function onScroll(event: Event) {
+  scrolled.value = (event.currentTarget as HTMLElement).scrollTop > 0
+}
 const id = useId()
 const begin = latestRequest()
 const beginParent = latestRequest()
@@ -49,7 +58,16 @@ const saving = computed(() => currentWrite.value?.saving ?? false)
 const uncertain = computed(() => currentWrite.value?.command.uncertain ?? false)
 const busy = computed(() => saving.value || uncertain.value)
 const schema = computed(() => compiledSchema(props.schema))
-const item = computed(() => selected.value?.item)
+const item = computed<Issue | undefined>(() => {
+  const summary = props.summaryItem
+  if (selected.value?.item.id === props.issue) return selected.value?.item
+  if (!summary || summary.id !== props.issue || isAccessLoss(readError.value)) return
+  const { id, key, type, state, version, parent } = summary
+  const values: Values = { title: titleOf(summary) }
+  if (Object.hasOwn(summary.values, 'assignee')) values.assignee = principalRef(summary.values.assignee)
+  const value_states = Object.fromEntries(Object.keys(values).map(code => [code, 'visible']))
+  return { id, key, type, state, version, parent, values, value_states }
+})
 const kind = computed(() => schema.value.item_types.find(row => row.id === item.value?.type))
 const process = computed(() => schema.value.processes.find(row => row.id === kind.value?.process))
 const state = computed(() => process.value?.states.find(row => row.id === item.value?.state))
@@ -63,10 +81,17 @@ const description = computed(() => fields.value.find(field => field.code === 'de
 const properties = computed(() => frequent.value.filter(field => !['title', 'name', 'description'].includes(field.code)))
 const inline = shallowRef<{ field: string; item: Issue; value: FieldValue }>()
 const writable = computed(() => props.board.access.write && selected.value?.access.write === true)
-const person = usePrincipalNames(() => [
+const knownAssignee = computed(() => props.summaryAssignee && principalRef(props.summaryItem?.values.assignee))
+function knownName(value: FieldValue) {
+  const known = knownAssignee.value
+  const target = principal(value)
+  if (known && target?.id === known.id && target.kind === known.kind) return props.summaryAssignee
+}
+const lookupPerson = usePrincipalNames(() => [
   ...fields.value.filter(row => row.type === 'principal' || row.form === 'principal').map(row => item.value?.values[row.code]),
   ...(item.value?.gate?.approvals.map(row => row.principal) ?? []),
-])
+].filter(value => !knownName(value)))
+const person = (value: FieldValue) => knownName(value) ?? lookupPerson(value)
 
 interface Draft {
   fields: string[]
@@ -113,14 +138,17 @@ async function loadParent(parentId?: string) {
   }
 }
 
-async function load(minSeq?: number) {
+async function load(minSeq?: number, first = false) {
   const issue = props.issue
   if (!issue) return
   const current = begin()
   loading.value = true
   readError.value = undefined
   try {
-    const detail = await readIssue(props.work, props.board.board_id, issue, props.board.access.write, minSeq)
+    const board = props.board.board_id
+    const writable = props.board.access.write
+    const initial = first ? props.initialIssue?.(board, issue, writable, minSeq) : undefined
+    const detail = await (initial ?? readIssue(props.work, board, issue, writable, minSeq))
     if (!current()) return
     selected.value = detail
     if (!detail.access.write && !uncertain.value) {
@@ -145,6 +173,7 @@ async function load(minSeq?: number) {
 }
 
 defineExpose({
+  openedItem: computed(() => selected.value?.item),
   refresh: (minSeq?: number) => {
     if (props.issue && !isAccessLoss(readError.value)) return load(minSeq)
   },
@@ -160,7 +189,7 @@ function trackIssue(issue?: string) {
   readError.value = undefined
   writeError.value = currentWrite.value?.problem
   if (issue) {
-    void load()
+    void load(props.sequence, true)
     void nextTick(() => {
       header.value?.focus({ preventScroll: true })
       const scroll = header.value?.parentElement
@@ -169,11 +198,11 @@ function trackIssue(issue?: string) {
   }
 }
 
-onMounted(() => trackIssue(props.issue))
-watch(() => props.issue, trackIssue)
-watch(() => props.sequence, sequence => { if (props.issue) void load(sequence) })
-watch(() => props.board.access.write, () => { if (props.issue) void load() })
-watch(() => props.plannedMove, move => { if (move && props.issue === resolvedMove.value?.item) void load() })
+watch([() => props.issue, () => props.sequence, () => props.board.access.write, () => props.plannedMove],
+  ([issue, sequence, writable, move], [previousIssue, previousSequence, previousWritable, previousMove]) => {
+    if (issue !== previousIssue) trackIssue(issue)
+    else if (issue && (sequence !== previousSequence || writable !== previousWritable || move && move !== previousMove)) void load(sequence)
+  }, { immediate: true })
 onScopeDispose(() => { begin(); beginParent() })
 
 function openRelated(id: string, board?: string) {
@@ -329,7 +358,7 @@ function saveMove() {
 </script>
 
 <template>
-  <aside v-if="issue" ref="panel" class="kanban-issue-drawer" :data-full-page="fullPage || undefined"
+  <aside v-if="issue" class="kx-drawer kanban-issue-drawer" :data-full-page="fullPage || undefined"
     :style="{ '--kanban-issue-width': pane.width.value + 'px' }" :role="fullPage ? 'region' : 'dialog'"
     :aria-labelledby="id + '-identity'" @keydown.esc="escape">
     <div v-if="!fullPage" class="kanban-issue-resizer" role="separator" tabindex="0"
@@ -337,46 +366,49 @@ function saveMove() {
       :aria-valuemin="pane.minimum" :aria-valuemax="pane.available.value" :aria-valuenow="pane.width.value"
       @pointerdown="pane.start" @pointermove="pane.move" @pointerup="pane.stop"
       @pointercancel="pane.stop" @lostpointercapture="pane.stop" @keydown="pane.key" />
-    <div :id="id + '-panel'" class="kanban-issue-scroll">
-      <header class="kanban-issue-header">
-        <div :id="id + '-identity'" ref="header" class="kanban-issue-identity" tabindex="-1">
+    <div :id="id + '-panel'" class="kanban-issue-scroll" :data-scrolled="scrolled || undefined" @scroll.passive="onScroll">
+      <header class="kx-drawer-h kanban-issue-header">
+        <IssueType v-if="item" :type="item.type" :label="kind?.title" />
+        <div :id="id + '-identity'" ref="header" class="kx-drawer-title kx-focus-outline kanban-issue-identity" tabindex="-1">
           <span>{{ item?.key ?? 'Issue details' }}</span>
         </div>
-        <span v-if="kind" class="kanban-issue-kind">{{ kind.title }}</span>
+        <span v-if="kind" class="kanban-issue-kind kx-head-sub" :title="kind.title">{{ kind.title }}</span>
         <div class="kanban-issue-header-actions">
-          <Button v-if="item" type="button" severity="secondary" text size="small"
-            :label="fullPage ? 'Open side panel' : 'Open full page'" :disabled="busy"
+          <Button v-if="item" type="button" severity="secondary" text class="kanban-icon-action"
+            :aria-label="fullPage ? 'Open side panel' : 'Open full page'"
+            :title="fullPage ? 'Open side panel' : 'Open full page'" :disabled="busy"
             @click="emit('fullPage', !fullPage)">
             <template #icon><Icon :icon="fullPage ? 'tabler:layout-sidebar-right' : 'tabler:maximize'" aria-hidden="true" /></template>
           </Button>
-          <Button v-if="item" type="button" severity="secondary" text size="small" class="kanban-issue-icon"
+          <Button v-if="item" type="button" severity="secondary" text class="kanban-icon-action"
             aria-label="Copy link" :title="copyStatus || 'Copy link'" @click="emit('copy')">
             <template #icon><Icon :icon="copyStatus === 'Issue link copied.' ? 'tabler:check' : 'tabler:link'" aria-hidden="true" /></template>
           </Button>
-          <Button type="button" severity="secondary" text size="small" class="kanban-issue-icon"
+          <Button type="button" severity="secondary" text class="kanban-icon-action"
             aria-label="Close issue details" title="Close issue details" :disabled="busy" @click="close">
             <template #icon><Icon icon="tabler:x" aria-hidden="true" /></template>
           </Button>
         </div>
       </header>
-      <div class="kanban-issue-body">
+      <div class="kx-drawer-b kanban-issue-body">
         <div v-if="readError" class="kx-notice error kanban-issue-problem" role="alert">
           {{ issueProblem(readError, schema).message }}
           <Button type="button" text size="small" label="Retry issue" @click="retryIssue" />
         </div>
-        <p v-if="loading && !item" role="status">Loading issue…</p>
+        <KanbanSkeleton v-if="loading && !item" variant="issue" label="Loading issue…" />
         <template v-if="item">
-          <nav v-if="parent" class="kanban-issue-breadcrumb" aria-label="Parent issue">
+          <nav v-if="item.parent" class="kanban-issue-breadcrumb" aria-label="Parent issue">
             <Icon icon="tabler:hierarchy-2" aria-hidden="true" />
-            <a class="kanban-issue-link" :href="kanbanRoot + '/' + issuePath(board.board_id, parent.id)"
+            <a v-if="parent" class="kanban-issue-link" :href="kanbanRoot + '/' + issuePath(board.board_id, parent.id)"
               :aria-disabled="busy || undefined" @click="openParent">{{ parent.key }} · {{ title(parent) }}</a>
+            <template v-else-if="parentError">
+              <span>Parent issue could not be loaded.</span>
+              <Button type="button" text size="small" label="Retry parent" @click="loadParent(item.parent)" />
+            </template>
+            <span v-else class="kanban-issue-pending" role="status">Loading parent issue…</span>
           </nav>
-          <div v-else-if="parentError" role="status">
-            Parent issue could not be loaded.
-            <Button type="button" text size="small" label="Retry parent" @click="loadParent(item.parent)" />
-          </div>
           <IssueField v-if="summary" v-bind="fieldBindings(summary)" :heading="title(item)" />
-          <h2 v-else class="kanban-issue-title" dir="auto">{{ title(item) }}</h2>
+          <h2 v-else class="kanban-issue-title kx-title" dir="auto">{{ title(item) }}</h2>
           <div v-if="writeError" class="kx-notice error kanban-issue-problem" role="alert">
             {{ issueProblem(writeError, schema).message }}
             <small v-if="issueProblem(writeError, schema).code">{{ issueProblem(writeError, schema).code }}</small>
@@ -384,14 +416,16 @@ function saveMove() {
           </div>
           <dl class="kanban-issue-fields">
             <div>
-              <dt>Status</dt>
+              <dt class="kx-head-sub">Status</dt>
               <dd>
                 <div v-if="writable && (choices.length || item.gate?.can_approve)" class="kanban-status-anchor">
                   <Button type="button" size="small" severity="secondary" class="kanban-status-trigger"
-                    :label="stateLabel(schema, item)" :aria-label="'Status: ' + stateLabel(schema, item)"
+                    :aria-label="'Status: ' + stateLabel(schema, item)"
                     aria-haspopup="dialog" :aria-expanded="statusOpen" :disabled="busy || !!form"
                     @click.stop="statusPopover?.toggle($event)">
-                    <template #icon><Icon icon="tabler:chevron-down" aria-hidden="true" /></template>
+                    <span class="kanban-column-signal" :data-status-tone="statusSeverity(state)" aria-hidden="true" />
+                    <span>{{ stateLabel(schema, item) }}</span>
+                    <Icon icon="tabler:chevron-down" aria-hidden="true" />
                   </Button>
                   <Popover ref="statusPopover" append-to="self" aria-label="Change status"
                     :pt="{ root: { class: 'kanban-status-popover' } }" @show="statusOpen = true" @hide="statusOpen = false">
@@ -407,7 +441,7 @@ function saveMove() {
                       label="Approve" @click="approve" />
                   </Popover>
                 </div>
-                <Tag v-else severity="secondary" class="kx-tag-sm" :value="stateLabel(schema, item)" />
+                <IssueStatus v-else :label="stateLabel(schema, item)" :tone="statusSeverity(state)" />
                 <small v-if="item.gate" class="kanban-issue-approval">
                   {{ item.gate.approvals.filter(row => row.decision === 'approve').length }} approvals<span
                     v-if="state?.release_when?.approvals"> of {{ state.release_when.approvals.min }} required</span>
@@ -415,10 +449,11 @@ function saveMove() {
               </dd>
             </div>
             <div v-for="field in properties" :key="field.code">
-              <dt>{{ field.title }}</dt>
+              <dt class="kx-head-sub">{{ field.title }}</dt>
               <dd><IssueField v-bind="fieldBindings(field)" /></dd>
             </div>
           </dl>
+          <KanbanSkeleton v-if="loading && !selected" variant="issue" label="Loading issue details…" />
           <form v-if="form" class="kanban-issue-edit" @submit.prevent="saveMove">
             <h3>Confirm status change</h3>
             <FieldControl v-for="field in formFields" :key="field.code" v-model="form.values[field.code]"
@@ -431,18 +466,18 @@ function saveMove() {
           <Disclosure v-if="optional.length" label="More fields">
             <dl class="kanban-issue-fields">
               <div v-for="field in optional" :key="field.code">
-                <dt>{{ field.title }}</dt>
+                <dt class="kx-head-sub">{{ field.title }}</dt>
                 <dd><IssueField v-bind="fieldBindings(field)" /></dd>
               </div>
             </dl>
           </Disclosure>
           <section v-if="description" class="kanban-issue-description" aria-label="Description">
-            <h3>{{ description.title }}</h3>
+            <h3 class="kx-head-sub">{{ description.title }}</h3>
             <IssueField v-bind="fieldBindings(description)" />
           </section>
-          <IssueStreams :item="item" :schema="schema" :board="board.board_id" :work="work" :writable="writable"
+          <IssueStreams v-if="selected" :item="selected.item" :schema="schema" :board="board.board_id" :work="work" :writable="writable"
             :locked="busy || !!form" :sequence="sequence" :submit="submit" @open="openRelated" @denied="deny" />
-          <slot name="extensions" :issue="item" />
+          <slot v-if="selected" name="extensions" :issue="selected.item" />
         </template>
       </div>
     </div>

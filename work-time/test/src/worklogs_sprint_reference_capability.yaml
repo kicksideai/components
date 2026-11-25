@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.work.planning
+entries:
+- name: sprint_reference
+  kind: contract.definition
+  meta: {type: test_support}
+  methods:
+  - name: resolve
+  - name: report
+- name: sprint_reference_binding
+  kind: contract.binding
+  meta: {type: test_support}
+  contracts:
+  - contract: kickside.work.planning:sprint_reference
+    methods: {resolve: 'kickside.work.planning:time_test_sprint_reference', report: 'kickside.work.planning:time_test_sprint_report'}
+- name: time_test_sprint_reference
+  kind: function.lua
+  meta: {type: test_support}
+  source: file://worklogs_sprint_reference_test.lua
+  method: resolve
+  imports:
+    board_client: kickside.work:client
+    consts: kickside.work:consts
+    fixture: app:fixture
+    materializer: kickside.work.persist:materializer
+    scoped: app:scoped
+    steps: app:steps
+    test: wippy.test:test
+  modules: [channel, ctx, funcs, json, sql, time]
+- name: time_test_sprint_report
+  kind: function.lua
+  meta: {type: test_support}
+  source: file://worklogs_sprint_reference_test.lua
+  method: report
+  imports:
+    board_client: kickside.work:client
+    consts: kickside.work:consts
+    fixture: app:fixture
+    materializer: kickside.work.persist:materializer
+    scoped: app:scoped
+    steps: app:steps
+    test: wippy.test:test
+  modules: [channel, ctx, funcs, json, sql, time]
+- name: time_test_sprint_reference_access
+  kind: security.policy
+  groups: [kickside.security.groups:members]
+  policy:
+    resources: [kickside.work.planning:sprint_reference, kickside.work.planning:sprint_reference_binding, kickside.work.planning:time_test_sprint_reference, kickside.work.planning:time_test_sprint_report]
+    actions: [registry.get, contract.get, contract.open, contract.call, funcs.call]
+    effect: allow
