@@ -68,6 +68,7 @@ entries:
     imports:
       live: kickside.mail.command:live
       scratch: kickside.mail.render:scratch
+      error_envelope: kickside.contract:error_envelope
     security:
       actor: { id: "system:kickside.mail.library" }
       policies:

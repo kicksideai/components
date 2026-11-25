@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local time = require("time")
+local ctx = require("ctx")
 local live = require("live")
 local database = require("database")
 
@@ -43,4 +44,12 @@ local function publish(overlay, entries, rows, originals, seq)
     return value, err
 end
 
-return {open = live.open, marker = live.marker, published = live.published, publish = publish}
+local function marker()
+    if ctx.get("mail_test_marker_unavailable") then
+        return nil, errors.new({kind = errors.UNAVAILABLE, retryable = true,
+            message = "Fixture marker unavailable", details = {code = "fixture_marker_unavailable"}})
+    end
+    return live.marker()
+end
+
+return {open = live.open, marker = marker, published = live.published, publish = publish}

@@ -215,7 +215,7 @@ entries:
   - name: projection_fault
     kind: library.lua
     source: file://projection_fault.lua
-    modules: [time]
+    modules: [ctx, time]
     imports:
       live: kickside.mail.render:live
       database: kickside.mail.persist:db
