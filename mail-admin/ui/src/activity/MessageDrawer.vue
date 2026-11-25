@@ -99,7 +99,7 @@ const templateTitle = computed(() => {
   const name = message.value?.template
   return name ? library.title('message', name) : ''
 })
-const templateExists = computed(() => !!message.value?.template && !!library.find('message', message.value.template))
+const templateExists = computed(() => !!message.value?.template && library.exists('message', message.value.template) === true)
 const timeline = computed(() => {
   const item = message.value
   if (!item) return []

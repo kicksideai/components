@@ -4,13 +4,11 @@ import { computed, defineAsyncComponent, ref, useId } from 'vue'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
-import Select from 'primevue/select'
-import Skeleton from 'primevue/skeleton'
 import SelectButton from 'primevue/selectbutton'
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { useMail } from '../context'
-import { kindIcons } from '../copy'
 import type { ResourceContent } from '../types'
+import ResourcePicker from '../library/ResourcePicker.vue'
 import InsertMenu from './InsertMenu.vue'
 import ProblemNote from './ProblemNote.vue'
 import type { Face, Problem } from './problems'
@@ -19,15 +17,11 @@ const CodeEditor = defineAsyncComponent(() => import('./CodeEditor.vue'))
 
 // The source column of the editor. The draft object belongs to the resource page and is edited in place.
 const props = defineProps<{ draft: ResourceContent; problem?: Problem; disabled?: boolean }>()
-const { library, go } = useMail()
-library.use('base')
+const { go } = useMail()
 const ids = { base: useId(), title: useId(), description: useId(), face: useId() }
 
 const face = ref<'html' | 'text'>('html')
 const faces = [{ label: 'HTML', value: 'html' }, { label: 'Plain text', value: 'text' }]
-const bases = computed(() => library.ofKind('base').map(base => ({ value: base.name, label: base.title })))
-// A subject is one line; the server would refuse a line break.
-const subjectBreak = computed(() => props.draft.kind === 'message' && /[\r\n]/.test(props.draft.subject ?? ''))
 const editor = ref<{ insert: (text: string) => void; focus: () => void }>()
 const inserter = ref<{ toggle: (event: Event) => void }>()
 function insert(text: string) {
@@ -64,24 +58,16 @@ const faceLabel = computed(() => (props.draft.kind === 'message' ? 'Body' : 'Sou
       <div class="mail-field">
         <label class="mail-field-label" :for="ids.base">Base template</label>
         <div class="mail-base-row">
-          <Select v-model="draft.base" :input-id="ids.base" :options="bases" option-label="label" option-value="value" append-to="self" class="mail-base-select"
-            :loading="!library.ready('base')">
-            <template #value="{ value }">
-              <span class="mail-kind"><Icon :icon="kindIcons.base" aria-hidden="true" />
-                <Skeleton v-if="value && library.title('base', value) === undefined" width="8rem" height="1rem" />
-                <template v-else>{{ library.title('base', value) }}</template></span>
-            </template>
-          </Select>
+          <ResourcePicker v-model="draft.base" kind="base" label="Base template" :input-id="ids.base" class="mail-base-select" />
           <Button v-if="draft.base" text label="Open" severity="secondary" @click="go({ name: 'resource', kind: 'base', resource: draft.base, section: 'content' })" />
         </div>
       </div>
-      <div class="mail-field" :class="{ 'mail-field-invalid': problemFace === 'subject' || subjectBreak }">
+      <div class="mail-field" :class="{ 'mail-field-invalid': problemFace === 'subject' }">
         <span :id="ids.face + '-subject'" class="mail-field-label">Subject</span>
         <div class="mail-code-frame mail-code-subject">
           <CodeEditor v-model="draft.subject as string" label="Subject" />
         </div>
-        <small v-if="subjectBreak" class="mail-field-error" role="alert">A subject is one line. Remove the line break.</small>
-        <ProblemNote v-else-if="problem && problemFace === 'subject'" :problem="problem" :draft="draft" />
+        <ProblemNote v-if="problem && problemFace === 'subject'" :problem="problem" :draft="draft" />
       </div>
     </template>
 

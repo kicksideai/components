@@ -163,4 +163,5 @@ export function slug(title: string): string {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64)
 }
 
-export const namePattern = /^[a-z0-9][a-z0-9_-]*$/
+// How Mail's refusal of a reference reads beside the field.
+export const nameRule = 'Use lower-case letters, digits, hyphens and underscores, starting with a letter or digit.'

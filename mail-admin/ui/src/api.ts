@@ -11,7 +11,7 @@ export { ApiError }
 const BASE = '/api/v1/mail'
 const resourcePath = (key: ResourceKey) => `${BASE}/library/${key.kind}/${encodeURIComponent(key.name)}`
 
-export interface LibraryFilter { kind?: ResourceKind; state?: ResourceState; q?: string; cursor?: string; limit?: number }
+export interface LibraryFilter { kind?: ResourceKind; state?: ResourceState; q?: string; names?: string[]; cursor?: string; limit?: number }
 export interface ActivityFilter { status?: MessageStatus; message?: string; since?: number; q?: string; cursor?: string; limit?: number }
 export interface CopyRequest { kind: ResourceKind; name: string; title: string; description: string; from: ResourceKey; note?: string }
 export interface AssetRequest { name: string; upload_id: string; title?: string; description?: string; note?: string }
@@ -79,28 +79,18 @@ async function createResource(body: ResourceContent | CopyRequest, note?: string
 }
 
 function libraryPage(filter: LibraryFilter = {}) {
+  const { names, ...rest } = filter
   return request<LibraryPage>(
-    () => api.get(`${BASE}/library`, { params: params({ limit: 100, ...filter }) }), 'Mail library')
+    () => api.get(`${BASE}/library`, { params: params({ limit: 100, ...rest, names: names?.join(',') }) }), 'Mail library')
 }
 
-async function allPages<T>(load: (cursor?: string) => Promise<Items<T> & { next_cursor?: string }>): Promise<T[]> {
-  const items: T[] = []
-  let cursor: string | undefined
-  do {
-    const page = await load(cursor)
-    items.push(...page.items)
-    cursor = page.next_cursor
-  } while (cursor)
-  return items
-}
+export type HistoryPage = Items<HistoryItem> & { next_cursor?: string }
 
 export const library = {
   page: libraryPage,
-  assets: (q?: string) => allPages(cursor => libraryPage({ kind: 'asset', q, cursor })),
   get: (key: ResourceKey) => request<Resource>(() => api.get(resourcePath(key)), 'Mail resource'),
-  history: (key: ResourceKey) => allPages(cursor =>
-    request<Items<HistoryItem> & { next_cursor?: string }>(
-      () => api.get(`${resourcePath(key)}/history`, { params: params({ cursor }) }), 'Resource history')),
+  history: (key: ResourceKey, cursor?: string) => request<HistoryPage>(
+    () => api.get(`${resourcePath(key)}/history`, { params: params({ cursor }) }), 'Resource history'),
   revision: (key: ResourceKey, seq: number) => request<Revision>(
     () => api.get(`${resourcePath(key)}/history`, { params: params({ seq }) }), 'Resource version'),
   copy: (body: CopyRequest) => createResource(body),

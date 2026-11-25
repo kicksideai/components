@@ -131,16 +131,23 @@ describe('Library resource editor', () => {
     wrapper.unmount()
   })
 
-  it('refuses a subject with a line break in place and blocks the review', async () => {
-    routes(welcome)
+  it('shows the server refusal of a subject beside the subject and blocks the review', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    routes(welcome, [post('/api/v1/mail/library/preview', (_path, request) => {
+      const draft = (request as { resources?: { subject?: string }[] }).resources?.[0]
+      return draft?.subject?.includes('\n')
+        ? refuse(400, { error: 'Subject must contain no control characters or line separators', kind: 'INVALID',
+          details: { code: 'invalid_subject', face: 'subject', resource: { kind: 'message', name: 'welcome' } } })
+        : ok({ subject: 'Hello', html: '<p>Preview</p>', text: 'Preview' })
+    })])
     const wrapper = await open('messages/welcome/content')
     await body(wrapper)
-    const subject = wrapper.find('textarea[aria-label="Subject"]')
-    await subject.setValue('Hello\nthere')
+    await wrapper.find('textarea[aria-label="Subject"]').setValue('Hello\nthere')
+    await vi.advanceTimersByTimeAsync(1000)
     await flushPromises()
-    expect(wrapper.text()).toContain('A subject is one line. Remove the line break.')
+    expect(wrapper.find('.mail-source-column .mail-problem-lead').text()).toBe('The subject of this message does not render.')
     expect(control(wrapper, 'Review changes')!.attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('Put the subject on one line first.')
+    vi.useRealTimers()
     wrapper.unmount()
   })
 

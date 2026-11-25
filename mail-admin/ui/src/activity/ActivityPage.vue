@@ -20,11 +20,11 @@ import { useMail } from '../context'
 import { describe, originText, personLabel, plural, recipients, statusLabels, statusSeverity, when } from '../copy'
 import { useMailInvalidation } from '../realtime'
 import type { LogMessage, MessageStatus } from '../types'
+import ResourcePicker from '../library/ResourcePicker.vue'
 import MessageDrawer from './MessageDrawer.vue'
 
 const props = defineProps<{ message?: string; template?: string }>()
 const { library, go } = useMail()
-library.use('message')
 
 type StatusFilter = 'all' | MessageStatus
 const status = ref<StatusFilter>('all')
@@ -39,7 +39,6 @@ const statuses: { label: string; value: StatusFilter }[] = [
   { label: 'All', value: 'all' }, { label: 'Pending', value: 'queued' }, { label: 'Sent', value: 'sent' }, { label: 'Failed', value: 'failed' },
 ]
 const periods = [{ label: 'Last 24 hours', value: 1 }, { label: 'Last 7 days', value: 7 }, { label: 'Last 30 days', value: 30 }]
-const templates = computed(() => library.ofKind('message').map(item => ({ label: item.title, value: item.name })))
 
 const items = shallowRef<LogMessage[]>([])
 const cursor = ref<string>()
@@ -144,8 +143,7 @@ function closeMessage() {
 
     <div class="mail-toolbar">
       <SelectButton v-model="status" :options="statuses" option-label="label" option-value="value" :allow-empty="false" aria-label="Status" />
-      <Select v-model="template" :options="templates" option-label="label" option-value="value" append-to="self" aria-label="Message" class="mail-filter"
-        placeholder="All messages" show-clear />
+      <ResourcePicker v-model="template" kind="message" label="Message" class="mail-filter" placeholder="All messages" show-clear />
       <Select v-model="period" :options="periods" option-label="label" option-value="value" append-to="self" aria-label="Period" class="mail-filter" />
       <IconField class="mail-search">
         <InputIcon><Icon icon="tabler:search" aria-hidden="true" /></InputIcon>

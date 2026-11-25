@@ -2,13 +2,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, shallowRef, useId, watch } from 'vue'
 import { Icon } from '@iconify/vue'
-import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import { library as libraryApi } from '../api'
 import { useMail } from '../context'
 import { describe, warningText } from '../copy'
 import type { DraftRender, ResourceContent } from '../types'
+import ResourcePicker from '../library/ResourcePicker.vue'
+import { LOOKUP_LIMIT } from '../library/useLibrary'
 import { problemOf, type Problem } from './problems'
 import { emailDocument } from './render'
 
@@ -16,7 +17,6 @@ import { emailDocument } from './render'
 const props = defineProps<{ draft: ResourceContent; messages?: string[] }>()
 const emit = defineEmits<{ problem: [problem: Problem | undefined] }>()
 const { library, delivery } = useMail()
-if (props.draft.kind !== 'message') library.use('message')
 const ids = { message: useId() }
 
 const mode = ref<'email' | 'text'>('email')
@@ -24,19 +24,25 @@ const width = ref<'desktop' | 'phone'>('desktop')
 const modes = [{ label: 'Email', value: 'email' }, { label: 'Plain text', value: 'text' }]
 const widths = [{ label: 'Desktop', value: 'desktop', icon: 'tabler:device-desktop' }, { label: 'Phone', value: 'phone', icon: 'tabler:device-mobile' }]
 
-// Messages by title. Mail does not report which message was sent last, so the preview starts with the first.
-const choices = computed(() => {
-  if (!library.ready('message')) return []
-  const names = props.messages ?? library.ofKind('message').map(item => item.name)
-  return names.map(name => ({ value: name, label: library.title('message', name) ?? name })).sort((a, b) => a.label.localeCompare(b.label))
-})
+// Mail does not report which message was sent last, so the preview starts with the first message it lists.
 const chosen = ref('')
-watch(choices, options => {
+const first = ref('')
+const choicesError = ref('')
+async function chooseFirst() {
   if (props.draft.kind === 'message') return
-  if (!options.some(option => option.value === chosen.value)) chosen.value = options[0]?.value ?? ''
-}, { immediate: true })
-const chosenNote = computed(() => props.draft.kind !== 'message' && chosen.value && chosen.value === choices.value[0]?.value
-  ? 'The first message by title. Choose another to see it around different content.' : '')
+  const names = props.messages?.slice(0, LOOKUP_LIMIT)
+  try {
+    const page = names && !names.length ? undefined : await library.search('message', undefined, names)
+    first.value = page?.items[0]?.name ?? ''
+    if (!chosen.value || (props.messages && !props.messages.includes(chosen.value))) chosen.value = first.value
+    choicesError.value = ''
+  } catch (failure) {
+    choicesError.value = describe(failure, 'The messages could not be loaded.')
+  }
+}
+watch(() => props.messages?.join(','), () => { void chooseFirst() }, { immediate: true })
+const chosenNote = computed(() => props.draft.kind !== 'message' && chosen.value && chosen.value === first.value
+  ? 'The first message in the library. Choose another to see it around different content.' : '')
 const message = computed(() => props.draft.kind === 'message' ? props.draft.name : chosen.value)
 
 const rendered = shallowRef<DraftRender>()
@@ -100,9 +106,9 @@ const from = computed(() => {
     </div>
     <div v-if="draft.kind !== 'message'" class="mail-preview-with">
       <label :for="ids.message">Preview with</label>
-      <Select v-model="chosen" :input-id="ids.message" :options="choices" option-label="label" option-value="value" append-to="self"
-        placeholder="Choose a message…" :empty-message="'No messages yet'" :loading="!library.ready('message')" />
-      <small v-if="chosenNote" class="mail-field-hint">{{ chosenNote }}</small>
+      <ResourcePicker v-model="chosen" kind="message" label="Preview with" :input-id="ids.message" :names="messages" placeholder="Choose a message…" />
+      <small v-if="choicesError" class="kx-err inline" role="alert">{{ choicesError }}</small>
+      <small v-else-if="chosenNote" class="mail-field-hint">{{ chosenNote }}</small>
     </div>
     <p v-if="loading && rendered" class="mail-preview-busy" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Updating the preview…</p>
     <dl v-if="rendered" class="mail-preview-envelope">

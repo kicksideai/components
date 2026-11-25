@@ -206,8 +206,9 @@ describe('New and duplicate', () => {
     expect(read).toHaveBeenCalledTimes(2)
   })
 
-  it('refuses a reference that already exists before calling the server', async () => {
-    routes()
+  it('shows the server refusal of a reference that already exists beside the field', async () => {
+    routes([post('/api/v1/mail/library/preview', () => refuse(409, { error: 'The resource already exists', kind: 'CONFLICT',
+      details: { code: 'mail_revision_conflict' } }))])
     const wrapper = await open('bases')
     dialogButton('New base template')!.click()
     await flushPromises()
@@ -218,7 +219,6 @@ describe('New and duplicate', () => {
     dialogButton('Create base template')!.click()
     await flushPromises()
     expect(document.body.textContent).toContain('A base template with this reference already exists. Choose another.')
-    expect(calls('post').some(([path]) => path === '/api/v1/mail/library')).toBe(false)
     wrapper.unmount()
   })
 })

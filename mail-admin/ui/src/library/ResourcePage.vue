@@ -75,19 +75,40 @@ async function load(options: { keepDraft?: boolean } = {}) {
 // The version loaded into the draft by Restore; saving the draft restores it.
 const restoring = ref<Revision>()
 const revisions = shallowRef<HistoryItem[]>([])
-const historyLoading = ref(false), historyError = ref('')
+const historyLoading = ref(false), historyError = ref(''), historyMoreError = ref('')
+const historyCursor = ref<string>()
 const beginHistory = latestRequest()
+// The newest page of History; older pages follow on request.
 async function loadHistory() {
   const current = beginHistory()
   historyLoading.value = true
   try {
-    const items = await libraryApi.history(key.value)
+    const page = await libraryApi.history(key.value)
     if (!current()) return
-    revisions.value = items
-    historyError.value = ''
+    revisions.value = page.items
+    historyCursor.value = page.next_cursor
+    historyError.value = historyMoreError.value = ''
   } catch (failure) {
     if (!current()) return
     historyError.value = isMissing(failure) ? '' : describe(failure, 'History could not be loaded.')
+  } finally {
+    if (current()) historyLoading.value = false
+  }
+}
+async function loadOlderHistory() {
+  const cursor = historyCursor.value
+  if (!cursor || historyLoading.value) return
+  const current = beginHistory()
+  historyLoading.value = true
+  try {
+    const page = await libraryApi.history(key.value, cursor)
+    if (!current()) return
+    const known = new Set(revisions.value.map(item => item.seq))
+    revisions.value = [...revisions.value, ...page.items.filter(item => !known.has(item.seq))]
+    historyCursor.value = page.next_cursor
+    historyMoreError.value = ''
+  } catch (failure) {
+    if (current()) historyMoreError.value = describe(failure, 'Older versions could not be loaded.')
   } finally {
     if (current()) historyLoading.value = false
   }
@@ -150,11 +171,9 @@ const saveProblem = ref<Problem>()
 const variablesInvalid = ref(false)
 const problem = computed(() => saveProblem.value ?? previewProblem.value)
 watch(() => JSON.stringify(draft.value), () => { saveProblem.value = undefined })
-const subjectBreak = computed(() => props.kind === 'message' && /[\r\n]/.test(draft.value?.subject ?? ''))
-const blocked = computed(() => !!problem.value || variablesInvalid.value || !!stale.value || subjectBreak.value)
+const blocked = computed(() => !!problem.value || variablesInvalid.value || !!stale.value)
 const blockedReason = computed(() => stale.value ? 'Discard your changes to load the newer version first.'
-  : variablesInvalid.value ? 'Fix the variables first.' : subjectBreak.value ? 'Put the subject on one line first.'
-  : problem.value ? 'Fix the error first.' : '')
+  : variablesInvalid.value ? 'Fix the variables first.' : problem.value ? 'Fix the error first.' : '')
 
 // Sending refused because delivery needs setup; an administrator can go straight to the settings.
 const setupFailure = ref(false)
@@ -320,12 +339,14 @@ async function restore(entry: HistoryItem | Revision) {
 }
 
 function inUse(item: Resource, names: readonly string[], reason?: string) {
-  const titles = names.map(name => library.title('message', name) ?? name)
   const verb = item.kind === 'base' ? 'use' : 'include'
   refusal.value = {
     header: reason ? `${item.title} cannot change this way` : `${item.title} is in use`,
-    message: reason ?? `${plural(names.length, 'message')} ${names.length === 1 ? verb + 's' : verb} it: ${titles.join(', ')}. Remove it from ${names.length === 1 ? 'that message' : 'them'} first.`,
-    links: names.map((name, index) => ({ label: titles[index], open: () => go({ name: 'resource', kind: 'message', resource: name, section: 'content' }) })),
+    get message() {
+      const titles = names.map(name => library.title('message', name) ?? name)
+      return reason ?? `${plural(names.length, 'message')} ${names.length === 1 ? verb + 's' : verb} it: ${titles.join(', ')}. Remove it from ${names.length === 1 ? 'that message' : 'them'} first.`
+    },
+    links: names.map(name => ({ get label() { return library.title('message', name) ?? name }, open: () => go({ name: 'resource', kind: 'message', resource: name, section: 'content' }) })),
   }
 }
 
@@ -435,7 +456,8 @@ watch(() => props.section, () => { notice.value = carried; carried = ''; actionE
         @invalid="value => variablesInvalid = value" />
       <UsedBy v-else-if="section === 'used-by'" :resource="resource" />
       <HistoryList v-else-if="section === 'history'" :resource="resource" :revisions="revisions" :loading="historyLoading" :error="historyError"
-        :busy="typeof busy === 'number' ? busy : (busy ? -1 : undefined)" @show="showHistory" @restore="restore" @retry="loadHistory" />
+        :busy="typeof busy === 'number' ? busy : (busy ? -1 : undefined)" :more="!!historyCursor" :more-error="historyMoreError"
+        @show="showHistory" @restore="restore" @retry="loadHistory" @more="loadOlderHistory" />
     </template>
   </template>
   <ReviewDialog v-if="resource && draft" :visible="reviewing" :saved="draftOf(resource)" :draft="draft" :busy="saving" :error="reviewError"

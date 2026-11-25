@@ -28,8 +28,6 @@ const props = defineProps<{ section: Exclude<LibrarySection, 'assets'> }>()
 const { library, go, create } = useMail()
 
 const kind = computed(() => kindOf(props.section))
-// Messages show their base template's title.
-watch(kind, value => { if (value === 'message') library.ensure('base') }, { immediate: true })
 const state = ref<StateFilter>('all')
 const query = ref(''), search = ref('')
 let searchTimer: ReturnType<typeof setTimeout> | undefined
@@ -91,10 +89,7 @@ watch([kind, state, search], () => { void load() })
 // Reads on mount, and again when the page is shown after being hidden.
 useHostVisibilityRefresh(() => load(loaded.value))
 
-useMailInvalidation('mail.library', () => {
-  if (kind.value === 'message') library.ensure('base')
-  void load(loaded.value)
-})
+useMailInvalidation('mail.library', () => { void load(loaded.value) })
 
 const head = computed(() => {
   switch (kind.value) {

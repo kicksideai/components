@@ -70,7 +70,7 @@ describe('Preview all messages', () => {
     await flushPromises()
     const frame = document.body.querySelector('.mail-gallery iframe')!
     expect(frame.getAttribute('sandbox')).toBe('')
-    expect(frame.getAttribute('srcdoc')).toMatch(/^<html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'">/)
+    expect(frame.getAttribute('srcdoc')).toMatch(/^<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'">/)
     wrapper.unmount()
   })
 })

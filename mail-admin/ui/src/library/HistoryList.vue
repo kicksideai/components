@@ -6,8 +6,8 @@ import Tag from 'primevue/tag'
 import { actionLabels, fullDate, hasHistorySnapshot, personLabel } from '../copy'
 import type { HistoryItem, Resource } from '../types'
 
-defineProps<{ resource: Resource; revisions: HistoryItem[]; loading: boolean; error: string; busy: number | undefined }>()
-defineEmits<{ show: [revision: HistoryItem]; restore: [revision: HistoryItem]; retry: [] }>()
+defineProps<{ resource: Resource; revisions: HistoryItem[]; loading: boolean; error: string; busy: number | undefined; more?: boolean; moreError?: string }>()
+defineEmits<{ show: [revision: HistoryItem]; restore: [revision: HistoryItem]; retry: []; more: [] }>()
 </script>
 
 <template>
@@ -42,4 +42,8 @@ defineEmits<{ show: [revision: HistoryItem]; restore: [revision: HistoryItem]; r
       </div>
     </li>
   </ol>
+  <div v-if="more && revisions.length" class="mail-more">
+    <span v-if="moreError" class="kx-err inline" role="alert">{{ moreError }}</span>
+    <Button :label="moreError ? 'Retry' : 'Show older versions'" severity="secondary" outlined :loading="loading" @click="$emit('more')" />
+  </div>
 </template>

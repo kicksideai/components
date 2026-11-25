@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { onBeforeUnmount, onMounted, ref, shallowRef, type Ref, type ShallowRef } from 'vue'
+import { reactive } from 'vue'
 import { library } from '../api'
-import { describe } from '../copy'
 import { useMailInvalidation } from '../realtime'
-import type { LibraryRow, Resource, ResourceKind } from '../types'
+import type { LibraryPage, LibraryRow, Resource, ResourceKind } from '../types'
 
-// Project a newly saved resource into a cached summary row.
+// Project a newly saved resource into a summary row.
 export function rowOf(item: Resource): LibraryRow {
   const { kind, name, title, description, state, revision, origin, origin_label, base, author, author_label, updated_at, used_by } = item
   const usage = used_by && {
@@ -15,86 +14,95 @@ export function rowOf(item: Resource): LibraryRow {
   return { kind, name, title, description, state, revision, origin, origin_label, base, author, author_label, updated_at, used_by: usage }
 }
 
-interface KindList { rows: ShallowRef<LibraryRow[]>; loaded: Ref<boolean>; loading: Ref<boolean>; error: Ref<string>; users: number; stale: boolean }
+// Mail resolves at most this many exact names in one library page.
+export const LOOKUP_LIMIT = 100
+export const SEARCH_LIMIT = 50
 
-// Summary rows are cached by kind for pickers and resource labels.
+// Summary rows by reference, filled by exact-name lookups and by the pages the views read. Nothing reads the whole
+// library: a title shown for a reference is looked up with the other references shown at the same time.
 export function useLibrary() {
-  const kinds = Object.fromEntries((['message', 'base', 'part', 'asset'] as ResourceKind[])
-    .map(kind => [kind, { rows: shallowRef<LibraryRow[]>([]), loaded: ref(false), loading: ref(false), error: ref(''), users: 0, stale: false }])) as
-    Record<ResourceKind, KindList>
-  const pending = new Map<ResourceKind, Promise<void>>()
-  let generation = 0
+  // undefined: not known yet; null: Mail lists no such resource.
+  const rows = reactive(new Map<string, LibraryRow | null>())
+  const pending = new Map<ResourceKind, Set<string>>()
+  const requested = new Set<string>()
+  let scheduled = false
+  const id = (kind: ResourceKind, name: string) => `${kind}/${name}`
 
-  function load(kind: ResourceKind): Promise<void> {
-    const running = pending.get(kind)
-    if (running) return running
-    const list = kinds[kind]
-    list.loading.value = true
-    const requested = generation
-    const task = (async () => {
+  function remember(items: LibraryRow[]) {
+    for (const item of items) rows.set(id(item.kind, item.name), item)
+  }
+
+  async function lookup(kind: ResourceKind, names: string[]) {
+    for (let start = 0; start < names.length; start += LOOKUP_LIMIT) {
+      const chunk = names.slice(start, start + LOOKUP_LIMIT)
       try {
-        const rows: LibraryRow[] = []
-        let cursor: string | undefined
-        do {
-          const page = await library.page({ kind, cursor })
-          rows.push(...page.items)
-          cursor = page.next_cursor
-        } while (cursor)
-        list.rows.value = rows
-        list.loaded.value = true
-        list.stale = requested !== generation
-        list.error.value = ''
-      } catch (failure) {
-        list.error.value = describe(failure, 'The mail library could not be loaded.')
+        const page = await library.page({ kind, names: chunk, limit: LOOKUP_LIMIT })
+        remember(page.items)
+      } catch {
+        // A failed lookup leaves the reference itself as the label; the next invalidation asks again.
       } finally {
-        list.loading.value = false
-        pending.delete(kind)
-        if (requested !== generation && list.users > 0) ensure(kind)
+        for (const name of chunk) {
+          requested.delete(id(kind, name))
+          if (!rows.has(id(kind, name))) rows.set(id(kind, name), null)
+        }
       }
-    })()
-    pending.set(kind, task)
-    return task
+    }
   }
 
-  function ensure(kind: ResourceKind) {
-    const list = kinds[kind]
-    if ((!list.loaded.value || list.stale) && !list.loading.value) void load(kind)
+  function flush() {
+    scheduled = false
+    const batches = [...pending.entries()]
+    pending.clear()
+    for (const [kind, names] of batches) void lookup(kind, [...names])
   }
 
-  // A component that shows rows of a kind holds it for as long as it is mounted.
-  function use(...wanted: ResourceKind[]) {
-    onMounted(() => { for (const kind of wanted) { kinds[kind].users++; ensure(kind) } })
-    onBeforeUnmount(() => { for (const kind of wanted) kinds[kind].users-- })
+  function request(kind: ResourceKind, name: string) {
+    const key = id(kind, name)
+    if (rows.has(key) || requested.has(key)) return
+    requested.add(key)
+    const names = pending.get(kind) ?? new Set<string>()
+    names.add(name)
+    pending.set(kind, names)
+    if (!scheduled) {
+      scheduled = true
+      queueMicrotask(flush)
+    }
+  }
+
+  // The row for a reference, or undefined until it is known.
+  function find(kind: ResourceKind, name: string): LibraryRow | undefined {
+    const row = rows.get(id(kind, name))
+    if (row === undefined) request(kind, name)
+    return row ?? undefined
+  }
+  // Whether Mail lists the reference, or undefined while it is being looked up.
+  function exists(kind: ResourceKind, name: string): boolean | undefined {
+    const row = rows.get(id(kind, name))
+    if (row === undefined) { request(kind, name); return undefined }
+    return row !== null
+  }
+  // A title, or undefined while it is being looked up; the reference itself when Mail lists no such resource.
+  function title(kind: ResourceKind, name: string): string | undefined {
+    const row = rows.get(id(kind, name))
+    if (row === undefined) { request(kind, name); return undefined }
+    return row?.title ?? name
+  }
+
+  // One page of a kind matching a search, in Mail's order, optionally among exact names.
+  async function search(kind: ResourceKind, q?: string, names?: string[]): Promise<LibraryPage> {
+    const page = await library.page({ kind, q: q || undefined, names, limit: SEARCH_LIMIT })
+    remember(page.items)
+    return page
   }
 
   function patch(kind: ResourceKind, name: string, row: LibraryRow | undefined) {
-    const list = kinds[kind]
-    if (!list.loaded.value) return
-    const rows = list.rows.value.filter(item => item.name !== name)
-    if (row) rows.push(row)
-    list.rows.value = rows
+    rows.set(id(kind, name), row ?? null)
   }
 
   function refresh() {
-    generation++
-    for (const [kind, list] of Object.entries(kinds) as [ResourceKind, KindList][]) {
-      list.stale = list.loaded.value
-      if (list.users > 0) ensure(kind)
-    }
+    rows.clear()
   }
   useMailInvalidation('mail.library', refresh)
 
-  const find = (kind: ResourceKind, name: string) => kinds[kind].rows.value.find(item => item.name === name)
-  // A title, or undefined while the kind is still loading; the reference once it is known not to be listed.
-  function title(kind: ResourceKind, name: string): string | undefined {
-    const found = find(kind, name)
-    if (found) return found.title
-    ensure(kind)
-    return kinds[kind].loaded.value ? name : undefined
-  }
-  const ofKind = (kind: ResourceKind) => [...kinds[kind].rows.value].sort((a, b) => a.title.localeCompare(b.title))
-  const ready = (kind: ResourceKind) => kinds[kind].loaded.value
-  const failed = (kind: ResourceKind) => kinds[kind].error.value
-
-  return { kinds, use, ensure, load, find, title, ofKind, ready, failed, refresh, patch }
+  return { find, exists, title, search, remember, patch, refresh }
 }

@@ -18,6 +18,7 @@ import { bytes, describe, plural, shortDate } from '../copy'
 import { useMailInvalidation } from '../realtime'
 import type { LibraryRow } from '../types'
 import AssetDrawer from './AssetDrawer.vue'
+import { SEARCH_LIMIT } from './useLibrary'
 import AssetTile from './AssetTile.vue'
 import ResourceSource from './ResourceSource.vue'
 
@@ -29,17 +30,22 @@ let timer: ReturnType<typeof setTimeout> | undefined
 watch(query, value => { clearTimeout(timer); timer = setTimeout(() => { search.value = value.trim() }, 250) })
 
 const rows = shallowRef<LibraryRow[]>([])
-const loading = ref(true), loaded = ref(false), denied = ref(false)
-const error = ref(''), refreshError = ref('')
+const cursor = ref<string>()
+const total = ref<number>()
+const loading = ref(true), loaded = ref(false), denied = ref(false), more = ref(false)
+const error = ref(''), refreshError = ref(''), moreError = ref('')
 const begin = latestRequest()
+// The first page of images; later pages follow on request.
 async function load(refresh = false) {
   const current = begin()
   loading.value = true
   try {
-    const items = await libraryApi.assets(search.value || undefined)
+    const page = await libraryApi.page({ kind: 'asset', q: search.value || undefined, limit: SEARCH_LIMIT })
     if (!current()) return
-    rows.value = items
-    error.value = refreshError.value = ''
+    rows.value = page.items
+    cursor.value = page.next_cursor
+    total.value = page.total
+    error.value = refreshError.value = moreError.value = ''
     denied.value = false
     loaded.value = true
   } catch (failure) {
@@ -52,6 +58,23 @@ async function load(refresh = false) {
     if (current()) loading.value = false
   }
 }
+async function loadMore() {
+  if (loading.value || !cursor.value || more.value) return
+  const current = begin()
+  more.value = true
+  try {
+    const page = await libraryApi.page({ kind: 'asset', q: search.value || undefined, limit: SEARCH_LIMIT, cursor: cursor.value })
+    if (!current()) return
+    const known = new Set(rows.value.map(row => row.name))
+    rows.value = [...rows.value, ...page.items.filter(row => !known.has(row.name))]
+    cursor.value = page.next_cursor
+    moreError.value = ''
+  } catch (failure) {
+    if (current()) moreError.value = describe(failure, 'More images could not be loaded.')
+  } finally {
+    more.value = false
+  }
+}
 watch(search, () => { void load() })
 useHostVisibilityRefresh(() => load(loaded.value))
 useMailInvalidation('mail.library', () => { void load(loaded.value) })
@@ -61,8 +84,10 @@ function usedBy(row: LibraryRow): string {
   return count ? plural(count, 'message') : '—'
 }
 
-const total = computed(() => rows.value.reduce((sum, row) => sum + (row.asset?.size ?? 0), 0))
-const countLabel = computed(() => `${plural(rows.value.length, 'image')} · ${bytes(total.value)}`)
+const countLabel = computed(() => {
+  const count = total.value ?? rows.value.length
+  return rows.value.length < count ? `${rows.value.length} of ${plural(count, 'image')}` : plural(count, 'image')
+})
 function size(row: LibraryRow): string {
   const asset = row.asset
   if (!asset) return ''
@@ -128,6 +153,10 @@ function open(row: LibraryRow) { go({ name: 'library', section: 'assets', asset:
         <template #body="{ data }"><span class="mail-muted">{{ data.state === 'original' ? '—' : shortDate(data.updated_at) }}</span></template>
       </Column>
     </DataTable>
+    <div v-if="cursor" class="mail-more">
+      <span v-if="moreError" class="kx-err inline" role="alert">{{ moreError }}</span>
+      <Button :label="moreError ? 'Retry' : 'Show more'" severity="secondary" outlined :loading="more" :disabled="loading" @click="loadMore" />
+    </div>
   </template>
   <AssetDrawer :name="props.asset" @close="go({ name: 'library', section: 'assets' })" />
 </template>

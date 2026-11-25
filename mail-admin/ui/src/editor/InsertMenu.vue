@@ -12,7 +12,8 @@ import { assetSnippet, bodySlot, includeSnippet, variableSnippet } from '../cont
 import { useMail } from '../context'
 import { describe, kindIcons } from '../copy'
 import { useReturnFocus } from '../focus'
-import type { ResourceContent } from '../types'
+import ResourcePicker from '../library/ResourcePicker.vue'
+import type { LibraryPage, ResourceContent } from '../types'
 import type { Face } from './problems'
 
 // What can go into the open face at the cursor: variables, parts, images with alternative text and, in a base
@@ -24,11 +25,36 @@ const { library } = useMail()
 
 const menu = ref<{ toggle: (event: Event) => void }>()
 const error = ref('')
+// The first page of parts and images when the menu opens; a search finds the others.
+const choices = ref<Partial<Record<'part' | 'asset', LibraryPage>>>({})
+async function loadChoices(kind: 'part' | 'asset') {
+  try {
+    const page = await library.search(kind)
+    choices.value = { ...choices.value, [kind]: page }
+  } catch (failure) {
+    error.value = describe(failure, kind === 'part' ? 'The parts could not be loaded.' : 'The images could not be loaded.')
+  }
+}
 function toggle(event: Event) {
   error.value = ''
-  library.ensure('part')
-  if (props.face === 'html') library.ensure('asset')
+  choices.value = {}
+  void loadChoices('part')
+  if (props.face === 'html') void loadChoices('asset')
   menu.value?.toggle(event)
+}
+const finding = ref<'part' | 'asset'>()
+const found = ref<string | null>()
+useReturnFocus(() => !!finding.value)
+function find(kind: 'part' | 'asset') {
+  found.value = undefined
+  finding.value = kind
+}
+function insertFound() {
+  const kind = finding.value, name = found.value
+  finding.value = undefined
+  if (!kind || !name) return
+  if (kind === 'part') void insertPart(name)
+  else void chooseImage(name, library.title('asset', name) ?? name)
 }
 defineExpose({ toggle })
 
@@ -77,14 +103,18 @@ const items = computed<MenuItem[]>(() => {
     items: [...own, ...globalValues.map(value => ({ label: value.label, icon: 'tabler:world',
       command: () => emit('insert', `{{ ${value.name} }}`) }))],
   }]
-  const parts = library.ofKind('part').filter(part => !(props.draft.kind === 'part' && part.name === props.draft.name))
-  groups.push({ label: 'Parts', items: !library.ready('part') ? [loadingItem('Loading parts…')]
-    : parts.length ? parts.map(part => ({ label: part.title, icon: kindIcons.part, command: () => { void insertPart(part.name) } }))
+  const partPage = choices.value.part
+  const parts = (partPage?.items ?? []).filter(part => !(props.draft.kind === 'part' && part.name === props.draft.name))
+  groups.push({ label: 'Parts', items: !partPage ? [loadingItem('Loading parts…')]
+    : parts.length ? [...parts.map(part => ({ label: part.title, icon: kindIcons.part, command: () => { void insertPart(part.name) } })),
+      ...(partPage.next_cursor ? [{ label: 'Find another part…', icon: 'tabler:search', command: () => find('part') }] : [])]
       : [{ label: 'There are no parts to include yet.', disabled: true }] })
   if (props.face === 'html') {
-    const images = library.ofKind('asset')
-    groups.push({ label: 'Images', items: !library.ready('asset') ? [loadingItem('Loading images…')]
-      : images.length ? images.map(item => ({ label: item.title, icon: kindIcons.asset, command: () => { void chooseImage(item.name, item.title) } }))
+    const imagePage = choices.value.asset
+    const images = imagePage?.items ?? []
+    groups.push({ label: 'Images', items: !imagePage ? [loadingItem('Loading images…')]
+      : images.length ? [...images.map(item => ({ label: item.title, icon: kindIcons.asset, command: () => { void chooseImage(item.name, item.title) } })),
+        ...(imagePage.next_cursor ? [{ label: 'Find another image…', icon: 'tabler:search', command: () => find('asset') }] : [])]
         : [{ label: 'There are no images yet. Upload one in Images.', disabled: true }] })
   }
   if (props.draft.kind === 'base') {
@@ -123,6 +153,22 @@ const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'm
     <template #footer>
       <Button label="Cancel" severity="secondary" outlined @click="image = undefined" />
       <Button label="Insert image" type="submit" form="mail-insert-image" />
+    </template>
+  </Dialog>
+  <Dialog :visible="!!finding" modal :draggable="false" class="mail-dialog" :pt="dialogPt" :aria-label="finding === 'part' ? 'Find a part' : 'Find an image'"
+    @update:visible="value => { if (!value) finding = undefined }">
+    <template #header>
+      <span class="kx-modal-head-icon"><Icon :icon="finding === 'part' ? kindIcons.part : kindIcons.asset" aria-hidden="true" /></span>
+      <span class="kx-modal-head-text">
+        <span class="kx-modal-head-title">{{ finding === 'part' ? 'Insert a part' : 'Insert an image' }}</span>
+        <span class="kx-modal-head-sub">Search the library, then insert at the cursor.</span>
+      </span>
+    </template>
+    <ResourcePicker v-if="finding" v-model="found" :kind="finding" :label="finding === 'part' ? 'Part' : 'Image'" fluid
+      :exclude="finding === 'part' && draft.kind === 'part' ? draft.name : undefined" placeholder="Choose…" />
+    <template #footer>
+      <Button label="Cancel" severity="secondary" outlined @click="finding = undefined" />
+      <Button label="Insert" :disabled="!found" @click="insertFound" />
     </template>
   </Dialog>
 </template>

@@ -11,7 +11,7 @@ import { useMail } from '../context'
 import { rowOf } from './useLibrary'
 import { useReturnFocus } from '../focus'
 import { UploadFailed, whenCompleted } from './uploadState'
-import { bytes, describe, namePattern, slug } from '../copy'
+import { bytes, describe, nameRule, slug } from '../copy'
 import type { Resource } from '../types'
 
 // Upload a new image, or replace an existing one under the same name.
@@ -33,7 +33,6 @@ const error = ref(''), fileError = ref(''), nameError = ref('')
 watch(() => props.visible, open => {
   if (!open) { signal.cancelled = true; return }
   signal = { cancelled: false }
-  if (!props.replace) library.ensure('asset')
   file.value = undefined
   title.value = props.replace?.title ?? ''
   name.value = props.replace?.name ?? ''
@@ -56,8 +55,7 @@ function choose(event: FileUploadSelectEvent) {
 function validate(): boolean {
   nameError.value = ''
   if (props.replace) return true
-  if (!namePattern.test(name.value)) nameError.value = 'Use lower-case letters, digits, hyphens and underscores, starting with a letter or digit.'
-  else if (library.find('asset', name.value)) nameError.value = `An image named ${name.value} already exists. Choose another name or replace ${name.value}.`
+  if (!name.value) nameError.value = 'Enter a reference.'
   return !nameError.value
 }
 
@@ -92,6 +90,7 @@ async function submit() {
     if (run.cancelled) return
     if (failure instanceof UploadFailed) error.value = 'The image could not be processed. Try another file, or upload it again.'
     else if (errorCode(failure) === 'mail_revision_conflict' && !props.replace) nameError.value = `An image named ${name.value} already exists. Choose another name or replace ${name.value}.`
+    else if (errorCode(failure) === 'invalid_mail_resource' && !props.replace) nameError.value = nameRule
     else error.value = describe(failure, 'The image could not be uploaded.')
   } finally {
     busy.value = false

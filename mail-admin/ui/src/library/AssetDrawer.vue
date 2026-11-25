@@ -27,7 +27,7 @@ const emit = defineEmits<{ close: [] }>()
 const { library, go } = useMail()
 useReturnFocus(() => !!props.name)
 const drawer = ref<HTMLElement>()
-watch(() => !!props.name, open => { if (open) { library.ensure('message'); void nextTick(() => drawer.value?.focus()) } }, { immediate: true })
+watch(() => !!props.name, open => { if (open) void nextTick(() => drawer.value?.focus()) }, { immediate: true })
 
 const asset = shallowRef<Resource>()
 const revisions = shallowRef<HistoryItem[]>([])
@@ -40,6 +40,25 @@ const copied = ref(false), linkCopied = ref(false)
 const replacing = ref(false)
 const refusal = ref<Refusal>()
 const begin = latestRequest()
+const historyCursor = ref<string>()
+const olderLoading = ref(false), olderError = ref('')
+async function loadOlder() {
+  const name = props.name, cursor = historyCursor.value
+  if (!name || !cursor || olderLoading.value) return
+  olderLoading.value = true
+  try {
+    const page = await libraryApi.history({ kind: 'asset', name }, cursor)
+    if (props.name !== name) return
+    const known = new Set(revisions.value.map(item => item.seq))
+    revisions.value = [...revisions.value, ...page.items.filter(item => !known.has(item.seq))]
+    historyCursor.value = page.next_cursor
+    olderError.value = ''
+  } catch (failure) {
+    olderError.value = describe(failure, 'Older versions could not be loaded.')
+  } finally {
+    olderLoading.value = false
+  }
+}
 
 async function load() {
   const name = props.name
@@ -50,7 +69,8 @@ async function load() {
     const [item, history] = await Promise.all([libraryApi.get({ kind: 'asset', name }), libraryApi.history({ kind: 'asset', name })])
     if (!current()) return
     asset.value = item
-    revisions.value = history
+    revisions.value = history.items
+    historyCursor.value = history.next_cursor
     missing.value = false
     error.value = ''
     const first = item.used_by?.messages?.[0]
@@ -119,11 +139,10 @@ async function act(kind: 'reset' | 'delete' | 'restore', revision?: HistoryItem)
       // Mail names the messages whose samples show the image and every template whose source names it.
       const keys = [...(found.references ?? []).filter(key => key.kind !== 'asset')]
       for (const name of found.dependents ?? []) if (!keys.some(key => key.kind === 'message' && key.name === name)) keys.push({ kind: 'message', name })
-      await Promise.all([...new Set(keys.map(key => key.kind))].map(kind => library.ready(kind) ? undefined : library.load(kind)))
       refusal.value = {
         header: `${item.title} is in use`,
         message: `${plural(keys.length, 'template')} ${keys.length === 1 ? 'names' : 'name'} ${item.title}, in the current version or one kept in History. Remove it from ${keys.length === 1 ? 'that template' : 'them'} first.`,
-        links: keys.map(key => ({ label: library.title(key.kind, key.name) ?? key.name, icon: kindIcons[key.kind],
+        links: keys.map(key => ({ get label() { return library.title(key.kind, key.name) ?? key.name }, icon: kindIcons[key.kind],
           open: () => go(key.kind === 'asset' ? { name: 'library', section: 'assets', asset: key.name } : { name: 'resource', kind: key.kind as TemplateKind, resource: key.name, section: 'content' }) })),
       }
     } else {
@@ -218,6 +237,10 @@ const preview = computed(() => shown.value?.html ? emailDocument(shown.value.htm
               </div>
             </li>
           </ol>
+          <div v-if="historyCursor" class="mail-more">
+            <span v-if="olderError" class="kx-err inline" role="alert">{{ olderError }}</span>
+            <Button :label="olderError ? 'Retry' : 'Show older versions'" severity="secondary" outlined size="small" :loading="olderLoading" @click="loadOlder" />
+          </div>
         </section>
       </template>
     </div>
