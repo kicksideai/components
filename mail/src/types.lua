@@ -85,7 +85,6 @@ type ComponentAccessContract = {get_access_context: (self: ComponentAccessContra
 type AssetContent = {revision: integer, content_type: string, bytes: string}
 type ResourceKey = {kind: string, name: string}
 type ResourceReferences = {bases: {string}, parts: {string}, assets: {string}}
-type ReferenceClosure = {dependencies: {ResourceKey}, dependants: {ResourceKey}}
 type PreviewRow = {id: string, actor: string, operation: string, digest: string, expected: {[string]: integer}, expires_at: integer}
 type ResourceContent = {
     kind: string, name: string,
@@ -301,7 +300,7 @@ return {
     MessagePage = MessagePage, SenderPage = SenderPage,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,
     OwnerResult = OwnerResult, BlockedAsset = BlockedAsset, ComponentAccessContract = ComponentAccessContract,
-    ResourceKey = ResourceKey, ResourceReferences = ResourceReferences, ReferenceClosure = ReferenceClosure, PreviewRow = PreviewRow,
+    ResourceKey = ResourceKey, ResourceReferences = ResourceReferences, PreviewRow = PreviewRow,
     ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,

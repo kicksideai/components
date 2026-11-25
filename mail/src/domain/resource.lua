@@ -194,18 +194,4 @@ function M.matches(item: types.Resource, q: string?): boolean
         or contains(item.html, q) or contains(item.text, q)
 end
 
-function M.names(items: {types.Resource}): {string}
-    local names = {}
-    for i, item in ipairs(items) do names[i] = item.name end
-    return names
-end
-
-function M.visible_messages(names: {string}, items: types.ResourceMap): {string}
-    local visible = {}
-    for _, name in ipairs(names) do
-        if items["message/" .. name] then visible[#visible + 1] = name end
-    end
-    return visible
-end
-
 return M

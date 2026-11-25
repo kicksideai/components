@@ -1,7 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local database = require("database")
 local types = require("types")
-local resource = require("resource")
 
 local M = {}
 
@@ -36,47 +35,6 @@ function M.referrers(ex: database.Executor, to: types.ResourceKey, limit: intege
     end
     local rows, err = ex:query(query, args)
     return rows :: {types.ResourceKey}?, err
-end
-
-function M.use_counts(ex: database.Executor, keys: {types.ResourceKey}): ({[string]: integer}?, error?)
-    local counts: {[string]: integer} = {}
-    for _, key in ipairs(keys) do
-        local rows, err = ex:query("SELECT COUNT(*) AS uses" .. ACTIVE_REFERRERS, {key.kind, key.name})
-        if err then return nil, err end
-        counts[resource.subject(key)] = rows[1].uses :: integer
-    end
-    return counts, nil
-end
-
-local function walk(ex: database.Executor, keys: {types.ResourceKey}, query: string): ({types.ResourceKey}?, error?)
-    local queue: {types.ResourceKey} = {}
-    local seen: {[string]: boolean} = {}
-    local function add(key: types.ResourceKey)
-        local id = resource.subject(key)
-        if seen[id] then return end
-        seen[id] = true
-        queue[#queue + 1] = key
-    end
-    for _, key in ipairs(keys) do add(key) end
-    local first = #queue
-    for _, key in ipairs(queue) do
-        local rows, err = ex:query(query, {key.kind, key.name})
-        if err then return nil, err end
-        for _, row in ipairs(rows) do add(row :: types.ResourceKey) end
-    end
-    local result: {types.ResourceKey} = {}
-    for i = first + 1, #queue do result[#result + 1] = queue[i] end
-    table.sort(result, function(a, b) return resource.subject(a) < resource.subject(b) end)
-    return result, nil
-end
-
-function M.closure(ex: database.Executor, keys: {types.ResourceKey}): (types.ReferenceClosure?, error?)
-    local dependencies, err = walk(ex, keys, [[SELECT to_kind AS kind,to_name AS name FROM mail_library_reference
-        WHERE from_kind=$1 AND from_name=$2]])
-    if err then return nil, err end
-    local dependants, read_err = walk(ex, keys, "SELECT r.from_kind AS kind,r.from_name AS name" .. ACTIVE_REFERRERS)
-    if read_err then return nil, read_err end
-    return {dependencies = dependencies :: {types.ResourceKey}, dependants = dependants :: {types.ResourceKey}}, nil
 end
 
 function M.delete_all(tx: database.Transaction): (integer?, error?)

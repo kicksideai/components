@@ -157,11 +157,4 @@ function M.select(html: string, items: {types.Resource}, context: types.JsonObje
     return selected
 end
 
-function M.content_url(name: string, revision: integer): string
-    local path_name = name:gsub("[^%w_.~-]", function(character)
-        return string.format("%%%02X", string.byte(character))
-    end)
-    return "/api/v1/mail/library/asset/" .. path_name .. "/content?revision=" .. tostring(revision)
-end
-
 return M

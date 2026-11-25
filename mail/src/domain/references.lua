@@ -18,13 +18,6 @@ local function asset_names(source: string, names: {[string]: boolean})
     end
 end
 
-function M.source_reference(source: string?, name: string): boolean
-    if not source then return false end
-    local names: {[string]: boolean} = {}
-    asset_names(source, names)
-    return names[name] == true
-end
-
 function M.template_keys(content: types.ResourceContent): {types.ResourceKey}
     local keys: {types.ResourceKey} = {}
     local seen: {[string]: boolean} = {}
