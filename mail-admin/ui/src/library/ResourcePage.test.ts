@@ -221,7 +221,7 @@ describe('Library resource editor', () => {
     vi.mocked(host.confirm).mockResolvedValueOnce(true)
     await control(wrapper, 'Reset to original')!.trigger('click')
     await flushPromises()
-    expect(reset).toHaveBeenCalledWith('/api/v1/mail/library/base/standard/reset', { expected_revision: 7, preview_id: 'review-id' })
+    expect(reset).toHaveBeenCalledWith('/api/v1/mail/library/base/standard/reset', { expected_revision: 7, preview_id: 'review-id', command_id: expect.any(String) })
     wrapper.unmount()
   })
 
@@ -250,7 +250,7 @@ describe('Library resource editor', () => {
     expect(note.value).toBe('Restore version 4')
     ;[...document.body.querySelectorAll('button')].find(node => node.textContent?.trim() === 'Save')!.click()
     await flushPromises()
-    expect(restore).toHaveBeenCalledWith('/api/v1/mail/library/base/newsletter/restore', { expected_revision: 5, revision: 4, note: 'Restore version 4', preview_id: 'review-id' })
+    expect(restore).toHaveBeenCalledWith('/api/v1/mail/library/base/newsletter/restore', { expected_revision: 5, revision: 4, note: 'Restore version 4', preview_id: 'review-id', command_id: expect.any(String) })
     expect(save).not.toHaveBeenCalled()
     wrapper.unmount()
   })

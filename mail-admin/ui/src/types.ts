@@ -50,6 +50,7 @@ export interface ResourceContent {
 export interface OriginalSource { html: string; text: string; subject?: string; base?: string; schema: VariableSchema; samples: JsonObject }
 
 export interface Resource extends ResourceContent {
+  seq?: number
   state: ResourceState
   origin?: string
   origin_label?: string
@@ -81,7 +82,12 @@ export interface LibraryRow {
 }
 
 // One page of the library in the server's order (kind, then name), with the exact count of every matching resource.
-export interface LibraryPage { items: LibraryRow[]; next_cursor?: string; total: number }
+export interface LibraryPage {
+  items: LibraryRow[]
+  next_cursor?: string
+  total: number
+  library_seq?: number
+}
 
 export type RevisionAction = 'created' | 'edited' | 'base_changed' | 'reset' | 'restored' | 'previous_change'
 

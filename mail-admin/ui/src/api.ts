@@ -53,10 +53,29 @@ async function review(key: ResourceKey, draft: Record<string, unknown>): Promise
   return result.preview_id
 }
 
+type LibraryReceipt = { seq: number; committed: true; projected: boolean }
+
+async function projectedResource(key: ResourceKey, result: Resource | LibraryReceipt): Promise<Resource> {
+  if ('kind' in result) return result
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 250))
+    try {
+      const item = await library.get(key)
+      if ((item.seq ?? 0) >= result.seq) return item
+    } catch (err) {
+      if (!(err instanceof ApiError) || err.kind !== 'NOT_FOUND') throw err
+    }
+  }
+  throw new ApiError({ message: 'Changes were saved. Reload the resource to see the new revision.' }, 'Mail library')
+}
+
 async function createResource(body: ResourceContent | CopyRequest, note?: string): Promise<Resource> {
   const proposed = { ...body, note: note ?? ('note' in body ? body.note : undefined) }
   const preview_id = await review(body, { create: proposed })
-  return request<Resource>(() => api.post(`${BASE}/library`, { ...proposed, preview_id }), 'Create resource')
+  const command_id = crypto.randomUUID()
+  const result = await request<Resource | LibraryReceipt>(
+    () => api.post(`${BASE}/library`, { ...proposed, preview_id, command_id }), 'Create resource')
+  return projectedResource(body, result)
 }
 
 function libraryPage(filter: LibraryFilter = {}) {
@@ -87,20 +106,32 @@ export const library = {
   async update(content: ResourceContent, expected: number, note?: string) {
     const proposed = { ...editable(content), expected_revision: expected, note }
     const preview_id = await review(content, { resources: [proposed] })
-    return request<Resource>(() => api.put(resourcePath(content), { ...proposed, preview_id }), 'Save resource')
+    const command_id = crypto.randomUUID()
+    const result = await request<Resource | LibraryReceipt>(
+      () => api.put(resourcePath(content), { ...proposed, preview_id, command_id }), 'Save resource')
+    return projectedResource(content, result)
   },
   async reset(key: ResourceKey, expected: number) {
     const body = { expected_revision: expected }
     const preview_id = key.kind === 'asset' ? undefined : await review(key, { reset: { ...key, ...body } })
-    return request<Resource>(() => api.post(`${resourcePath(key)}/reset`, { ...body, preview_id }), 'Reset resource')
+    const command_id = key.kind === 'asset' ? undefined : crypto.randomUUID()
+    const result = await request<Resource | LibraryReceipt>(
+      () => api.post(`${resourcePath(key)}/reset`, { ...body, preview_id, command_id }), 'Reset resource')
+    return projectedResource(key, result)
   },
   async restore(key: ResourceKey, revision: number, expected: number, note?: string) {
     const body = { revision, expected_revision: expected, note }
     const preview_id = key.kind === 'asset' ? undefined : await review(key, { restore: { ...key, ...body } })
-    return request<Resource>(() => api.post(`${resourcePath(key)}/restore`, { ...body, preview_id }), 'Restore revision')
+    const command_id = key.kind === 'asset' ? undefined : crypto.randomUUID()
+    const result = await request<Resource | LibraryReceipt>(
+      () => api.post(`${resourcePath(key)}/restore`, { ...body, preview_id, command_id }), 'Restore revision')
+    return projectedResource(key, result)
   },
-  remove: (key: ResourceKey, expected: number) =>
-    request<boolean>(() => api.delete(resourcePath(key), { data: { expected_revision: expected } }), 'Delete resource'),
+  remove: (key: ResourceKey, expected: number) => {
+    const command_id = key.kind === 'asset' ? undefined : crypto.randomUUID()
+    return request<boolean>(
+      () => api.delete(resourcePath(key), { data: { expected_revision: expected, command_id } }), 'Delete resource')
+  },
   preview: (message: string, resources: ResourceContent[]) =>
     request<DraftRender>(() => api.post(`${BASE}/library/preview`, resources.length ? { message, resources: resources.map(editable) } : { message }), 'Preview'),
   sendTest: (message: string) => request<SendReceipt>(() => api.post(`${BASE}/library/send-test`, { message }), 'Send test'),
