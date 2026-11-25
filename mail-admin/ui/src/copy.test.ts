@@ -7,13 +7,14 @@ const refusal = (code: string, message = 'developer text') => new ApiError({ err
 
 group('Product copy', () => {
   it('words every admission and validation refusal Mail now returns, never the server’s developer text', () => {
-    for (const code of ['invalid_config', 'from_name_invalid', 'invalid_request', 'invalid_mail_filter', 'invalid_mail_resource', 'invalid_revision_note',
+    for (const code of ['invalid_config', 'from_name_invalid', 'invalid_request', 'invalid_mail_filter', 'invalid_mail_resource', 'mail_resource_too_large', 'invalid_revision_note',
       'invalid_mail_resources', 'invalid_mail_draft', 'invalid_mail_revision', 'invalid_template_vars', 'html_too_large', 'text_too_large',
       'invalid_subject', 'invalid_content_id', 'attachment_empty', 'incomplete_attachment', 'message_too_large', 'upload_still_processing']) {
       const text = describe(refusal(code), 'Fallback.')
       expect(text, code).not.toBe('developer text')
       expect(text, code).not.toMatch(/driver|provider|byte/i)
     }
+    expect(describe(refusal('mail_resource_too_large'), 'Fallback.')).toContain('512 KiB')
   })
 
   it('gives a delivery administrator what the service said and what to change for each driver refusal', () => {

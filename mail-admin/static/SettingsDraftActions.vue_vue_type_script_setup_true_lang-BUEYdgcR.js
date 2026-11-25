@@ -1,5 +1,5 @@
-import { W as P, P as U } from "./wc-runtime-CYKoUhqs.js";
-import { defineComponent as D, openBlock as v, createElementBlock as b, createElementVNode as u, toDisplayString as z, renderSlot as L, createCommentVNode as N, onBeforeUnmount as K, watch as q, nextTick as Y, Fragment as H, createVNode as d, unref as x, withCtx as V } from "vue";
+import { W as P, P as L } from "./wc-runtime-CYKoUhqs.js";
+import { defineComponent as D, openBlock as v, createElementBlock as b, createElementVNode as u, toDisplayString as z, renderSlot as U, createCommentVNode as N, onBeforeUnmount as q, watch as K, nextTick as H, Fragment as Y, createVNode as d, unref as x, withCtx as V } from "vue";
 import { api as o, on as O } from "@wippy-fe/proxy";
 import { Icon as G } from "@iconify/vue";
 import $ from "primevue/button";
@@ -11,7 +11,7 @@ function gr(r, e) {
       return { propsSchema: e, hostCssKeys: ["themeConfigUrl", "primeVueCssUrl", "iframeCssUrl"], inlineCss: W };
     }
     static get vueConfig() {
-      return { rootComponent: r, plugins: [U] };
+      return { rootComponent: r, plugins: [L] };
     }
   };
 }
@@ -31,7 +31,7 @@ const Q = { class: "system-section-head" }, X = { class: "system-section-head-te
         u("p", null, z(r.description), 1)
       ]),
       e.$slots.actions ? (v(), b("div", Z, [
-        L(e.$slots, "actions")
+        U(e.$slots, "actions")
       ])) : N("", !0)
     ]));
   }
@@ -204,7 +204,7 @@ function Dr(r) {
   const e = tr[r.kind];
   return e ? r.kind === "test" || r.kind === "resend" ? e : r.label ? `${e} · ${r.label}` : e : r.label;
 }
-const S = 1440 * 60 * 1e3, A = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric" }), I = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric", year: "numeric" }), or = new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }), ir = new Intl.DateTimeFormat(void 0, { dateStyle: "medium", timeStyle: "short" });
+const A = 1440 * 60 * 1e3, S = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric" }), I = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric", year: "numeric" }), or = new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }), ir = new Intl.DateTimeFormat(void 0, { dateStyle: "medium", timeStyle: "short" });
 function F(r) {
   const e = new Date(r);
   return e.setHours(0, 0, 0, 0), e.getTime();
@@ -212,17 +212,17 @@ function F(r) {
 function nr(r, e = Date.now()) {
   if (!r) return "—";
   const a = F(e);
-  return r >= a ? "Today" : r >= a - S ? "Yesterday" : new Date(r).getFullYear() === new Date(e).getFullYear() ? A.format(r) : I.format(r);
+  return r >= a ? "Today" : r >= a - A ? "Yesterday" : new Date(r).getFullYear() === new Date(e).getFullYear() ? S.format(r) : I.format(r);
 }
 function Rr(r, e = Date.now()) {
   const a = nr(r, e);
   return a === "Today" || a === "Yesterday" ? a.toLowerCase() : "on " + a;
 }
-function Sr(r, e = Date.now()) {
+function Ar(r, e = Date.now()) {
   const a = F(e);
-  return r >= a ? or.format(r) : r >= a - S ? "Yesterday" : new Date(r).getFullYear() === new Date(e).getFullYear() ? A.format(r) : I.format(r);
+  return r >= a ? or.format(r) : r >= a - A ? "Yesterday" : new Date(r).getFullYear() === new Date(e).getFullYear() ? S.format(r) : I.format(r);
 }
-function Ar(r) {
+function Sr(r) {
   return r ? ir.format(r) : "—";
 }
 function Ir(r) {
@@ -250,7 +250,8 @@ const f = {
   from_name_invalid: "The sender name in the delivery settings cannot be used in email. Correct it in Settings → Mail.",
   invalid_request: "This is more than Mail accepts in one go. Shorten what you entered and try again.",
   invalid_mail_filter: "Mail could not use this search or filter. Clear the search and try again.",
-  invalid_mail_resource: "Something in this resource is missing or too long. A reference takes up to 128 characters, a name or description 4,096, and each source 64 KB.",
+  invalid_mail_resource: "Check the required fields. A reference takes up to 128 characters and a title up to 4,096.",
+  mail_resource_too_large: "The HTML, plain text, and description can total up to 512 KiB.",
   invalid_revision_note: "Keep the note for History under 4,096 characters.",
   invalid_mail_resources: "Mail could not read this draft. Reload the page and try again.",
   invalid_mail_draft: "Mail could not read this draft. Reload the page and try again.",
@@ -309,20 +310,20 @@ function Pr(r, e) {
   const a = ar(r);
   return a && f[a] ? f[a] : r.status === 403 ? f.mail_library_denied : r.status >= 500 ? `${e} Try again in a moment.` : r.message || e;
 }
-function Ur(r) {
+function Lr(r) {
   return r.code === "gmail_html_clipping" && r.bytes && r.threshold_bytes ? `Gmail may clip this email: its HTML is ${M(r.bytes)}, above Gmail’s ${M(r.threshold_bytes)}. Readers then see only the start until they open the rest.` : r.message;
 }
-function Lr(r) {
+function Ur(r) {
   return r.trim().toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
 }
 const Nr = /^[a-z0-9][a-z0-9_-]*$/;
-function Kr(r, e) {
+function qr(r, e) {
   const a = O(r, e);
-  K(() => {
+  q(() => {
     typeof a == "function" && a();
   });
 }
-function qr() {
+function Kr() {
   let r = 0;
   return () => {
     const e = ++r;
@@ -334,20 +335,20 @@ function sr() {
   for (; r?.shadowRoot?.activeElement; ) r = r.shadowRoot.activeElement;
   return r instanceof HTMLElement ? r : null;
 }
-function Yr(r) {
+function Hr(r) {
   let e = null;
-  q(r, (a) => {
+  K(r, (a) => {
     if (a) {
       e = sr();
       return;
     }
     const t = e;
-    e = null, Y(() => {
+    e = null, H(() => {
       t?.isConnected && t.focus();
     });
   });
 }
-const Hr = /* @__PURE__ */ D({
+const Yr = /* @__PURE__ */ D({
   __name: "SettingsDraftActions",
   props: {
     busy: { type: Boolean },
@@ -356,7 +357,7 @@ const Hr = /* @__PURE__ */ D({
   },
   emits: ["discard", "review"],
   setup(r) {
-    return (e, a) => (v(), b(H, null, [
+    return (e, a) => (v(), b(Y, null, [
       d(x(J), {
         severity: "warn",
         value: "Unsaved changes"
@@ -393,38 +394,38 @@ export {
   Mr as C,
   br as D,
   Ir as E,
-  Sr as F,
+  Ar as F,
   vr as G,
   wr as H,
   gr as I,
   rr as J,
   i as K,
   ur as _,
-  Yr as a,
+  Hr as a,
   M as b,
   jr as c,
   Pr as d,
   ar as e,
   zr as f,
   $r as g,
-  qr as h,
+  Kr as h,
   kr as i,
   Cr as j,
   _r as k,
   hr as l,
-  Ar as m,
+  Sr as m,
   Rr as n,
   Dr as o,
   Fr as p,
-  Hr as q,
+  Yr as q,
   yr as r,
   nr as s,
   fr as t,
-  Kr as u,
-  Lr as v,
-  Ur as w,
+  qr as u,
+  Ur as v,
+  Lr as w,
   Nr as x,
   Br as y,
   Er as z
 };
-//# sourceMappingURL=SettingsDraftActions.vue_vue_type_script_setup_true_lang-DSE5w_vL.js.map
+//# sourceMappingURL=SettingsDraftActions.vue_vue_type_script_setup_true_lang-BUEYdgcR.js.map
