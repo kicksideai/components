@@ -10,10 +10,10 @@ local jet = require("jet")
 local library = require("library")
 local settings = require("settings")
 
-local function render_values(): (types.RenderGlobals?, error?)
+local function render_values(originals: types.OriginalMap?): (types.RenderGlobals?, error?)
     local appearance, err = settings.appearance()
     if err then return nil, err end
-    local assets, asset_err = library.resources({kind = "asset"})
+    local assets, asset_err = library.resources({kind = "asset"}, originals)
     if asset_err then return nil, asset_err end
     local values = globals.data(appearance :: types.Appearance)
     values.assets = assets
@@ -23,9 +23,9 @@ end
 local function template(name: unknown, vars: unknown, refs: {types.AttachmentRef}?): (types.Rendered?, error?)
     local invalid = vars_schema.check_vars(vars)
     if invalid then return nil, invalid end
-    local item, lookup_err = library.live_message(name)
+    local item, lookup_err, originals = library.live_message(name)
     if lookup_err then return nil, lookup_err end
-    local values, err = render_values()
+    local values, err = render_values(originals)
     if err then return nil, err end
     return render.with_sets(jet.html, jet.text, function(html: types.TemplateSet, text: types.TemplateSet): (types.Rendered?, error?)
         return render.faces(item :: types.Resource, vars, values :: types.RenderGlobals, html, text, refs)

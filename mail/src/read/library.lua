@@ -121,24 +121,29 @@ local function summary_page(filter: types.ResourceFilter, after: types.ResourceK
     end)
 end
 
-function M.resources(filter: types.ResourceFilter): ({types.Resource}?, error?)
+function M.resources(filter: types.ResourceFilter, originals: types.OriginalMap?): ({types.Resource}?, error?)
     local q = filter.q and filter.q:lower()
-    return database.with_db(function(db: database.DB): ({types.Resource}?, error?)
-        local originals, err = originals_reader.list()
+    local declarations = originals
+    if not declarations then
+        local err
+        declarations, err = originals_reader.list()
         if err then return nil, err end
+    end
+    local catalog = declarations :: types.OriginalMap
+    return database.with_db(function(db: database.DB): ({types.Resource}?, error?)
         local stored_only = filter.state == "created" or filter.state == "customized"
         local rows, read_err = library_reader.rows(db, stored_only and filter or {kind = filter.kind})
         if read_err then return nil, read_err end
         if stored_only then
             local selected: {types.Resource} = {}
             for _, row in ipairs(rows) do
-                local origin_err = match_origin(row, originals[resource.subject(row)])
+                local origin_err = match_origin(row, catalog[resource.subject(row)])
                 if origin_err then return nil, origin_err end
                 if resource.matches(row, q) then selected[#selected + 1] = row end
             end
             return selected, nil
         end
-        local items, merge_err = resource.merge(rows :: {types.Resource}, originals :: types.OriginalMap)
+        local items, merge_err = resource.merge(rows :: {types.Resource}, catalog)
         if merge_err then return nil, merge_err end
         local selected = {}
         for _, item in pairs(items) do
@@ -192,7 +197,7 @@ function M.require_live(): error?
     return err
 end
 
-function M.live_message(name: unknown): (types.Resource?, error?)
+function M.live_message(name: unknown): (types.Resource?, error?, types.OriginalMap?)
     if type(name) ~= "string" or not name:find("%S") then
         return nil, resource.error(errors.INVALID, "invalid_template", "A mail template name is required")
     end
@@ -201,7 +206,7 @@ function M.live_message(name: unknown): (types.Resource?, error?)
     if invalid then return nil, invalid end
     local originals, err = originals_reader.list()
     if err then return nil, err end
-    return database.with_db(function(ex: database.Executor): (types.Resource?, error?)
+    local selected, select_err = database.with_db(function(ex: database.Executor): (types.Resource?, error?)
         local before, mark_err = live_repo.get(ex)
         if mark_err then return nil, mark_err end
         local item, lookup_err = lookup_in(ex, key, originals[resource.subject(key)])
@@ -218,6 +223,7 @@ function M.live_message(name: unknown): (types.Resource?, error?)
         if fenced then return nil, fenced end
         return item, nil
     end)
+    return selected, select_err, originals
 end
 
 function M.get(input: types.ResourceKey): (types.Resource?, error?)
