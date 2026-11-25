@@ -167,12 +167,12 @@ entries:
     meta: { type: test, suite: mail }
     source: file://message_test.lua
     method: run
-    modules: [templates]
+    modules: [funcs, json, security, templates]
     imports:
       test: wippy.test:test
       message: kickside.mail.domain:message
-      render: kickside.mail.read:preview
-      renderer: kickside.mail.render:render
+      api_fixtures: app.mail_api:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
       failure: kickside.mail.domain:failure
       library_fixtures: app.mail_library:fixtures
   - name: dep.blocks

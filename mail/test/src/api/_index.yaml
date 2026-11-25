@@ -6,6 +6,9 @@ entries:
     kind: library.lua
     source: file://fixtures.lua
     modules: [contract, funcs, http_client, json, security, sql, system, uuid]
+    imports:
+      identity: kickside.execution:execution_identity
+      reconcile: kickside.security:trigger_reconcile
   - name: api_test
     kind: function.lua
     meta: { type: test, suite: mail_api }

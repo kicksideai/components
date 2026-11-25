@@ -7,10 +7,17 @@ local security = require("security")
 local sql = require("sql")
 local system = require("system")
 local uuid = require("uuid")
+local identity = require("identity")
+local reconcile = require("reconcile")
 
+local projected = false
 local function role_scope(groups)
-    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
-    return assert(security.named_scope(materialized.scope_name))
+    if not projected then
+        assert(reconcile.trigger())
+        projected = true
+    end
+    local resolved = assert(funcs.call("kickside.security.runtime:resolve_groups", {groups = groups}))
+    return assert(identity.scope_from_groups(resolved.groups, resolved.policy_ids))
 end
 
 local function session(names, actor_id, no_baseline)
