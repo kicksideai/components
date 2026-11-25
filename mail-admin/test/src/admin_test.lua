@@ -11,7 +11,7 @@ local system = require("system")
 local uuid = require("uuid")
 local test = require("test")
 
-local TAB_ACCESS = "kickside.mail:library"
+local TAB_ACCESS = "kickside.mail.api:library_list.endpoint"
 
 local function gateway(path: string): string
     local state = assert(system.supervisor.state("app:gateway"))
@@ -71,7 +71,7 @@ local function cases()
             test.eq(tab.data.render, "component")
             test.eq(tab.data.component_tag, "kickside-mail-admin")
             test.eq(tab.data.access, TAB_ACCESS)
-            test.eq("contract.definition", assert(registry.get(TAB_ACCESS)).kind, "the tab access names Mail's public library contract")
+            test.eq("http.endpoint", assert(registry.get(TAB_ACCESS)).kind, "the tab access names Mail's library list endpoint")
 
             local view = assert(registry.get("kickside.mail.admin:admin"))
             test.eq(view.meta.type, "view.component")

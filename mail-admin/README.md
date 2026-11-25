@@ -85,7 +85,7 @@ Both belong to Platform Settings.
 Bind `kickside.mail.admin:ui_server` to the host HTTP service and install
 `kickside/mail` with its authenticated API router. The
 `ui.settings_tab` entry `kickside.mail.admin:settings_tab` appears only for
-callers with `access` on Mail's public `kickside.mail:library` contract, which
+callers with `access` on `kickside.mail.api:library_list.endpoint`, which
 Mail grants with **Edit mail library**. The page reads `GET /mail/capabilities`:
 Activity requires **Administer mail delivery**. Send again and Send test to me
 also require **Send mail**. Uploading and replacing images requires the Mail library

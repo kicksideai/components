@@ -85,7 +85,7 @@ entries:
   order: 42
   render: component
   component_tag: kickside-mail-admin
-  access: kickside.mail:library
+  access: kickside.mail.api:library_list.endpoint
 - name: delivery
   kind: registry.entry
   meta:

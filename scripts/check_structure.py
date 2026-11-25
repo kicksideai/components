@@ -733,9 +733,6 @@ def foreign_private(m, ref, peers, key=None):
     ns, name = ref.split(":", 1)
     if m.own(ns) or ns in OVERLAY_NAMESPACES.get(m.root_ns, ()):
         return None
-    if m.root_ns == "kickside.mail" and key == "policies" and ref == "kickside.core.jobs.persist:pool_nudge_access":
-        # Threads append and catch-up use the public Jobs producer policy.
-        return None
     owner = owning_peer(ns, peers)
     if owner is not None:
         entry = owner.by_id.get(ref)
@@ -765,6 +762,23 @@ def foreign_private(m, ref, peers, key=None):
 def dependents(m, peers):
     """Peers that declare an ns.dependency on this module."""
     return [p for p in peers if m.component and m.component in p.dependencies]
+
+
+def settings_tab_endpoint(m, entry, ref, line, key, peers):
+    """A System tab may use a dependency's public endpoint as a predicate."""
+    meta = entry.data.get("meta")
+    if (entry.kind != "registry.entry" or not isinstance(meta, dict)
+            or meta.get("type") != "ui.settings_tab" or key != "access"
+            or entry.data.get("access") != ref or line != line_of(entry.data, "access")):
+        return False
+    owner = owning_peer(ref.split(":", 1)[0], peers)
+    if owner is None or owner.component not in m.dependencies:
+        return False
+    target = owner.by_id.get(ref)
+    if target is None or target.kind != "http.endpoint":
+        return False
+    target_meta = target.data.get("meta")
+    return not isinstance(target_meta, dict) or not target_meta.get("private")
 
 
 def check_s6(m, peers):
@@ -799,7 +813,7 @@ def check_s6(m, peers):
         for s, line, key in walk_strings(e.data):
             if key in PROSE_KEYS:
                 continue
-            if REF_RE.fullmatch(s):
+            if REF_RE.fullmatch(s) and not settings_tab_endpoint(m, e, s, line, key, peers):
                 check_ref(e.yaml_rel, line, s, key, "reference")
     peer_tables = {}
     for peer in peers:

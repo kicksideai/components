@@ -78,6 +78,11 @@ class StructureCheckTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("mail (kickside.mail): 0 findings", result.stdout)
 
+    def test_mail_admin_tab_can_name_its_dependency_http_endpoint(self):
+        repo = Path(HERE).parent
+        module = check_structure.run(repo / "mail-admin", peer_dirs=[repo / "mail"])
+        self.assertEqual([str(f) for f in module.findings], [])
+
     def test_mail_structure_target_rejects_a_violation(self):
         repo = Path(HERE).parent
         with tempfile.TemporaryDirectory(prefix="mail-structure-", dir=HERE) as directory:

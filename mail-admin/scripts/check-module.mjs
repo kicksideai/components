@@ -46,7 +46,8 @@ const view = owned.get('kickside.mail.admin:admin')
 assert.equal(view.meta.tag_name, tab.component_tag)
 for (const component of ['admin', 'delivery'].map(name => owned.get('kickside.mail.admin:' + name))) {
   assert.equal(component.meta.base_path, 'kickside-mail-admin')
-  assert(component.meta.announced && component.meta.auto_register)
+  assert.equal(component.meta.announced, true)
+  assert.equal(component.meta.auto_register, component.name === 'admin', component.id)
   assert(existsSync(resolve(root, 'static', component.meta.entry_point)), 'built bundle ' + component.meta.entry_point)
 }
 assert.equal(owned.get('kickside.mail.admin:ui_static').path, '/' + view.meta.base_path)
