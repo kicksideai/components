@@ -1,11 +1,16 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local security = require("security")
 local registry = require("registry")
+local api_fixtures = require("api_fixtures")
 local blocks = require("blocks")
 local json = require("json")
-local sql = require("sql")
 local uuid = require("uuid")
 local canonical_json = require("canonical_json")
+
+local function unusable_recipient(input)
+    return {ok = true, user = {user_id = input.identifier, email = "invalid-fixture-address",
+        status = "active", has_password = false, provisioning_pending = false, security_groups = {}}}
+end
 
 local function register(support)
     local test = support.test
@@ -58,9 +63,7 @@ local function register(support)
                 local details = (err :: error):details()
                 test.eq("html", details.face)
                 test.eq("standard", details.resource.name)
-                local diagnostic = details.engine_message
-                assert(type(diagnostic) == "string", tostring(diagnostic))
-                test.not_nil(diagnostic:find("template dependency cycle", 1, true), diagnostic)
+                test.eq(errors.INTERNAL, details.engine_kind)
                 test.eq(0, #query("SELECT id FROM mail_message WHERE sender=$1", {sender_id}))
             end
         end
@@ -253,13 +256,9 @@ local function register(support)
     test.it("resolves user recipients only under the caller's Users authority", function()
         local admin, sender, log_admin = actors.admin, actors.sender, actors.log_admin
         capture_with(admin)
-        local db = assert(sql.get("app:db"))
-        local id, blank = tostring(uuid.v4()), tostring(uuid.v4())
+        local id, missing_id = tostring(uuid.v4()), tostring(uuid.v4())
         local email = id .. "@example.org"
-        assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
-            VALUES ($1,$2,'Recipient','test-only','active'),
-                   ($3,$4,'No address','test-only','active')]], {id, email, blank, 'invalid-' .. blank}))
-        db:release()
+        api_fixtures.create_user(id, email, "Recipient", {})
 
         local reader = caller({
             "kickside.mail.security:send_access", "kickside.users.security:directory_access",
@@ -284,11 +283,25 @@ local function register(support)
         test.eq("BCC@example.org", captured.bcc[2])
         test.eq(2, #captured.bcc)
 
-        for _, recipient in ipairs({blank, email}) do
-            input.to[2] = {user_id = recipient}
-            local missing, missing_err = invoke(reader, "send", input)
-            refusal(missing, missing_err, errors.INVALID, "recipient_address_missing")
-        end
+        input.to[2] = {user_id = email}
+        local alias, alias_err = invoke(reader, "send", input)
+        refusal(alias, alias_err, errors.INVALID, "recipient_address_missing")
+        input.to[2] = {user_id = missing_id}
+        local unknown, unknown_err = invoke(reader, "send", input)
+        refusal(unknown, unknown_err, errors.UNAVAILABLE, "recipient_lookup_failed")
+
+        local binding_id = "kickside.users:provisioning_binding"
+        local original = assert(registry.get(binding_id))
+        local fixture = assert(registry.get(binding_id))
+        fixture.data.contracts[1].methods.get_user = "app.mail_harness:unusable_recipient"
+        local changes = assert(registry.snapshot()):changes()
+        assert(changes:update(fixture))
+        assert(changes:apply())
+        local malformed, malformed_err = invoke(reader, "send", input)
+        local restore = assert(registry.snapshot()):changes()
+        assert(restore:update(original))
+        assert(restore:apply())
+        refusal(malformed, malformed_err, errors.INVALID, "recipient_address_missing")
     end)
 
     test.it("keeps driver selection and transport outside the sending group's public scope", function()
@@ -301,4 +314,4 @@ local function register(support)
     end)
 end
 
-return {register = register}
+return {register = register, unusable_recipient = unusable_recipient}

@@ -161,8 +161,7 @@ local function register(support)
             inputs[i] = {command_id = uuid.v4(), resources = {change}, preview_id = review({resources = {change}})}
         end
         for i = 1, 2 do futures[i] = assert(fixtures.async(fixtures.editor(), "save", inputs[i])) end
-        fixtures.await(function() return futures[1]:is_complete() and futures[2]:is_complete() end,
-            "Concurrent library saves did not finish")
+        for _, future in ipairs(futures) do future:response():receive() end
         local winner, saved, rejected
         for i = 1, 2 do
             local payload, err = futures[i]:result()

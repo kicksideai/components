@@ -22,15 +22,22 @@ entries:
   - name: upload_fixture
     kind: library.lua
     source: &upload_fixture_source file://upload_fixture.lua
-    modules: &upload_fixture_modules [contract, funcs, security]
+    modules: &upload_fixture_modules [funcs, http_client, json, registry, security, system, uuid]
     imports: &upload_fixture_imports
       uploads: kickside.uploads:uploads
-      upload_types: kickside.uploads:types
+      api_fixtures: app.mail_api:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
       database: app:database_fixture
-  - name: seed_upload
+  - name: purge_fixture_uploads
     kind: function.lua
     source: *upload_fixture_source
-    method: run
+    method: purge
+    modules: *upload_fixture_modules
+    imports: *upload_fixture_imports
+  - name: empty_upload_info
+    kind: function.lua
+    source: *upload_fixture_source
+    method: empty_info
     modules: *upload_fixture_modules
     imports: *upload_fixture_imports
   - name: site_url
@@ -52,6 +59,8 @@ entries:
     modules: &fixtures_modules [contract, funcs, registry, time, json]
     imports: &fixtures_imports
       database: app:database_fixture
+      delivery_wait: app.mail_harness:delivery_wait
+      jobs: kickside.core.jobs:jobs
       client: kickside.mail:client
       api_fixtures: app.mail_api:fixtures
       autoinit: kickside.component:autoinit
@@ -224,6 +233,8 @@ entries:
     modules: [contract, funcs, security, sql, uuid, base64, time]
     imports:
       fixtures: app.mail_library:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
+      jobs: kickside.core.jobs:jobs
       lookup: app.mail_library:upload_fixture
       settings: app.mail_api:fixtures
       threads_fixture: app.mail_library:threads_fixture
@@ -239,7 +250,7 @@ entries:
   - name: asset_delivery_cases
     kind: library.lua
     source: file://asset_delivery_cases.lua
-    modules: [contract, funcs, security, sql, uuid]
+    modules: [contract, funcs, security, uuid]
     imports:
       fixtures: app.mail_library:fixtures
       upload_types: kickside.uploads:types
@@ -277,6 +288,7 @@ entries:
     modules: [contract, funcs, json, registry, security, sql, time, uuid]
     imports:
       events: kickside.mail.domain:events
+      jobs: kickside.core.jobs:jobs
       resource: kickside.mail.domain:resource
       fixtures: app.mail_library:fixtures
       api_fixtures: app.mail_api:fixtures

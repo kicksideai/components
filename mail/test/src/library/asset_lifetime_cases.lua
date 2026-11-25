@@ -10,6 +10,8 @@ local lookup = require("lookup")
 local settings = require("settings")
 local fixtures = require("fixtures")
 local threads_fixture = require("threads_fixture")
+local delivery_wait = require("delivery_wait")
+local jobs = require("jobs")
 
 local function register(support, race_only)
     local test = support.test
@@ -186,30 +188,38 @@ local function register(support, race_only)
         state.owned[1] = image
         local first = call("add_asset", image)
         local version = assert(lookup.get(first.asset.upload_id))
+        local message = support.define("message", "retained-image-delivery",
+            '{{ block body() }}<img src="{{ assets["retained-image"] }}">{{ end }}')
+        message.subject = "Fixture pin"
+        state.owned[2] = message
+        call("create", message)
+        state.configured = true
+        settings.settings("app.mail_harness:capture", "mail@example.org")
+        local queued = assert(fixtures.mailer(state.editor, "send", {
+            template = message.name, vars = {}, to = {"reader@example.org"},
+        }))
+        local function read_message()
+            return fixtures.mailer(state.editor, "get_message", queued.message_id)
+        end
+        local waiting = assert(delivery_wait.observe("activity", "25s")(read_message, function(row)
+            return row and row.last_error ~= nil
+        end))
+        test.eq("queued", waiting.status)
+        test.eq("rate_limited", assert(waiting.last_error).code)
+
         image.upload_id, image.expected_revision = upload("image/gif", gif() .. "next"), first.revision
         local latest = call("add_asset", image)
         local now = time.now():add(24 * time.HOUR):unix_nano() // 1000000
         sweep(now)
         test.is_true(state.storage:exists(version.storage_path))
-        test.not_nil(first.seq)
-        test.not_nil(latest.seq)
-        local db = assert(sql.get("app:db"))
-        local pending = uuid.v4()
-        assert(db:execute([[INSERT INTO mail_message
-            (id,created_at,status,sender,recipients,subject,from_address,attachments,next_attempt_at,next_check_at,actor_context)
-            VALUES ($1,$2,'queued','fixture','{}','Pending','mail@example.org','[]',$3,$3,'{}')]],
-            {pending, now, now + 86400000}))
-        assert(db:execute([[INSERT INTO mail_message_asset (message_id,name,content_id,upload_id)
-            VALUES ($1,$2,$2,$3)]], {pending, image.name, version.uuid}))
-        assert(db:release())
         prune_through(first.seq)
         sweep(now)
-        local protected = state.storage:exists(version.storage_path)
-        db = assert(sql.get("app:db"))
-        assert(db:execute("DELETE FROM mail_message WHERE id=$1", {pending}))
-        assert(db:release())
+        test.is_true(state.storage:exists(version.storage_path))
+        local pending = assert(jobs.list_owner_jobs({kind = "mail-message", id = queued.message_id}))
+        test.eq(1, #pending)
+        test.is_true(assert(jobs.wake_job(pending[1].id, {control = true})).woken)
+        test.eq("sent", support.terminal(state.editor, queued.message_id).status)
         sweep(now)
-        test.is_true(protected)
         test.is_false(state.storage:exists(version.storage_path))
         test.eq(latest.asset.upload_id, call("get", image).asset.upload_id)
     end)

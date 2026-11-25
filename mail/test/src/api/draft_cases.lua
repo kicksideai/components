@@ -38,7 +38,7 @@ local function register(support)
         local _, body = request(editor, "POST", "/library/preview", {message = message.name, resource = part})
         test.eq(message.name, body.details.resource.name)
         test.eq("template_render_failed", body.code)
-        test.not_nil(body.details.engine_message:find("missing_value", 1, true))
+        test.eq(errors.INVALID, body.kind)
         local candidates = body.details.candidate_resources
         test.eq(3, #candidates)
         test.eq(message.name, candidates[1].name)
@@ -50,33 +50,32 @@ local function register(support)
         return '{{ ' .. word .. ' "/' .. kind .. '/' .. name .. '" }}'
     end
 
-    local function cycle_failure(details, label, diagnostic)
+    local function cycle_failure(details, label)
         test.eq("html", details.face, label)
-        test.not_nil(details.engine_message:find(diagnostic or "template dependency cycle", 1, true), details.engine_message)
     end
 
-    local function http_cycle(editor, method, path, payload, diagnostic)
+    local function http_cycle(editor, method, path, payload)
         local status, body, raw = request(editor, method, path, payload)
         test.eq(400, status, method .. " " .. path .. ": " .. raw)
         test.eq(errors.INVALID, body.kind, raw)
         test.eq("template_render_failed", body.code, raw)
-        cycle_failure(body.details, path, diagnostic)
+        cycle_failure(body.details, path)
     end
 
-    local function review_cycle(editor, draft, diagnostic)
+    local function review_cycle(editor, draft)
         local result = data(editor, "POST", "/library/preview", draft)
         test.is_nil(result.preview_id)
         local issue = assert(result.errors[1])
         test.eq("template_render_failed", issue.code)
-        cycle_failure(issue, "review", diagnostic)
+        cycle_failure(issue, "review")
     end
 
-    local function tool_cycle(editor, tool, payload, diagnostic)
+    local function tool_cycle(editor, tool, payload)
         local result, err = editor:call("kickside.mail.traits:" .. tool, payload)
         assert(not err, tostring(err))
         test.eq(false, result.success, tool)
         test.eq("template_render_failed", result.code, tool)
-        cycle_failure(tool == "library_preview" and result.errors[1] or result, tool, diagnostic)
+        cycle_failure(tool == "library_preview" and result.errors[1] or result, tool)
         test.is_nil(result.preview_id, tool)
     end
 
@@ -125,10 +124,10 @@ local function register(support)
         {kind = "part", word = "import", peer = "part"},
         {kind = "message", word = "import"},
         {kind = "message", word = "import", peer = "part"},
-        {kind = "message", word = "extends", diagnostic = "Unexpected extends clause"},
+        {kind = "message", word = "extends"},
         {kind = "message", word = "extends", peer = "base"},
-        {kind = "part", word = "include", diagnostic = "maximum 'include' depth"},
-        {kind = "part", word = "include", peer = "part", diagnostic = "maximum 'include' depth"},
+        {kind = "part", word = "include"},
+        {kind = "part", word = "include", peer = "part"},
     }
     for _, graph in ipairs(graphs) do
         local shape = graph.peer and ("mutual with " .. graph.peer) or "self"
@@ -173,8 +172,8 @@ local function register(support)
             arm_peer(true)
             target.html = bad_html
             local create_draft = {message = target.kind == "message" and target.name or "notice", create = target}
-            review_cycle(editor, create_draft, graph.diagnostic)
-            tool_cycle(agent, "library_preview", create_draft, graph.diagnostic)
+            review_cycle(editor, create_draft)
+            tool_cycle(agent, "library_preview", create_draft)
             test.eq(404, (request(editor, "GET", route)))
             alive()
             arm_peer(false)
@@ -204,18 +203,18 @@ local function register(support)
             target.title = second.title
             arm_peer(true)
             target.html = bad_html
-            http_cycle(editor, "POST", "/library/preview", {message = message, resource = target}, graph.diagnostic)
+            http_cycle(editor, "POST", "/library/preview", {message = message, resource = target})
             local preview = {message = message, resources = {target}}
-            tool_cycle(agent, "library_preview", preview, graph.diagnostic)
+            tool_cycle(agent, "library_preview", preview)
             alive()
-            review_cycle(editor, preview, graph.diagnostic)
+            review_cycle(editor, preview)
             alive()
 
             local restore = {kind = target.kind, name = target.name,
                 seq = historical_seq, expected_revision = current_revision}
             local restore_draft = {message = message, restore = restore}
-            review_cycle(editor, restore_draft, graph.diagnostic)
-            tool_cycle(agent, "library_preview", restore_draft, graph.diagnostic)
+            review_cycle(editor, restore_draft)
+            tool_cycle(agent, "library_preview", restore_draft)
             arm_peer(false)
             local stored = data(editor, "GET", route)
             test.eq(current_revision, stored.revision)

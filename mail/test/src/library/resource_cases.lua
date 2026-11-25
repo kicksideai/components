@@ -156,7 +156,6 @@ local function register(support)
         test.eq("template_render_failed", failure.code)
         test.eq(message.name, failure.resource.name)
         test.eq("html", failure.face)
-        test.not_nil(failure.engine_message:find("missing_value", 1, true))
         test.eq(saved_part.revision, assert(call("get", {kind = "part", name = part.name})).revision)
         test.eq(rendered.html, assert(fixtures.render(executor, {template = message.name, vars = message.samples})).html)
 

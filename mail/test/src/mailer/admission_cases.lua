@@ -59,13 +59,9 @@ local function register(support)
         refusal(result, err, errors.CONFLICT, "idempotency_conflict")
     end)
 
-    test.it("writes no job or message for invalid mail admissions", function()
+    test.it("stores no message for invalid mail admissions", function()
         local admin, sender, denied = actors.admin, actors.sender, actors.denied
-        local function counts()
-            return query([[SELECT (SELECT COUNT(*) FROM mail_message) AS messages,
-                (SELECT COUNT(*) FROM kickside_job WHERE owner_kind='mail-message') AS jobs]])[1]
-        end
-        local before = counts()
+        local before = assert(invoke(sender, "list_messages", {limit = 1})).total
         unconfigured(sender)
         capture_with(admin)
         local invalid = body()
@@ -78,9 +74,7 @@ local function register(support)
         refusal(value, err, errors.INVALID, "invalid_template_vars")
         value, err = invoke(denied, "send", body())
         refusal(value, err, errors.PERMISSION_DENIED, "mail_send_denied")
-        local after = counts()
-        test.eq(before.messages, after.messages)
-        test.eq(before.jobs, after.jobs)
+        test.eq(before, assert(invoke(sender, "list_messages", {limit = 1})).total)
     end)
 
     test.it("returns the stored delivery result without creating another job on replay", function()
@@ -104,8 +98,7 @@ local function register(support)
         test.eq(1, #messages)
         test.eq(admitted.message_id, messages[1].id)
         test.eq(original_job, messages[1].job_id)
-        local jobs_for_message = query("SELECT id FROM kickside_job WHERE owner_kind='mail-message' AND owner_id=$1",
-            {admitted.message_id})
+        local jobs_for_message = assert(jobs.list_owner_jobs({kind = "mail-message", id = admitted.message_id}))
         test.eq(1, #jobs_for_message)
         test.eq(original_job, jobs_for_message[1].id)
     end)

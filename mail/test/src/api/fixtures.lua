@@ -4,7 +4,6 @@ local funcs = require("funcs")
 local http = require("http_client")
 local json = require("json")
 local security = require("security")
-local sql = require("sql")
 local system = require("system")
 local uuid = require("uuid")
 local identity = require("identity")
@@ -20,35 +19,59 @@ local function role_scope(groups)
     return assert(identity.scope_from_groups(resolved.groups, resolved.policy_ids))
 end
 
+local function token_for(actor, scope)
+    local tokens = assert(security.token_store("kickside.users.security:tokens"))
+    local token = assert(tokens:create(actor, scope, {expiration = "1h"}))
+    tokens:close()
+    return token
+end
+
+local function users_request(token, method, path, body)
+    local state = assert(system.supervisor.state("app:gateway"))
+    local address = assert(state.details:match("^service listening on (127%.0%.0%.1:[1-9]%d*)$"), state.details)
+    return assert(http.request(method, "http://" .. address .. "/api/users" .. path, {
+        headers = {Authorization = "Bearer " .. token, ["Content-Type"] = "application/json"},
+        body = assert(json.encode(body)),
+    }))
+end
+
+local admin_token
+local function users_admin_token()
+    if admin_token then return admin_token end
+    local groups = {"app.mail_api:users_admin"}
+    local scope = role_scope(groups)
+    local directory = assert(assert(contract.get("kickside.contract:directory")):open())
+    local result = assert(directory:search({query = "System Administrator", kinds = {"user"}, limit = 2}))
+    assert(#result.principals == 1, "The harness needs one bootstrap administrator")
+    local principal = result.principals[1]
+    local admin = assert(security.new_actor(principal.id, {user_id = principal.id, email = principal.sublabel,
+        security_groups = groups}))
+    admin_token = token_for(admin, scope)
+    return admin_token
+end
+
+local function create_user(id, email, full_name, groups)
+    local response = users_request(users_admin_token(), "POST", "", {
+        user_id = id, email = email, full_name = full_name, groups = groups, password = uuid.v4() .. "a!Z1",
+    })
+    assert(response.status_code == 201, response.body)
+end
+
 local function session(names, actor_id, no_baseline)
     local id = actor_id or uuid.v4()
-    local email = id .. "@example.org"
-    local db = assert(sql.get("app:db"))
-    assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
-        VALUES ($1,$2,'Mail fixture','test-only','active')]], {id, email}))
+    local email, full_name = id .. "@example.org", "Mail fixture"
     local groups = names and {"app.mail_api:" .. names, "app:user"} or {"app:user"}
     if names == "outside" or names == "module_only" or no_baseline then groups = {"app.mail_api:" .. names} end
     if names and names:find("editor", 1, true) then groups[#groups + 1] = "app:mail_editors" end
     if names and names:find("sender", 1, true) then groups[#groups + 1] = "app:mail_senders" end
-    for _, group in ipairs(groups) do
-        assert(db:execute("INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)", {id, group}))
-    end
-    assert(db:release())
-    local actor = assert(security.new_actor(id, {user_id = id, email = email, full_name = "Mail fixture", security_groups = groups}))
+    create_user(id, email, full_name, groups)
+    local actor = assert(security.new_actor(id, {user_id = id, email = email, full_name = full_name, security_groups = groups}))
     local scope = role_scope(groups)
-    local tokens = assert(security.token_store("kickside.users.security:tokens"))
-    local token = assert(tokens:create(actor, scope, {expiration = "1h"}))
-    tokens:close()
-    return {token = token, actor = actor, scope = scope, id = id, email = email}
+    return {token = token_for(actor, scope), actor = actor, scope = scope, id = id, email = email}
 end
 
 local function update_user(admin, id, body)
-    local state = assert(system.supervisor.state("app:gateway"))
-    local address = assert(state.details:match("^service listening on (127%.0%.0%.1:[1-9]%d*)$"), state.details)
-    local response = assert(http.request("PUT", "http://" .. address .. "/api/users/" .. id, {
-        headers = {Authorization = "Bearer " .. admin.token, ["Content-Type"] = "application/json"},
-        body = assert(json.encode(body)),
-    }))
+    local response = users_request(admin.token, "PUT", "/" .. id, body)
     assert(response.status_code == 200, response.body)
     assert(assert(json.decode(response.body)).success, response.body)
 end
@@ -64,4 +87,4 @@ local function settings(driver, address)
     end
 end
 
-return {session = session, role_scope = role_scope, settings = settings, update_user = update_user}
+return {session = session, create_user = create_user, role_scope = role_scope, settings = settings, update_user = update_user}

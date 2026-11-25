@@ -4,7 +4,6 @@ local fs = require("fs")
 local funcs = require("funcs")
 local http_client = require("http_client")
 local json = require("json")
-local sql = require("sql")
 local registry = require("registry")
 local security = require("security")
 local system = require("system")
@@ -33,19 +32,22 @@ end
 
 -- A signed-in session with a bearer token, the way the pages call the API.
 local function signed_in(groups: {string}): string
-    local id = uuid.v4()
-    local db = assert(sql.get("app:db"))
-    assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
-        VALUES ($1,$2,'Mail admin fixture','test-only','active')]], {id, id .. "@example.org"}))
-    for _, group in ipairs(groups) do
-        assert(db:execute("INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)", {id, group}))
-    end
-    assert(db:release())
-    local actor = assert(security.new_actor(id, {user_id = id, email = id .. "@example.org", security_groups = groups}))
-    local tokens = assert(security.token_store("kickside.users.security:tokens"))
-    local token = assert(tokens:create(actor, role_scope(groups), {expiration = "1h"}))
-    tokens:close()
-    return token
+    local users = assert(assert(contract.get("kickside.users:user_provisioning")):open())
+    local created = assert(users:create_passwordless_user({
+        email = uuid.v4() .. "@example.org", full_name = "Mail admin fixture",
+    }))
+    assert(created.ok, created.error :: string?)
+    local id = assert(created.user_id :: string?)
+    local enrolled = assert(users:complete_passwordless_user({
+        identifier = id, source = "mail-admin-harness", group_ids = groups,
+    }))
+    assert(enrolled.ok, enrolled.error :: string?)
+    local entry = assert(users:get_user({identifier = id}))
+    test.is_true(entry.ok, entry.error :: string?)
+    test.is_false(entry.user.has_password)
+    local session = assert(users:mint_session({identifier = id}))
+    assert(session.ok, session.error :: string?)
+    return assert(session.token :: string?)
 end
 
 local function get(token: string, path: string): (integer, {[string]: unknown})

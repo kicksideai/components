@@ -253,7 +253,7 @@ entries:
     meta: { type: test, suite: mail_admin }
     source: file://admin_test.lua
     method: run
-    modules: [contract, fs, funcs, http_client, json, registry, security, sql, system, uuid]
+    modules: [contract, fs, funcs, http_client, json, registry, security, system, uuid]
     imports:
       test: wippy.test:test
       identity: kickside.execution:execution_identity

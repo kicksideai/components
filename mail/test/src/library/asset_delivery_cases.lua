@@ -3,7 +3,6 @@ local contract = require("contract")
 local security = require("security")
 local funcs = require("funcs")
 local uuid = require("uuid")
-local sql = require("sql")
 local lookup = require("lookup")
 local settings = require("settings")
 local upload_types = require("upload_types")
@@ -51,12 +50,7 @@ local function register(support)
         state.configured = true
         settings.settings("app.mail_harness:capture", "mail@example.org")
         local empty = upload("text/plain", "x")
-        local source = assert(lookup.get(empty))
-        -- Uploads rejects a zero-length write, so model an older malformed record.
-        local db = assert(sql.get("app:db"))
-        assert(db:execute("UPDATE kickside_uploads SET size=0 WHERE uuid=$1", {empty}))
-        assert(db:release())
-        assert(state.storage:writefile(source.storage_path, ""))
+        state.restore_upload_info = lookup.use_empty_info()
         local result, failure = fixtures.mailer(state.editor, "send", {
             to = {"reader@example.org"}, subject = "An attachment", text = "Please read",
             attachments = {{upload_id = empty}},

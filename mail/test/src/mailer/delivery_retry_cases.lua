@@ -85,6 +85,10 @@ local function register(support)
             test.is_nil(detail:find(secret, 1, true), secret)
             test.is_nil(row.error_message:find(secret, 1, true), secret)
         end
+        local job = assert(jobs.get_job(row.job_id))
+        local payload = assert(json.decode(job.payload))
+        test.eq(queued.message_id, payload.message_id)
+        for key in pairs(payload) do test.eq("message_id", key) end
         local run = query("SELECT error_text FROM kickside_job_run WHERE job_id=$1", {row.job_id})[1]
         test.eq("message_rejected", run.error_text)
         test.not_nil(row.failed_text)

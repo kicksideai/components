@@ -1,10 +1,12 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local database = require("database")
+local delivery_wait = require("delivery_wait")
 local funcs = require("funcs")
 local client = require("client")
 local contract = require("contract")
 local registry = require("registry")
 local time = require("time")
+local jobs = require("jobs")
 local json = require("json")
 local api_fixtures = require("api_fixtures")
 local autoinit = require("autoinit")
@@ -44,10 +46,13 @@ end
 
 local function await_live(seq)
     if not seq then return end
-    await(function()
-        local entry = registry.get("kickside.mail.projection:marker")
+    local function ready(entry)
         return entry and entry.data.seq >= seq
-    end, "Live templates did not reach " .. seq)
+    end
+    local entry = delivery_wait.observe("library", "8s")(function()
+        return registry.get("kickside.mail.projection:marker"), nil
+    end, ready)
+    assert(ready(entry), "Live templates did not reach " .. seq)
 end
 
 local function await_current_live()
@@ -57,14 +62,16 @@ local function await_current_live()
     await_live(rows[1] and rows[1].template_seq or 0)
 end
 
+local function sync_jobs()
+    return assert(jobs.list_owner_jobs({kind = "mail-library", id = library_component_id()}))
+end
+
 local function sync_job(seq, after_id)
-    local jobs = assert(database.with_db(function(ex)
-        return ex:query([[SELECT id,job_type,payload,attempts,execution_seq,last_error,status FROM kickside_job
-            WHERE owner_kind=$1 AND owner_id=$2 ORDER BY created_at,id]], {"mail-library", library_component_id()})
-    end))
-    for _, job in ipairs(jobs) do
-        local payload = assert(json.decode(job.payload))
-        if payload.seq == seq and job.id ~= after_id then return job end
+    for _, job in ipairs(sync_jobs()) do
+        if job.id ~= after_id then
+            local stored = assert(jobs.get_job(job.id))
+            if assert(json.decode(stored.payload)).seq == seq then return stored end
+        end
     end
     return nil
 end
@@ -78,14 +85,10 @@ end
 
 local function await_sync_idle()
     await(function()
-        local ready, err = database.with_db(function(ex)
-            local jobs, err = ex:query([[SELECT id FROM kickside_job WHERE owner_kind=$1 AND owner_id=$2
-                AND status IN ('pending','running') LIMIT 1]], {"mail-library", library_component_id()})
-            if err then return nil, err end
-            return #jobs == 0, nil
-        end)
-        assert(not err, tostring(err))
-        return ready
+        for _, job in ipairs(sync_jobs()) do
+            if job.status == "pending" or job.status == "running" then return false end
+        end
+        return true
     end, "Library sync jobs did not settle")
 end
 

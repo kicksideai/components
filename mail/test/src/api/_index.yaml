@@ -5,7 +5,7 @@ entries:
   - name: fixtures
     kind: library.lua
     source: file://fixtures.lua
-    modules: [contract, funcs, http_client, json, security, sql, system, uuid]
+    modules: [contract, funcs, http_client, json, security, system, uuid]
     imports:
       identity: kickside.execution:execution_identity
       reconcile: kickside.security:trigger_reconcile
@@ -55,7 +55,9 @@ entries:
   - name: delivery_cases
     kind: library.lua
     source: file://delivery_cases.lua
-    modules: [json, sql, time]
+    modules: [json, sql]
+    imports:
+      delivery_wait: app.mail_harness:delivery_wait
   - name: sender
     kind: security.scope
   - name: module_only
@@ -87,7 +89,14 @@ entries:
     meta: {type: kickside.security.group_composition}
     group_id: app.mail_api:upload_sender
     groups: [app.mail_api:sender]
-    policies: [kickside.uploads.security:module_access]
+    policies: &upload_policies
+      - kickside.uploads.security:module_access
+      - kickside.component.security:module_access
+      - kickside.core.security:module_access
+      - kickside.core.jobs.security:module_access
+      - app.mail_api:upload_events
+      - app.mail_api:upload_event_context
+      - app.mail_api:upload_realtime
   - name: upload_editor
     kind: security.scope
   - name: upload_editor_composition
@@ -95,7 +104,25 @@ entries:
     meta: {type: kickside.security.group_composition}
     group_id: app.mail_api:upload_editor
     groups: [app.mail_api:editor]
-    policies: [kickside.uploads.security:module_access]
+    policies: *upload_policies
+  - name: upload_events
+    kind: security.policy
+    policy:
+      resources: [kickside.core:threads, kickside.core:threads_binding, emit, upsert, register, get_access_context, set_meta]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
+  - name: upload_event_context
+    kind: security.policy
+    policy:
+      resources: [security]
+      actions: [contract.security]
+      effect: allow
+  - name: upload_realtime
+    kind: security.policy
+    policy:
+      resources: [kickside.contract:realtime, app.mail_realtime:realtime_binding, notify]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
   - name: upload_editor_sender
     kind: security.scope
   - name: upload_editor_sender_composition
@@ -183,6 +210,7 @@ entries:
     meta: {type: kickside.security.group_composition}
     group_id: app.mail_api:users_admin
     policies:
+      - app:member_database
       - kickside.users.security:module_access
       - kickside.security.security:module_access
       - app.mail_api:users_scope_catalog

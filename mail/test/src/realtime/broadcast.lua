@@ -19,26 +19,28 @@ local function broadcast(input)
             assert(db:release())
             return {success = false, error = "Fixture refuses library broadcast"}
         end
-        rows = assert(db:query("SELECT CAST(revision AS TEXT) AS observed FROM mail_library WHERE kind='base' AND name='event-frame'"))
+        rows = assert(db:query([[SELECT CAST(revision AS TEXT) AS observed FROM mail_library
+            WHERE kind='base' AND name IN (SELECT subject FROM mail_realtime_fixture WHERE topic=$1)]],
+            {"fixture.observe_library"}))
     else
         assert(input.topic == "mail.activity")
-        rows = assert(db:query("SELECT status AS observed FROM mail_message WHERE subject='Realtime fixture delivery'"))
+        rows = assert(db:query([[SELECT status AS observed FROM mail_message
+            WHERE subject IN (SELECT subject FROM mail_realtime_fixture WHERE topic=$1)]], {"fixture.observe_activity"}))
         local messages = assert(db:query([[SELECT id,job_id,status,attempts FROM mail_message
-            WHERE subject=$1 ORDER BY created_at DESC LIMIT 1]], {"Fixture pin"}))
+            WHERE subject IN (SELECT subject FROM mail_realtime_fixture WHERE topic=$1)
+            ORDER BY created_at DESC LIMIT 1]], {"fixture.observe_retry"}))
         local message = messages[1]
         if message and message.status == "queued" and message.attempts == 1 then
             assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
                 {"fixture.activity_retry", message.id, message.job_id, message.status}))
         end
-        assert(db:release())
-        assert(events.send("mail.fixture", "activity", "mail.activity"))
-        db = assert(sql.get("app:db"))
     end
     if rows[1] then
         assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
             {input.topic, "fixture", assert(json.encode(input)), rows[1].observed}))
     end
     assert(db:release())
+    assert(events.send("mail.fixture", input.topic == "mail.library" and "library" or "activity", input.topic))
     return {success = true}
 end
 

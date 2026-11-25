@@ -12,16 +12,27 @@ local library = require("library_fixtures")
 
 return {run = test.run_cases(function()
     test.describe("Mail delivery notifications", function()
-        test.after_each(function() api.settings("", "") end)
+        local watch = "fixture.observe_retry"
+        test.after_each(function()
+            local db = assert(sql.get("app:db"))
+            assert(db:execute("DELETE FROM mail_realtime_fixture WHERE topic=$1", {watch}))
+            assert(db:release())
+            api.settings("", "")
+        end)
 
         test.it("announces a committed retry and reads the terminal delivery receipt", function()
             local member = api.session("sender")
             local sender = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
             api.settings("app.mail_harness:capture", "fixture@example.org")
+            local subject = "Fixture pin"
+            local db = assert(sql.get("app:db"))
+            assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,'{}','')",
+                {watch, subject}))
+            assert(db:release())
             local subscription = assert(events.subscribe("mail.fixture", "activity"))
             local queue = subscription:channel()
             local receipt = assert(library.mailer(sender, "send",
-                {to = {"reader@example.org"}, subject = "Fixture pin", text = "Delivery notification"}))
+                {to = {"reader@example.org"}, subject = subject, text = "Delivery notification"}))
             local function retry_job()
                 local db = assert(sql.get("app:db"))
                 local rows = assert(db:query([[SELECT data FROM mail_realtime_fixture

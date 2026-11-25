@@ -41,6 +41,10 @@ local function cases(race_only)
             state.uploader, state.editor, state.actor, state.scope = setup_actor("upload_editor_sender")
         end)
         test.after_each(function()
+            if state.restore_upload_info then
+                state.restore_upload_info()
+                state.restore_upload_info = nil
+            end
             if state.restore_threads then
                 state.restore_threads()
                 state.restore_threads = nil

@@ -201,11 +201,18 @@ entries:
       effect: allow
   - name: template_cases
     kind: library.lua
-    source: file://template_cases.lua
-    modules: [security, registry, json, sql, uuid]
-    imports:
+    source: &template_cases_source file://template_cases.lua
+    modules: &template_cases_modules [security, registry, json, uuid]
+    imports: &template_cases_imports
       blocks: kickside.blocks:blocks
       canonical_json: kickside.contract:canonical_json
+      api_fixtures: app.mail_api:fixtures
+  - name: unusable_recipient
+    kind: function.lua
+    source: *template_cases_source
+    method: unusable_recipient
+    modules: *template_cases_modules
+    imports: *template_cases_imports
   - name: fixture_db
     kind: security.policy
     policy:

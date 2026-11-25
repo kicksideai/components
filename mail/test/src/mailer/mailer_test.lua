@@ -118,14 +118,7 @@ local function caller(policy_ids, id, named_group)
     end
 
     id = id or uuid.v4()
-    local db = assert(sql.get("app:db"))
-    assert(db:execute([[INSERT INTO app_users (user_id,email,full_name,password_hash,status)
-        VALUES ($1,$2,$1,'test-only','active') ON CONFLICT (user_id) DO NOTHING]], {id, id .. "@example.org"}))
-    for _, group_id in ipairs(groups) do
-        assert(db:execute([[INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)
-            ON CONFLICT (user_id,group_id) DO NOTHING]], {id, group_id}))
-    end
-    assert(db:release())
+    api_fixtures.create_user(id, id .. "@example.org", id, groups)
     local actor = assert(security.new_actor(id, {security_groups = groups}))
     local scope = api_fixtures.role_scope(groups)
     for _, policy in ipairs(fixture_policies) do
@@ -139,13 +132,15 @@ local function invoke(executor, operation, message)
 end
 
 local function await_message(executor, id, matches, seconds)
-    local deadline = time.now():add((seconds or 25) * time.SECOND):unix_nano()
-    repeat
-        local result = assert(invoke(executor, "get_message", id))
-        if matches(result) then return result end
-        time.sleep("25ms")
-    until time.now():unix_nano() >= deadline
-    error("Mail did not reach the expected intermediate state: " .. id)
+    local function ready(message)
+        return message and matches(message)
+    end
+    local result, err = delivery_wait.observe("activity", tostring(seconds or 25) .. "s")(function()
+        return invoke(executor, "get_message", id)
+    end, ready)
+    assert(result, tostring(err))
+    assert(ready(result), "Mail did not reach the expected intermediate state: " .. id)
+    return result
 end
 
 local function terminal(executor, queued)

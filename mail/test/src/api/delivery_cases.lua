@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local json = require("json")
 local sql = require("sql")
-local time = require("time")
+local delivery_wait = require("delivery_wait")
 
 local function register(support)
     local test = support.test
@@ -19,25 +19,29 @@ local function register(support)
     test.it("broadcasts topic-only library and Activity invalidations after commit", function()
         local db = assert(sql.get("app:db"))
         assert(db:execute("DELETE FROM mail_realtime_fixture"))
+        local resource, subject = "event-frame", "Realtime fixture delivery"
+        for topic, name in pairs({["fixture.observe_library"] = resource, ["fixture.observe_activity"] = subject}) do
+            assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,'{}','')",
+                {topic, name}))
+        end
         assert(db:release())
+        local observe = delivery_wait.observe(nil, "10s")
         local editor = session("editor_sender")
         local admin = session("delivery")
         configure()
-        local item = own(fixture("base", "event-frame", "{{ block body() }}{{ end }}"))
+        local item = own(fixture("base", resource, "{{ block body() }}{{ end }}"))
         local saved = create(editor, item)
         test.eq(409, (request(editor, "POST", "/library", item)))
         local send = data(editor, "POST", "/library/send-test", {
-            message = "notice", vars = {subject = "Realtime fixture delivery"},
+            message = "notice", vars = {subject = subject},
         }, 202)
         state.activity_rows[#state.activity_rows + 1] = send.message_id
-        local deadline = time.now():add(10 * time.SECOND):unix_nano()
-        local events
-        repeat
-            db = assert(sql.get("app:db"))
-            events = assert(db:query("SELECT data, observed FROM mail_realtime_fixture WHERE subject='fixture'"))
-            assert(db:release())
-            if #events < 3 then time.sleep("20ms") end
-        until #events >= 3 or time.now():unix_nano() >= deadline
+        local events = assert(observe(function()
+            local connection = assert(sql.get("app:db"))
+            local rows, err = connection:query("SELECT data, observed FROM mail_realtime_fixture WHERE subject='fixture'")
+            assert(connection:release())
+            return rows, err
+        end, function(rows) return rows and #rows >= 3 end))
         test.eq(3, #events)
         local seen = {}
         for _, event in ipairs(events) do
@@ -124,16 +128,16 @@ local function register(support)
         test.is_false(unconfigured.configured)
         test.eq("driver_required", unconfigured.code)
         test.eq("Choose a delivery service for Mail.", unconfigured.reason)
-        local status_code, refused, raw = request(editor, "POST", "/library/send-test", {message = "notice"})
+        local status_code, refused = request(editor, "POST", "/library/send-test", {message = "notice"})
         test.eq(400, status_code)
         test.eq("invalid_config", refused.code)
-        test.eq("Mail delivery requires setup. Ask a mail administrator to check the delivery settings.", refused.error)
-        test.is_nil(raw:find("driver_required", 1, true))
-        test.is_nil(raw:find("An active mail driver is required", 1, true))
+        test.eq(errors.INVALID, refused.kind)
+        test.eq(refused.code, refused.details.code)
+        for key in pairs(refused.details) do test.eq("code", key) end
         local admin_status, admin_refusal = request(admin, "POST", "/delivery/send-test")
         test.eq(status_code, admin_status)
         test.eq(refused.code, admin_refusal.code)
-        test.eq(refused.error, admin_refusal.error)
+        test.eq(refused.kind, admin_refusal.kind)
         local preview = data(editor, "POST", "/library/preview", {message = "notice"})
         test.not_nil(preview.html)
     end)

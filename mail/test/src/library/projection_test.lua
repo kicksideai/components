@@ -4,6 +4,7 @@ local contract = require("contract")
 local events = require("events")
 local funcs = require("funcs")
 local json = require("json")
+local jobs = require("jobs")
 local resource = require("resource")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
@@ -55,9 +56,7 @@ local function watermark()
 end
 
 local function pending_sync()
-    return query([[SELECT owner_id,payload FROM kickside_job
-        WHERE owner_kind = 'mail-library' AND owner_id = $1]],
-        {THREAD})
+    return assert(jobs.list_owner_jobs({kind = "mail-library", id = THREAD}))
 end
 
 local function upload_state(id)
@@ -122,7 +121,7 @@ local function cases()
             test.eq(envelope.body.from_version, history.restored_from)
             local count = 0
             for _, job in ipairs(pending_sync()) do
-                if assert(json.decode(job.payload)).seq == seq then count = count + 1 end
+                if assert(json.decode(assert(jobs.get_job(job.id)).payload)).seq == seq then count = count + 1 end
             end
             test.eq(sync and 1 or 0, count, envelope.type .. " sync jobs for sequence " .. seq)
             return seq

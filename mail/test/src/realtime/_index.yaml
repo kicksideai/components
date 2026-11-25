@@ -31,6 +31,9 @@ entries:
     kind: function.lua
     source: file://notify.lua
     method: notify
+    modules: [events, security]
+    security:
+      policies: [app.mail_realtime:fixture_activity_signal]
   - name: notify_test
     kind: function.lua
     meta: {type: test, suite: mail_realtime}
