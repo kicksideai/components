@@ -3,8 +3,8 @@ local uploads = require("uploads")
 local interleave = require("asset_interleave")
 
 return {
-    reap = function(component, id)
+    reap = function(id)
         interleave.pause_reap(id)
-        return uploads.reap(component, id)
+        return uploads.reap(id)
     end,
 }

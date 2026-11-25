@@ -58,7 +58,7 @@ local function collect(now_ms: integer, boundary: integer, limit: integer, retry
     local blocked: {types.BlockedAsset} = {}
     for _, row in ipairs(claimed) do
         local id = row.upload_id :: string
-        local err = uploads.reap(component_id, id)
+        local err = uploads.reap(id)
         if err then
             blocked[#blocked + 1] = {component_id = component_id, error = err}
         else

@@ -31,11 +31,9 @@ entries:
         - kickside.mail.security:library_threads_caller
         - kickside.core.security:module_access
         - kickside.mail.security:library_threads_read
-        - kickside.mail.security:asset_reap_call
-        - kickside.mail.security:asset_reap_action
+        - kickside.mail.security:asset_reaper
         - kickside.mail.security:scratch_sets
         - kickside.mail.security:scratch_entries
-        - kickside.uploads.security:uploads_resource_access
   - name: library_sync
     kind: function.lua
     meta: {private: true, type: kickside.core.jobs.worker}

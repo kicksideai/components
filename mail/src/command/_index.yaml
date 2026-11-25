@@ -116,6 +116,20 @@ entries:
     meta: {private: true}
     source: file://uploads.lua
     modules: [funcs]
+  - name: reap_asset
+    kind: function.lua
+    meta: {private: true, comment: Reap one claimed version from the Mail library.}
+    source: file://reap_asset.lua
+    method: run
+    modules: [funcs]
+    imports:
+      content: kickside.mail.read:content
+    security:
+      groups: [kickside.mail.security:asset_service]
+      policies:
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:asset_reap_call
+        - kickside.mail.security:asset_reap_action
   - name: preview
     kind: library.lua
     meta: {private: true}

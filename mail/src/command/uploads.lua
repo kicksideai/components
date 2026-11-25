@@ -8,10 +8,8 @@ local function adopt(component_id: string, upload_id: string, version_id: string
     return result :: {upload_id: string}?, err
 end
 
-local function reap(component_id: string, version_id: string): error?
-    local _, err = funcs.call("kickside.uploads:reap_component_upload", {
-        component_id = component_id, version_id = version_id, owner_impl = "kickside.mail.binding:library",
-    })
+local function reap(version_id: string): error?
+    local _, err = funcs.call("kickside.mail.command:reap_asset", version_id)
     return err
 end
 

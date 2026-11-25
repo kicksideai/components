@@ -92,6 +92,16 @@ local function cases()
         test.eq(0, #(member.data.groups or {}))
     end)
 
+    test.it("keeps Uploads reaping authority in its Mail-owned call frame", function()
+        local owner = assert(registry.get("kickside.mail.jobs:owner"))
+        for _, policy in ipairs(owner.data.security.policies) do
+            test.is_nil(policy:match("^kickside%.uploads[.:]"), policy)
+        end
+        local reaper = assert(registry.get("kickside.mail.command:reap_asset"))
+        test.is_true(reaper.meta.private)
+        test.eq("kickside.mail.security:asset_service", reaper.data.security.groups[1])
+    end)
+
     test.it("declares closed schemas for every library input event and a component-owned fold", function()
         local binding = assert(registry.get("kickside.mail.binding:library"))
         test.eq("tabler:mail", binding.meta.icon)

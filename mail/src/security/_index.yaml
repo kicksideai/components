@@ -291,6 +291,14 @@ entries:
       resources: [kickside.uploads]
       actions: [uploads.asset.adopt]
       effect: allow
+  - name: asset_reaper
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    groups: []
+    policy:
+      resources: [kickside.mail.command:reap_asset]
+      actions: [funcs.call]
+      effect: allow
   - name: asset_reap_call
     kind: security.policy
     meta: {private: true, service_only: true}
