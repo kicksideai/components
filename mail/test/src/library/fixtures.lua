@@ -71,10 +71,10 @@ local function remove(keys)
     assert(database.with_tx(function(tx)
         for _, key in ipairs(keys) do
             if key.kind == "asset" then
-                local released, err = repo.remove(tx, key, true)
-                if err then return nil, err end
-                local _, release_err = files.release(tx, released, time.now():unix_nano() // 1000000)
-                if release_err then return nil, release_err end
+                local args = {key.name}
+                assert(tx:execute("DELETE FROM mail_library_asset WHERE name=$1", args))
+                assert(tx:execute("UPDATE mail_library_upload_ref SET live=FALSE WHERE asset=$1", args))
+                assert(tx:execute("DELETE FROM mail_library_revision WHERE kind='asset' AND name=$1", args))
             else
                 local args = {key.kind, key.name}
                 assert(tx:execute("DELETE FROM mail_library_reference WHERE from_kind=$1 AND from_name=$2", args))

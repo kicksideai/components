@@ -22,6 +22,15 @@ local snapshots = {
 }
 
 function M.content(body: types.LibraryEventBody): (types.ResourceContent?, error?)
+    if body.asset or (body.key.kind == "asset" and body.state == "original") then
+        local asset = body.asset
+        local content = body.content
+        return {kind = "asset", name = body.key.name, title = (body.title or content.title) :: string,
+            description = (body.description or content.description) :: string, html = "", text = "",
+            schema = {type = "object", properties = {}}, samples = {},
+            asset = asset and {source = "upload", upload_id = asset.upload_id, filename = asset.filename,
+                content_type = asset.content_type, size = asset.size} or {source = "original"}}, nil
+    end
     local content = body.content
     if not content then
         return nil, resource.error(errors.INVALID, "mail_event_snapshot_missing", "A resource event requires a full snapshot", body.key)

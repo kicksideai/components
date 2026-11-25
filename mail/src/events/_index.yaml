@@ -125,17 +125,23 @@ entries:
         author: *author
         note: *note
         command_hash: *command_hash
-        change: {const: reset}
+        change: {enum: [reset, restored]}
         content: *content
         base: *name
         origin: *origin
         origin_label: *origin_label
         state: {const: original}
         preview_id: *uuid
+        from_seq: *positive_integer
+        from_version: *positive_integer
       allOf:
         - *message_faces
         - if: {properties: {key: {properties: {kind: {const: asset}}}}}
-          else: {required: [preview_id]}
+          else:
+            required: [preview_id]
+            properties: {change: {const: reset}}
+        - if: {properties: {change: {const: restored}}}
+          then: {required: [from_seq, from_version]}
   - name: resource.restored
     kind: registry.entry
     meta: *event_meta

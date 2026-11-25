@@ -11,36 +11,43 @@ local preview_repo = require("preview_repo")
 local repo = require("message_repo")
 local scratch = require("scratch")
 local uploads = require("uploads")
+local upload_refs = require("upload_ref_repo")
+local live_repo = require("live_repo")
+local thread_events = require("thread_events")
 
 local M = {}
 
-local function collect(now_ms: integer, limit: integer, blocked_until: integer): (integer?, {types.BlockedAsset}?, error?)
-    local ids, read_err = database.with_db(function(db: types.DB): ({string}?, error?)
-        return asset_file_repo.due_unreferenced(db, now_ms, limit)
+local function collect(now_ms: integer, boundary: integer, limit: integer, retry_at: integer): (integer?, {types.BlockedAsset}?, error?)
+    local claimed, claim_err = database.with_tx(function(tx: types.Transaction, dialect: string): ({types.Record}?, error?)
+        local mark, lock_err = live_repo.lock(tx, dialect)
+        if lock_err then return nil, lock_err end
+        local rows, err = asset_file_repo.claim_due(tx, mark.projected_seq :: integer, now_ms, limit, retry_at)
+        if err or #rows == limit then return rows, err end
+        local retired, retired_err = asset_file_repo.claim_retired(tx, mark.projected_seq :: integer, boundary, limit - #rows, retry_at)
+        if retired_err then return nil, retired_err end
+        for _, row in ipairs(retired) do rows[#rows + 1] = row end
+        return rows :: {types.Record}, nil
     end)
-    if read_err then return nil, nil, read_err end
+    if claim_err then return nil, nil, claim_err end
     local component_id = content.library_component_id()
-    local removed: {string} = {}
-    local deferred: {string} = {}
+    local removed = 0
     local blocked: {types.BlockedAsset} = {}
-    for _, id in ipairs(ids) do
+    for _, row in ipairs(claimed) do
+        local id = row.upload_id :: string
         local err = uploads.reap(component_id, id)
         if err then
-            deferred[#deferred + 1] = id
             blocked[#blocked + 1] = {component_id = component_id, error = err}
         else
-            removed[#removed + 1] = id
+            local _, forget_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
+                local _, ref_err = upload_refs.forget_retired(tx, id)
+                if ref_err then return nil, ref_err end
+                return asset_file_repo.forget(tx, id)
+            end)
+            if forget_err then return nil, nil, forget_err end
+            removed = removed + 1
         end
     end
-    if #ids > 0 then
-        local _, err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
-            local _, forget_err = asset_file_repo.forget(tx, removed, now_ms)
-            if forget_err then return nil, forget_err end
-            return asset_file_repo.schedule(tx, deferred, blocked_until, now_ms)
-        end)
-        if err then return nil, nil, err end
-    end
-    return #removed, blocked, nil
+    return removed, blocked, nil
 end
 
 local function reconcile(now: integer, input: types.OwnerInput): error?
@@ -89,13 +96,15 @@ end
 local function prune_messages(now: integer, retention_ms: integer, preview_expiry: integer?): (types.OwnerResult?, error?)
     return database.with_tx(function(tx: types.Transaction): (types.OwnerResult?, error?)
         local cutoff = now - retention_ms
-        local _, unlink_err = asset_file_repo.drop_expired_links(tx, cutoff, policy.BATCH, now)
+        local _, unlink_err = asset_file_repo.drop_expired_links(tx, cutoff, policy.BATCH)
         if unlink_err then return nil, unlink_err end
         local deleted, delete_err = repo.prune_finished(tx, cutoff, policy.BATCH)
         if delete_err then return nil, delete_err end
         local deadlines, read_err = repo.next_deadlines(tx)
         if read_err then return nil, read_err end
-        local asset_due, asset_err = asset_file_repo.next_due(tx)
+        local mark, mark_err = live_repo.get(tx)
+        if mark_err then return nil, mark_err end
+        local asset_due, asset_err = asset_file_repo.next_due(tx, mark.projected_seq)
         if asset_err then return nil, asset_err end
         local next_check = earlier(deadlines.check_at, asset_due)
         next_check = earlier(next_check, deadlines.finished_at and deadlines.finished_at + retention_ms)
@@ -108,12 +117,17 @@ end
 function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): (types.OwnerResult?, error?)
     local reconcile_err = reconcile(now, input)
     if reconcile_err then return nil, reconcile_err end
-    local collected, blocked, collect_err = collect(now, policy.BATCH, now + policy.RECHECK_MS)
+    local threads, open_err = thread_events.open()
+    if open_err then return nil, open_err end
+    local boundary, boundary_err = thread_events.prune_boundary(threads :: types.LibraryThreads)
+    if boundary_err then return nil, boundary_err end
+    local collected, blocked, collect_err = collect(now, boundary.max_pruned_seq :: integer, policy.BATCH, now + policy.RECHECK_MS)
     local preview_expiry, preview_err = prune_previews(now // 1000)
     if preview_err then return nil, preview_err end
     local result, sweep_err = prune_messages(now, retention_ms, preview_expiry)
     if sweep_err or collect_err then return nil, sweep_err or collect_err end
     local report = result :: types.OwnerResult
+    if (collected or 0) + #blocked == policy.BATCH then report.needs_continue = true end
     report.blocked = blocked
     report.deleted = (report.deleted or 0) + (collected or 0)
     return report, nil

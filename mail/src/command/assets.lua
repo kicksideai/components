@@ -12,6 +12,7 @@ local asset_file_repo = require("asset_file_repo")
 local database = require("database")
 local uploads = require("uploads")
 local notify = require("notify")
+local canonical = require("canonical_json")
 
 local M = {}
 
@@ -20,14 +21,13 @@ local function dimension(value: unknown): boolean
 end
 
 function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, error?)
-    local denied = library.require_write()
-    if denied then return nil, denied end
+    if type(input) ~= "table" then return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide a mail asset upload") end
     local key = {kind = "asset", name = input.name}
     local bad = operation == "create" and resources.check_input_key(key) or resources.check_key(key)
     if bad then return nil, bad end
     local note_err = resources.check_note(input.note)
     if note_err then return nil, note_err end
-    if operation == "update" and (type(input.expected_revision) ~= "number"
+    if (input.expected_revision ~= nil or operation == "update") and (type(input.expected_revision) ~= "number"
         or math.tointeger(input.expected_revision) == nil or input.expected_revision < 0) then
         return nil, resources.error(errors.INVALID, "invalid_mail_revision", "Provide an expected revision", key)
     end
@@ -39,13 +39,33 @@ function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, 
         or (input.description ~= nil and type(input.description) ~= "string") then
         return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide an upload ID and optional image dimensions", key)
     end
+    local denied = library.require_write()
+    if denied then return nil, denied end
+    local identity = operation
+    local signature: string?
+    if input.command_id then
+        local command_id, id_err = edit_rules.command_id(input.command_id)
+        if id_err then return nil, id_err end
+        local hash_err
+        signature, hash_err = canonical.hash({key = key, upload_id = input.upload_id, title = input.title,
+            description = input.description, expected_revision = input.expected_revision, note = input.note})
+        if hash_err then return nil, hash_err end
+        local replay, replay_err = writer.replay_asset(key, identity, command_id :: string, signature :: string)
+        if replay or replay_err then return replay, replay_err end
+    end
     local current, read_err = library.lookup(key)
     if read_err and read_err:kind() ~= errors.NOT_FOUND then return nil, read_err end
+    local expected = input.expected_revision
+    if operation == "add_asset" then
+        if not current and expected ~= nil then return nil, edit_rules.missing(key) end
+        expected = expected or (current and current.revision)
+        operation = current and "update" or "create"
+    end
     if operation == "create" then
         if current then return nil, edit_rules.conflict(key, current.revision) end
     elseif not current then
         return nil, edit_rules.missing(key)
-    elseif input.expected_revision ~= current.revision then
+    elseif expected ~= current.revision then
         return nil, edit_rules.conflict(key, current.revision)
     end
     local _, info, info_err = content.upload_info(input.upload_id)
@@ -54,12 +74,13 @@ function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, 
     local bad_image = asset_refs.image_error(info.content_type, info.size)
     if bad_image then return nil, bad_image end
     local version = uuid.v7()
-    local lease = time.now():utc():add(15 * time.MINUTE)
+    local now = time.now():utc()
+    local lease = now:add(15 * time.MINUTE)
     local asset: types.Asset = {source = "upload", upload_id = version, filename = info.filename,
         content_type = info.content_type, size = info.size :: integer, width = input.width, height = input.height}
     local deadline = lease:unix_nano() // 1000000
     local _, reserve_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
-        return asset_file_repo.reserve(tx, asset, deadline)
+        return asset_file_repo.reserve(tx, asset, now:unix_nano() // 1000000, deadline)
     end)
     if reserve_err then return nil, reserve_err end
     notify.retention()
@@ -71,19 +92,12 @@ function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, 
     local candidate: types.ResourceContent = {kind = key.kind, name = input.name, title = input.title or (current and current.title) or input.name,
         description = input.description or (current and current.description) or "", html = "", text = "",
         schema = {type = "object", properties = {}}, samples = {}, asset = asset}
-    return writer.one({key = key, content = candidate, expected = input.expected_revision, note = input.note,
-        asset_deadline = deadline}, operation)
+    return writer.one({key = key, content = candidate, expected = expected, note = input.note,
+        asset_deadline = deadline}, operation, {command_id = input.command_id, identity_op = identity, command_hash = signature})
 end
 
 function M.add(input: types.AssetWrite): (types.Resource?, error?)
-    local denied = library.require_write()
-    if denied then return nil, denied end
-    if type(input) ~= "table" then return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Provide a mail asset upload") end
-    local current, read_err = library.lookup({kind = "asset", name = input.name})
-    if read_err and read_err:kind() ~= errors.NOT_FOUND then return nil, read_err end
-    if current and input.expected_revision == nil then input.expected_revision = current.revision end
-    if not current and input.expected_revision ~= nil then return nil, edit_rules.missing({kind = "asset", name = input.name}) end
-    return M.adopt(input, current and "update" or "create")
+    return M.adopt(input, "add_asset")
 end
 
 return M

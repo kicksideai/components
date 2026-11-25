@@ -16,6 +16,8 @@ local fixtures = require("fixtures")
 local asset_file_repo = require("asset_file_repo")
 local attachments = require("attachments")
 local content = require("content")
+local prune = require("prune")
+local interleave = require("asset_interleave")
 
 local function setup_actor(groups)
     local id = uuid.v4()
@@ -74,7 +76,7 @@ local run = test.run_cases(function()
                 input.preview_id = assert(preview.preview_id, preview.errors[1] and preview.errors[1].message)
             end
             local result, err = fixtures.call(editor, method, input)
-            if type(result) == "table" and method ~= "get" then fixtures.await_live(result.seq) end
+            if type(result) == "table" and input.kind ~= "asset" and method ~= "get" then fixtures.await_live(result.seq) end
             return assert(result, tostring(err))
         end
         local function upload(mime, bytes)
@@ -99,6 +101,172 @@ local run = test.run_cases(function()
             error("The fixture mail remains queued")
         end
 
+        local function sweep(now)
+            local owner = assert(funcs.new():with_context({mail_test_now = now}))
+            local result = assert(owner:call("kickside.mail.jobs:owner", {}))
+            assert(result.success, tostring(result.error))
+            return result
+        end
+
+        local function prune_through(seq)
+            local thread = content.library_component_id()
+            local db = assert(sql.get("app:db"))
+            local before = assert(db:query("SELECT max_pruned_seq FROM kickside_thread WHERE id=$1", {thread}))
+            local result, err = prune.prune_thread(db, thread, {
+                cutoff = "2099-01-01T00:00:00Z", max_total = seq - before[1].max_pruned_seq,
+            })
+            assert(db:release())
+            assert(result, tostring(err))
+            test.eq(seq, result.max_pruned_seq)
+        end
+
+        local function restore_race(name, reap_first)
+            local image = {kind = "asset", name = name, upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            local first = call("create", image)
+            local source = assert(lookup.get(first.asset.upload_id))
+            image.upload_id, image.expected_revision = upload("image/gif", gif() .. "next"), first.revision
+            local latest = call("update", image)
+            local restore_gate = reap_first and "before_reserve" or "before_append"
+            local restore = assert(editor:with_context({mail_test_asset_gate = restore_gate}))
+            local saved = assert(fixtures.async(restore, "restore", {
+                kind = "asset", name = name, seq = first.seq, expected_revision = latest.revision,
+            }))
+            interleave.await(restore_gate)
+            prune_through(first.seq)
+
+            local function head()
+                local db = assert(sql.get("app:db"))
+                local rows = assert(db:query("SELECT event_count FROM kickside_thread WHERE id=$1",
+                    {content.library_component_id()}))
+                assert(db:release())
+                return rows[1].event_count
+            end
+            local now = time.now():unix_nano() // 1000000
+            if reap_first then
+                local before = head()
+                local owner = assert(funcs.new():with_context({
+                    mail_test_now = now, mail_test_asset_gate = "after_claim", mail_test_reap_id = source.uuid,
+                }))
+                local reaping = assert(owner:async("kickside.mail.jobs:owner", {}))
+                interleave.await("after_claim")
+                test.is_true(storage:exists(source.storage_path))
+                interleave.release(restore_gate)
+                fixtures.await(function() return saved:is_complete() end, "The refused restore did not finish")
+                local value, err = saved:result()
+                interleave.release("after_claim")
+                fixtures.await(function() return reaping:is_complete() end, "The reap did not finish")
+                local collected = assert(reaping:result()):data()
+                assert(collected.success, tostring(collected.error))
+                test.is_nil(value)
+                test.eq(before, head())
+                test.eq(errors.NOT_FOUND, assert(err):kind())
+                test.eq("mail_asset_source_gone", err:details().code)
+                test.eq(latest.seq, call("get", image).seq)
+                test.is_false(storage:exists(source.storage_path))
+            else
+                sweep(now)
+                local kept = storage:exists(source.storage_path)
+                interleave.release(restore_gate)
+                fixtures.await(function() return saved:is_complete() end, "The accepted restore did not finish")
+                local payload, err = saved:result()
+                local value = assert(payload, tostring(err)):data()
+                test.is_true(kept)
+                test.eq(first.asset.upload_id, value.asset.upload_id)
+                test.eq(gif(), call("asset_content", {kind = "asset", name = name}).bytes)
+            end
+        end
+
+        test.it("keeps a restore reservation when Core prunes before the append", function()
+            restore_race("restore-before-reap", false)
+        end)
+
+        test.it("refuses a restore without appending after reaping claims its upload", function()
+            restore_race("reap-before-restore", true)
+        end)
+
+        test.it("keeps an old upload through History and pending delivery, then reaps it", function()
+            local image = {kind = "asset", name = "retained-image", upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            local first = call("create", image)
+            local version = assert(lookup.get(first.asset.upload_id))
+            image.upload_id, image.expected_revision = upload("image/gif", gif() .. "next"), first.revision
+            local latest = call("update", image)
+            local now = time.now():add(24 * time.HOUR):unix_nano() // 1000000
+            sweep(now)
+            test.is_true(storage:exists(version.storage_path))
+            test.not_nil(first.seq)
+            test.not_nil(latest.seq)
+            local db = assert(sql.get("app:db"))
+            local pending = uuid.v4()
+            assert(db:execute([[INSERT INTO mail_message
+                (id,created_at,status,sender,recipients,subject,from_address,attachments,next_attempt_at,next_check_at,actor_context)
+                VALUES ($1,$2,'queued','fixture','{}','Pending','mail@example.org','[]',$3,$3,'{}')]],
+                {pending, now, now + 86400000}))
+            assert(db:execute([[INSERT INTO mail_message_asset (message_id,name,content_id,upload_id)
+                VALUES ($1,$2,$2,$3)]], {pending, image.name, version.uuid}))
+            assert(db:release())
+            prune_through(first.seq)
+            sweep(now)
+            local protected = storage:exists(version.storage_path)
+            db = assert(sql.get("app:db"))
+            assert(db:execute("DELETE FROM mail_message WHERE id=$1", {pending}))
+            assert(db:release())
+            sweep(now)
+            test.is_true(protected)
+            test.is_false(storage:exists(version.storage_path))
+            test.eq(latest.asset.upload_id, call("get", image).asset.upload_id)
+        end)
+
+        test.it("reaps an adopted reservation after a failed append and its grace", function()
+            local image = {kind = "asset", name = "failed-append-image", upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            local actor = assert(security.new_actor(uploader, {security_groups = {"app:mail_editors", "app:mail_senders"}}))
+            local scope = assert(security.named_scope("wippy.security:process"))
+            local fault = assert(funcs.new():with_actor(actor):with_scope(scope):with_context({mail_test_append_failure = true}))
+            local value, err = fixtures.call(fault, "create", image)
+            test.is_nil(value)
+            test.eq("mail_test_append_failure", assert(err):details().code)
+            local db = assert(sql.get("app:db"))
+            local rows = assert(db:query("SELECT upload_id,due_at FROM mail_asset_file WHERE due_at IS NOT NULL"))
+            assert(db:release())
+            local reservation
+            for _, row in ipairs(rows) do
+                local file = lookup.get(row.upload_id)
+                if file then reservation = {path = file.storage_path, due_at = row.due_at}; break end
+            end
+            assert(reservation, "The adopted file has a ledger reservation")
+            sweep(reservation.due_at - 1)
+            test.is_true(storage:exists(reservation.path))
+            sweep(reservation.due_at)
+            test.is_false(storage:exists(reservation.path))
+        end)
+
+        test.it("publishes the replaced image revision in the library event log", function()
+            local image = {kind = "asset", name = "history-image-probe", upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            local thread = content.library_component_id()
+            local function query(statement, args)
+                local db = assert(sql.get("app:db"))
+                local rows, err = db:query(statement, args)
+                assert(db:release())
+                return assert(rows, tostring(err))
+            end
+            local before = query("SELECT event_count FROM kickside_thread WHERE id=$1", {thread})[1].event_count
+            local first = call("create", image)
+            image.expected_revision = first.revision
+            image.upload_id = upload("image/gif", gif() .. "replacement")
+            local latest = call("update", image)
+            local older = call("asset_content", {name = image.name, revision = first.revision})
+            test.eq(gif(), older.bytes)
+            test.neq(first.asset.upload_id, latest.asset.upload_id)
+            local indexed = query([[SELECT h.seq FROM mail_library_history h
+                JOIN kickside_event e ON e.thread_id=$1 AND e.seq=h.seq
+                WHERE h.kind='asset' AND h.name=$2]], {thread, image.name})
+            local after = query("SELECT event_count FROM kickside_thread WHERE id=$1", {thread})[1].event_count
+            test.eq(2, #indexed, ("asset create and replace advanced the thread from %d to %d"):format(before, after))
+        end)
+
         test.it("adopts, replaces, restores and resets an image in the same library", function()
             local original = call("get", {kind = "asset", name = "logo"})
             test.eq("original", original.state)
@@ -108,7 +276,7 @@ local run = test.run_cases(function()
                 width = 1, height = 1, expected_revision = original.revision})
             test.eq("customized", replaced.state)
             test.eq(original.origin, replaced.origin)
-            test.eq(1, replaced.asset.width)
+            test.is_nil(replaced.asset.width)
             test.neq(source, replaced.asset.upload_id)
             local person = settings.session("editor")
             local preview_client = assert(funcs.new():with_actor(person.actor):with_scope(person.scope))
@@ -265,6 +433,7 @@ local run = test.run_cases(function()
             saved = call("update", msg)
             test.eq(0, #call("get", image).used_by.messages)
             local version = assert(lookup.get(added.asset.upload_id))
+            prune_through(saved.seq)
             local retained = assert(funcs.call("kickside.mail.jobs:owner", {}))
             test.is_true(retained.success, tostring(retained.error))
             test.is_true(storage:exists(version.storage_path))
@@ -405,6 +574,7 @@ local run = test.run_cases(function()
             test.eq("message_rejected", failure.last_error.code)
             assert(fixtures.call(editor, "delete", {kind = "message", name = message.name, expected_revision = template.revision}))
             assert(fixtures.call(editor, "delete", {kind = "asset", name = image.name, expected_revision = saved.revision}))
+            prune_through(saved.seq)
             local retained = assert(funcs.call("kickside.mail.jobs:owner", {}))
             test.is_true(retained.success, tostring(retained.error))
             test.is_true(storage:exists(record.storage_path), "The failed delivery keeps the adopted bytes")
@@ -508,7 +678,7 @@ local expiry = test.run_cases(function()
             assert(db:execute([[INSERT INTO mail_asset_file
                 (upload_id,filename,content_type,size_bytes,due_at) VALUES ($1,'fixture','image/gif',1,$2)]], {version, due}))
             local tx = assert(db:begin())
-            local _, failure = asset_file_repo.activate(tx, version, lease, now)
+            local _, failure = asset_file_repo.hold_adoption(tx, version, lease, now, 1, "test")
             assert(tx:rollback())
             assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id=$1", {version}))
             assert(db:release())

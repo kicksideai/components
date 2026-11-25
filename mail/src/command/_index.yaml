@@ -5,11 +5,12 @@ entries:
   - name: library
     kind: library.lua
     source: file://library.lua
-    modules: [security, time, logger]
+    modules: [security, time, logger, uuid]
     imports:
       types: kickside.mail:types
       resource: kickside.mail.domain:resource
       edit: kickside.mail.domain:edit
+      events: kickside.mail.domain:events
       library_edits: kickside.mail.command:library_edits
       notify: kickside.mail.command:notify
       database: kickside.mail.persist:db
@@ -75,6 +76,7 @@ entries:
       notify: kickside.mail.command:notify
       library: kickside.mail.read:library
       content: kickside.mail.read:content
+      canonical_json: kickside.contract:canonical_json
       database: kickside.mail.persist:db
       asset_file_repo: kickside.mail.persist:asset_file_repo
   - name: uploads
@@ -125,6 +127,9 @@ entries:
       preview_repo: kickside.mail.persist:preview_repo
       content: kickside.mail.read:content
       scratch: kickside.mail.render:scratch
+      live_repo: kickside.mail.persist:live_repo
+      thread_events: kickside.mail.read:thread_events
+      upload_ref_repo: kickside.mail.persist:upload_ref_repo
       jobs: kickside.core.jobs:jobs
       policy: kickside.mail.domain:policy
       outbox: kickside.mail.command:outbox

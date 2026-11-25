@@ -107,6 +107,8 @@ entries:
       asset_file_repo: kickside.mail.persist:asset_file_repo
       attachments: kickside.mail.command:attachments
       content: kickside.mail.read:content
+      prune: kickside.core.retention:prune
+      asset_interleave: app.mail_library:asset_interleave
   - name: asset_expiry_test
     kind: function.lua
     meta: { type: test, suite: mail_asset_expiry }
@@ -114,6 +116,33 @@ entries:
     method: expiry
     modules: *assets_modules
     imports: *assets_imports
+  - name: append_fault
+    kind: library.lua
+    source: file://append_fault.lua
+    modules: [ctx]
+    imports:
+      threads: kickside.mail.command:threads
+      asset_interleave: app.mail_library:asset_interleave
+  - name: asset_interleave
+    kind: library.lua
+    source: file://asset_interleave.lua
+    modules: [ctx]
+    imports:
+      database: kickside.mail.persist:db
+      fixtures: app.mail_library:fixtures
+  - name: source_fault
+    kind: library.lua
+    source: file://source_fault.lua
+    imports:
+      thread_events: kickside.mail.read:thread_events
+      asset_interleave: app.mail_library:asset_interleave
+  - name: reap_fault
+    kind: library.lua
+    source: file://reap_fault.lua
+    modules: [ctx]
+    imports:
+      uploads: kickside.mail.command:uploads
+      asset_interleave: app.mail_library:asset_interleave
   - name: projection_fault
     kind: library.lua
     source: file://projection_fault.lua

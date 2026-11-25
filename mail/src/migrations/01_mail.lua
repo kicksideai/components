@@ -76,7 +76,12 @@ local tables: {string} = {
         filename TEXT NOT NULL,
         content_type TEXT NOT NULL,
         size_bytes BIGINT NOT NULL,
-        due_at BIGINT
+        reserved_at BIGINT NOT NULL DEFAULT 0,
+        due_at BIGINT,
+        state TEXT NOT NULL DEFAULT 'held' CHECK (state IN ('held','reaping')),
+        hold_seq BIGINT,
+        hold_id TEXT,
+        CHECK ((hold_seq IS NULL) = (hold_id IS NULL))
     )]],
     [[CREATE TABLE mail_library_revision (
         kind TEXT NOT NULL,
@@ -96,7 +101,7 @@ local tables: {string} = {
         created_at BIGINT NOT NULL,
         updated_at BIGINT NOT NULL,
         note TEXT,
-        asset_upload_id TEXT REFERENCES mail_asset_file(upload_id),
+        asset_upload_id TEXT,
         version BIGINT NOT NULL,
         action TEXT NOT NULL,
         restored_from BIGINT,

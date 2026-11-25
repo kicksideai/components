@@ -32,7 +32,7 @@ function M.load(workspace: types.LibraryWorkspace, key: types.ResourceKey): erro
     if original and (not row or row.state == "original") then
         if row then
             original.resource.revision, original.resource.seq = row.revision, row.seq
-        elseif key.kind ~= "asset" then
+        else
             local position, position_err = library_reader.subject_position(workspace.ex, key)
             if position_err then return position_err end
             original.resource.revision, original.resource.seq = position.revision, position.seq
@@ -46,7 +46,6 @@ end
 function M.current_revision(workspace: types.LibraryWorkspace, key: types.ResourceKey): (integer?, error?)
     local item = workspace.items[resources.subject(key)]
     if item then return item.revision, nil end
-    if key.kind == "asset" then return 0, nil end
     local position, err = library_reader.subject_position(workspace.ex, key)
     if err then return nil, err end
     return position.revision, nil
@@ -141,7 +140,7 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
         for field, value in pairs(source) do copy[field] = value end
         for field, value in pairs(content) do copy[field] = value end
         content = copy :: types.ResourceContent
-    elseif edit.restore then
+    elseif edit.restore and not edit.content then
         local history, history_err = library_reader.history(ex, key, edit.restore)
         if history_err then return nil, history_err end
         if not history[1] then
@@ -197,7 +196,9 @@ end
 
 function M.restore(input: types.ResourceRestore): types.LibraryEdit
     local edit = M.revision(input)
-    if type(input) == "table" then edit.restore = input.revision end
+    if type(input) == "table" then
+        edit.restore, edit.source_seq = input.seq or input.revision, input.seq
+    end
     return edit
 end
 

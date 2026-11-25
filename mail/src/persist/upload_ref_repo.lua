@@ -19,4 +19,10 @@ function M.retire(tx: types.Transaction, upload_id: string, seq: integer): (bool
     return true, nil
 end
 
+function M.forget_retired(tx: types.Transaction, id: string): (boolean?, error?)
+    local _, err = tx:execute("DELETE FROM mail_library_upload_ref WHERE upload_id=$1 AND live=FALSE", {id})
+    if err then return nil, err end
+    return true, nil
+end
+
 return M

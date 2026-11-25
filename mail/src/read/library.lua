@@ -292,7 +292,7 @@ local function recent_since(): (integer?, error?)
     return now - days * policy.DAY_MS, nil
 end
 
-local function used_by(item: types.Resource): (types.UsedBy?, error?)
+function M.used_by(item: types.Resource): (types.UsedBy?, error?)
     if item.kind == "asset" or item.kind == "base" then
         local declarations, err = originals_reader.list()
         if err then return nil, err end
@@ -324,7 +324,7 @@ function M.get(input: types.ResourceKey): (types.Resource?, error?)
         item.original = {html = source.html, text = source.text, subject = source.subject,
             base = source.base, schema = source.schema, samples = source.samples}
     end
-    local usage, usage_err = used_by(item)
+    local usage, usage_err = M.used_by(item)
     if usage_err then return nil, usage_err end
     item.used_by = usage
     return item, nil

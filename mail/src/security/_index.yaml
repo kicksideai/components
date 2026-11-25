@@ -101,6 +101,13 @@ entries:
         list_events, catch_up_projection, prune_boundary]
       actions: [contract.get, contract.open, contract.call]
       effect: allow
+  - name: library_prune_boundary
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.mail.library]
+      actions: [threads.prune_boundary.read]
+      effect: allow
   - name: library_threads_caller
     kind: security.policy
     meta: {private: true}

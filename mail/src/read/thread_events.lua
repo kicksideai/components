@@ -43,18 +43,23 @@ function M.event_at(threads: types.LibraryThreads, seq: integer): (types.ThreadE
     return page.events[1], nil
 end
 
-function M.resource_at(threads: types.LibraryThreads, seq: integer): (types.Resource?, error?)
-    local event, err = M.event_at(threads, seq)
-    if err then return nil, err end
+function M.event_resource(event: types.ThreadEvent): (types.Resource?, error?)
     local decoded, decode_err = json.decode(event.body :: string)
     if decode_err then return nil, decode_err end
     local body = decoded :: types.LibraryEventBody
     local snapshot, content_err = events.content(body)
     if content_err then return nil, content_err end
     local item = snapshot :: types.Resource
-    item.state, item.origin, item.origin_label = body.state, body.origin, body.origin_label
+    local state = body.state or (body.origin and "customized" or "created")
+    item.state, item.origin, item.origin_label = state, body.origin, body.origin_label
     item.revision, item.seq, item.author = event.subject_version, event.seq, body.author
     return item, nil
+end
+
+function M.resource_at(threads: types.LibraryThreads, seq: integer): (types.Resource?, error?)
+    local event, err = M.event_at(threads, seq)
+    if err then return nil, err end
+    return M.event_resource(event :: types.ThreadEvent)
 end
 
 function M.prune_boundary(threads: types.LibraryThreads): ({max_pruned_seq: integer}?, error?)

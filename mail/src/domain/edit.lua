@@ -87,6 +87,11 @@ local event_types = {
 }
 
 function M.event_type(operation: string, key: types.ResourceKey): string
+    if key.kind == "asset" then
+        if operation == "delete" then return events.ASSET_REMOVED end
+        if operation == "restore" then return events.ASSET_RESTORED end
+        if operation ~= "reset" then return events.ASSET_ADDED end
+    end
     if operation == "delete" then return key.kind == "message" and events.ARCHIVED or events.DELETED end
     return event_types[operation] :: string
 end

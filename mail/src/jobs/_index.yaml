@@ -22,6 +22,10 @@ entries:
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:settings_read
+        - kickside.mail.security:library_threads
+        - kickside.mail.security:library_threads_caller
+        - kickside.mail.security:library_thread_config
+        - kickside.mail.security:library_prune_boundary
         - kickside.mail.security:asset_reap_call
         - kickside.mail.security:asset_reap_action
         - kickside.mail.security:overlay_owner

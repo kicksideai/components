@@ -81,7 +81,7 @@ function M.settle(row: types.MessageRow, lease: types.Lease, delivered: types.Tr
                 retryable = false, details = {code = "delivery_state_changed"}})
         end
         if delivered then
-            local _, detach_err = asset_file_repo.detach(tx, row.id, now)
+            local _, detach_err = asset_file_repo.detach(tx, row.id)
             if detach_err then return nil, detach_err end
         end
         return done :: types.JobCompletion, nil

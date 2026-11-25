@@ -15,7 +15,7 @@ local function asset_resource(row: types.LibraryRow): types.Resource
     return {kind = "asset", name = row.name, title = row.title, description = row.description,
         html = "", text = "", schema = {type = "object", properties = {}}, samples = {}, asset = asset,
         state = row.state, origin = row.origin, origin_label = row.origin_label, revision = row.revision, author = row.author,
-        created_at = row.created_at, updated_at = row.updated_at}
+        created_at = row.created_at, updated_at = row.updated_at, seq = row.last_seq}
 end
 
 local function resource(row: types.LibraryRow): (types.Resource?, error?)
@@ -34,7 +34,7 @@ local function resource(row: types.LibraryRow): (types.Resource?, error?)
     }, nil
 end
 
-local ASSET_SELECT = [[SELECT a.name,a.title,a.description,a.origin,a.origin_label,a.revision,a.author,a.created_at,a.updated_at,
+local ASSET_SELECT = [[SELECT a.name,a.title,a.description,a.origin,a.origin_label,a.revision,a.author,a.created_at,a.updated_at,a.last_seq,
     'asset' AS kind, a.upload_id AS asset_upload_id,
     CASE WHEN a.origin IS NULL THEN 'created' ELSE 'customized' END AS state,
     COALESCE(a.filename,f.filename) AS filename, COALESCE(a.content_type,f.content_type) AS content_type,

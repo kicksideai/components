@@ -4,18 +4,25 @@ local sql = require("sql")
 
 local M = {}
 
-function M.next_due(ex: types.Executor): (integer?, error?)
-    local rows, err = ex:query([[SELECT due_at FROM mail_asset_file WHERE due_at IS NOT NULL
-        ORDER BY due_at,upload_id LIMIT 1]])
+local function eligible(projected: string): string
+    return [[(state='reaping' OR (
+    (hold_seq IS NULL OR hold_seq<=]] .. projected .. [[)
+    AND NOT EXISTS (SELECT 1 FROM mail_library_upload_ref r WHERE r.upload_id=mail_asset_file.upload_id)
+    AND NOT EXISTS (SELECT 1 FROM mail_message_asset m WHERE m.upload_id=mail_asset_file.upload_id)))]]
+end
+
+function M.next_due(ex: types.Executor, projected: integer): (integer?, error?)
+    local rows, err = ex:query("SELECT due_at FROM mail_asset_file WHERE due_at IS NOT NULL AND " .. eligible("$1")
+        .. " ORDER BY due_at,upload_id LIMIT 1", {projected})
     if err then return nil, err end
     local first = rows[1]
     return first and first.due_at :: integer?, nil
 end
 
-function M.reserve(tx: types.Transaction, asset: types.Asset, deadline: integer): (boolean?, error?)
+function M.reserve(tx: types.Transaction, asset: types.Asset, now_ms: integer, deadline: integer): (boolean?, error?)
     local _, err = tx:execute([[INSERT INTO mail_asset_file
-        (upload_id,filename,content_type,size_bytes,due_at) VALUES ($1,$2,$3,$4,$5)]],
-        {asset.upload_id, asset.filename, asset.content_type, asset.size, deadline})
+        (upload_id,filename,content_type,size_bytes,reserved_at,due_at) VALUES ($1,$2,$3,$4,$5,$6)]],
+        {asset.upload_id, asset.filename, asset.content_type, asset.size, now_ms, deadline})
     if err then return nil, err end
     return true, nil
 end
@@ -25,16 +32,49 @@ local function unavailable(): error
         retryable = false, details = {code = "mail_asset_version_unavailable"}})
 end
 
-function M.activate(tx: types.Transaction, id: string, deadline: integer, now_ms: integer): (boolean?, error?)
-    local result, err = tx:execute([[UPDATE mail_asset_file SET due_at=NULL
-        WHERE upload_id=$1 AND due_at=$2 AND due_at>$3]], {id, deadline, now_ms})
+function M.hold_adoption(tx: types.Transaction, id: string, deadline: integer, now_ms: integer,
+    seq: integer, token: string): (boolean?, error?)
+    local result, err = tx:execute([[UPDATE mail_asset_file SET hold_seq=$1,hold_id=$2
+        WHERE upload_id=$3 AND state='held' AND due_at=$4 AND due_at>$5 AND hold_seq IS NULL]],
+        {seq, token, id, deadline, now_ms})
     if err then return nil, err end
     if result.rows_affected ~= 1 then return nil, unavailable() end
     return true, nil
 end
 
+function M.hold_restore(tx: types.Transaction, id: string, projected: integer, seq: integer, token: string): (boolean?, error?)
+    local result, err = tx:execute([[UPDATE mail_asset_file SET hold_seq=$1,hold_id=$2
+        WHERE upload_id=$3 AND state='held' AND (hold_seq IS NULL OR hold_seq<=$4)]], {seq, token, id, projected})
+    if err then return nil, err end
+    if result.rows_affected == 1 then return true, nil end
+    local rows, read_err = tx:query("SELECT state FROM mail_asset_file WHERE upload_id=$1", {id})
+    if read_err then return nil, read_err end
+    if not rows[1] or rows[1].state == "reaping" then
+        return nil, errors.new({kind = errors.NOT_FOUND, message = "The source image is no longer available",
+            details = {code = "mail_asset_source_gone"}})
+    end
+    return nil, errors.new({kind = errors.CONFLICT, retryable = true, message = "The source image is reserved by another write",
+        details = {code = "mail_library_changed"}})
+end
+
+function M.finish_adoption(tx: types.Transaction, id: string, token: string): (boolean?, error?)
+    local _, err = tx:execute("UPDATE mail_asset_file SET due_at=NULL WHERE upload_id=$1 AND hold_id=$2",
+        {id, token})
+    if err then return nil, err end
+    return true, nil
+end
+
+function M.release_hold(tx: types.Transaction, id: string, token: string): (boolean?, error?)
+    local _, err = tx:execute("UPDATE mail_asset_file SET hold_seq=NULL,hold_id=NULL WHERE upload_id=$1 AND hold_id=$2",
+        {id, token})
+    if err then return nil, err end
+    return true, nil
+end
+
 local function lock_active(tx: types.Transaction, id: string): (boolean?, error?)
-    local result, err = tx:execute("UPDATE mail_asset_file SET due_at=NULL WHERE upload_id=$1 AND due_at IS NULL", {id})
+    local result, err = tx:execute([[UPDATE mail_asset_file SET state='held' WHERE upload_id=$1 AND state='held'
+        AND EXISTS (SELECT 1 FROM mail_library_upload_ref r WHERE r.upload_id=$1)
+        ]], {id})
     if err then return nil, err end
     if result.rows_affected ~= 1 then return nil, unavailable() end
     return true, nil
@@ -52,20 +92,6 @@ local function version_ids(rows: {types.Record}): {string}
     end
     table.sort(ids)
     return ids
-end
-
-function M.release(tx: types.Transaction, rows: {types.Record}, deadline: integer): (boolean?, error?)
-    for _, id in ipairs(version_ids(rows)) do
-        -- Take the same row lock as admission before checking the remaining references.
-        local _, lock_err = tx:execute("UPDATE mail_asset_file SET due_at=NULL WHERE upload_id=$1 AND due_at IS NULL", {id})
-        if lock_err then return nil, lock_err end
-        local _, err = tx:execute([[UPDATE mail_asset_file SET due_at=$1 WHERE upload_id=$2 AND due_at IS NULL
-            AND NOT EXISTS (SELECT 1 FROM mail_library_asset WHERE upload_id=$2)
-            AND NOT EXISTS (SELECT 1 FROM mail_library_revision WHERE asset_upload_id=$2)
-            AND NOT EXISTS (SELECT 1 FROM mail_message_asset WHERE upload_id=$2)]], {deadline, id})
-        if err then return nil, err end
-    end
-    return true, nil
 end
 
 function M.link(tx: types.Transaction, id: string, refs: {types.AssetRef}?): (boolean?, error?)
@@ -87,43 +113,50 @@ function M.refs(ex: types.Executor, id: string): ({types.AssetRef}?, error?)
     return rows :: {types.AssetRef}?, err
 end
 
-function M.detach(tx: types.Transaction, id: string, now_ms: integer): (boolean?, error?)
-    local removed, err = tx:query("DELETE FROM mail_message_asset WHERE message_id=$1 RETURNING upload_id", {id})
+function M.detach(tx: types.Transaction, id: string): (boolean?, error?)
+    local _, err = tx:execute("DELETE FROM mail_message_asset WHERE message_id=$1", {id})
     if err then return nil, err end
-    return M.release(tx, removed :: {types.Record}, now_ms)
-end
-
-function M.drop_expired_links(tx: types.Transaction, cutoff: integer, limit: integer, now_ms: integer): (boolean?, error?)
-    local removed, err = tx:query([[DELETE FROM mail_message_asset WHERE message_id IN (
-        SELECT id FROM mail_message WHERE finished_at <= $1 ORDER BY finished_at,id LIMIT $2
-    ) RETURNING upload_id]], {cutoff, limit})
-    if err then return nil, err end
-    return M.release(tx, removed :: {types.Record}, now_ms)
-end
-
-function M.due_unreferenced(ex: types.Executor, now_ms: integer, limit: integer): ({string}?, error?)
-    local rows, err = ex:query([[SELECT upload_id FROM mail_asset_file WHERE due_at<=$1
-        ORDER BY due_at,upload_id LIMIT $2]], {now_ms, limit})
-    if err then return nil, err end
-    local ids: {string} = {}
-    for _, row in ipairs(rows) do ids[#ids + 1] = row.upload_id :: string end
-    return ids, nil
-end
-
-function M.forget(tx: types.Transaction, ids: {string}, cutoff: integer): (boolean?, error?)
-    for _, id in ipairs(ids) do
-        local _, err = tx:execute("DELETE FROM mail_asset_file WHERE upload_id=$1 AND due_at<=$2", {id, cutoff})
-        if err then return nil, err end
-    end
     return true, nil
 end
 
-function M.schedule(tx: types.Transaction, ids: {string}, due: integer, cutoff: integer): (boolean?, error?)
-    for _, id in ipairs(ids) do
-        local _, err = tx:execute("UPDATE mail_asset_file SET due_at=$1 WHERE upload_id=$2 AND due_at<=$3",
-            {due, id, cutoff})
-        if err then return nil, err end
+function M.drop_expired_links(tx: types.Transaction, cutoff: integer, limit: integer): (boolean?, error?)
+    local _, err = tx:execute([[DELETE FROM mail_message_asset WHERE message_id IN (
+        SELECT id FROM mail_message WHERE finished_at <= $1 ORDER BY finished_at,id LIMIT $2
+    )]], {cutoff, limit})
+    if err then return nil, err end
+    return true, nil
+end
+
+function M.claim_due(tx: types.Transaction, projected: integer, now_ms: integer, limit: integer,
+    retry_at: integer): ({types.Record}?, error?)
+    return tx:query([[UPDATE mail_asset_file SET state='reaping',due_at=$1 WHERE upload_id IN (
+        SELECT upload_id FROM mail_asset_file WHERE due_at<=$2 AND ]] .. eligible("$3") .. [[
+        ORDER BY due_at,upload_id LIMIT $4) RETURNING upload_id]], {retry_at, now_ms, projected, limit})
+end
+
+function M.claim_retired(tx: types.Transaction, projected: integer, boundary: integer, limit: integer,
+    retry_at: integer): ({types.Record}?, error?)
+    -- Lock each ledger row before checking delivery links again.
+    local rows, err = tx:query([[UPDATE mail_asset_file SET state='held' WHERE upload_id IN (
+        SELECT r.upload_id FROM mail_library_upload_ref r JOIN mail_asset_file f ON f.upload_id=r.upload_id
+        WHERE r.live=FALSE AND r.last_seq<=$1 AND f.state='held' AND (f.hold_seq IS NULL OR f.hold_seq<=$2)
+        AND NOT EXISTS (SELECT 1 FROM mail_message_asset m WHERE m.upload_id=r.upload_id)
+        ORDER BY r.last_seq,r.upload_id LIMIT $3) RETURNING upload_id]], {boundary, projected, limit})
+    if err then return nil, err end
+    local claimed = {}
+    for _, row in ipairs(rows) do
+        local result, claim_err = tx:query([[UPDATE mail_asset_file SET state='reaping',due_at=$1 WHERE upload_id=$2
+            AND NOT EXISTS (SELECT 1 FROM mail_message_asset m WHERE m.upload_id=$2) RETURNING upload_id]],
+            {retry_at, row.upload_id})
+        if claim_err then return nil, claim_err end
+        if result[1] then claimed[#claimed + 1] = result[1] end
     end
+    return claimed, nil
+end
+
+function M.forget(tx: types.Transaction, id: string): (boolean?, error?)
+    local _, err = tx:execute("DELETE FROM mail_asset_file WHERE upload_id=$1 AND state='reaping'", {id})
+    if err then return nil, err end
     return true, nil
 end
 
