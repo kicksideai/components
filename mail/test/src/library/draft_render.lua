@@ -10,17 +10,20 @@ local function with_sets<T>(html: string, text: string,
         local park, err = ctx.get("mail_test_park_draft")
         if err and err:kind() ~= errors.NOT_FOUND then error(err) end
         if park then channel.new():receive() end
-        local expected, expected_err = ctx.get("mail_test_expected_scratch_entries")
+        local expected, expected_err = ctx.get("mail_test_draft_closure")
         if expected_err and expected_err:kind() ~= errors.NOT_FOUND then return nil, expected_err end
         if expected then
             local overlay, overlay_err = registry.overlay("kickside.mail.render:scratch")
             if overlay_err then return nil, overlay_err end
             local entries, entries_err = overlay:entries()
             if entries_err then return nil, entries_err end
-            if #entries ~= expected then
-                return nil, errors.new({kind = errors.INTERNAL, details = {code = "scratch_entry_count"},
-                    message = "Expected " .. tostring(expected) .. " scratch entries, found " .. tostring(#entries)})
+            local names = {}
+            for _, entry in ipairs(entries) do
+                if entry.kind == "template.jet" then names[entry.meta.name] = true end
             end
+            assert(names[expected.message], "The draft includes the selected message")
+            assert(names[expected.base], "The draft includes the referenced base")
+            assert(not names[expected.unrelated], "The draft excludes the unrelated part")
         end
         return run(html_set, text_set)
     end)

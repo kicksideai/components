@@ -105,7 +105,9 @@ return {run = test.run_cases(function()
             owned[#owned + 1] = {kind = "part", name = extra.name}
             local draft = resource("message", MESSAGE, "Closure body")
             draft.base = base.name
-            local scoped = assert(editor:with_context({mail_test_expected_scratch_entries = 7}))
+            local scoped = assert(editor:with_context({mail_test_draft_closure = {
+                message = "message/" .. MESSAGE, base = "base/" .. base.name, unrelated = "part/" .. extra.name,
+            }}))
             local output, err = fixtures.call(scoped, "preview", {message = MESSAGE, resources = {draft}})
             test.eq(0, #workspace())
             assert(output, tostring(err))

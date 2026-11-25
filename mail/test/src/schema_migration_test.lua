@@ -10,14 +10,18 @@ local tables = {
     "mail_library_history", "mail_library_upload_ref", "mail_library_live",
 }
 
-local indexes = {
-    "mail_message_idempotency", "mail_message_sender_page", "mail_message_page",
-    "mail_message_sender_status_page", "mail_message_status_page", "mail_message_check",
-    "mail_message_expiry", "mail_message_template_page", "mail_message_failed_at",
-    "mail_library_state", "mail_library_base", "mail_asset_file_due",
-    "mail_library_asset_upload", "mail_message_asset_upload",
-    "mail_library_reference_to", "mail_library_preview_expiry",
-    "mail_library_history_page", "mail_library_history_version", "mail_library_upload_ref_reap",
+local access_paths = {
+    mail_message = {"idempotency_scope,idempotency_key", "sender,created_at desc,id desc", "created_at desc,id desc",
+        "sender,status,created_at desc,id desc", "status,created_at desc,id desc", "next_check_at,id",
+        "finished_at,id", "template,created_at desc,id desc", "finished_at,sender"},
+    mail_library = {"state,kind,name", "base,name"},
+    mail_asset_file = {"due_at,upload_id", "restore_check_at,upload_id"},
+    mail_library_asset = {"upload_id"},
+    mail_message_asset = {"upload_id"},
+    mail_library_reference = {"to_kind,to_name,from_kind,from_name"},
+    mail_library_preview = {"expires_at,id"},
+    mail_library_history = {"kind,name,seq desc", "kind,name,version"},
+    mail_library_upload_ref = {"live,last_seq"},
 }
 
 local function inspect_schema(db_id: string)
@@ -26,21 +30,30 @@ local function inspect_schema(db_id: string)
     local rows, err
     if postgres then
         rows, err = db:query([[
-            SELECT table_name AS name, 'table' AS kind FROM information_schema.tables
+            SELECT table_name AS name, NULL AS definition FROM information_schema.tables
                 WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'
             UNION ALL
-            SELECT indexname AS name, 'index' AS kind FROM pg_indexes WHERE schemaname = current_schema()
+            SELECT tablename AS name, indexdef AS definition FROM pg_indexes WHERE schemaname = current_schema()
         ]])
     else
-        rows, err = db:query("SELECT name, type AS kind FROM main.sqlite_master WHERE type IN ('table', 'index')")
+        rows, err = db:query([[
+            SELECT name, NULL AS definition FROM main.sqlite_master WHERE type = 'table'
+            UNION ALL
+            SELECT tbl_name AS name, sql AS definition FROM main.sqlite_master WHERE type = 'index' AND sql IS NOT NULL
+        ]])
     end
     db:release()
 
-    local names: {[string]: string} = {}
+    local names, indexes = {}, {}
     for _, row in ipairs(assert(rows, err)) do
-        names[tostring(row.name)] = tostring(row.kind)
+        if type(row.definition) == "string" then
+            local columns = row.definition:match("%(([^()]+)%)")
+            if columns then indexes[row.name .. ":" .. columns:lower():gsub(",%s*", ",")] = true end
+        else
+            names[row.name] = true
+        end
     end
-    return names, postgres
+    return names, indexes, postgres
 end
 
 return {run = test.run_cases(function()
@@ -61,16 +74,18 @@ return {run = test.run_cases(function()
 
         test.it("creates the Mail tables and indexes in the bound database", function()
             local config = assert(registry.get("kickside.mail:db_config"))
-            local names, postgres = inspect_schema(config.meta.db_id)
+            local names, indexes, postgres = inspect_schema(config.meta.db_id)
             for _, name in ipairs(tables) do
-                test.is_true(names[name] == "table", "missing table " .. name)
+                test.is_true(names[name], "missing table " .. name)
             end
-            for _, name in ipairs(indexes) do
-                test.is_true(names[name] == "index", "missing index " .. name)
+            for name, paths in pairs(access_paths) do
+                for _, columns in ipairs(paths) do
+                    test.is_true(indexes[name .. ":" .. columns], "missing access path " .. name .. "(" .. columns .. ")")
+                end
             end
             if postgres then
-                test.is_true(names.mail_library_page == "index", "missing index mail_library_page")
-                test.is_true(names.mail_library_asset_page == "index", "missing index mail_library_asset_page")
+                test.is_true(indexes['mail_library:kind collate "c",name collate "c"'])
+                test.is_true(indexes['mail_library_asset:name collate "c"'])
             end
         end)
 
