@@ -8,38 +8,38 @@ entries:
     source: file://db.lua
     modules: [registry, sql]
     imports:
-      types: kickside.mail:types
       error_envelope: kickside.contract:error_envelope
   - name: message_repo
     kind: library.lua
     meta: { private: true }
     source: file://message_repo.lua
     modules: [json, sql]
-    imports: { types: kickside.mail:types }
+    imports: { types: kickside.mail:types, database: kickside.mail.persist:db }
   - name: message_reader
     kind: library.lua
     meta: { private: true }
     source: file://message_reader.lua
     modules: [json]
-    imports: { types: kickside.mail:types }
+    imports: { types: kickside.mail:types, database: kickside.mail.persist:db }
   - name: asset_file_repo
     kind: library.lua
     meta: { private: true }
     source: file://asset_file_repo.lua
     modules: [sql]
-    imports: { types: kickside.mail:types }
+    imports: { types: kickside.mail:types, database: kickside.mail.persist:db }
   - name: library_repo
     kind: library.lua
     meta: { private: true }
     source: file://library_repo.lua
     modules: [json, sql]
-    imports: { types: kickside.mail:types }
+    imports: { types: kickside.mail:types, database: kickside.mail.persist:db }
   - name: library_reader
     kind: library.lua
     meta: { private: true }
     source: file://library_reader.lua
     modules: [json, sql]
     imports:
+      database: kickside.mail.persist:db
       types: kickside.mail:types
       canonical_json: kickside.contract:canonical_json
   - name: reference_repo
@@ -47,6 +47,7 @@ entries:
     meta: { private: true }
     source: file://reference_repo.lua
     imports:
+      database: kickside.mail.persist:db
       types: kickside.mail:types
       resource: kickside.mail.domain:resource
   - name: preview_repo
@@ -54,23 +55,23 @@ entries:
     meta: { private: true }
     source: file://preview_repo.lua
     modules: [json]
-    imports: { types: kickside.mail:types }
+    imports: { types: kickside.mail:types, database: kickside.mail.persist:db }
   - name: history_repo
     kind: library.lua
     meta: {private: true}
     source: file://history_repo.lua
     modules: [sql]
-    imports: {types: kickside.mail:types}
+    imports: { types: kickside.mail:types, database: kickside.mail.persist:db }
   - name: upload_ref_repo
     kind: library.lua
     meta: {private: true}
     source: file://upload_ref_repo.lua
-    imports: {types: kickside.mail:types}
+    imports: { database: kickside.mail.persist:db }
   - name: live_repo
     kind: library.lua
     meta: {private: true}
     source: file://live_repo.lua
-    imports: {types: kickside.mail:types}
+    imports: { types: kickside.mail:types, database: kickside.mail.persist:db }
   - name: library_projection
     kind: function.lua
     meta: {type: projection.worker, private: true, component_owned: true}

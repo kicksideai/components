@@ -44,7 +44,7 @@ local function get_message(message_id: string): (types.LogMessage?, error?)
     if type(message_id) ~= "string" or not uuid.validate(message_id) then
         return nil, invalid("A message ID is required")
     end
-    local row, read_err = database.with_db(function(ex: types.Executor): (types.MessageRow?, error?)
+    local row, read_err = database.with_db(function(ex: database.Executor): (types.MessageRow?, error?)
         return reader.get(ex, message_id, sender)
     end)
     if read_err then return nil, read_err end
@@ -90,7 +90,7 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
     local query: types.ListQuery = {status = input.status, template = input.template, since = input.since,
         q = input.q, limit = input.limit, before_time = cursor_time, before_id = cursor_id,
         day_start = day_start, next_day = day_start + policy.DAY_MS}
-    local found, read_err = database.with_db(function(ex: types.Executor, dialect: string): (types.MessagePage?, error?)
+    local found, read_err = database.with_db(function(ex: database.Executor, dialect: string): (types.MessagePage?, error?)
         return reader.page(ex, dialect, query, sender)
     end)
     if read_err then return nil, read_err end

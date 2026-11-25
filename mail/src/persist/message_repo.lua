@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local json = require("json")
 local sql = require("sql")
+local database = require("database")
 local types = require("types")
 
 local M = {}
@@ -35,7 +36,7 @@ function M.set_job(tx: sql.Transaction, id: string, job_id: string): (boolean?, 
     return result.rows_affected == 1, nil
 end
 
-function M.start(ex: types.Executor, id: string, job_id: string, binding_id: string?): (types.MessageRow?, error?)
+function M.start(ex: database.Executor, id: string, job_id: string, binding_id: string?): (types.MessageRow?, error?)
     local rows, err = ex:query([[UPDATE mail_message SET attempts=attempts+1, driver_id=COALESCE(driver_id,$1)
         WHERE id=$2 AND job_id=$3 AND status='queued' RETURNING *]], {binding_id or sql.NULL, id, job_id})
     if err then return nil, err end
@@ -74,13 +75,13 @@ function M.recheck(tx: sql.Transaction, id: string, previous_check_at: integer, 
     return result.rows_affected == 1, nil
 end
 
-function M.due_checks(ex: types.Executor, now: integer, limit: integer): ({types.DueRow}?, error?)
+function M.due_checks(ex: database.Executor, now: integer, limit: integer): ({types.DueRow}?, error?)
     local rows, err = ex:query([[SELECT id, job_id, next_check_at FROM mail_message
         WHERE status='queued' AND next_check_at<=$1 ORDER BY next_check_at,id LIMIT $2]], {now, limit})
     return rows :: {types.DueRow}?, err
 end
 
-function M.hinted(ex: types.Executor, id: string, job_id: string, now: integer): (types.DueRow?, error?)
+function M.hinted(ex: database.Executor, id: string, job_id: string, now: integer): (types.DueRow?, error?)
     local rows, err = ex:query([[SELECT id, job_id, next_check_at FROM mail_message
         WHERE id=$1 AND job_id=$2 AND status='queued' AND next_check_at>$3]], {id, job_id, now})
     if err then return nil, err end
@@ -97,7 +98,7 @@ function M.prune_finished(tx: sql.Transaction, cutoff: integer, limit: integer):
     return result.rows_affected, nil
 end
 
-function M.next_deadlines(ex: types.Executor): (types.Deadlines?, error?)
+function M.next_deadlines(ex: database.Executor): (types.Deadlines?, error?)
     local rows, err = ex:query([[SELECT
         (SELECT next_check_at FROM mail_message WHERE status='queued' ORDER BY next_check_at,id LIMIT 1) AS check_at,
         (SELECT finished_at FROM mail_message WHERE finished_at IS NOT NULL ORDER BY finished_at,id LIMIT 1) AS finished_at]])

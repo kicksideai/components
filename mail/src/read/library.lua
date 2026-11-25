@@ -45,7 +45,7 @@ local function original_referrers(originals: types.OriginalMap): {[string]: {typ
     return incoming
 end
 
-local function referrers(ex: types.Executor, key: types.ResourceKey,
+local function referrers(ex: database.Executor, key: types.ResourceKey,
     packaged: {[string]: {types.ResourceKey}}): ({types.ResourceKey}?, error?)
     local queue: {types.ResourceKey} = {key}
     local seen: {[string]: boolean} = {[resource.subject(key)] = true}
@@ -73,7 +73,7 @@ local function referrers(ex: types.Executor, key: types.ResourceKey,
     return result, nil
 end
 
-function M.referrers(ex: types.Executor, key: types.ResourceKey, originals: types.OriginalMap): ({types.ResourceKey}?, error?)
+function M.referrers(ex: database.Executor, key: types.ResourceKey, originals: types.OriginalMap): ({types.ResourceKey}?, error?)
     return referrers(ex, key, original_referrers(originals))
 end
 
@@ -85,7 +85,7 @@ function M.message_names(keys: {types.ResourceKey}): {string}
     return names
 end
 
-local function summary(db: types.Executor, dialect: string, declarations: {types.LibraryDeclaration},
+local function summary(db: database.Executor, dialect: string, declarations: {types.LibraryDeclaration},
     originals: types.OriginalMap, filter: types.ResourceFilter, after: types.ResourceKey?, limit: integer): (types.LibraryPage?, error?)
     local page, err = library_reader.summary_page(db, dialect, declarations, filter, after, limit)
     if err then return nil, err end
@@ -107,7 +107,7 @@ local function match_origin(item: types.Resource, declared: types.Original?): er
     return nil
 end
 
-function M.load(db: types.Executor): (types.ResourceMap?, error?, types.OriginalMap?)
+function M.load(db: database.Executor): (types.ResourceMap?, error?, types.OriginalMap?)
     local originals, err = originals_reader.list()
     if err then return nil, err end
     local rows, read_err = library_reader.rows(db, {})
@@ -116,7 +116,7 @@ function M.load(db: types.Executor): (types.ResourceMap?, error?, types.Original
     return items, merge_err, originals
 end
 
-local function lookup_in(ex: types.Executor, key: types.ResourceKey, declared: types.Original?): (types.Resource?, error?)
+local function lookup_in(ex: database.Executor, key: types.ResourceKey, declared: types.Original?): (types.Resource?, error?)
     local item, read_err = library_reader.get(ex, key)
     if read_err then return nil, read_err end
     if item and item.state ~= "original" then return item, match_origin(item, declared) end
@@ -139,7 +139,7 @@ function M.lookup(key: types.ResourceKey): (types.Resource?, error?, types.Origi
     local originals, err = originals_reader.list()
     if err then return nil, err end
     local declared = originals[resource.subject(key)]
-    local item, read_err = database.with_db(function(ex: types.Executor): (types.Resource?, error?)
+    local item, read_err = database.with_db(function(ex: database.Executor): (types.Resource?, error?)
         return lookup_in(ex, key, declared)
     end)
     if read_err then return nil, read_err, declared end
@@ -163,7 +163,7 @@ local function summary_page(filter: types.ResourceFilter, after: types.ResourceK
             and resource.matches(item, filter.q and filter.q:lower())
         declarations[#declarations + 1] = {kind = item.kind, name = item.name, base = item.base, selected = selected and 1 or 0}
     end
-    return database.with_db(function(db: types.DB, dialect: string): (types.LibraryPage?, error?)
+    return database.with_db(function(db: database.DB, dialect: string): (types.LibraryPage?, error?)
         local mark, mark_err = live_repo.get(db)
         if mark_err then return nil, mark_err end
         local page, read_err = summary(db, dialect, declarations, originals :: types.OriginalMap, filter, after, limit)
@@ -186,7 +186,7 @@ end
 
 function M.resources(filter: types.ResourceFilter): ({types.Resource}?, error?)
     local q = filter.q and filter.q:lower()
-    return database.with_db(function(db: types.DB): ({types.Resource}?, error?)
+    return database.with_db(function(db: database.DB): ({types.Resource}?, error?)
         local originals, err = originals_reader.list()
         if err then return nil, err end
         local stored_only = filter.state == "created" or filter.state == "customized"
@@ -242,14 +242,14 @@ function M.require_write(): error?
     return require_access(component_types.ACCESS.WRITE, "write")
 end
 
-local function fence(ex: types.Executor, snapshot_seq: integer?): error?
+local function fence(ex: database.Executor, snapshot_seq: integer?): error?
     local mark, err = live_repo.get(ex)
     if err then return err end
     return live.fence(mark.template_seq :: integer, snapshot_seq)
 end
 
 function M.require_live(): error?
-    local _, err = database.with_db(function(ex: types.Executor): (boolean?, error?)
+    local _, err = database.with_db(function(ex: database.Executor): (boolean?, error?)
         return true, fence(ex)
     end)
     return err
@@ -264,7 +264,7 @@ function M.live_message(name: unknown): (types.Resource?, error?)
     if invalid then return nil, invalid end
     local originals, err = originals_reader.list()
     if err then return nil, err end
-    return database.with_db(function(ex: types.Executor): (types.Resource?, error?)
+    return database.with_db(function(ex: database.Executor): (types.Resource?, error?)
         local before, mark_err = live_repo.get(ex)
         if mark_err then return nil, mark_err end
         local item, lookup_err = lookup_in(ex, key, originals[resource.subject(key)])
@@ -296,7 +296,7 @@ function M.used_by(item: types.Resource): (types.UsedBy?, error?)
     if item.kind == "asset" or item.kind == "base" then
         local declarations, err = originals_reader.list()
         if err then return nil, err end
-        return database.with_db(function(db: types.DB): (types.UsedBy?, error?)
+        return database.with_db(function(db: database.DB): (types.UsedBy?, error?)
             local keys, read_err = M.referrers(db, item, declarations :: types.OriginalMap)
             if read_err then return nil, read_err end
             return {messages = M.message_names(keys :: {types.ResourceKey})}, nil
@@ -304,7 +304,7 @@ function M.used_by(item: types.Resource): (types.UsedBy?, error?)
     elseif item.kind == "message" then
         local since, since_err = recent_since()
         if since_err then return nil, since_err end
-        return database.with_db(function(ex: types.Executor): (types.UsedBy?, error?)
+        return database.with_db(function(ex: database.Executor): (types.UsedBy?, error?)
             local page, read_err = messages.recent_senders(ex, item.name, since :: integer, RECENT_SENDER_LIMIT)
             if read_err then return nil, read_err end
             return {recent_senders = page.items}, nil
@@ -344,7 +344,7 @@ function M.asset_content(input: types.LibraryAssetRequest): (types.AssetContent?
     if revision == 0 and declared then
         item = declared.resource
     elseif revision ~= nil and revision ~= item.revision then
-        local seq, seq_err = database.with_db(function(ex: types.Executor): (integer?, error?)
+        local seq, seq_err = database.with_db(function(ex: database.Executor): (integer?, error?)
             return history_repo.sequence(ex, key, revision)
         end)
         if seq_err then return nil, seq_err end
@@ -400,7 +400,7 @@ function M.page(input: types.LibraryPageRequest): (types.LibraryPage?, error?)
     if #names > 0 then
         local since, since_err = recent_since()
         if since_err then return nil, since_err end
-        local counts, counts_err = database.with_db(function(ex: types.Executor): ({[string]: integer}?, error?)
+        local counts, counts_err = database.with_db(function(ex: database.Executor): ({[string]: integer}?, error?)
             return messages.recent_sender_counts(ex, names, since :: integer)
         end)
         if counts_err then return nil, counts_err end

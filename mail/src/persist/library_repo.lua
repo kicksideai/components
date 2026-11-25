@@ -1,11 +1,12 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local database = require("database")
 local types = require("types")
 local json = require("json")
 local sql = require("sql")
 
 local M = {}
 
-function M.lock(tx: types.Transaction, dialect: string): (boolean?, error?)
+function M.lock(tx: database.Transaction, dialect: string): (boolean?, error?)
     if dialect == "sqlite" then
         local _, err = tx:execute("UPDATE mail_library_asset SET revision=revision WHERE 1=0")
         if err then return nil, err end
@@ -16,7 +17,7 @@ function M.lock(tx: types.Transaction, dialect: string): (boolean?, error?)
     return true, nil
 end
 
-function M.upsert(tx: types.Transaction, row: types.ProjectedResource): (boolean?, error?)
+function M.upsert(tx: database.Transaction, row: types.ProjectedResource): (boolean?, error?)
     local schema, err = json.encode(row.schema)
     if err then return nil, err end
     local samples, sample_err = json.encode(row.samples)
@@ -39,7 +40,7 @@ function M.upsert(tx: types.Transaction, row: types.ProjectedResource): (boolean
     return true, nil
 end
 
-function M.archive(tx: types.Transaction, row: types.HistoryRow): (boolean?, error?)
+function M.archive(tx: database.Transaction, row: types.HistoryRow): (boolean?, error?)
     local _, err = tx:execute([[UPDATE mail_library SET archived=TRUE,revision=$1,last_seq=$2,author=$3,updated_at=$4
         WHERE kind=$5 AND name=$6 AND last_seq<$2]],
         {row.version, row.seq, row.author, row.at, row.kind, row.name})
@@ -47,14 +48,14 @@ function M.archive(tx: types.Transaction, row: types.HistoryRow): (boolean?, err
     return true, nil
 end
 
-function M.delete(tx: types.Transaction, key: types.ResourceKey, seq: integer): (boolean?, error?)
+function M.delete(tx: database.Transaction, key: types.ResourceKey, seq: integer): (boolean?, error?)
     local _, err = tx:execute("DELETE FROM mail_library WHERE kind=$1 AND name=$2 AND last_seq<$3",
         {key.kind, key.name, seq})
     if err then return nil, err end
     return true, nil
 end
 
-function M.upsert_asset(tx: types.Transaction, row: types.ProjectedAsset): (boolean?, error?)
+function M.upsert_asset(tx: database.Transaction, row: types.ProjectedAsset): (boolean?, error?)
     local _, err = tx:execute([[INSERT INTO mail_library_asset
         (name,revision,last_seq,title,description,origin,origin_label,author,created_at,updated_at,upload_id,filename,content_type,size_bytes)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
@@ -70,13 +71,13 @@ function M.upsert_asset(tx: types.Transaction, row: types.ProjectedAsset): (bool
     return true, nil
 end
 
-function M.delete_asset(tx: types.Transaction, name: string, seq: integer): (boolean?, error?)
+function M.delete_asset(tx: database.Transaction, name: string, seq: integer): (boolean?, error?)
     local _, err = tx:execute("DELETE FROM mail_library_asset WHERE name=$1 AND last_seq<$2", {name, seq})
     if err then return nil, err end
     return true, nil
 end
 
-function M.delete_all(tx: types.Transaction): (integer?, error?)
+function M.delete_all(tx: database.Transaction): (integer?, error?)
     local resources, err = tx:execute("DELETE FROM mail_library")
     if err then return nil, err end
     local assets, asset_err = tx:execute("DELETE FROM mail_library_asset")

@@ -1,10 +1,4 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local sql = require("sql")
-
-type DB = sql.DB
-type Executor = DB | sql.Transaction
-type Transaction = sql.Transaction
-type TransactionWork<T> = (sql.Transaction, string) -> (T?, error?)
 type Json = nil | boolean | number | string | {Json} | {[string]: Json}
 type JsonObject = {[string]: Json}
 type Record = {[string]: unknown}
@@ -108,16 +102,10 @@ type Resource = {
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
 type SenderPage = {items: {RecentSender}, next_cursor: string?}
-type AssetUsage = {[string]: {string}}
 type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}
 type Original = {resource: Resource, entries: {[string]: string}}
 type ResourceMap = {[string]: Resource}
 type OriginalMap = {[string]: Original}
-type LibraryWorkspace = {
-    ex: Executor, items: ResourceMap, originals: OriginalMap,
-    loaded: {[string]: boolean},
-    versions: {[string]: integer},
-}
 type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
 type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
 type ResourceCreate = ResourceKey & {note: string?, preview_id: string?, command_id: string?, from: ResourceKey?, title: string?, description: string?,
@@ -233,6 +221,7 @@ type TransportStatus = TransportReadiness & {title: string, icon: string, descri
 type AdmittedTransport = TransportStatus & {id: string}
 type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, ready: boolean,
     transports: {AdmittedTransport}, from: Mailbox?, reply_to: string?, code: string?, reason: string?}
+type DeliveryTestRequest = {}
 type Mailer = {
     send: (self: Mailer, input: SendRequest) -> (SendResult?, error?),
     resend: (self: Mailer, message_id: string) -> (SendResult?, error?),
@@ -242,7 +231,7 @@ type Mailer = {
     get_template: (self: Mailer, input: TemplateRequest) -> (Template?, error?),
     preview: (self: Mailer, input: PreviewRequest) -> (PreviewResult?, error?),
     delivery_status: (self: Mailer) -> (DeliveryStatus?, error?),
-    send_delivery_test: (self: Mailer, input: Record) -> (SendResult?, error?),
+    send_delivery_test: (self: Mailer, input: DeliveryTestRequest) -> (SendResult?, error?),
 }
 type Transport = {
     send: (self: Transport, input: TransportRequest) -> (TransportResult?, error?),
@@ -297,7 +286,7 @@ end
 
 return {
     origin_text = origin_text,
-    DB = DB, Executor = Executor, Transaction = Transaction, TransactionWork = TransactionWork, TransportResult = TransportResult,
+    TransportResult = TransportResult, DeliveryTestRequest = DeliveryTestRequest,
     MessageRef = MessageRef, ListRequest = ListRequest, ListQuery = ListQuery, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, ResendSource = ResendSource, Admission = Admission, AdmissionResult = AdmissionResult,
     MessageInsert = MessageInsert, KeyRow = KeyRow, InsertOutcome = InsertOutcome, Outcome = Outcome,
@@ -307,12 +296,12 @@ return {
     OwnerResult = OwnerResult, BlockedAsset = BlockedAsset, ComponentAccessContract = ComponentAccessContract,
     ResourceKey = ResourceKey, ResourceReferences = ResourceReferences, ReferenceClosure = ReferenceClosure, PreviewRow = PreviewRow,
     ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
-    Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, LibraryWorkspace = LibraryWorkspace, ResourceRevision = ResourceRevision,
+    Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, HistoryItem = HistoryItem, Revision = Revision, DraftRequest = DraftRequest,
     Library = Library, LibraryHistoryRequest = LibraryHistoryRequest, LibraryRevisionRequest = LibraryRevisionRequest,
     LibraryHistoryPage = LibraryHistoryPage, LibraryAssetRequest = LibraryAssetRequest, LibrarySaveResult = LibrarySaveResult,
-    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,
+    ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, UsedBy = UsedBy,
     LibraryRow = LibraryRow, JetEntry = JetEntry,
     LibraryEvent = LibraryEvent, LibraryEventBody = LibraryEventBody, EventContent = EventContent, EventAsset = EventAsset,
     PrefetchedLibraryEvent = PrefetchedLibraryEvent, ProjectionInput = ProjectionInput,

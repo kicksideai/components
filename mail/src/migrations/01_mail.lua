@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local types = require("types")
+local sql = require("sql")
 
 local tables: {string} = {
     [[CREATE TABLE mail_message (
@@ -177,12 +177,12 @@ local indexes: {string} = {
     [[CREATE INDEX mail_message_asset_upload ON mail_message_asset(upload_id) WHERE upload_id IS NOT NULL]],
 }
 
-local function execute(db: types.Executor, statement: string)
+local function execute(db: sql.DB | sql.Transaction, statement: string)
     local _, err = db:execute(statement)
     if err then error(err) end
 end
 
-local function create(db: types.Executor, sqlite: boolean)
+local function create(db: sql.DB | sql.Transaction, sqlite: boolean)
     local boolean_type = sqlite and "INTEGER" or "BOOLEAN"
     for _, statement in ipairs(tables) do
         if sqlite then statement = statement:gsub("BIGINT", "INTEGER") .. " STRICT" end
@@ -198,7 +198,7 @@ local function create(db: types.Executor, sqlite: boolean)
     end
 end
 
-local function drop(db: types.Executor)
+local function drop(db: sql.DB | sql.Transaction)
     for _, name in ipairs({
         "mail_library_live", "mail_library_upload_ref", "mail_library_history",
         "mail_library_preview", "mail_library_reference", "mail_message_asset", "mail_library_asset",
@@ -211,11 +211,11 @@ end
 return require("migration").define(function()
     migration("01 mail schema", function()
         database("sqlite", function()
-            up(function(db: types.Executor) create(db, true) end)
+            up(function(db: sql.DB | sql.Transaction) create(db, true) end)
             down(drop)
         end)
         database("postgres", function()
-            up(function(db: types.Executor) create(db, false) end)
+            up(function(db: sql.DB | sql.Transaction) create(db, false) end)
             down(drop)
         end)
     end)

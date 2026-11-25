@@ -265,6 +265,7 @@ entries:
     imports:
       request: kickside.mail.api:request
       client: kickside.mail:client
+      types: kickside.mail:types
   - name: delivery_send_test.endpoint
     kind: http.endpoint
     method: POST

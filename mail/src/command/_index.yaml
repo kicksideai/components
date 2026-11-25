@@ -54,6 +54,7 @@ entries:
     source: file://library_edits.lua
     modules: [time]
     imports:
+      database: kickside.mail.persist:db
       types: kickside.mail:types
       resource: kickside.mail.domain:resource
       edit: kickside.mail.domain:edit

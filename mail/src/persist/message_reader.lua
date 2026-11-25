@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local json = require("json")
+local database = require("database")
 local types = require("types")
 
 local COLUMNS = [[id, status, created_at, attempts, next_attempt_at, sent_at, finished_at, sender,
@@ -10,14 +11,14 @@ local RESEND_COLUMNS = "id,status,template,subject,recipients,reply_to,attachmen
 local SUMMARY_WINDOW = 10000
 local M = {}
 
-function M.find_key(ex: types.Executor, sender: string, key: string): (types.KeyRow?, error?)
+function M.find_key(ex: database.Executor, sender: string, key: string): (types.KeyRow?, error?)
     local rows, err = ex:query("SELECT id, status, content_hash FROM mail_message WHERE sender=$1 AND idempotency_key=$2",
         {sender, key})
     if err then return nil, err end
     return rows[1] :: types.KeyRow?, nil
 end
 
-local function read_message(ex: types.Executor, id: string, sender: string?, columns: string): (types.MessageRow?, error?)
+local function read_message(ex: database.Executor, id: string, sender: string?, columns: string): (types.MessageRow?, error?)
     local query = "SELECT " .. columns .. " FROM mail_message WHERE id=$1"
     local params = {id}
     if sender then
@@ -33,11 +34,11 @@ local function read_message(ex: types.Executor, id: string, sender: string?, col
     return rows[1] :: types.MessageRow, nil
 end
 
-function M.get(ex: types.Executor, id: string, sender: string?): (types.MessageRow?, error?)
+function M.get(ex: database.Executor, id: string, sender: string?): (types.MessageRow?, error?)
     return read_message(ex, id, sender, COLUMNS)
 end
 
-function M.for_resend(ex: types.Executor, id: string, sender: string?): (types.MessageRow?, error?)
+function M.for_resend(ex: database.Executor, id: string, sender: string?): (types.MessageRow?, error?)
     return read_message(ex, id, sender, RESEND_COLUMNS)
 end
 
@@ -57,7 +58,7 @@ local function where(filters: {string}): string
     return #filters > 0 and " WHERE " .. table.concat(filters, " AND ") or ""
 end
 
-function M.page(ex: types.Executor, dialect: string, query: types.ListQuery, sender: string?): (types.MessagePage?, error?)
+function M.page(ex: database.Executor, dialect: string, query: types.ListQuery, sender: string?): (types.MessagePage?, error?)
     local args: {unknown} = {}
     local filters: {string} = {}
     local function bind(value: unknown): string
@@ -114,7 +115,7 @@ function M.origin(row: types.MessageRow): types.Origin?
     return {kind = row.origin_kind, id = row.origin_id :: string, label = row.origin_label :: string}
 end
 
-function M.recent_senders(ex: types.Executor, template: string, since: integer, limit: integer?,
+function M.recent_senders(ex: database.Executor, template: string, since: integer, limit: integer?,
     cursor: string?): (types.SenderPage?, error?)
     local args: {unknown} = {template, since}
     local after = ""
@@ -158,7 +159,7 @@ function M.recent_senders(ex: types.Executor, template: string, since: integer, 
     return {items = items, next_cursor = next_cursor}, nil
 end
 
-function M.recent_sender_counts(ex: types.Executor, templates: {string}, since: integer): ({[string]: integer}?, error?)
+function M.recent_sender_counts(ex: database.Executor, templates: {string}, since: integer): ({[string]: integer}?, error?)
     if #templates == 0 then return {}, nil end
     local args: {unknown} = {since}
     local placeholders = {}

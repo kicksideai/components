@@ -11,7 +11,7 @@ local asset_file_repo = require("asset_file_repo")
 local function content(row: types.MessageRow): (types.DeliveryContent?, error?)
     local decoded, err = message_reader.content(row)
     if err then return nil, err end
-    return database.with_db(function(ex: types.Executor): (types.DeliveryContent?, error?)
+    return database.with_db(function(ex: database.Executor): (types.DeliveryContent?, error?)
         local assets, read_err = asset_file_repo.refs(ex, row.id)
         if read_err then return nil, read_err end
         return {addresses = decoded.addresses, attachments = decoded.attachments, assets = assets :: {types.AssetRef}}, nil

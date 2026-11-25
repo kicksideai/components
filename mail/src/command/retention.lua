@@ -21,7 +21,7 @@ local events = require("events")
 local M = {}
 
 local function release_stranded_restores(threads: types.LibraryThreads, now: integer): error?
-    local reservations, err = database.with_db(function(ex: types.Executor): ({types.RestoreReservation}?, error?)
+    local reservations, err = database.with_db(function(ex: database.Executor): ({types.RestoreReservation}?, error?)
         return asset_file_repo.due_restores(ex, now, policy.BATCH)
     end)
     if err then return err end
@@ -30,7 +30,7 @@ local function release_stranded_restores(threads: types.LibraryThreads, now: int
             row.restore_command_id, events.ASSET_RESTORED)
         if lookup_err then return lookup_err end
         local update = event and asset_file_repo.confirm_restore or asset_file_repo.release_hold
-        local _, update_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
+        local _, update_err = database.with_tx(function(tx: database.Transaction): (boolean?, error?)
             return update(tx, row.upload_id, row.hold_id)
         end)
         if update_err then return update_err end
@@ -39,7 +39,7 @@ local function release_stranded_restores(threads: types.LibraryThreads, now: int
 end
 
 local function collect(now_ms: integer, boundary: integer, limit: integer, retry_at: integer): (integer?, {types.BlockedAsset}?, error?)
-    local claimed, claim_err = database.with_tx(function(tx: types.Transaction, dialect: string): ({types.Record}?, error?)
+    local claimed, claim_err = database.with_tx(function(tx: database.Transaction, dialect: string): ({types.Record}?, error?)
         local mark, lock_err = live_repo.lock_existing(tx, dialect)
         if lock_err then return nil, lock_err end
         local projected = mark and mark.projected_seq or 0
@@ -60,7 +60,7 @@ local function collect(now_ms: integer, boundary: integer, limit: integer, retry
         if err then
             blocked[#blocked + 1] = {component_id = component_id, error = err}
         else
-            local _, forget_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
+            local _, forget_err = database.with_tx(function(tx: database.Transaction): (boolean?, error?)
                 local _, ref_err = upload_refs.forget_retired(tx, id)
                 if ref_err then return nil, ref_err end
                 return asset_file_repo.forget(tx, id)
@@ -74,7 +74,7 @@ end
 
 local function reconcile(now: integer, input: types.OwnerInput): error?
     local change = input.change
-    local pending, err = database.with_db(function(ex: types.Executor): ({types.DueRow}?, error?)
+    local pending, err = database.with_db(function(ex: database.Executor): ({types.DueRow}?, error?)
         local rows, read_err = repo.due_checks(ex, now, policy.BATCH)
         if read_err then return nil, read_err end
         local locator = change and change.owner_locator
@@ -95,11 +95,11 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
 end
 
 local function prune_previews(now: integer): (integer?, error?)
-    local expiry, err = database.with_db(function(ex: types.Executor): (integer?, error?)
+    local expiry, err = database.with_db(function(ex: database.Executor): (integer?, error?)
         return preview_repo.next_expiry(ex)
     end)
     if err or not expiry or expiry > now then return expiry, err end
-    return database.with_tx(function(tx: types.Transaction, dialect: string): (integer?, error?)
+    return database.with_tx(function(tx: database.Transaction, dialect: string): (integer?, error?)
         local _, lock_err = library_repo.lock(tx, dialect)
         if lock_err then return nil, lock_err end
         local ids, prune_err = preview_repo.prune(tx, now, policy.BATCH)
@@ -116,7 +116,7 @@ local function earlier(deadline: integer?, candidate: integer?): integer?
 end
 
 local function prune_messages(now: integer, retention_ms: integer, preview_expiry: integer?): (types.OwnerResult?, error?)
-    return database.with_tx(function(tx: types.Transaction): (types.OwnerResult?, error?)
+    return database.with_tx(function(tx: database.Transaction): (types.OwnerResult?, error?)
         local cutoff = now - retention_ms
         local _, unlink_err = asset_file_repo.drop_expired_links(tx, cutoff, policy.BATCH)
         if unlink_err then return nil, unlink_err end
@@ -144,7 +144,7 @@ function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): 
         local release_err = release_stranded_restores(threads :: types.LibraryThreads, now)
         if release_err then return nil, release_err end
     end
-    local history_deleted, history_err = database.with_tx(function(tx: types.Transaction): (integer?, error?)
+    local history_deleted, history_err = database.with_tx(function(tx: database.Transaction): (integer?, error?)
         return history.prune_below(tx, seq, policy.BATCH)
     end)
     if history_err then return nil, history_err end
@@ -154,7 +154,7 @@ function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): 
     if sweep_err then return nil, sweep_err end
     local collected, blocked, collect_err = collect(now, seq, policy.BATCH, now + policy.RECHECK_MS)
     if collect_err then return nil, collect_err end
-    local asset_due, asset_err = database.with_db(function(ex: types.Executor): (integer?, error?)
+    local asset_due, asset_err = database.with_db(function(ex: database.Executor): (integer?, error?)
         local mark, mark_err = live_repo.get(ex)
         if mark_err then return nil, mark_err end
         local due, due_err = asset_file_repo.next_due(ex, mark.projected_seq :: integer)

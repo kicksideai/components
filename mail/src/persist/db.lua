@@ -2,9 +2,12 @@
 local error_envelope = require("error_envelope")
 local registry = require("registry")
 local sql = require("sql")
-local types = require("types")
 
-local M = {}
+type DB = sql.DB
+type Transaction = sql.Transaction
+type Executor = DB | Transaction
+
+local M = {DB = DB, Transaction = Transaction, Executor = Executor}
 
 function M.db_id(): (string?, error?)
     local config, err = registry.get("kickside.mail:db_config")
@@ -17,7 +20,7 @@ function M.db_id(): (string?, error?)
     return db_id, nil
 end
 
-function M.with_db<T>(work: (sql.DB, string) -> (T?, error?)): (T?, error?)
+function M.with_db<T>(work: (DB, string) -> (T?, error?)): (T?, error?)
     local db_id, config_err = M.db_id()
     if config_err then return nil, config_err end
     local db, open_err = sql.get(db_id :: string)
@@ -35,8 +38,8 @@ function M.with_db<T>(work: (sql.DB, string) -> (T?, error?)): (T?, error?)
     return value, nil
 end
 
-function M.with_tx<T>(work: types.TransactionWork<T>): (T?, error?)
-    return M.with_db(function(db: sql.DB, dialect: string): (T?, error?)
+function M.with_tx<T>(work: (Transaction, string) -> (T?, error?)): (T?, error?)
+    return M.with_db(function(db: DB, dialect: string): (T?, error?)
         local tx, begin_err = db:begin()
         if begin_err then return nil, begin_err end
         local value, err = work(tx, dialect)

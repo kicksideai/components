@@ -119,7 +119,7 @@ function M.delivery_status(): (types.DeliveryStatus?, error?)
     return (mailer :: types.Mailer):delivery_status()
 end
 
-function M.send_delivery_test(input: types.Record): (types.SendResult?, error?)
+function M.send_delivery_test(input: types.DeliveryTestRequest): (types.SendResult?, error?)
     local mailer, err = M.mailer()
     if err then return nil, err end
     return (mailer :: types.Mailer):send_delivery_test(input)

@@ -1,17 +1,18 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local database = require("database")
 local types = require("types")
 local resource = require("resource")
 
 local M = {}
 
-function M.delete_from(tx: types.Transaction, from: types.ResourceKey): (boolean?, error?)
+function M.delete_from(tx: database.Transaction, from: types.ResourceKey): (boolean?, error?)
     local _, err = tx:execute([[DELETE FROM mail_library_reference WHERE from_kind=$1 AND from_name=$2]],
         {from.kind, from.name})
     if err then return nil, err end
     return true, nil
 end
 
-function M.replace(tx: types.Transaction, from: types.ResourceKey, refs: {types.ResourceKey}): (boolean?, error?)
+function M.replace(tx: database.Transaction, from: types.ResourceKey, refs: {types.ResourceKey}): (boolean?, error?)
     local _, delete_err = M.delete_from(tx, from)
     if delete_err then return nil, delete_err end
     for _, target in ipairs(refs) do
@@ -26,7 +27,7 @@ local ACTIVE_REFERRERS = [[ FROM mail_library_reference r
     JOIN mail_library l ON l.kind=r.from_kind AND l.name=r.from_name AND l.archived=FALSE
     WHERE r.to_kind=$1 AND r.to_name=$2]]
 
-function M.referrers(ex: types.Executor, to: types.ResourceKey, limit: integer?): ({types.ResourceKey}?, error?)
+function M.referrers(ex: database.Executor, to: types.ResourceKey, limit: integer?): ({types.ResourceKey}?, error?)
     local args: {string | integer} = {to.kind, to.name}
     local query = "SELECT r.from_kind AS kind,r.from_name AS name" .. ACTIVE_REFERRERS .. " ORDER BY r.from_kind,r.from_name"
     if limit then
@@ -37,7 +38,7 @@ function M.referrers(ex: types.Executor, to: types.ResourceKey, limit: integer?)
     return rows :: {types.ResourceKey}?, err
 end
 
-function M.use_counts(ex: types.Executor, keys: {types.ResourceKey}): ({[string]: integer}?, error?)
+function M.use_counts(ex: database.Executor, keys: {types.ResourceKey}): ({[string]: integer}?, error?)
     local counts: {[string]: integer} = {}
     for _, key in ipairs(keys) do
         local rows, err = ex:query("SELECT COUNT(*) AS uses" .. ACTIVE_REFERRERS, {key.kind, key.name})
@@ -47,7 +48,7 @@ function M.use_counts(ex: types.Executor, keys: {types.ResourceKey}): ({[string]
     return counts, nil
 end
 
-local function walk(ex: types.Executor, keys: {types.ResourceKey}, query: string): ({types.ResourceKey}?, error?)
+local function walk(ex: database.Executor, keys: {types.ResourceKey}, query: string): ({types.ResourceKey}?, error?)
     local queue: {types.ResourceKey} = {}
     local seen: {[string]: boolean} = {}
     local function add(key: types.ResourceKey)
@@ -69,7 +70,7 @@ local function walk(ex: types.Executor, keys: {types.ResourceKey}, query: string
     return result, nil
 end
 
-function M.closure(ex: types.Executor, keys: {types.ResourceKey}): (types.ReferenceClosure?, error?)
+function M.closure(ex: database.Executor, keys: {types.ResourceKey}): (types.ReferenceClosure?, error?)
     local dependencies, err = walk(ex, keys, [[SELECT to_kind AS kind,to_name AS name FROM mail_library_reference
         WHERE from_kind=$1 AND from_name=$2]])
     if err then return nil, err end
@@ -78,7 +79,7 @@ function M.closure(ex: types.Executor, keys: {types.ResourceKey}): (types.Refere
     return {dependencies = dependencies :: {types.ResourceKey}, dependants = dependants :: {types.ResourceKey}}, nil
 end
 
-function M.delete_all(tx: types.Transaction): (integer?, error?)
+function M.delete_all(tx: database.Transaction): (integer?, error?)
     local result, err = tx:execute("DELETE FROM mail_library_reference")
     if err then return nil, err end
     return result.rows_affected, nil

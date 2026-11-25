@@ -38,6 +38,10 @@ entries:
     kind: ns.dependency
     version: "*"
     component: kickside/execution
+  - name: dep.users
+    kind: ns.dependency
+    version: "*"
+    component: kickside/users
   - name: target_db
     kind: ns.requirement
     meta: { value_kind: db.sql, comment: The SQL database configured for Jobs. }
@@ -82,7 +86,6 @@ entries:
   - name: types
     kind: library.lua
     source: file://types.lua
-    modules: [sql]
   - name: client
     kind: library.lua
     source: file://client.lua

@@ -28,7 +28,7 @@ local live = require("live")
 local M = {}
 local RESTORE_GRACE_MS = 15 * 60 * 1000
 
-local function asset_event(tx: types.Transaction, operation: string, edit: types.LibraryEdit, author: string,
+local function asset_event(tx: database.Transaction, operation: string, edit: types.LibraryEdit, author: string,
     signature: string, source: types.Resource?, head: integer, token: string, command_id: string,
     versions: {[string]: integer}): (types.LibraryEvent?, error?)
     local key = edit.key
@@ -102,7 +102,7 @@ local function result(threads_api: types.LibraryThreads, operation: string, requ
     notify.nudge()
     local receipt: types.LibrarySaveResult = {seq = seq, projected = true, committed = true, items = {}}
     if operation == "delete" then return receipt, nil end
-    local items, read_err = database.with_db(function(ex: types.Executor): ({[integer]: types.Resource}?, error?)
+    local items, read_err = database.with_db(function(ex: database.Executor): ({[integer]: types.Resource}?, error?)
         local rows: {[integer]: types.Resource} = {}
         for i, edit in ipairs(requested) do
             local row, row_err = library_reader.write_result(ex, edit.key, seq - #requested + i)
@@ -221,7 +221,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
     local versions, versions_err = thread_events.versions(api, edits)
     if versions_err then return nil, versions_err end
     local token = uuid.v4()
-    local batch, plan_err = database.with_tx(function(tx: types.Transaction, dialect: string): ({types.LibraryEvent}?, error?)
+    local batch, plan_err = database.with_tx(function(tx: database.Transaction, dialect: string): ({types.LibraryEvent}?, error?)
         if asset then
             local checkpoint, lock_err = live_repo.lock(tx, dialect)
             if lock_err then return nil, lock_err end
@@ -259,7 +259,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
         if err then
             local upload = batch[1].body.asset
             if upload and details.cause == nil then
-                local _, release_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
+                local _, release_err = database.with_tx(function(tx: database.Transaction): (boolean?, error?)
                     return asset_file_repo.release_hold(tx, upload.upload_id, token)
                 end)
                 if release_err then return nil, release_err end
@@ -269,7 +269,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
     end
     local adopted = asset and operation ~= "restore" and batch[1].body.asset
     if adopted then
-        local _, settle_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
+        local _, settle_err = database.with_tx(function(tx: database.Transaction): (boolean?, error?)
             return asset_file_repo.finish_adoption(tx, adopted.upload_id, token)
         end)
         if settle_err then logger:warn("Mail asset adoption is committed", {error = tostring(settle_err)}) end
@@ -289,7 +289,7 @@ function M.teardown(component_id: string?): (boolean?, error?)
             details = {code = "mail_library_component_required"}})
     end
     local now = time.now():unix_nano() // 1000000
-    local _, err = database.with_tx(function(tx: types.Transaction, dialect: string): (boolean?, error?)
+    local _, err = database.with_tx(function(tx: database.Transaction, dialect: string): (boolean?, error?)
         local _, lock_err = live_repo.lock(tx, dialect)
         if lock_err then return nil, lock_err end
         local _, library_lock_err = library_repo.lock(tx, dialect)

@@ -9,7 +9,7 @@ local types = require("types")
 
 local M = {}
 
-local function snapshot(ex: types.Executor): ({seq: integer, projected_seq: integer, rows: {types.Resource}}?, error?)
+local function snapshot(ex: database.Executor): ({seq: integer, projected_seq: integer, rows: {types.Resource}}?, error?)
     local before, err = state.get(ex)
     if err then return nil, err end
     local rows, read_err = reader.live_rows(ex)

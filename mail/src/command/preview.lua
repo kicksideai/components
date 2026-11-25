@@ -104,17 +104,17 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
     local id = uuid.v4()
     local expires_at = time.now():unix() + 15 * 60
     -- The reservation survives cancellation during scratch rendering.
-    local _, reserve_err = database.with_db(function(ex: types.Executor): (boolean?, error?)
+    local _, reserve_err = database.with_db(function(ex: database.Executor): (boolean?, error?)
         return preview_repo.reserve(ex, id, expires_at)
     end)
     if reserve_err then return nil, reserve_err end
     notify.retention()
-    local rendered, render_err = database.with_tx(function(tx: types.Transaction, dialect: string): (types.Rendered | types.DraftPreview | nil, error?)
+    local rendered, render_err = database.with_tx(function(tx: database.Transaction, dialect: string): (types.Rendered | types.DraftPreview | nil, error?)
         local _, lock_err = library_repo.lock(tx, dialect)
         if lock_err then return nil, lock_err end
         local loaded, load_err = edits.workspace(tx, versions)
         if load_err then return nil, load_err end
-        local workspace = loaded :: types.LibraryWorkspace
+        local workspace = loaded :: edits.LibraryWorkspace
         local items = workspace.items
         local candidates: {types.ResourceContent} = {}
         local keys: {types.ResourceKey} = {}

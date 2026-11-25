@@ -28,7 +28,7 @@ function M.page(input: types.LibraryHistoryRequest): (types.LibraryHistoryPage?,
     local boundary, boundary_err = thread_events.retained_boundary(api :: types.LibraryThreads)
     if boundary_err then return nil, boundary_err end
     local size = limit :: integer
-    return database.with_db(function(ex: types.Executor): (types.LibraryHistoryPage?, error?)
+    return database.with_db(function(ex: database.Executor): (types.LibraryHistoryPage?, error?)
         local mark, mark_err = live.get(ex)
         if mark_err then return nil, mark_err end
         local rows, err = history.page(ex, input, size + 1, boundary :: integer, before)
@@ -51,7 +51,7 @@ function M.revision(key: types.ResourceKey, seq: integer?, api: types.LibraryThr
         api, open_err = thread_events.open()
         if open_err then return nil, open_err end
     end
-    local row, read_err = database.with_db(function(ex: types.Executor): (types.HistoryRow?, error?)
+    local row, read_err = database.with_db(function(ex: database.Executor): (types.HistoryRow?, error?)
         return history.get(ex, key, seq)
     end)
     if read_err then return nil, read_err end

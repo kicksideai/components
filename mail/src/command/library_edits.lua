@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local database = require("database")
 local types = require("types")
 local resources = require("resource")
 local edit_rules = require("edit")
@@ -15,15 +16,20 @@ local digest = require("digest")
 local preview_repo = require("preview_repo")
 local live_repo = require("live_repo")
 
-local M = {}
+type LibraryWorkspace = {
+    ex: database.Executor, items: types.ResourceMap, originals: types.OriginalMap,
+    loaded: {[string]: boolean}, versions: {[string]: integer},
+}
 
-function M.workspace(ex: types.Executor, versions: {[string]: integer}?): (types.LibraryWorkspace?, error?)
+local M = {LibraryWorkspace = LibraryWorkspace}
+
+function M.workspace(ex: database.Executor, versions: {[string]: integer}?): (LibraryWorkspace?, error?)
     local originals, err = originals_reader.list()
     if err then return nil, err end
     return {ex = ex, items = {}, originals = originals :: types.OriginalMap, loaded = {}, versions = versions or {}}, nil
 end
 
-function M.load(workspace: types.LibraryWorkspace, key: types.ResourceKey): error?
+function M.load(workspace: LibraryWorkspace, key: types.ResourceKey): error?
     local id = resources.subject(key)
     if workspace.loaded[id] then return nil end
     local row, err = library_reader.get(workspace.ex, key)
@@ -40,13 +46,13 @@ function M.load(workspace: types.LibraryWorkspace, key: types.ResourceKey): erro
     return nil
 end
 
-function M.current_revision(workspace: types.LibraryWorkspace, key: types.ResourceKey): (integer?, error?)
+function M.current_revision(workspace: LibraryWorkspace, key: types.ResourceKey): (integer?, error?)
     local item = workspace.items[resources.subject(key)]
     if item then return item.revision, nil end
     return workspace.versions[resources.subject(key)] or 0, nil
 end
 
-function M.dependencies(workspace: types.LibraryWorkspace, roots: {types.ResourceContent}): error?
+function M.dependencies(workspace: LibraryWorkspace, roots: {types.ResourceContent}): error?
     local visited: {[string]: boolean} = {}
     for _, item in ipairs(roots) do visited[resources.subject(item)] = true end
     for _, item in ipairs(roots) do
@@ -66,7 +72,7 @@ function M.dependencies(workspace: types.LibraryWorkspace, roots: {types.Resourc
     return nil
 end
 
-function M.dependants(workspace: types.LibraryWorkspace, keys: {types.ResourceKey}, changed: {[string]: boolean}): ({types.Resource}?, error?)
+function M.dependants(workspace: LibraryWorkspace, keys: {types.ResourceKey}, changed: {[string]: boolean}): ({types.Resource}?, error?)
     local selected: {types.Resource} = {}
     local seen: {[string]: boolean} = {}
     for _, key in ipairs(keys) do
@@ -196,7 +202,7 @@ local function mismatch(): error
         "Preview the exact proposed changes again, then use the new preview_id")
 end
 
-local function bound_preview(workspace: types.LibraryWorkspace, id: string?, author: string, operation: string,
+local function bound_preview(workspace: LibraryWorkspace, id: string?, author: string, operation: string,
     edits: {types.LibraryEdit}): (types.PreviewRow?, error?)
     if id == nil or id == "" then
         return nil, resources.error(errors.INVALID, "mail_preview_required", "Preview these changes first, then pass the returned preview_id")
@@ -226,7 +232,7 @@ local function bound_preview(workspace: types.LibraryWorkspace, id: string?, aut
     return row, nil
 end
 
-local function validate_templates(workspace: types.LibraryWorkspace, keys: {types.ResourceKey},
+local function validate_templates(workspace: LibraryWorkspace, keys: {types.ResourceKey},
     candidates: {types.ResourceContent}, changed: {[string]: boolean}): error?
     local dependent, err = M.dependants(workspace, keys, changed)
     if err then return err end
@@ -249,7 +255,7 @@ local function validate_templates(workspace: types.LibraryWorkspace, keys: {type
     return validation_err
 end
 
-function M.plan(ex: types.Executor, operation: string, edits: {types.LibraryEdit}, opts: types.LibraryWriteOptions,
+function M.plan(ex: database.Executor, operation: string, edits: {types.LibraryEdit}, opts: types.LibraryWriteOptions,
     author: string, signature: string, head: integer, source: types.Resource?, versions: {[string]: integer}): ({types.LibraryEvent}?, error?)
     local mark, state_err = live_repo.get(ex)
     if state_err then return nil, state_err end
@@ -260,7 +266,7 @@ function M.plan(ex: types.Executor, operation: string, edits: {types.LibraryEdit
 
     local loaded, err = M.workspace(ex, versions)
     if err then return nil, err end
-    local workspace = loaded :: types.LibraryWorkspace
+    local workspace = loaded :: LibraryWorkspace
     local items, originals = workspace.items, workspace.originals
     local keys, revisions, changed = {}, {}, {}
     for i, edit in ipairs(edits) do

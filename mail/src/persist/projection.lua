@@ -32,7 +32,7 @@ local function occurred_at(value: string): (integer?, error?)
     return nil, error_with_code("mail_projection_timestamp", "Invalid library event timestamp")
 end
 
-local function apply(tx: types.Transaction, event: types.PrefetchedLibraryEvent): (types.FoldEffect?, error?)
+local function apply(tx: db.Transaction, event: types.PrefetchedLibraryEvent): (types.FoldEffect?, error?)
     local at, time_err = occurred_at(event.created_at)
     if time_err then return nil, time_err end
     local resource_key, key_err = fold.key(event)
@@ -80,7 +80,7 @@ local function gap(): error
     return error_with_code("mail_projection_source_gap", "The library projection input is missing events")
 end
 
-local function project(tx: types.Transaction, dialect: string, input: types.ProjectionInput): (integer?, error?)
+local function project(tx: db.Transaction, dialect: string, input: types.ProjectionInput): (integer?, error?)
     local mark, lock_err = live.lock(tx, dialect)
     if lock_err then return nil, lock_err end
     local initial = mark :: types.LiveState
@@ -115,7 +115,7 @@ local function project(tx: types.Transaction, dialect: string, input: types.Proj
 end
 
 function M.run(input: types.ProjectionInput): ({body: {projected_seq: integer}, last_seq: integer}?, error?)
-    local last, err = db.with_tx(function(tx: types.Transaction, dialect: string): (integer?, error?)
+    local last, err = db.with_tx(function(tx: db.Transaction, dialect: string): (integer?, error?)
         return project(tx, dialect, input)
     end)
     if err then return nil, err end

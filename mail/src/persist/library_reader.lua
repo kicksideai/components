@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local database = require("database")
 local types = require("types")
 local json = require("json")
 local sql = require("sql")
@@ -39,7 +40,7 @@ local ASSET_SELECT = [[SELECT name,title,description,origin,origin_label,revisio
     CASE WHEN origin IS NULL THEN 'created' ELSE 'customized' END AS state, filename,content_type,size_bytes
     FROM mail_library_asset]]
 
-function M.get(db: types.Executor, key: types.ResourceKey): (types.Resource?, error?)
+function M.get(db: database.Executor, key: types.ResourceKey): (types.Resource?, error?)
     if key.kind == "asset" then
         local assets, err = db:query(ASSET_SELECT .. " WHERE name=$1", {key.name})
         if err then return nil, err end
@@ -51,7 +52,7 @@ function M.get(db: types.Executor, key: types.ResourceKey): (types.Resource?, er
     return resource(rows[1] :: types.LibraryRow)
 end
 
-function M.projected_state(ex: types.Executor, key: types.ResourceKey): (types.ProjectedState?, error?)
+function M.projected_state(ex: database.Executor, key: types.ResourceKey): (types.ProjectedState?, error?)
     local rows, err
     if key.kind == "asset" then
         rows, err = ex:query("SELECT created_at,upload_id,last_seq FROM mail_library_asset WHERE name=$1", {key.name})
@@ -63,14 +64,14 @@ function M.projected_state(ex: types.Executor, key: types.ResourceKey): (types.P
     return rows[1] :: types.ProjectedState?, nil
 end
 
-function M.subject_position(ex: types.Executor, key: types.ResourceKey): ({revision: integer, seq: integer?}?, error?)
+function M.subject_position(ex: database.Executor, key: types.ResourceKey): ({revision: integer, seq: integer?}?, error?)
     local rows, err = ex:query([[SELECT version AS revision,seq FROM mail_library_history
         WHERE kind=$1 AND name=$2 ORDER BY seq DESC LIMIT 1]], {key.kind, key.name})
     if err then return nil, err end
     return rows[1] :: {revision: integer, seq: integer?}? or {revision = 0}, nil
 end
 
-function M.rows(db: types.Executor, filter: types.ResourceFilter, include_archived: boolean?): ({types.Resource}?, error?)
+function M.rows(db: database.Executor, filter: types.ResourceFilter, include_archived: boolean?): ({types.Resource}?, error?)
     local result = sql.builder.select("*"):from("mail_library")
     if not include_archived then result = result:where(sql.builder.expr("archived=FALSE")) end
     if filter.kind then result = result:where(sql.builder.eq({kind = filter.kind})) end
@@ -99,7 +100,7 @@ function M.rows(db: types.Executor, filter: types.ResourceFilter, include_archiv
     return resources, nil
 end
 
-function M.summary_page(db: types.Executor, dialect: string, declarations: {types.LibraryDeclaration}, filter: types.ResourceFilter, after: types.ResourceKey?,
+function M.summary_page(db: database.Executor, dialect: string, declarations: {types.LibraryDeclaration}, filter: types.ResourceFilter, after: types.ResourceKey?,
     limit: integer): (types.LibraryPage?, error?)
     local postgres = dialect == "postgres"
     local declaration_json, encode_err = json.encode(declarations)
@@ -206,13 +207,13 @@ function M.summary_page(db: types.Executor, dialect: string, declarations: {type
     return page, nil
 end
 
-function M.write_result(ex: types.Executor, key: types.ResourceKey, seq: integer): (types.Resource?, error?)
+function M.write_result(ex: database.Executor, key: types.ResourceKey, seq: integer): (types.Resource?, error?)
     local item, err = M.get(ex, key)
     if err then return nil, err end
     return item and item.seq == seq and item or nil, nil
 end
 
-function M.live_rows(db: types.Executor): ({types.Resource}?, error?)
+function M.live_rows(db: database.Executor): ({types.Resource}?, error?)
     local rows, err = db:query("SELECT * FROM mail_library ORDER BY kind,name")
     if err then return nil, err end
     local items: {types.Resource} = {}

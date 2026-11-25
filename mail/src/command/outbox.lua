@@ -25,7 +25,7 @@ end
 function M.start(id: string, job_id: string, lease: types.Lease, driver_id: string?): (types.MessageRow?, error?)
     local inactive = M.check_lease(job_id, lease)
     if inactive then return nil, inactive end
-    return database.with_db(function(ex: types.Executor): (types.MessageRow?, error?)
+    return database.with_db(function(ex: database.Executor): (types.MessageRow?, error?)
         local row, err = repo.start(ex, id, job_id, driver_id)
         if err then return nil, err end
         if not row then
@@ -66,7 +66,7 @@ function M.settle(row: types.MessageRow, lease: types.Lease, delivered: types.Tr
             options.rearm = time.unix(next_at // 1000, (next_at % 1000) * 1000000):utc():format("2006-01-02T15:04:05.000Z07:00")
         end
     end
-    local completion, commit_err = database.with_tx(function(tx: types.Transaction): (types.JobCompletion?, error?)
+    local completion, commit_err = database.with_tx(function(tx: database.Transaction): (types.JobCompletion?, error?)
         local done, err = jobs.complete_tx(tx, row.job_id, lease, options)
         if err then return nil, err end
         local changed
@@ -92,7 +92,7 @@ function M.settle(row: types.MessageRow, lease: types.Lease, delivered: types.Tr
 end
 
 function M.interrupt(rows: {types.DueRow}, statuses: {[string]: string}, now: integer): error?
-    local changed, err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
+    local changed, err = database.with_tx(function(tx: database.Transaction): (boolean?, error?)
         local interrupted = false
         for _, row in ipairs(rows) do
             if INTERRUPTED[statuses[row.job_id] or "missing"] then

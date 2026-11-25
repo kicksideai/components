@@ -6,6 +6,7 @@ import { basename, dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const localTypeFiles = new Set(['src/persist/db.lua', 'src/command/library_edits.lua'])
 let failed = false
 
 function report(message) {
@@ -107,7 +108,9 @@ for (const file of (await walk(resolve(root, 'src'))).filter(path => path.endsWi
   const source = await readFile(file, 'utf8')
   if (/errors\.wrap\([^\n]*\bor\s+["']missing["']|error\(tostring\(err\)\)/.test(source)) report(`${relative(root, file)} loses a native error boundary`)
   if (/:\s*any\b/.test(source)) report(`${relative(root, file)} uses any`)
-  if (!file.endsWith('/types.lua') && /^type\s/m.test(source)) report(`${relative(root, file)} declares types outside types.lua`)
+  if (!file.endsWith('/types.lua') && !localTypeFiles.has(relative(root, file).split(sep).join('/')) && /^type\s/m.test(source)) {
+    report(`${relative(root, file)} declares types outside types.lua`)
+  }
 }
 
 const markdownFiles = (await walk(root)).filter((path) => extname(path) === '.md')

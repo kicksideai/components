@@ -32,7 +32,7 @@ local function result(row: types.KeyRow, content_hash: string): (types.SendResul
 end
 
 local function find_key(sender: string, key: string, content_hash: string): (types.SendResult?, error?)
-    return database.with_db(function(ex: types.Executor): (types.SendResult?, error?)
+    return database.with_db(function(ex: database.Executor): (types.SendResult?, error?)
         local row, err = reader.find_key(ex, sender, key)
         if err or not row then return nil, err end
         return result(row, content_hash)
@@ -49,7 +49,7 @@ local function insert(input: types.Admission): (types.AdmissionResult?, error?)
         subject = input.subject, html = input.html, text = input.text, attachments = input.attachments,
         idempotency_key = input.idempotency_key, content_hash = input.content_hash, origin = input.origin, resend_of = input.resend_of,
     }
-    return database.with_tx(function(tx: types.Transaction, dialect: string): (types.AdmissionResult?, error?)
+    return database.with_tx(function(tx: database.Transaction, dialect: string): (types.AdmissionResult?, error?)
         local stored, err = repo.insert(tx, row)
         if err then return nil, err end
         if not stored.inserted then
@@ -196,7 +196,7 @@ local function resend(message_id: string): (types.SendResult?, error?)
         return nil, errors.new({kind = errors.INVALID, message = "A message ID is required",
             retryable = false, details = {code = "invalid_request"}})
     end
-    local saved, read_err = database.with_db(function(ex: types.Executor): (types.ResendSource?, error?)
+    local saved, read_err = database.with_db(function(ex: database.Executor): (types.ResendSource?, error?)
         local row, row_err = reader.for_resend(ex, message_id, sender)
         if row_err then return nil, row_err end
         if row.status ~= "failed" or (not row.failed_html and not row.failed_text) then
@@ -251,7 +251,7 @@ local function library_send_test(request: types.TestSend): (types.SendResult?, e
     return admit(input)
 end
 
-local function delivery_send_test(request: types.Record): (types.SendResult?, error?)
+local function delivery_send_test(request: types.DeliveryTestRequest): (types.SendResult?, error?)
     local denied = client.require_admin() or client.require_send()
     if denied then return nil, denied end
     if type(request) ~= "table" or next(request) ~= nil then
