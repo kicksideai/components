@@ -262,14 +262,12 @@ return {run = test.run_cases(function()
             test.eq(created.html, detail.content.html)
         end)
 
-        test.it("allows scoped Mail managers to discover System tabs", function()
-            local endpoint = "kickside.ui.api:list_settings_tabs.endpoint"
-            for _, role in ipairs({"editor", "delivery"}) do
+        test.it("grants Mail managers their own endpoints without shell tab discovery", function()
+            for role, endpoint in pairs({editor = "library_list", delivery = "delivery_status"}) do
                 local manager = session(role)
-                test.eq("allow", manager.scope:evaluate(manager.actor, "access", endpoint), role)
+                test.eq("allow", manager.scope:evaluate(manager.actor, "access", "kickside.mail.api:" .. endpoint .. ".endpoint"), role)
+                test.neq("allow", manager.scope:evaluate(manager.actor, "access", "kickside.ui.api:list_settings_tabs.endpoint"), role)
             end
-            local sender = session("sender")
-            test.neq("allow", sender.scope:evaluate(sender.actor, "access", endpoint))
         end)
 
         test.it("returns editable shipped templates without license comments", function()

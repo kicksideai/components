@@ -360,7 +360,7 @@ entries:
       includes: [kickside.mail.security:library_runtime, kickside.mail.security:library_tools, kickside.mail.security:library_endpoints]
     groups: []
     policy:
-      resources: [kickside.mail:library, kickside.ui.api:list_settings_tabs.endpoint]
+      resources: [kickside.mail:library]
       actions: [access]
       effect: allow
   - name: library_runtime
@@ -541,7 +541,6 @@ entries:
     meta: { private: true }
     policy:
       resources:
-        - kickside.ui.api:list_settings_tabs.endpoint
         - kickside.mail.api:activity_list.endpoint
         - kickside.mail.api:activity_get.endpoint
         - kickside.mail.api:activity_resend.endpoint
