@@ -248,7 +248,9 @@ async function sendTest() {
   actionError.value = notice.value = ''
   try {
     await libraryApi.sendTest(item.name)
-    notice.value = 'Test sent to you with the sample values. It appears in Activity.'
+    notice.value = capabilities.value?.administer_delivery
+      ? 'The test is queued for delivery to you with the sample values. Activity shows when it is delivered.'
+      : 'The test is queued for delivery to you with the sample values.'
   } catch (failure) {
     fail(failure, 'The test could not be sent.')
   } finally {
