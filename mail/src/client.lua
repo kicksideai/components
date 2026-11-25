@@ -6,7 +6,7 @@ local security = require("security")
 local M = {}
 
 local MAILER = "kickside.mail:mailer"
-local LIBRARY = "kickside.mail.library:list"
+local LIBRARY = "kickside.mail:library"
 
 function M.capabilities(): types.Capabilities
     return {
@@ -50,6 +50,15 @@ function M.open(): (types.Mailer?, error?)
     if definition_err then return nil, definition_err end
     local mailer, err = definition:open()
     return mailer :: types.Mailer?, err
+end
+
+function M.library(): (types.Library?, error?)
+    local denied = M.require_library()
+    if denied then return nil, denied end
+    local definition, err = contract.get(LIBRARY)
+    if err then return nil, err end
+    local library, open_err = definition:open()
+    return library :: types.Library?, open_err
 end
 
 function M.send(request: types.SendRequest): (types.SendResult?, error?)

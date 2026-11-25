@@ -158,7 +158,7 @@ local function summary_page(filter: types.ResourceFilter, after: types.ResourceK
             if row.state == "original" then
                 local item = original.resource
                 row.title, row.description, row.origin = item.title, item.description, item.origin
-                row.origin_label = item.origin_label
+                row.origin_label, row.asset = item.origin_label, item.asset
             else
                 local origin_err = match_origin((row :: unknown) :: types.Resource, original)
                 if origin_err then return nil, origin_err end
@@ -287,26 +287,31 @@ function M.get(input: types.ResourceKey): (types.Resource?, error?)
     return item, nil
 end
 
-function M.asset_content(name: string): (types.AssetContent?, error?)
+function M.asset_content(input: types.LibraryAssetRequest): (types.AssetContent?, error?)
     local denied = M.require_read()
     if denied then return nil, denied end
-    local found, err = M.lookup({kind = "asset", name = name})
+    if type(input) ~= "table" then
+        return nil, resource.error(errors.INVALID, "invalid_mail_asset", "Provide an asset name")
+    end
+    local key = {kind = "asset", name = input.name}
+    local found, err, declared = M.lookup(key)
     if err then return nil, err end
     local item = found :: types.Resource
+    local revision = input.revision
+    if revision == 0 and declared then
+        item = declared.resource
+    elseif revision ~= nil and revision ~= item.revision then
+        local previous, revision_err = M.revision({kind = key.kind, name = key.name, revision = revision})
+        if revision_err then return nil, revision_err end
+        local saved = previous :: types.Revision
+        item = (saved.content :: unknown) :: types.Resource
+        item.origin = declared and declared.resource.origin or nil
+    end
     local ref = asset_refs.reference(item, asset_refs.cid(item.name))
     local file, read_err = content.asset_file(ref, true)
     if read_err then return nil, read_err end
     local part = file :: types.AssetPart
-    return {revision = item.revision, content_type = part.content_type, bytes = part.content :: string}, nil
-end
-
-function M.list(input: types.ResourceFilter?): ({types.Resource}?, error?)
-    local denied = M.require_read()
-    if denied then return nil, denied end
-    if input == nil then input = {} end
-    local invalid = resource.check_filter(input)
-    if invalid then return nil, invalid end
-    return M.resources(input)
+    return {revision = revision or item.revision, content_type = part.content_type, bytes = part.content :: string}, nil
 end
 
 function M.page(input: types.LibraryPageRequest): (types.LibraryPage?, error?)
@@ -347,7 +352,7 @@ function M.page(input: types.LibraryPageRequest): (types.LibraryPage?, error?)
     return page, nil
 end
 
-function M.history(input: types.ResourceKey): ({types.Revision}?, error?)
+local function history(input: types.ResourceKey, revision: integer?, before: integer?, limit: integer?): ({types.Revision}?, error?)
     local denied = M.require_read()
     if denied then return nil, denied end
     local bad_key = resource.check_key(input)
@@ -355,8 +360,42 @@ function M.history(input: types.ResourceKey): ({types.Revision}?, error?)
     local _, err = M.lookup(input)
     if err then return nil, err end
     return database.with_db(function(db: types.DB): ({types.Revision}?, error?)
-        return library_reader.history(db, input)
+        return library_reader.history(db, input, revision, before, limit)
     end)
+end
+
+function M.history_page(input: types.LibraryHistoryRequest): (types.LibraryHistoryPage?, error?)
+    local limit, cursor, page_err = keyset.args(input)
+    if page_err then return nil, page_err end
+    local before = cursor and math.tointeger(tonumber(cursor)) or nil
+    if cursor and (not before or before < 1) then
+        return nil, resource.error(errors.INVALID, "invalid_mail_filter", "Use the next cursor from a library history page")
+    end
+    local size = limit :: integer
+    local rows, err = history(input, nil, before, size + 1)
+    if err then return nil, err end
+    local items = rows :: {types.Revision}
+    local next_cursor: string?
+    if #items > size then
+        items[size + 1] = nil
+        next_cursor = tostring(items[size].revision)
+    end
+    return {items = items, next_cursor = next_cursor}, nil
+end
+
+function M.revision(input: types.LibraryRevisionRequest): (types.Revision?, error?)
+    local bad_key = resource.check_key(input)
+    if bad_key then return nil, bad_key end
+    local revision = input.revision
+    if type(revision) ~= "number" or not math.tointeger(revision) or revision < 1 then
+        return nil, resource.error(errors.INVALID, "invalid_mail_revision", "Provide a positive revision", input)
+    end
+    local rows, err = history(input, revision)
+    if err then return nil, err end
+    if not rows[1] then
+        return nil, resource.error(errors.NOT_FOUND, "mail_revision_not_found", "Mail library revision was not found", input)
+    end
+    return rows[1] :: types.Revision, nil
 end
 
 return M

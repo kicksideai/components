@@ -1,22 +1,17 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local funcs = require("funcs")
 local client = require("client")
 local request = require("request")
 local principals = require("principals")
 
 local function handler()
     return request.handle(client.require_library, function(req)
+        local library, open_err = client.library()
+        if not library then return nil, open_err end
         local filter = {kind = req:query("kind"), state = req:query("state"), q = req:query("q")}
-        local view = req:query("view")
-        if view == "summary" then
-            local limit = req:query("limit")
-            filter.limit = limit and math.tointeger(tonumber(limit)) or nil
-            if limit and not filter.limit then return nil, request.invalid("Limit must be an integer") end
-            filter.cursor = req:query("cursor")
-            return principals.page("author", funcs.call("kickside.mail.library:list_page", filter))
-        end
-        if view then return nil, request.invalid("Library view must be summary") end
-        return principals.page("author", request.items(funcs.call("kickside.mail.library:list", filter)))
+        local limit, err = request.query_integer(req, "limit")
+        if err then return nil, err end
+        filter.limit, filter.cursor = limit, req:query("cursor")
+        return principals.page("author", library:list(filter))
     end)
 end
 

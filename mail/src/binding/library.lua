@@ -1,4 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local funcs = require("funcs")
+local library = require("library")
 local types = require("types")
 local client = require("client")
 local writer = require("writer")
@@ -7,8 +9,13 @@ local assets = require("assets")
 local preview = require("preview")
 
 local M = {
-    asset_add = assets.add, boot = writer.boot,
-    preview_edits = preview.preview_edits, render_draft = preview.render_draft, render = preview.render,
+    list = library.page,
+    get = library.get,
+    read_history = library.history_page,
+    read_revision = library.revision,
+    asset_content = library.asset_content,
+    preview = preview.preview,
+    add_asset = assets.add,
 }
 
 function M.create(input: types.ResourceCreate): (types.Resource?, error?)
@@ -23,12 +30,14 @@ function M.update(input: types.ResourceEdit): (types.Resource?, error?)
     return writer.one(edits.update(input), "update", fields.preview_id)
 end
 
-function M.save(input: types.ResourceSave): ({types.Resource}?, error?)
+function M.save(input: types.ResourceSave): (types.LibrarySaveResult?, error?)
     local denied = client.require_library()
     if denied then return nil, denied end
     local batch, err = edits.save(input)
     if err then return nil, err end
-    return writer.apply("update", batch :: {types.LibraryEdit}, input.preview_id)
+    local items, write_err = writer.apply("update", batch :: {types.LibraryEdit}, input.preview_id)
+    if write_err then return nil, write_err end
+    return {items = items :: {types.Resource}}, nil
 end
 
 function M.set_base(input: types.ResourceBaseEdit): (types.Resource?, error?)
@@ -50,6 +59,11 @@ function M.delete(input: types.ResourceRevision): (boolean?, error?)
     local _, err = writer.one(edits.revision(input), "delete")
     if err then return nil, err end
     return true, nil
+end
+
+function M.send_test(input: types.TestSend): (types.SendResult?, error?)
+    local result, err = funcs.call("kickside.mail.service:library_send_test", input)
+    return result :: types.SendResult?, err
 end
 
 return M

@@ -165,13 +165,10 @@ entries:
           next_cursor: {type: string}
     source: &design_source file://design.lua
     method: list
-    modules: &design_modules [funcs]
     imports: &design_imports
       client: kickside.mail:client
       types: kickside.mail:types
       tool_result: kickside.contract:tool_result
-    security: &design_security
-      policies: [kickside.mail.security:library_design_calls]
   - name: library_read
     kind: function.lua
     meta:
@@ -246,9 +243,7 @@ entries:
                       properties: {kind: *text, id: *text, label: *text}
     source: *design_source
     method: read
-    modules: *design_modules
     imports: *design_imports
-    security: *design_security
   - name: library_preview
     kind: function.lua
     meta:
@@ -379,9 +374,7 @@ entries:
           revision: *resource_revision
     source: *design_source
     method: preview
-    modules: *design_modules
     imports: *design_imports
-    security: *design_security
   - name: library_save
     kind: function.lua
     meta:
@@ -426,9 +419,7 @@ entries:
           dependent_messages: *message_names
     source: *design_source
     method: save
-    modules: *design_modules
     imports: *design_imports
-    security: *design_security
   - name: library_create
     kind: function.lua
     meta:
@@ -466,9 +457,7 @@ entries:
           dependent_messages: *message_names
     source: *design_source
     method: create
-    modules: *design_modules
     imports: *design_imports
-    security: *design_security
   - name: asset_add
     kind: function.lua
     meta:
@@ -507,9 +496,7 @@ entries:
           resource: *resource_key
     source: *design_source
     method: asset_add
-    modules: *design_modules
     imports: *design_imports
-    security: *design_security
   - name: library_reset
     kind: function.lua
     meta:
@@ -539,9 +526,7 @@ entries:
       output_schema: *revision_output
     source: *design_source
     method: reset
-    modules: *design_modules
     imports: *design_imports
-    security: *design_security
   - name: library_history
     kind: function.lua
     meta:
@@ -550,17 +535,25 @@ entries:
       title: Read Mail Library History
       llm_alias: MailLibraryHistory
       llm_description: >-
-        Read up to 25 retained versions of one resource, newest first. A row records its display version,
+        Read a page of retained versions of one resource, newest first. A row records its display version,
         resulting state, action, content, acting author ID, time and optional note. Pass the separate
-        revision token to MailLibraryRestore. Missing resources and denied access are tool errors.
-      input_schema: *resource_key
+        revision token to MailLibraryRestore. Use next_cursor to request the next page.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [kind, name]
+        properties:
+          kind: *resource_kind
+          name: *resource_name
+          limit: {type: integer, minimum: 1, maximum: 100}
+          cursor: *text
       output_schema:
         type: object
         required: [items]
         properties:
+          next_cursor: *text
           items:
             type: array
-            maxItems: 25
             items:
               type: object
               required: [kind, name, revision, content, author, created_at]
@@ -586,9 +579,7 @@ entries:
                     asset: *asset_content
     source: *design_source
     method: history
-    modules: *design_modules
     imports: *design_imports
-    security: *design_security
   - name: library_restore
     kind: function.lua
     meta:
@@ -612,9 +603,7 @@ entries:
       output_schema: *revision_output
     source: *design_source
     method: restore
-    modules: *design_modules
     imports: *design_imports
-    security: *design_security
   - name: send_test
     kind: function.lua
     meta:
@@ -635,6 +624,4 @@ entries:
       output_schema: file://../schemas/send.output.json
     source: *design_source
     method: send_test
-    modules: *design_modules
     imports: *design_imports
-    security: *design_security

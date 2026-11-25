@@ -8,7 +8,7 @@ local config = require("config")
 local store = require("store")
 local types = require("types")
 local notify = require("notify")
-local asset_store = require("asset_store")
+local retention = require("retention")
 local asset_file_repo = require("asset_file_repo")
 local repo = require("message_repo")
 local preview_repo = require("preview_repo")
@@ -64,7 +64,7 @@ end
 
 local function sweep(now: integer, retention_ms: integer): (types.OwnerResult?, error?)
     return database.with_tx(function(tx: types.Transaction): (types.OwnerResult?, error?)
-        local unlink_err = asset_store.drop_expired_links(tx, now - retention_ms, policy.BATCH, now)
+        local _, unlink_err = asset_file_repo.drop_expired_links(tx, now - retention_ms, policy.BATCH, now)
         if unlink_err then return nil, unlink_err end
         local deleted, delete_err = repo.prune_finished(tx, now - retention_ms, policy.BATCH)
         if delete_err then return nil, delete_err end
@@ -102,7 +102,7 @@ local function run(input: types.OwnerInput): types.OwnerResult
     local now = time.now():unix_nano() // 1000000
     local err = reconcile(now, input)
     if err then return {success = false, error = err} end
-    local collected, blocked, collect_err = asset_store.collect(now, policy.BATCH, now + policy.RECHECK_MS)
+    local collected, blocked, collect_err = retention.collect(now, policy.BATCH, now + policy.RECHECK_MS)
     local result, sweep_err = sweep(now, days * policy.DAY_MS)
     if sweep_err or collect_err then return {success = false, error = sweep_err or collect_err} end
     local report = result :: types.OwnerResult

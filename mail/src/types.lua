@@ -125,8 +125,13 @@ type ResourceBaseEdit = {name: string, base: string, expected_revision: integer,
 type ResourceRestore = ResourceRevision & {revision: integer}
 type RevisionChange = {action: string, state: string, restored_from: integer?, note: string?}
 type LibraryWrite = {item: Resource, released: {Record}}
-type Revision = RevisionChange & {kind: string, name: string, revision: integer, version: integer,
+type Revision = {action: string, state: string, restored_from: integer?, note: string?, kind: string, name: string, revision: integer, version: integer,
     content: ResourceContent, author: string, created_at: integer}
+type LibraryHistoryRequest = ResourceKey & {limit: integer?, cursor: string?}
+type LibraryRevisionRequest = ResourceKey & {revision: integer}
+type LibraryHistoryPage = {items: {Revision}, next_cursor: string?}
+type LibraryAssetRequest = {name: string, revision: integer?}
+type LibrarySaveResult = {items: {Resource}}
 type OriginalRevisions = {[string]: {[string]: integer}}
 type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, resources: {ResourceEdit}?, message: string, vars: JsonObject?}
 type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
@@ -139,7 +144,7 @@ type LibraryPageRequest = ResourceFilter & {limit: integer?, cursor: string?}
 type LibraryRowSummary = ResourceKey & {state: string, revision: integer, used_by: {messages: integer?, recent_sources: integer?}?}
 type LibraryListRow = LibraryRowSummary & {
     title: string, description: string, origin: string?, origin_label: string?,
-    base: string?, author: string?, updated_at: integer?,
+    base: string?, author: string?, updated_at: integer?, asset: Asset?,
 }
 type LibraryDeclaration = ResourceKey & {base: string?, selected: integer}
 type LibraryPage = {items: {LibraryListRow}, next_cursor: string?, total: integer}
@@ -215,6 +220,24 @@ type Realtime = {broadcast: (self: Realtime, input: {topic: string}) -> ({succes
 type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, from: Mailbox?, reply_to: string?, code: string?, reason: string?}
 type TestSend = {message: string, vars: JsonObject?}
 
+type Library = {
+    list: (self: Library, input: LibraryPageRequest) -> (LibraryPage?, error?),
+    get: (self: Library, input: ResourceKey) -> (Resource?, error?),
+    read_history: (self: Library, input: LibraryHistoryRequest) -> (LibraryHistoryPage?, error?),
+    read_revision: (self: Library, input: LibraryRevisionRequest) -> (Revision?, error?),
+    asset_content: (self: Library, input: LibraryAssetRequest) -> (AssetContent?, error?),
+    preview: (self: Library, input: EditPreview) -> (DraftPreview | Rendered | nil, error?),
+    create: (self: Library, input: ResourceCreate) -> (Resource?, error?),
+    update: (self: Library, input: ResourceEdit) -> (Resource?, error?),
+    save: (self: Library, input: ResourceSave) -> (LibrarySaveResult?, error?),
+    set_base: (self: Library, input: ResourceBaseEdit) -> (Resource?, error?),
+    reset: (self: Library, input: ResourceRevision) -> (Resource?, error?),
+    restore: (self: Library, input: ResourceRestore) -> (Resource?, error?),
+    delete: (self: Library, input: ResourceRevision) -> (boolean?, error?),
+    add_asset: (self: Library, input: AssetWrite) -> (Resource?, error?),
+    send_test: (self: Library, input: TestSend) -> (SendResult?, error?),
+}
+
 type HttpAuth = {user: string, pass: string}
 type HttpResponse = {status_code: number, headers: {[string]: string | {string}}, body: string}
 
@@ -238,6 +261,8 @@ return {
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, LibraryWorkspace = LibraryWorkspace, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
+    Library = Library, LibraryHistoryRequest = LibraryHistoryRequest, LibraryRevisionRequest = LibraryRevisionRequest,
+    LibraryHistoryPage = LibraryHistoryPage, LibraryAssetRequest = LibraryAssetRequest, LibrarySaveResult = LibrarySaveResult,
     ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,
     LibraryRow = LibraryRow, LibraryWrite = LibraryWrite, JetEntry = JetEntry,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,

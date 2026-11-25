@@ -21,7 +21,7 @@ local uuid = require("uuid")
 local renderer = require("render")
 local live_preview = require("live_preview")
 
-local M = {render = live_preview.preview}
+local M = {}
 
 local function review_edits(input: types.EditPreview): ({types.LibraryEdit}?, string?, error?)
     local count = 0
@@ -74,10 +74,13 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
             local read_denied = library.require_read()
             if read_denied then return nil, read_denied end
         end
-    elseif input.create ~= nil or input.set_base ~= nil or input.reset ~= nil or input.restore ~= nil
-        or (input.resource ~= nil and (type(input.resource) ~= "table" or input.resources ~= nil))
-        or (input.resources ~= nil and edit_rules.count(input.resources) == 0) then
-        return nil, resources.error(errors.INVALID, "invalid_mail_resources", "Provide one draft resource or an array of draft resources")
+    else
+        local read_denied = library.require_read()
+        if read_denied then return nil, read_denied end
+        if (input.resource ~= nil and (type(input.resource) ~= "table" or input.resources ~= nil))
+            or (input.resources ~= nil and edit_rules.count(input.resources) == 0) then
+            return nil, resources.error(errors.INVALID, "invalid_mail_resources", "Provide one draft resource or an array of draft resources")
+        end
     end
 
     local appearance, globals_err = settings.appearance()
@@ -188,14 +191,20 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
     return rendered, nil
 end
 
-function M.render_draft(input: types.EditPreview): (types.Rendered?, error?)
-    local result, err = preview(input, false)
-    return result :: types.Rendered?, err
-end
-
-function M.preview_edits(input: types.EditPreview): (types.DraftPreview?, error?)
-    local result, err = preview(input, true)
-    return result :: types.DraftPreview?, err
+function M.preview(input: types.EditPreview): (types.DraftPreview | types.Rendered | nil, error?)
+    local bind = false
+    if type(input) == "table" then
+        bind = input.create ~= nil or input.set_base ~= nil or input.reset ~= nil or input.restore ~= nil
+        if not bind and type(input.resources) == "table" then
+            for _, item in ipairs(input.resources) do
+                if type(item) == "table" and item.expected_revision ~= nil then
+                    bind = true
+                    break
+                end
+            end
+        end
+    end
+    return preview(input, bind)
 end
 
 return M

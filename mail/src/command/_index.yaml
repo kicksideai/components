@@ -90,3 +90,12 @@ entries:
       types: kickside.mail:types
       notifier: kickside.core.retention:notifier
       jobs: kickside.core.jobs:jobs
+  - name: retention
+    kind: library.lua
+    source: file://retention.lua
+    imports:
+      types: kickside.mail:types
+      asset_file_repo: kickside.mail.persist:asset_file_repo
+      database: kickside.mail.persist:db
+      content: kickside.mail.read:content
+      uploads: kickside.mail.command:uploads

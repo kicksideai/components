@@ -1,0 +1,38 @@
+{
+  "type": "object",
+  "required": [
+    "name",
+    "base",
+    "expected_revision",
+    "preview_id"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "message",
+        "base",
+        "part",
+        "asset"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "base": {
+      "type": "string"
+    },
+    "expected_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "note": {
+      "type": "string"
+    },
+    "preview_id": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -173,10 +173,13 @@ function M.summary_page(db: types.Executor, dialect: string, declarations: {type
         .. table.concat(sources, " UNION ALL ") .. "), summary AS (SELECT COUNT(*) AS total FROM matched)"
         .. ", page AS (SELECT * FROM (" .. table.concat(pages, " UNION ALL ")
         .. ") AS candidates ORDER BY kind,name LIMIT " .. page_limit .. ")"
-        .. [[ SELECT page.*,summary.total,
+        .. [[ SELECT page.*,summary.total,a.upload_id,f.filename,f.content_type,f.size_bytes,
         CASE WHEN page.state='original' THEN COALESCE((SELECT MAX(r.revision) FROM mail_library_revision r
             WHERE r.kind=page.kind AND r.name=page.name AND r.state='original'),0) ELSE page.revision END AS effective_revision
-        FROM summary LEFT JOIN page ON 1=1 ORDER BY page.kind,page.name]]
+        FROM summary LEFT JOIN page ON 1=1
+        LEFT JOIN mail_library_asset a ON page.kind='asset' AND page.name=a.name AND page.state<>'original'
+        LEFT JOIN mail_asset_file f ON f.upload_id=a.upload_id
+        ORDER BY page.kind,page.name]]
     local found, read_err = db:query(query, args)
     if read_err then return nil, read_err end
     local page: types.LibraryPage = {items = {}, total = found[1].total :: integer}
@@ -187,10 +190,15 @@ function M.summary_page(db: types.Executor, dialect: string, declarations: {type
             page.next_cursor = last.kind .. "/" .. last.name
             break
         end
+        local image: types.Asset?
+        if row.upload_id then
+            image = {source = "upload", upload_id = row.upload_id :: string, filename = row.filename :: string?,
+                content_type = row.content_type :: string?, size = row.size_bytes :: integer?}
+        end
         page.items[i] = {kind = row.kind :: string, name = row.name :: string, title = (row.title or "") :: string,
             description = (row.description or "") :: string, base = row.base :: string?, state = row.state :: string,
             origin = row.origin :: string?, revision = row.effective_revision :: integer, author = row.author :: string?,
-            updated_at = row.updated_at :: integer?}
+            updated_at = row.updated_at :: integer?, asset = image}
     end
     return page, nil
 end
@@ -208,7 +216,8 @@ function M.original_revisions(db: types.Executor): (types.OriginalRevisions?, er
     return revisions, nil
 end
 
-function M.history(db: types.Executor, key: types.ResourceKey, revision: integer?): ({types.Revision}?, error?)
+function M.history(db: types.Executor, key: types.ResourceKey, revision: integer?,
+    before: integer?, limit: integer?): ({types.Revision}?, error?)
     local query = [[SELECT r.*,f.filename,f.content_type,f.size_bytes
         FROM mail_library_revision r LEFT JOIN mail_asset_file f ON f.upload_id=r.asset_upload_id
         WHERE r.kind=$1 AND r.name=$2 AND r.action<>'deleted']]
@@ -216,8 +225,16 @@ function M.history(db: types.Executor, key: types.ResourceKey, revision: integer
     if revision then
         query = query .. " AND r.revision=$3"
         params[3] = revision
+    elseif before then
+        query = query .. " AND r.revision<$3"
+        params[3] = before
     end
-    local rows, err = db:query(query .. " ORDER BY r.revision DESC", params)
+    query = query .. " ORDER BY r.revision DESC"
+    if limit then
+        params[#params + 1] = limit
+        query = query .. " LIMIT $" .. #params
+    end
+    local rows, err = db:query(query, params)
     if err then return nil, err end
     local history: {types.Revision} = {}
     for i, row in ipairs(rows) do

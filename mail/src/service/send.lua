@@ -9,7 +9,8 @@ local identity = require("identity")
 local store = require("store")
 local log = require("log")
 local security = require("security")
-local resources = require("resources")
+local resource = require("resource")
+local library = require("library")
 local notify = require("notify")
 local message = require("message")
 local live_preview = require("live_preview")
@@ -143,14 +144,14 @@ local function library_send_test(request: types.TestSend): (types.SendResult?, e
     local input, err = test_input()
     if err then return nil, err end
     if type(request) ~= "table" or type(request.message) ~= "string" then
-        return nil, resources.error(errors.INVALID, "invalid_mail_test", "Provide a library message to send")
+        return nil, resource.error(errors.INVALID, "invalid_mail_test", "Provide a library message to send")
     end
     for field in pairs(request) do
         if field ~= "message" and field ~= "vars" then
-            return nil, resources.error(errors.INVALID, "invalid_mail_test", "A test is addressed to the acting person")
+            return nil, resource.error(errors.INVALID, "invalid_mail_test", "A test is addressed to the acting person")
         end
     end
-    local item, read_err = resources.get({kind = "message", name = request.message})
+    local item, read_err = library.lookup({kind = "message", name = request.message})
     if read_err then return nil, read_err end
     input.template, input.vars = item.name, request.vars
     if input.vars == nil then input.vars = item.samples end
@@ -161,7 +162,7 @@ local function delivery_send_test(request: types.Record): (types.SendResult?, er
     local denied = client.require_admin() or client.require_send()
     if denied then return nil, denied end
     if type(request) ~= "table" or next(request) ~= nil then
-        return nil, resources.error(errors.INVALID, "invalid_mail_test", "A test is addressed to the acting person")
+        return nil, resource.error(errors.INVALID, "invalid_mail_test", "A test is addressed to the acting person")
     end
     local input, err = test_input()
     if err then return nil, err end

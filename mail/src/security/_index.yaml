@@ -42,16 +42,6 @@ entries:
         - kickside.mail.traits:mail_list_templates
         - kickside.mail.traits:mail_get_template
         - kickside.mail.traits:mail_preview
-        - kickside.mail.traits:library_list
-        - kickside.mail.traits:library_read
-        - kickside.mail.traits:library_preview
-        - kickside.mail.traits:library_save
-        - kickside.mail.traits:library_create
-        - kickside.mail.traits:asset_add
-        - kickside.mail.traits:library_reset
-        - kickside.mail.traits:library_history
-        - kickside.mail.traits:library_restore
-        - kickside.mail.traits:send_test
         - kickside.mail.sink:writable
         - kickside.mail.sink:write
       actions: [registry.get, registry.find, contract.get, contract.open, contract.call, contract.implementations, contract.security, funcs.call, funcs.security]
@@ -294,57 +284,68 @@ entries:
       title: Edit mail library
       surface: kickside.mail
       intent: module_management
-      includes: [kickside.mail.security:module_runtime, kickside.mail.security:library_calls, kickside.mail.security:library_endpoints]
+      includes: [kickside.mail.security:library_runtime, kickside.mail.security:library_tools, kickside.mail.security:library_endpoints]
     groups: []
     policy:
-      resources: [kickside.mail.library:list]
+      resources: [kickside.mail:library, kickside.ui.api:list_settings_tabs.endpoint]
       actions: [access]
       effect: allow
-  - name: library_calls
+  - name: library_runtime
     kind: security.policy
     meta: { private: true }
+    groups: []
     policy:
       resources:
-        - kickside.mail.library:list
-        - kickside.mail.library:list_page
-        - kickside.mail.library:asset_content
-        - kickside.mail.library:get
-        - kickside.mail.library:create
-        - kickside.mail.library:update
-        - kickside.mail.library:save
-        - kickside.mail.library:set_base
-        - kickside.mail.library:reset
-        - kickside.mail.library:history
-        - kickside.mail.library:restore
-        - kickside.mail.library:delete
-        - kickside.mail.library:render
-        - kickside.mail.library:render_draft
-        - kickside.mail.library:preview_edits
-        - kickside.mail.service:library_send_test
-      actions: [funcs.call, registry.get]
+        - kickside.mail:library
+        - kickside.mail:library_binding
+        - list
+        - get
+        - read_history
+        - read_revision
+        - asset_content
+        - preview
+        - create
+        - update
+        - save
+        - set_base
+        - reset
+        - restore
+        - delete
+        - add_asset
+        - send_test
+      actions: [registry.get, contract.get, contract.open, contract.call]
       effect: allow
-  - name: library_design_calls
+  - name: library_tools
     kind: security.policy
     meta: { private: true }
+    groups: []
     policy:
       resources:
-        - kickside.mail.library:list_page
-        - kickside.mail.library:get
-        - kickside.mail.library:preview_edits
-        - kickside.mail.library:save
-        - kickside.mail.library:create
-        - kickside.mail.library:asset_add
-        - kickside.mail.library:reset
-        - kickside.mail.library:history
-        - kickside.mail.library:restore
-        - kickside.mail.service:library_send_test
-      actions: [funcs.call, registry.get]
+        - kickside.mail.traits:email_design
+        - kickside.mail.traits:library_list
+        - kickside.mail.traits:library_read
+        - kickside.mail.traits:library_preview
+        - kickside.mail.traits:library_save
+        - kickside.mail.traits:library_create
+        - kickside.mail.traits:asset_add
+        - kickside.mail.traits:library_reset
+        - kickside.mail.traits:library_history
+        - kickside.mail.traits:library_restore
+        - kickside.mail.traits:send_test
+      actions: [registry.get, registry.find, funcs.call]
+      effect: allow
+  - name: library_test_dispatch
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [kickside.mail.service:library_send_test]
+      actions: [registry.get, funcs.call]
       effect: allow
   - name: overlay_owner
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail.library:projection, kickside.mail.library:draft_workspace]
+      resources: [kickside.mail.render:live, kickside.mail.render:scratch]
       actions: [registry.overlay.get, registry.overlay.apply]
       effect: allow
   - name: overlay_projection
@@ -448,9 +449,9 @@ entries:
   - name: library_endpoints
     kind: security.policy
     meta: { private: true }
+    groups: []
     policy:
       resources:
-        - kickside.ui.api:list_settings_tabs.endpoint
         - kickside.mail.api:library_list.endpoint
         - kickside.mail.api:library_get.endpoint
         - kickside.mail.api:library_asset_content.endpoint

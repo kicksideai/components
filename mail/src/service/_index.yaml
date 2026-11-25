@@ -21,7 +21,8 @@ entries:
       identity: kickside.execution:execution_identity
       store: kickside.mail.outbox:store
       log: kickside.mail.outbox:log
-      resources: kickside.mail.library:resources
+      resource: kickside.mail.domain:resource
+      library: kickside.mail.read:library
       notify: kickside.mail.command:notify
     security: &send_security
       policies:

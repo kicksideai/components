@@ -8,14 +8,13 @@ local sql = require("sql")
 local fixtures = require("fixtures")
 local jet = require("jet")
 
-local NS = "kickside.mail.library:"
 local HTML = "kickside.mail.views:templates"
 local TEXT = "kickside.mail.views:text_templates"
-local OWNER = NS .. "projection"
+local OWNER = "kickside.mail.render:live"
 
 local function review(draft, executor)
     draft.message = draft.message or "notice"
-    local result = assert((executor or funcs.new()):call(NS .. "preview_edits", draft))
+    local result = assert(fixtures.call(executor, "preview", draft))
     return assert(result.preview_id, result.errors[1] and result.errors[1].message)
 end
 
@@ -23,7 +22,7 @@ local function call(method, input)
     if method == "create" then
         input.preview_id = review({message = input.kind == "message" and input.name or "notice", create = input})
     end
-    return funcs.call(NS .. method, input)
+    return fixtures.call(nil, method, input)
 end
 
 local function candidate(kind, name, html, text)
@@ -78,12 +77,12 @@ return {run = test.run_cases(function()
             part.html, part.expected_revision = "New HTML", saved.revision
             part.preview_id = review({resources = {part}})
             local faulty = assert(funcs.new():with_context({mail_test_projection_error = true}))
-            local result, err = faulty:call(NS .. "update", part)
+            local result, err = fixtures.call(faulty, "update", part)
             test.is_nil(result)
             test.eq("mail_projection_failed", assert(err):details().code)
             test.eq(saved.revision, assert(call("get", part)).revision)
             test.eq("Old HTML", assert(value(HTML, "part/" .. part.name)))
-            test.eq(1, #assert(call("history", part)))
+            test.eq(1, #assert(call("read_history", part)).items)
         end)
 
         test.it("restores the committed live source when SQL commit fails after publication", function()
@@ -97,7 +96,7 @@ return {run = test.run_cases(function()
             part.html, part.expected_revision = "New HTML", saved.revision
             part.preview_id = review({resources = {part}})
             local faulty = assert(funcs.new():with_context({mail_test_commit_error = part.name}))
-            local result, err = faulty:call(NS .. "update", part)
+            local result, err = fixtures.call(faulty, "update", part)
             db = assert(sql.get("app:db"))
             assert(db:execute("DROP TABLE mail_test_commit_child"))
             assert(db:execute("DROP TABLE mail_test_commit_parent"))
@@ -107,22 +106,23 @@ return {run = test.run_cases(function()
             test.not_nil(tostring(err):lower():find("foreign key", 1, true), tostring(err))
             test.eq(saved.revision, assert(call("get", part)).revision)
             test.eq("Old HTML", assert(value(HTML, "part/" .. part.name)))
-            test.eq(1, #assert(call("history", part)))
+            test.eq(1, #assert(call("read_history", part)).items)
         end)
 
         test.it("exposes the shipped Image and Signature to library editors", function()
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
-                assert(security.policy("kickside.mail.security:library_calls"))}))
+                assert(security.policy("kickside.mail.security:library_runtime")),
+                assert(security.policy("app.mail_library:invoke_access"))}))
             local actor = assert(security.new_actor("parts-editor", {security_groups = {"app:mail_editors"}}))
             local editor = assert(funcs.new():with_actor(actor):with_scope(scope))
             local parts = {}
-            for _, item in ipairs(assert(editor:call(NS .. "list", {kind = "part"}))) do
+            for _, item in ipairs(assert(fixtures.call(editor, "list", {kind = "part"})).items) do
                 parts[item.name] = item
             end
             local projection = assert(security.new_scope({assert(security.policy("kickside.mail.security:overlay_originals"))}))
             for _, name in ipairs({"image", "signature"}) do
                 test.not_nil(parts[name])
-                local item = assert(editor:call(NS .. "get", {kind = "part", name = name}))
+                local item = assert(fixtures.call(editor, "get", {kind = "part", name = name}))
                 test.eq("original", item.state)
                 for _, face in ipairs({name, name .. ".text"}) do
                     for _, action in ipairs({"registry.overlay.shadow", "registry.overlay.update.template.jet",
@@ -131,7 +131,7 @@ return {run = test.run_cases(function()
                     end
                 end
             end
-            local notice = assert(editor:call(NS .. "render_draft", {message = "notice", vars = {
+            local notice = assert(fixtures.call(editor, "preview", {message = "notice", vars = {
                 subject = "Status", inline_content_id = "chart", image_alt = "Weekly chart",
             }}))
             test.not_nil(notice.html:find('src="cid:chart" alt="Weekly chart" width="534"', 1, true))
@@ -140,7 +140,7 @@ return {run = test.run_cases(function()
         test.it("renders Notice on Plain without the Standard card or branded frame", function()
             local notice = assert(call("get", {kind = "message", name = "notice"}))
             notice.base = "plain"
-            local result = assert(call("render_draft", {
+            local result = assert(call("preview", {
                 resource = notice, message = notice.name,
                 vars = {subject = "Account update", preheader = "Review your account", heading = "New sign-in",
                     message = "Check the sign-in details.", action_url = "https://example.org/account",
@@ -180,26 +180,27 @@ return {run = test.run_cases(function()
             message.samples = {label = "A & <B>", preheader = "First look"}
             local saved_message = assert(call("create", message))
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
-                assert(security.policy("kickside.mail.security:library_calls"))}))
+                assert(security.policy("kickside.mail.security:library_runtime")),
+                assert(security.policy("app.mail_library:invoke_access"))}))
             local actor = assert(security.new_actor("mail-editor", {full_name = "Sample Editor", security_groups = {"app:mail_editors"}}))
             local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
-            local rendered = assert(executor:call(NS .. "render", {template = message.name, vars = message.samples}))
+            local rendered = assert(fixtures.render(executor, {template = message.name, vars = message.samples}))
             test.eq("A & <B>", rendered.subject)
             test.not_nil(rendered.html:find("Frame HTML from base [HTML A &amp; &lt;B&gt;", 1, true))
             assert(rendered.html:find("KickSide https://example.org Sample Editor", 1, true), rendered.html)
             test.not_nil(rendered.html:find("A &amp; &lt;B&gt; First look", 1, true))
             test.eq("Text frame Text from base [Text A & <B>]", rendered.text)
 
-            local selected = assert(call("list", {kind = "message", state = "created", base = base.name}))
+            local selected = assert(call("list", {kind = "message", state = "created", base = base.name})).items
             test.eq(1, #selected)
             test.eq(message.name, selected[1].name)
-            local incompatible = assert(call("list", {kind = "part", state = "created", base = base.name}))
+            local incompatible = assert(call("list", {kind = "part", state = "created", base = base.name})).items
             test.eq(0, #incompatible)
             local draft = candidate("part", part.name, "Draft {{ .label }}", "Draft {{ .label }}")
             draft.schema, draft.samples = part.schema, part.samples
-            local preview = assert(executor:call(NS .. "render_draft", {resource = draft, message = message.name}))
+            local preview = assert(fixtures.call(executor, "preview", {resource = draft, message = message.name}))
             test.not_nil(preview.html:find("Draft from base", 1, true))
-            test.eq(rendered.html, assert(executor:call(NS .. "render", {template = message.name, vars = message.samples})).html)
+            test.eq(rendered.html, assert(fixtures.render(executor, {template = message.name, vars = message.samples})).html)
 
             local second = own(candidate("message", "library-second", message.html, message.text))
             second.base, second.subject, second.schema, second.samples = message.base, message.subject, message.schema, message.samples
@@ -221,7 +222,7 @@ return {run = test.run_cases(function()
 
             part.html = '{{ if .label == "from base" }}{{ missing_value }}{{ else }}{{ .label }}{{ end }}'
             part.expected_revision = saved_part.revision
-            local invalid = assert(call("preview_edits", {message = message.name, resources = {part}}))
+            local invalid = assert(call("preview", {message = message.name, resources = {part}}))
             test.is_nil(invalid.preview_id)
             local failure = invalid.errors[1]
             test.eq("template_render_failed", failure.code)
@@ -230,14 +231,14 @@ return {run = test.run_cases(function()
             test.eq("Mail could not render this template.", failure.message)
             test.not_nil(failure.engine_message:find("missing_value", 1, true))
             test.eq(saved_part.revision, assert(call("get", {kind = "part", name = part.name})).revision)
-            test.eq(rendered.html, assert(executor:call(NS .. "render", {template = message.name, vars = message.samples})).html)
+            test.eq(rendered.html, assert(fixtures.render(executor, {template = message.name, vars = message.samples})).html)
 
             part.html = "Changed {{ .label }}"
             part.preview_id = review({message = message.name, resources = {part}}, executor)
-            local updated = assert(executor:call(NS .. "update", part))
+            local updated = assert(fixtures.call(executor, "update", part))
             test.eq("mail-editor", updated.author)
             test.is_true(updated.revision > saved_part.revision)
-            local conflict, conflict_err = executor:call(NS .. "update", part)
+            local conflict, conflict_err = fixtures.call(executor, "update", part)
             test.is_nil(conflict)
             test.eq(errors.CONFLICT, conflict_err:kind())
             local removed, in_use = call("delete", {kind = "base", name = base.name, expected_revision = saved_base.revision})
@@ -250,7 +251,7 @@ return {run = test.run_cases(function()
             local switch = {name = message.name, base = message.base, expected_revision = saved_message.revision}
             switch.preview_id = review({message = message.name, set_base = switch})
             local switched = assert(call("set_base", switch))
-            local switched_render = assert(executor:call(NS .. "render", {template = message.name, vars = message.samples}))
+            local switched_render = assert(fixtures.render(executor, {template = message.name, vars = message.samples}))
             test.is_nil(switched_render.html:find("Frame", 1, true))
             test.not_nil(switched_render.html:find("Changed A &amp; &lt;B&gt;", 1, true))
 
@@ -258,9 +259,9 @@ return {run = test.run_cases(function()
             local missing, missing_err = value(HTML, "message/" .. message.name)
             test.is_nil(missing)
             test.eq(errors.NOT_FOUND, missing_err:kind())
-            test.eq("success", assert(call("reconcile")).status)
-            test.eq("success", assert(call("reconcile")).status)
-            test.eq(switched_render.html, assert(executor:call(NS .. "render", {template = message.name, vars = message.samples})).html)
+            test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
+            test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
+            test.eq(switched_render.html, assert(fixtures.render(executor, {template = message.name, vars = message.samples})).html)
             assert(call("delete", {kind = "message", name = message.name, expected_revision = switched.revision}))
             assert(call("delete", {kind = "base", name = base.name, expected_revision = saved_base.revision}))
             assert(call("delete", {kind = "part", name = part.name, expected_revision = updated.revision}))
@@ -280,7 +281,7 @@ return {run = test.run_cases(function()
             local part = own(candidate("part", "replayed-create", "Replay HTML", "Replay text"))
             local saved = assert(call("create", part))
             assert(call("delete", {kind = part.kind, name = part.name, expected_revision = saved.revision}))
-            local replayed, err = funcs.call(NS .. "create", part)
+            local replayed, err = fixtures.call(nil, "create", part)
             test.is_nil(replayed)
             test.eq(errors.CONFLICT, assert(err):kind())
             test.eq("mail_preview_stale", err:details().code)
@@ -306,7 +307,7 @@ return {run = test.run_cases(function()
             local archived = assert(call("get", item))
             test.is_true(archived.archived)
             test.is_true(archived.revision > saved.revision)
-            local history = assert(call("history", item))
+            local history = assert(call("read_history", item)).items
             test.eq("archived", history[1].action)
             test.eq(archived.revision, history[1].revision)
 
@@ -314,7 +315,7 @@ return {run = test.run_cases(function()
             restore.preview_id = review({message = item.name, restore = restore})
             local restored = assert(call("restore", restore))
             test.is_false(restored.archived)
-            local rendered = assert(call("render", {template = item.name, vars = {}}))
+            local rendered = assert(fixtures.render(nil, {template = item.name, vars = {}}))
             test.eq(item.subject, rendered.subject)
             test.not_nil(rendered.text:find("Archive fixture", 1, true))
         end)
@@ -345,7 +346,7 @@ return {run = test.run_cases(function()
             assert(changes:update(entry))
             assert(changes:update(declaration))
             assert(changes:apply())
-            test.eq("success", assert(call("reconcile")).status)
+            test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
             test.eq("Customized Example", assert(value(HTML, "part/header", data)))
             local reset_request = {kind = key.kind, name = key.name, expected_revision = saved.revision}
             reset_request.preview_id = review({reset = reset_request})
@@ -356,7 +357,8 @@ return {run = test.run_cases(function()
 
         test.it("retains the newest 25 revisions, including reset and restore", function()
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:library_access")),
-                assert(security.policy("kickside.mail.security:library_calls"))}))
+                assert(security.policy("kickside.mail.security:library_runtime")),
+                assert(security.policy("app.mail_library:invoke_access"))}))
             local actor = assert(security.new_actor("history-editor", {security_groups = {"app:mail_editors"}}))
             local editor = assert(funcs.new():with_actor(actor):with_scope(scope))
             local function read(method, input)
@@ -365,13 +367,13 @@ return {run = test.run_cases(function()
                 elseif method == "reset" or method == "restore" then
                     input.preview_id = review({[method] = input}, editor)
                 end
-                local result, err = editor:call(NS .. method, input)
+                local result, err = fixtures.call(editor, method, input)
                 if err then error(method .. ": " .. err:message() .. " (" .. tostring((err:details() or {}).code) .. ")") end
                 return result
             end
             local key = own({kind = "base", name = "plain"})
             local initial = read("get", key)
-            local initial_history = #read("history", key)
+            local initial_history = #read("read_history", key).items
             local edit = candidate("base", key.name, "First [{{ block body() }}{{ end }}]",
                 "First text [{{ block body() }}{{ end }}]")
             edit.expected_revision, edit.note = initial.revision, "First customization"
@@ -382,7 +384,7 @@ return {run = test.run_cases(function()
             })
             test.is_true(reset.revision > first)
             test.eq(reset.revision, read("get", key).revision)
-            local history = read("history", key)
+            local history = read("read_history", key).items
             test.eq(initial_history + 2, #history)
             test.eq("Reset layout", history[1].note)
             test.eq("history-editor", history[1].author)
@@ -393,7 +395,7 @@ return {run = test.run_cases(function()
             local restored = read("restore", restore)
             test.eq(edit.html, restored.html)
             test.eq("customized", restored.state)
-            local rejected, conflict = editor:call(NS .. "restore", restore)
+            local rejected, conflict = fixtures.call(editor, "restore", restore)
             test.is_nil(rejected)
             test.eq("mail_preview_stale", conflict:details().code)
             for i = 1, 26 do
@@ -401,7 +403,7 @@ return {run = test.run_cases(function()
                 edit.title = "Layout " .. i
                 restored = read("update", edit)
             end
-            history = read("history", key)
+            history = read("read_history", key).items
             test.eq(25, #history)
             test.eq(initial_history + 29, history[1].version)
             test.eq(initial_history + 5, history[25].version)
@@ -426,20 +428,20 @@ return {run = test.run_cases(function()
                 own(item)
                 item.expected_revision = assert(call("create", item)).revision
             end
-            local old = assert(call("render", {template = message.name, vars = {}}))
+            local old = assert(fixtures.render(nil, {template = message.name, vars = {}}))
             for _, part in ipairs({one, two}) do
                 part.html, part.text = "{{ .after }}", "{{ .after }}"
                 part.schema.properties = {after = {type = "string"}}
                 part.samples = {after = "New"}
-                local invalid = assert(call("preview_edits", {message = message.name, resources = {part}}))
+                local invalid = assert(call("preview", {message = message.name, resources = {part}}))
                 test.is_nil(invalid.preview_id)
                 test.eq("template_render_failed", invalid.errors[1].code)
             end
             base.html = base.html:gsub("before", "after"):gsub("Old", "New")
             base.text = base.html
-            local preview = assert(call("render_draft", {resources = {base, one, two}, message = message.name}))
+            local preview = assert(call("preview", {resources = {base, one, two}, message = message.name}))
             test.not_nil(preview.html:find("New one New two Body", 1, true))
-            test.eq(old.html, assert(call("render", {template = message.name, vars = {}})).html)
+            test.eq(old.html, assert(fixtures.render(nil, {template = message.name, vars = {}})).html)
             local revision = two.expected_revision
             local receipt = review({message = message.name, resources = {base, one, two}})
             two.expected_revision = 0
@@ -454,15 +456,15 @@ return {run = test.run_cases(function()
             test.eq("mail_preview_mismatch", invalid:details().code)
             for _, item in ipairs({base, one, two}) do
                 test.eq(item.expected_revision, assert(call("get", item)).revision)
-                test.eq(1, #assert(call("history", item)))
+                test.eq(1, #assert(call("read_history", item)).items)
             end
-            test.eq(old.html, assert(call("render", {template = message.name, vars = {}})).html)
+            test.eq(old.html, assert(fixtures.render(nil, {template = message.name, vars = {}})).html)
             two.html = valid_html
-            local changed = assert(call("save", {resources = {base, one, two}, preview_id = receipt, note = "Together"}))
+            local changed = assert(call("save", {resources = {base, one, two}, preview_id = receipt, note = "Together"})).items
             test.eq(3, #changed)
-            test.eq(preview.html, assert(call("render", {template = message.name, vars = {}})).html)
+            test.eq(preview.html, assert(fixtures.render(nil, {template = message.name, vars = {}})).html)
             for _, item in ipairs(changed) do
-                test.eq("Together", assert(call("history", item))[1].note)
+                test.eq("Together", assert(call("read_history", item)).items[1].note)
             end
             assert(call("delete", message))
             for _, item in ipairs(changed) do
@@ -472,10 +474,11 @@ return {run = test.run_cases(function()
 
         test.it("requires library access even when the caller can send", function()
             local scope = assert(security.new_scope({assert(security.policy("kickside.mail.security:send_access")),
-                assert(security.policy("kickside.mail.security:library_calls"))}))
+                assert(security.policy("kickside.mail.security:library_runtime")),
+                assert(security.policy("app.mail_library:invoke_access"))}))
             local actor = assert(security.new_actor("mail-sender", {full_name = "Sample Sender"}))
             local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
-            local listed, denial = executor:call(NS .. "list", {})
+            local listed, denial = fixtures.call(executor, "list", {})
             test.is_nil(listed)
             test.eq(errors.PERMISSION_DENIED, denial:kind())
             test.eq("mail_library_denied", denial:details().code)

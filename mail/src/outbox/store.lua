@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local asset_store = require("asset_store")
+local asset_file_repo = require("asset_file_repo")
 local database = require("database")
 local jobs = require("jobs")
 local policy = require("policy")
@@ -46,7 +46,7 @@ function M.insert(input: types.Admission): (types.AdmissionResult?, error?)
             return {message = existing :: types.SendResult, inserted = false}, nil
         end
 
-        local reference_err = asset_store.link(tx, id, input.library_assets)
+        local _, reference_err = asset_file_repo.link(tx, id, input.library_assets)
         if reference_err then return nil, reference_err end
         local job, queue_err = jobs.enqueue_tx(tx, dialect, {
             namespace = "mail", scope = id, key = "deliver",
@@ -75,7 +75,7 @@ function M.finish(tx: types.Transaction, id: string, job_id: string, now: intege
     local changed, err = repo.finish(tx, id, job_id, now, {delivered = delivered, cause = cause})
     if err then return nil, err end
     if changed and delivered then
-        local detach_err = asset_store.detach(tx, id)
+        local _, detach_err = asset_file_repo.detach(tx, id, time.now():unix_nano() // 1000000)
         if detach_err then return nil, detach_err end
     end
     return changed, nil
@@ -92,6 +92,10 @@ function M.content(row: types.MessageRow): (types.Addresses?, {types.AttachmentR
     return content.addresses, content.attachments, nil
 end
 
-M.asset_refs = asset_store.refs
+function M.asset_refs(id: string): ({types.AssetRef}?, error?)
+    return database.with_db(function(ex: types.Executor): ({types.AssetRef}?, error?)
+        return asset_file_repo.refs(ex, id)
+    end)
+end
 
 return M

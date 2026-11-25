@@ -13,7 +13,7 @@ local function with_sets<T>(html: string, text: string,
         local expected, expected_err = ctx.get("mail_test_expected_scratch_entries")
         if expected_err and expected_err:kind() ~= errors.NOT_FOUND then return nil, expected_err end
         if expected then
-            local overlay, overlay_err = registry.overlay("kickside.mail.library:draft_workspace")
+            local overlay, overlay_err = registry.overlay("kickside.mail.render:scratch")
             if overlay_err then return nil, overlay_err end
             local entries, entries_err = overlay:entries()
             if entries_err then return nil, entries_err end

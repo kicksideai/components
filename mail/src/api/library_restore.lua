@@ -1,13 +1,15 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local funcs = require("funcs")
 local client = require("client")
+local types = require("types")
 local request = require("request")
 
 local function handler()
     return request.handle(client.require_library, function(req)
+        local library, open_err = client.library()
+        if not library then return nil, open_err end
         local body, err = request.resource(req)
         if err then return nil, err end
-        return funcs.call("kickside.mail.library:restore", body)
+        return library:restore((body :: unknown) :: types.ResourceRestore)
     end)
 end
 

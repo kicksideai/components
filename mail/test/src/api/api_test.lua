@@ -37,7 +37,7 @@ end
 
 local function review(who, message, edit)
     edit.message = message
-    local result = data(who, "POST", "/library/preview?review=true", edit)
+    local result = data(who, "POST", "/library/preview", edit)
     return assert(result.preview_id, result.errors[1] and result.errors[1].message)
 end
 
@@ -127,6 +127,7 @@ return {run = test.run_cases(function()
             local admin = session("delivery")
             local endpoints = assert(registry.find({[".kind"] = "http.endpoint"}))
             local count = 0
+            local library_count = 0
             for _, endpoint in ipairs(endpoints) do
                 if endpoint.id:match("^kickside%.mail%.api:") then
                     count = count + 1
@@ -136,9 +137,14 @@ return {run = test.run_cases(function()
                         local denied, _, raw = request(sender, endpoint.data.method, path, {})
                         assert(denied == 403, endpoint.id .. " returned " .. denied .. ": " .. raw)
                     end
+                    if path:match("^/library") then
+                        library_count = library_count + 1
+                        test.eq("allow", editor.scope:evaluate(editor.actor, "access", endpoint.id), endpoint.id)
+                    end
                 end
             end
             test.eq(20, count)
+            test.eq(13, library_count)
             local predicate = "kickside.mail.api:library_list.endpoint"
             test.eq("allow", editor.scope:evaluate(editor.actor, "access", predicate))
             test.neq("allow", sender.scope:evaluate(sender.actor, "access", predicate))
@@ -149,6 +155,73 @@ return {run = test.run_cases(function()
             test.eq(404, status)
             test.eq(errors.NOT_FOUND, body.kind)
             test.eq("message_not_found", body.code)
+        end)
+
+        test.it("opens the library contract from a foreign caller with the editor capability", function()
+            local editor = session("editor")
+            local executor = assert(funcs.new():with_actor(editor.actor):with_scope(editor.scope))
+            local page = assert(executor:call("app.mail_library:foreign_list", {kind = "base", limit = 1}))
+            test.eq(1, #page.items)
+            test.not_nil(page.next_cursor)
+            test.is_nil(page.items[1].html)
+
+            local sender = session("sender")
+            local restricted = assert(funcs.new():with_actor(sender.actor):with_scope(sender.scope))
+            local denied, err = restricted:call("app.mail_library:foreign_list", {kind = "base"})
+            test.is_nil(denied)
+            test.eq(errors.PERMISSION_DENIED, assert(err):kind())
+        end)
+
+        test.it("paginates the library without a view parameter", function()
+            local editor = session("editor")
+            local page = data(editor, "GET", "/library?kind=base&limit=1")
+            test.eq(1, #page.items)
+            test.not_nil(page.next_cursor)
+            test.is_nil(page.items[1].html)
+            local next_page = data(editor, "GET", "/library?kind=base&limit=1&cursor=" .. page.next_cursor)
+            test.eq(1, #next_page.items)
+            test.neq(page.items[1].name, next_page.items[1].name)
+        end)
+
+        test.it("shares preview, save and restore between design tools and HTTP", function()
+            local editor = session("editor")
+            local tools = assert(funcs.new():with_actor(editor.actor):with_scope(editor.scope))
+            local path = "/library/message/contract-parity"
+            local item = own(fixture("message", "contract-parity", "{{ block body() }}Before{{ end }}"))
+            item.base, item.subject = "plain", "Contract parity"
+            local created = create(editor, item)
+            item.expected_revision = created.revision
+            item.preview_id = nil
+            item.html = "{{ block body() }}After{{ end }}"
+            local input = {message = item.name, resources = {item}}
+            local http_preview = data(editor, "POST", "/library/preview", input)
+            local tool_preview = assert(tools:call("kickside.mail.traits:library_preview", input))
+            test.eq(http_preview.html, tool_preview.html)
+            test.not_nil(http_preview.preview_id)
+            local saved = assert(tools:call("kickside.mail.traits:library_save", {
+                resources = {item}, preview_id = http_preview.preview_id,
+            })).items[1]
+            test.is_true(saved.revision > created.revision)
+            local current = data(editor, "GET", path)
+            test.eq(saved.revision, current.revision)
+            test.eq(item.html, current.html)
+
+            local source = {kind = item.kind, name = item.name,
+                expected_revision = saved.revision, revision = created.revision}
+            local restored_preview = assert(tools:call("kickside.mail.traits:library_preview", {message = item.name, restore = source}))
+            source.preview_id = assert(restored_preview.preview_id)
+            local restored = data(editor, "POST", path .. "/restore", source)
+            test.eq(created.html, restored.html)
+            local tool_read = assert(tools:call("kickside.mail.traits:library_read", {kind = item.kind, name = item.name}))
+            test.eq(restored.revision, tool_read.revision)
+
+            local history = data(editor, "GET", path .. "/history?limit=1")
+            test.eq(restored.revision, history.items[1].revision)
+            test.not_nil(history.next_cursor)
+            local prior = data(editor, "GET", path .. "/history?limit=1&cursor=" .. history.next_cursor)
+            test.eq(saved.revision, prior.items[1].revision)
+            local detail = data(editor, "GET", path .. "/history?revision=" .. created.revision)
+            test.eq(created.html, detail.content.html)
         end)
 
         test.it("allows scoped Mail managers to discover System tabs", function()
@@ -262,9 +335,9 @@ return {run = test.run_cases(function()
             test.eq(own_id, await_delivery(sender, resent.message_id).resend_of)
         end)
 
-        test.it("searches effective library source and returns summary rows on request", function()
+        test.it("searches effective library source and returns summary rows", function()
             local editor = session("editor")
-            local filtered = data(editor, "GET", "/library?kind=part&q=margin-right%3A8px&view=summary")
+            local filtered = data(editor, "GET", "/library?kind=part&q=margin-right%3A8px")
             test.eq(1, #filtered.items)
             local header = filtered.items[1]
             test.eq("header", header.name)
@@ -275,10 +348,9 @@ return {run = test.run_cases(function()
             test.is_nil(header.text)
             test.is_nil(header.subject)
             test.is_nil(header.samples)
-            local full = data(editor, "GET", "/library?kind=part&q=margin-right%3A8px")
-            test.is_true(full.items[1].html:find("margin-right:8px", 1, true) ~= nil)
-            test.eq(full.items[1].html, data(editor, "GET", "/library/part/header").html)
-            local bases = data(editor, "GET", "/library?kind=base&q=standard&view=summary")
+            local full = data(editor, "GET", "/library/part/" .. header.name)
+            test.is_true(full.html:find("margin-right:8px", 1, true) ~= nil)
+            local bases = data(editor, "GET", "/library?kind=base&q=standard")
             test.eq(1, #bases.items)
             test.is_true(bases.items[1].used_by.messages >= 1)
         end)
@@ -288,7 +360,7 @@ return {run = test.run_cases(function()
             for _, name in ipairs({"zz-paging", "aa-paging"}) do
                 create(editor, own(fixture("part", name, "Pagination entry")))
             end
-            local route = "/library?kind=part&view=summary&limit=2"
+            local route = "/library?kind=part&limit=2"
             local all = data(editor, "GET", "/library?kind=part").items
             local offset, cursor = 1, nil
             repeat
@@ -376,7 +448,6 @@ return {run = test.run_cases(function()
             part.preview_id = review(editor, "notice", {create = part})
             assert_maps("POST", "/library", part, 201)
             assert_maps("GET", route, nil, 200)
-            assert_maps("GET", "/library?kind=part&q=empty-maps", nil, 200)
             assert_maps("GET", route .. "/history", nil, 200)
         end)
 
@@ -475,8 +546,8 @@ return {run = test.run_cases(function()
             local before = time.now():unix()
             local draft = {message = item.name, resources = {item}}
             local caller = assert(funcs.new():with_actor(editor.actor):with_scope(editor.scope))
-            local first = assert(caller:call("kickside.mail.library:preview_edits", draft))
-            local second = assert(caller:call("kickside.mail.library:preview_edits", draft))
+            local first = assert(library_fixtures.call(caller, "preview", draft))
+            local second = assert(library_fixtures.call(caller, "preview", draft))
             local db = assert(sql.get("app:db"))
             local rows, read_err = db:query([[SELECT id, digest, expected_json, actor, expires_at FROM mail_library_preview
                 WHERE id IN ($1, $2)]], {first.preview_id or "", second.preview_id or ""})
@@ -564,7 +635,7 @@ return {run = test.run_cases(function()
 
         test.it("previews and lists assets with an unrelated scratch entry and clears it on reconciliation", function()
             local editor = session("editor")
-            local owner = "kickside.mail.library:projection"
+            local owner = "kickside.mail.render:live"
             local id = "kickside.mail.draft:html"
             local overlay = assert(registry.overlay(owner))
             local changes = overlay:changes()
@@ -573,8 +644,8 @@ return {run = test.run_cases(function()
             local preview = data(editor, "POST", "/library/preview", {message = "notice"})
             test.not_nil(preview.html)
             test.not_nil(registry.get(id))
-            local summary, body, raw = request(editor, "GET", "/library?kind=asset&view=summary")
-            local boot = assert(funcs.call("kickside.mail.library:reconcile"))
+            local summary, body, raw = request(editor, "GET", "/library?kind=asset")
+            local boot = assert(funcs.call("kickside.mail.jobs:reconcile"))
             test.eq("success", boot.status, boot.message)
             local entries = assert(assert(registry.overlay(owner)):entries())
             for _, entry in ipairs(entries) do test.neq(id, entry.id) end
@@ -591,7 +662,7 @@ return {run = test.run_cases(function()
             local editor = session("editor")
             local path = "/library/asset/logo"
             local function summary()
-                return data(editor, "GET", "/library?kind=asset&view=summary").items[1].used_by.messages
+                return data(editor, "GET", "/library?kind=asset").items[1].used_by.messages
             end
             local function used_by()
                 return data(editor, "GET", path).used_by.messages
@@ -646,13 +717,8 @@ return {run = test.run_cases(function()
                 test.is_true(result.code == "invalid_mail_draft" or result.code == "invalid_mail_resources",
                     json.encode(result))
             end
-            for _, view in ipairs({"", "&view=summary"}) do
-                local status, result = request(editor, "GET", "/library?kind=unknown" .. view)
-                test.eq(400, status)
-                test.eq("invalid_mail_filter", result.code)
-            end
-            for _, view in ipairs({"", "&view=summary"}) do
-                local status, result = request(editor, "GET", "/library?q=%00" .. view)
+            for _, filter in ipairs({"kind=unknown", "q=%00"}) do
+                local status, result = request(editor, "GET", "/library?" .. filter)
                 test.eq(400, status)
                 test.eq("invalid_mail_filter", result.code)
             end
@@ -710,7 +776,7 @@ return {run = test.run_cases(function()
             test.eq(262144, send_error.details.maximum)
             local resource = own({kind = "message", name = "render-budget-copy",
                 from = {kind = "message", name = "notice"}, samples = vars})
-            local review_result = data(editor, "POST", "/library/preview?review=true", {message = resource.name, create = resource})
+            local review_result = data(editor, "POST", "/library/preview", {message = resource.name, create = resource})
             test.is_nil(review_result.preview_id)
             test.eq("html_too_large", review_result.errors[1].code)
             test.eq(404, (request(editor, "GET", "/library/message/" .. resource.name)))
@@ -762,7 +828,7 @@ return {run = test.run_cases(function()
         end
 
         local function review_cycle(editor, draft, diagnostic)
-            local result = data(editor, "POST", "/library/preview?review=true", draft)
+            local result = data(editor, "POST", "/library/preview", draft)
             test.is_nil(result.preview_id)
             local issue = assert(result.errors[1])
             test.eq("template_render_failed", issue.code)
@@ -876,8 +942,8 @@ return {run = test.run_cases(function()
                 target.title = second.title
                 arm_peer(true)
                 target.html = bad_html
+                http_cycle(editor, "POST", "/library/preview", {message = message, resource = target}, graph.diagnostic)
                 local preview = {message = message, resources = {target}}
-                http_cycle(editor, "POST", "/library/preview", preview, graph.diagnostic)
                 tool_cycle(agent, "library_preview", preview, graph.diagnostic)
                 alive()
                 review_cycle(editor, preview, graph.diagnostic)

@@ -4,8 +4,8 @@ local types = require("types")
 local M = {
     html = "kickside.mail.views:templates",
     text = "kickside.mail.views:text_templates",
-    owner = "kickside.mail.library:projection",
-    draft_owner = "kickside.mail.library:draft_workspace",
+    owner = "kickside.mail.render:live",
+    draft_owner = "kickside.mail.render:scratch",
     live_namespace = "kickside.mail.projection:",
     draft_namespace = "kickside.mail.draft:",
 }

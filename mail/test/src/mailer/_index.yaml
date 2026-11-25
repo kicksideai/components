@@ -149,6 +149,7 @@ entries:
     method: probe
     modules: [contract, funcs, security, registry, json, sql, time, uuid]
     imports:
+      library_fixtures: app.mail_library:fixtures
       test: wippy.test:test
       blocks: kickside.blocks:blocks
       compiler: kickside.workflows.compiler:compiler
@@ -213,6 +214,7 @@ entries:
     method: run
     modules: [funcs, security, contract, registry, json, sql, time, uuid]
     imports:
+      library_fixtures: app.mail_library:fixtures
       test: wippy.test:test
       blocks: kickside.blocks:blocks
       compiler: kickside.workflows.compiler:compiler

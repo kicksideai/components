@@ -20,11 +20,39 @@ entries:
     default: KickSide
   - name: fixtures
     kind: library.lua
-    source: file://fixtures.lua
-    modules: [funcs]
-    imports:
+    source: &fixtures_source file://fixtures.lua
+    modules: &fixtures_modules [contract, funcs]
+    imports: &fixtures_imports
       database: kickside.mail.persist:db
       store: kickside.mail.command:library
+      client: kickside.mail:client
+  - name: invoke
+    kind: function.lua
+    source: *fixtures_source
+    method: invoke
+    modules: *fixtures_modules
+    imports: *fixtures_imports
+  - name: foreign_list
+    kind: function.lua
+    source: *fixtures_source
+    method: foreign_list
+    modules: *fixtures_modules
+    imports: *fixtures_imports
+  - name: render_saved
+    kind: function.lua
+    source: *fixtures_source
+    method: render_saved
+    modules: *fixtures_modules
+    imports: *fixtures_imports
+    security:
+      policies: [kickside.mail.security:module_runtime]
+  - name: invoke_access
+    kind: security.policy
+    groups: [app.mail_api:editor, app.mail_api:editor_sender, app.mail_api:sender]
+    policy:
+      resources: [app.mail_library:invoke, app.mail_library:foreign_list, app.mail_library:render_saved]
+      actions: [funcs.call]
+      effect: allow
   - name: library_test
     kind: function.lua
     meta: { type: test, suite: mail_library }
@@ -64,7 +92,7 @@ entries:
       upload_types: kickside.uploads:types
       lookup: kickside.uploads.persist:upload_query_repo
       settings: app.mail_api:fixtures
-      asset_store: kickside.mail.library:asset_store
+      asset_file_repo: kickside.mail.persist:asset_file_repo
       attachments: kickside.mail.service:attachments
       content: kickside.mail.read:content
   - name: asset_expiry_test
@@ -114,4 +142,5 @@ entries:
     modules: [funcs, security, sql, uuid]
     imports:
       autoinit: kickside.component:autoinit
+      fixtures: app.mail_library:fixtures
       test: wippy.test:test

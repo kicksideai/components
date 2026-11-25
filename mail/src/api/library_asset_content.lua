@@ -1,5 +1,4 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local funcs = require("funcs")
 local hash = require("hash")
 local http = require("http")
 local types = require("types")
@@ -27,7 +26,11 @@ end
 
 local function handler()
     return request.handle(client.require_library, function(req)
-        return funcs.call("kickside.mail.library:asset_content", req:param("name") or "")
+        local library, open_err = client.library()
+        if not library then return nil, open_err end
+        local revision, err = request.query_integer(req, "revision")
+        if err then return nil, err end
+        return library:asset_content({name = req:param("name") or "", revision = revision})
     end, nil, respond)
 end
 

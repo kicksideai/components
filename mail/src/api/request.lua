@@ -63,6 +63,14 @@ function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error
     res:write_json({success = true, data = result})
 end
 
+function M.query_integer(req: http.Request, name: string): (integer?, error?)
+    local raw = req:query(name)
+    if raw == nil then return nil, nil end
+    local value = math.tointeger(tonumber(raw))
+    if value == nil then return nil, M.invalid(name .. " must be an integer") end
+    return value, nil
+end
+
 function M.body(req: http.Request, optional: boolean?): (types.Record?, error?)
     local raw, read_err = req:body()
     if read_err then return nil, read_err end

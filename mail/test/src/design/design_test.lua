@@ -20,13 +20,17 @@ local ALIASES = {
     asset_add = "MailAssetAdd", library_history = "MailLibraryHistory", library_restore = "MailLibraryRestore", send_test = "MailSendTest",
 }
 
-local function caller(id, can_edit, can_send, call_library)
+local function caller(id, can_edit, can_send)
     local groups = can_edit and {"app:mail_editors"} or {}
     local actor = assert(security.new_actor(id, {user_id = id, email = ADDRESS, security_groups = groups}))
     local policies = {assert(security.policy(POLICY .. "module_access")), assert(security.policy(POLICY .. "module_runtime"))}
-    if can_edit then policies[#policies + 1] = assert(security.policy(POLICY .. "library_access")) end
+    if can_edit then
+        policies[#policies + 1] = assert(security.policy(POLICY .. "library_access"))
+        policies[#policies + 1] = assert(security.policy(POLICY .. "library_runtime"))
+        policies[#policies + 1] = assert(security.policy(POLICY .. "library_tools"))
+        policies[#policies + 1] = assert(security.policy("app.mail_library:invoke_access"))
+    end
     if can_send then policies[#policies + 1] = assert(security.policy(POLICY .. "send_access")) end
-    if call_library then policies[#policies + 1] = assert(security.policy(POLICY .. "library_design_calls")) end
     local scope = assert(security.new_scope(policies))
     return assert(funcs.new():with_actor(actor):with_scope(scope)), actor, scope
 end
@@ -100,10 +104,10 @@ return {run = test.run_cases(function()
             end
             for name in pairs(ALIASES) do test.eq(true, ids[NS .. name]) end
             test.is_nil(catalog[NS .. "library_delete"])
-            test.is_nil(catalog["kickside.mail.library:delete"])
+            test.is_nil(catalog["kickside.mail.binding:library_delete"])
             local _, actor, scope = caller(EDITOR, true, true)
             test.neq("allow", scope:evaluate(actor, "funcs.call", NS .. "library_delete"))
-            test.neq("allow", scope:evaluate(actor, "funcs.call", "kickside.mail.library:delete"))
+            test.neq("allow", scope:evaluate(actor, "funcs.call", "kickside.mail.binding:library_delete"))
             test.neq("allow", scope:evaluate(actor, "env.get", "kickside.settings.env:encryption_key"))
         end)
 
@@ -114,7 +118,6 @@ return {run = test.run_cases(function()
                 test.is_nil(result, name)
                 assert(err, name)
                 test.eq(errors.PERMISSION_DENIED, err:kind(), tostring(err))
-                test.eq("mail_library_denied", err:details().code, name)
             end
             local editor = caller(EDITOR, true, false)
             local _, err = editor:call(NS .. "send_test", {message = "notice"})
@@ -247,7 +250,7 @@ return {run = test.run_cases(function()
         end)
 
         local function draft_button()
-            local editor = caller(EDITOR, true, false, true)
+            local editor = caller(EDITOR, true, false)
             local button = ok(editor, "library_read", key("part", "button"))
             owned[#owned + 1] = key(button.kind, button.name)
             local candidate = edit(button)
@@ -280,7 +283,7 @@ return {run = test.run_cases(function()
             local preview = ok(editor, "library_preview", {message = "notice", resources = resources})
             local args = {resources = resources, preview_id = preview.preview_id}
             local saved = ok(editor, "library_save", args).items[1]
-            local result, err = editor:call("kickside.mail.library:save", args)
+            local result, err = fixtures.call(editor, "save", args)
             test.is_nil(result)
             test.eq(errors.CONFLICT, err:kind())
             test.eq("mail_preview_stale", err:details().code)
@@ -297,7 +300,7 @@ return {run = test.run_cases(function()
             local after_expiry = {mail_test_now = assert(stored[1]).expires_at * 1000}
 
             local expired_editor = assert(editor:with_context(after_expiry))
-            local result, err = expired_editor:call("kickside.mail.library:save", {resources = resources, preview_id = preview.preview_id})
+            local result, err = fixtures.call(expired_editor, "save", {resources = resources, preview_id = preview.preview_id})
             test.is_nil(result)
             test.eq(errors.INVALID, err:kind())
             test.eq("mail_preview_expired", err:details().code)

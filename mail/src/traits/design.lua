@@ -1,11 +1,9 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local funcs = require("funcs")
 local client = require("client")
 local types = require("types")
 local tool_result = require("tool_result")
 
 local M = {}
-local LIBRARY = "kickside.mail.library:"
 local REFUSALS = {
     mail_revision_conflict = true,
     mail_preview_required = true,
@@ -14,12 +12,6 @@ local REFUSALS = {
     mail_preview_expired = true,
     mail_resource_not_customized = true,
 }
-
-local function call(id: string, input: unknown): (unknown, error?)
-    local denied = client.require_library()
-    if denied then return nil, denied end
-    return funcs.call(id, input)
-end
 
 local function refusal(err: error): (types.Record?, error?)
     local details = err:details() or {}
@@ -33,28 +25,33 @@ local function summary(item: types.Resource): types.LibraryRowSummary
     return {kind = item.kind, name = item.name, revision = item.revision, state = item.state}
 end
 
-local function write_one(method: string, input: unknown): (types.Record | types.LibraryRowSummary | nil, error?)
-    local item, err = call(LIBRARY .. method, input)
+local function write_result(item: types.Resource?, err: error?): (types.Record | types.LibraryRowSummary | nil, error?)
     if err then return refusal(err) end
     return summary(item :: types.Resource), nil
 end
 
 function M.list(input: types.LibraryPageRequest): (unknown, error?)
-    local value, err = call(LIBRARY .. "list_page", input)
+    local library, open_err = client.library()
+    if not library then return nil, open_err end
+    local page, err = library:list(input)
     if err then return nil, err end
-    local page = value :: types.LibraryPage
-    return {items = page.items, next_cursor = page.next_cursor}, nil
+    local result = page :: types.LibraryPage
+    return {items = result.items, next_cursor = result.next_cursor}, nil
 end
 
 function M.read(input: types.ResourceKey): (unknown, error?)
-    return call(LIBRARY .. "get", input)
+    local library, err = client.library()
+    if not library then return nil, err end
+    return library:get(input)
 end
 
 function M.preview(input: types.EditPreview): (unknown, error?)
-    local value, err = call(LIBRARY .. "preview_edits", input)
+    local library, open_err = client.library()
+    if not library then return nil, open_err end
+    local value, err = library:preview(input)
     if err then return refusal(err) end
     local result = value :: types.DraftPreview
-    local first = result.errors[1]
+    local first = result.errors and result.errors[1]
     if first then
         return tool_result.domain_error(first.message, {
             code = first.code, errors = result.errors, dependent_messages = result.dependent_messages,
@@ -65,19 +62,25 @@ function M.preview(input: types.EditPreview): (unknown, error?)
 end
 
 function M.save(input: types.ResourceSave): (unknown, error?)
-    local saved, err = call(LIBRARY .. "save", input)
+    local library, open_err = client.library()
+    if not library then return nil, open_err end
+    local saved, err = library:save(input)
     if err then return refusal(err) end
     local rows: {types.LibraryRowSummary} = {}
-    for i, item in ipairs(saved :: {types.Resource}) do rows[i] = summary(item) end
+    for i, item in ipairs((saved :: types.LibrarySaveResult).items) do rows[i] = summary(item) end
     return {items = rows}, nil
 end
 
 function M.create(input: types.ResourceCreate): (unknown, error?)
-    return write_one("create", input)
+    local library, err = client.library()
+    if not library then return nil, err end
+    return write_result(library:create(input))
 end
 
 function M.asset_add(input: types.AssetWrite): (unknown, error?)
-    local item, err = call(LIBRARY .. "asset_add", input)
+    local library, open_err = client.library()
+    if not library then return nil, open_err end
+    local item, err = library:add_asset(input)
     if err then return refusal(err) end
     local saved = item :: types.Resource
     return {kind = saved.kind, name = saved.name, state = saved.state, revision = saved.revision,
@@ -85,26 +88,30 @@ function M.asset_add(input: types.AssetWrite): (unknown, error?)
 end
 
 function M.reset(input: types.ResourceRevision): (unknown, error?)
-    return write_one("reset", input)
+    local library, err = client.library()
+    if not library then return nil, err end
+    return write_result(library:reset(input))
 end
 
-function M.history(input: types.ResourceKey): (unknown, error?)
-    local items, err = call(LIBRARY .. "history", input)
-    if err then return nil, err end
-    return {items = items}, nil
+function M.history(input: types.LibraryHistoryRequest): (unknown, error?)
+    local library, err = client.library()
+    if not library then return nil, err end
+    return library:read_history(input)
 end
 
 function M.restore(input: types.ResourceRestore): (unknown, error?)
-    return write_one("restore", input)
+    local library, err = client.library()
+    if not library then return nil, err end
+    return write_result(library:restore(input))
 end
 
 function M.send_test(input: types.TestSend): (unknown, error?)
-    local denied = client.require_library()
-    if denied then return nil, denied end
+    local library, err = client.library()
+    if not library then return nil, err end
     if type(input) == "table" and input.vars ~= nil then
         return tool_result.fail(errors.INVALID, "MailSendTest uses the message's saved samples")
     end
-    return call("kickside.mail.service:library_send_test", input)
+    return library:send_test(input)
 end
 
 return M

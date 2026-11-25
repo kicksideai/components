@@ -163,6 +163,151 @@ entries:
           list_templates: kickside.mail.service:list_templates
           get_template: kickside.mail.service:get_template
           preview: kickside.mail.service:preview
+  - name: library
+    kind: contract.definition
+    meta: { title: Mail library }
+    methods:
+      - name: list
+        description: List a page of library resources.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.list.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.page.output.json
+      - name: get
+        description: Read a library resource and its editable source.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.key.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: read_history
+        description: List a page of revisions for a resource, latest first.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.history.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.history.output.json
+      - name: read_revision
+        description: Read the content and metadata of one saved revision.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.revision.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.revision.output.json
+      - name: asset_content
+        description: Read the bytes and content type for an image revision.
+        input_schemas:
+          - format: application/schema+json
+            definition: '{"type":"object","required":["name"],"properties":{"name":{"type":"string"},"revision":{"type":"integer","minimum":0}}}'
+        output_schemas:
+          - format: application/schema+json
+            definition: '{"type":"object","required":["content_type","bytes","revision"],"properties":{"content_type":{"type":"string"},"bytes":{"type":"string"},"revision":{"type":"integer","minimum":0}}}'
+      - name: preview
+        description: Render a message and review proposed edits before saving.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.preview.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.preview.output.json
+      - name: create
+        description: Create a library resource from new content or a copy.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: update
+        description: Save a reviewed change to an existing library resource.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: save
+        description: Save reviewed changes to several library resources together.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.save.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.output.json
+      - name: set_base
+        description: Set the base of a reviewed message.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.base.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: reset
+        description: Reset a resource to its packaged source.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: restore
+        description: Restore a reviewed revision of a library resource.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.restore.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: delete
+        description: Delete a library resource at its expected revision.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: '{"type":"boolean"}'
+      - name: add_asset
+        description: Adopt a completed image upload into the library.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.asset.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: send_test
+        description: Queue a library message to the acting person.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.send_test.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.output.json
+  - name: library_binding
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:library
+        default: true
+        methods:
+          list: kickside.mail.binding:library_list
+          get: kickside.mail.binding:library_get
+          read_history: kickside.mail.binding:library_read_history
+          read_revision: kickside.mail.binding:library_read_revision
+          asset_content: kickside.mail.binding:library_asset_content
+          preview: kickside.mail.binding:library_preview
+          create: kickside.mail.binding:library_create
+          update: kickside.mail.binding:library_update
+          save: kickside.mail.binding:library_save
+          set_base: kickside.mail.binding:library_set_base
+          reset: kickside.mail.binding:library_reset
+          restore: kickside.mail.binding:library_restore
+          delete: kickside.mail.binding:library_delete
+          add_asset: kickside.mail.binding:library_add_asset
+          send_test: kickside.mail.binding:library_send_test
   - name: transport
     kind: contract.definition
     meta: { comment: Internal delivery protocol for registered mail drivers. }

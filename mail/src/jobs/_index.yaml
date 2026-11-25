@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.jobs
+entries:
+  - name: reconcile
+    kind: function.lua
+    meta:
+      private: true
+      type: bootloader
+      requires: [wippy.migration:migration_bootloader]
+      order: 35
+    source: file://reconcile.lua
+    method: boot
+    imports:
+      library: kickside.mail.command:library
+    security:
+      policies:
+        - kickside.mail.security:outbox_db
+        - kickside.mail.security:outbox_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:overlay_owner
+        - kickside.mail.security:overlay_projection
+        - kickside.mail.security:overlay_originals
+        - kickside.mail.security:overlay_drafts
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read

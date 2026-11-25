@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local autoinit = require("autoinit")
 local funcs = require("funcs")
+local fixtures = require("fixtures")
 local security = require("security")
 local sql = require("sql")
 local test = require("test")
@@ -8,14 +9,15 @@ local uuid = require("uuid")
 
 local function reader(id, capability)
     local actor = assert(security.new_actor(id, {user_id = id}))
-    local policies = {assert(security.policy("kickside.mail.security:library_calls"))}
+    local policies = {assert(security.policy("kickside.mail.security:library_runtime")),
+                assert(security.policy("app.mail_library:invoke_access"))}
     if capability then policies[#policies + 1] = assert(security.policy("kickside.mail.security:library_access")) end
     local scope = assert(security.new_scope(policies))
     return assert(funcs.new():with_actor(actor):with_scope(scope))
 end
 
 local function read_notice(executor)
-    return executor:call("kickside.mail.library:get", {kind = "message", name = "notice"})
+    return fixtures.call(executor, "get", {kind = "message", name = "notice"})
 end
 
 return {run = test.run_cases(function()
@@ -66,6 +68,16 @@ return {run = test.run_cases(function()
             local resource, err = read_notice(reader(actor_id, true))
             assert(resource, tostring(err))
             test.eq("notice", resource.name)
+        end)
+
+        test.it("requires component READ to render a draft without a write review", function()
+            local editor = reader(actor_id, true)
+            local preview, err = fixtures.call(editor, "preview", {message = "notice"})
+            test.is_nil(preview)
+            test.eq(errors.PERMISSION_DENIED, assert(err):kind())
+            test.eq("mail_library_read_denied", err:details().code)
+            grant(1)
+            test.not_nil(assert(fixtures.call(editor, "preview", {message = "notice"})).html)
         end)
     end)
 end)}

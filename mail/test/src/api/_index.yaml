@@ -49,7 +49,7 @@ entries:
       - app.mail_api:bundled_template_catalog
       - app.mail_api:bundled_template_origin
       - kickside.mail.security:library_access
-      - kickside.mail.security:library_calls
+      - kickside.mail.security:library_runtime
       - kickside.mail.security:library_endpoints
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints
@@ -61,7 +61,7 @@ entries:
     group_id: app.mail_api:editor_sender
     policies:
       - kickside.mail.security:library_access
-      - kickside.mail.security:library_calls
+      - kickside.mail.security:library_runtime
       - kickside.mail.security:library_endpoints
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints

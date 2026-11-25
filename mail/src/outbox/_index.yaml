@@ -11,7 +11,7 @@ entries:
       message_reader: kickside.mail.persist:message_reader
       message_repo: kickside.mail.persist:message_repo
       jobs: kickside.core.jobs:jobs
-      asset_store: kickside.mail.library:asset_store
+      asset_file_repo: kickside.mail.persist:asset_file_repo
       policy: kickside.mail.domain:policy
       types: kickside.mail:types
   - name: log
@@ -84,7 +84,7 @@ entries:
     method: run
     modules: [time]
     imports:
-      asset_store: kickside.mail.library:asset_store
+      retention: kickside.mail.command:retention
       asset_file_repo: kickside.mail.persist:asset_file_repo
       database: kickside.mail.persist:db
       message_repo: kickside.mail.persist:message_repo

@@ -33,7 +33,6 @@ entries:
     kind: function.lua
     source: file://library_list.lua
     method: handler
-    modules: [funcs]
     imports:
       principals: kickside.mail.api:principals
       request: kickside.mail.api:request
@@ -52,7 +51,6 @@ entries:
     kind: function.lua
     source: file://library_get.lua
     method: handler
-    modules: [funcs]
     imports:
       principals: kickside.mail.api:principals
       request: kickside.mail.api:request
@@ -67,7 +65,7 @@ entries:
     kind: function.lua
     source: file://library_asset_content.lua
     method: handler
-    modules: [funcs, hash, http]
+    modules: [hash, http]
     imports:
       client: kickside.mail:client
       request: kickside.mail.api:request
@@ -81,8 +79,8 @@ entries:
     kind: function.lua
     source: file://library_create.lua
     method: handler
-    modules: [funcs]
     imports:
+      types: kickside.mail:types
       request: kickside.mail.api:request
       client: kickside.mail:client
   - name: library_create.endpoint
@@ -94,8 +92,8 @@ entries:
     kind: function.lua
     source: file://library_update.lua
     method: handler
-    modules: [funcs]
     imports:
+      types: kickside.mail:types
       request: kickside.mail.api:request
       client: kickside.mail:client
   - name: library_update.endpoint
@@ -107,8 +105,8 @@ entries:
     kind: function.lua
     source: file://library_save.lua
     method: handler
-    modules: [funcs]
     imports:
+      types: kickside.mail:types
       request: kickside.mail.api:request
       client: kickside.mail:client
   - name: library_save.endpoint
@@ -120,8 +118,8 @@ entries:
     kind: function.lua
     source: file://library_set_base.lua
     method: handler
-    modules: [funcs]
     imports:
+      types: kickside.mail:types
       request: kickside.mail.api:request
       client: kickside.mail:client
   - name: library_set_base.endpoint
@@ -133,8 +131,8 @@ entries:
     kind: function.lua
     source: file://library_reset.lua
     method: handler
-    modules: [funcs]
     imports:
+      types: kickside.mail:types
       request: kickside.mail.api:request
       client: kickside.mail:client
   - name: library_reset.endpoint
@@ -146,8 +144,8 @@ entries:
     kind: function.lua
     source: file://library_delete.lua
     method: handler
-    modules: [funcs]
     imports:
+      types: kickside.mail:types
       request: kickside.mail.api:request
       client: kickside.mail:client
   - name: library_delete.endpoint
@@ -159,7 +157,6 @@ entries:
     kind: function.lua
     source: file://library_history.lua
     method: handler
-    modules: [funcs]
     imports:
       principals: kickside.mail.api:principals
       request: kickside.mail.api:request
@@ -174,8 +171,8 @@ entries:
     kind: function.lua
     source: file://library_restore.lua
     method: handler
-    modules: [funcs]
     imports:
+      types: kickside.mail:types
       request: kickside.mail.api:request
       client: kickside.mail:client
   - name: library_restore.endpoint
@@ -187,8 +184,8 @@ entries:
     kind: function.lua
     source: file://library_preview.lua
     method: handler
-    modules: [funcs]
     imports:
+      types: kickside.mail:types
       request: kickside.mail.api:request
       client: kickside.mail:client
   - name: library_preview.endpoint
@@ -200,8 +197,8 @@ entries:
     kind: function.lua
     source: file://library_send_test.lua
     method: handler
-    modules: [funcs]
     imports:
+      types: kickside.mail:types
       request: kickside.mail.api:request
       client: kickside.mail:client
   - name: library_send_test.endpoint

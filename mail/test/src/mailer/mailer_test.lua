@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local library_fixtures = require("library_fixtures")
 local test = require("test")
 local security = require("security")
 local contract = require("contract")
@@ -95,6 +96,8 @@ local function caller(policy_ids, id)
             groups[#groups + 1] = "app:mail_senders"
         elseif policy_id == "kickside.mail.security:library_access" then
             groups[#groups + 1] = "app:mail_editors"
+            policies[#policies + 1] = assert(security.policy("kickside.mail.security:library_runtime"))
+            policies[#policies + 1] = assert(security.policy("app.mail_library:invoke_access"))
         end
     end
     id = id or uuid.v4()
@@ -617,14 +620,14 @@ return {
                     kind = "message", name = "rendered-text-boundary", from = {kind = "message", name = "notice"},
                     text = "{{ block body() }}" .. string.rep("{{ vars.message }}", 65) .. "{{ end }}",
                 }
-                local preview = assert(funcs.call("kickside.mail.library:preview_edits", {message = draft.name, create = draft}))
+                local preview = assert(library_fixtures.call(nil, "preview", {message = draft.name, create = draft}))
                 draft.preview_id = assert(preview.preview_id)
-                local amplifying = assert(funcs.call("kickside.mail.library:create", draft))
+                local amplifying = assert(library_fixtures.call(nil, "create", draft))
                 template.template = amplifying.name
                 template.vars.subject = "Status"
                 template.vars.message = string.rep("a", 4096)
                 value, err = invoke(sender, "send", template)
-                assert(funcs.call("kickside.mail.library:delete", {
+                assert(library_fixtures.call(nil, "delete", {
                     kind = amplifying.kind, name = amplifying.name, expected_revision = amplifying.revision,
                 }))
                 refusal(value, err, errors.INVALID, "text_too_large")
@@ -1015,11 +1018,11 @@ return {
                 test.eq("", delivered.origin.label)
             end)
 
-            test.it("shares malformed preview refusals between Mailer and the library", function()
+            test.it("returns INVALID from both preview contracts for malformed input", function()
                 local native, native_err = invoke(editor, "preview", 5)
-                local library, library_err = editor:call("kickside.mail.library:render", 5)
+                local library, library_err = library_fixtures.call(editor, "preview", 5)
                 refusal(native, native_err, errors.INVALID, "invalid_template")
-                refusal(library, library_err, errors.INVALID, "invalid_template")
+                refusal(library, library_err, errors.INVALID, "invalid_mail_draft")
             end)
 
             test.it("finds recent senders and filters activity by the message name", function()
@@ -1039,8 +1042,8 @@ return {
                 local last = assert(invoke(sender, "list_messages", {template = input.template, since = since, cursor = page.next_cursor, limit = 1}))
                 test.eq(first.message_id, last.items[1].message_id)
                 test.is_false(last.has_more)
-                local editor = caller({"kickside.mail.security:library_access", "kickside.mail.security:library_calls"})
-                local entry = assert(editor:call("kickside.mail.library:get", {kind = "message", name = input.template}))
+                local editor = caller({"kickside.mail.security:library_access"})
+                local entry = assert(library_fixtures.call(editor, "get", {kind = "message", name = input.template}))
                 local matching
                 for _, used in ipairs(entry.used_by.recent_senders) do
                     if used.origin and used.origin.id == input.origin.id then matching = used end
