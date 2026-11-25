@@ -50,12 +50,7 @@ entries:
     group_id: app:editor
     policies:
       - kickside.mail.security:library_access
-      - kickside.mail.security:library_runtime
-      - kickside.mail.security:library_endpoints
-      - kickside.mail.security:module_runtime
-      - kickside.mail.security:member_endpoints
       - kickside.mail.admin.security:module_access
-      - kickside.mail.admin.security:member_endpoints
   - name: delivery
     kind: security.scope
     meta: { comment: Members granted Administer mail delivery. }
@@ -66,10 +61,7 @@ entries:
     policies:
       - kickside.mail.security:driver_admin
       - kickside.mail.security:log_admin
-      - kickside.mail.security:delivery_endpoints
-      - kickside.mail.security:module_runtime
       - kickside.mail.admin.security:module_access
-      - kickside.mail.admin.security:member_endpoints
   - name: settings_admin
     kind: security.scope
   - name: settings_admin_composition
@@ -80,7 +72,7 @@ entries:
       - app:settings_admin_access
       - app:settings_calls
       - app:settings_db
-      - kickside.settings.security:module_runtime
+      - kickside.settings.security:module_access
   - name: settings_calls
     kind: security.policy
     policy:
@@ -178,7 +170,7 @@ entries:
       - { name: "kickside.core:target_db", value: "app:db" }
       - { name: "kickside.core.lifecycle:process_host", value: "app:processes" }
       - { name: "kickside.core.lifecycle:user_lifecycle_grant", value: { subject_id: "app:user", subject_type: group, access_mask: 2 } }
-      - { name: "kickside.core.lifecycle:admin_lifecycle_grant", value: { subject_id: "app:user", subject_type: group, access_mask: 3 } }
+      - { name: "kickside.core.lifecycle:admin_lifecycle_grant", value: { subject_id: "app:settings_admin", subject_type: group, access_mask: 3 } }
       - { name: "kickside.core.retention:process_host", value: "app:processes" }
       - { name: "kickside.core.threads:process_host", value: "app:processes" }
       - { name: "kickside.core.retention:api_router", value: "app:api" }
@@ -196,8 +188,8 @@ entries:
       - { name: "kickside.users:api_router", value: "app:api" }
       - { name: "kickside.users:ui_server", value: "app:gateway" }
       - { name: "kickside.users:target_db", value: "app:db" }
-      - { name: "kickside.users:admin_security_scope", value: "app:user" }
-      - { name: "kickside.users:login_role_resource", value: "app:*" }
+      - { name: "kickside.users:admin_security_scope", value: "app:settings_admin" }
+      - { name: "kickside.users:login_role_resource", value: ["app:user", "app:editor", "app:delivery", "app:settings_admin"] }
       - { name: "kickside.security:target_db", value: "app:db" }
       - { name: "kickside.security:process_host", value: "app:processes" }
       - { name: "kickside.security:api_router", value: "app:api" }

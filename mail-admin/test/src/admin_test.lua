@@ -20,10 +20,10 @@ local function gateway(path: string): string
 end
 
 local function member(groups: {string}): (security.Actor, security.Scope)
-    assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
+    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
     local id = uuid.v4()
     local actor = assert(security.new_actor(id, {user_id = id, security_groups = groups}))
-    return actor, assert(security.named_scope(groups[1]))
+    return actor, assert(security.named_scope(materialized.scope_name))
 end
 
 -- A signed-in session with a bearer token, the way the pages call the API.
@@ -36,10 +36,10 @@ local function signed_in(groups: {string}): string
         assert(db:execute("INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)", {id, group}))
     end
     assert(db:release())
-    assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
+    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
     local actor = assert(security.new_actor(id, {user_id = id, email = id .. "@example.org", security_groups = groups}))
     local tokens = assert(security.token_store("kickside.users.security:tokens"))
-    local token = assert(tokens:create(actor, assert(security.named_scope(groups[1])), {expiration = "1h"}))
+    local token = assert(tokens:create(actor, assert(security.named_scope(materialized.scope_name)), {expiration = "1h"}))
     tokens:close()
     return token
 end
