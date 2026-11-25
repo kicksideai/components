@@ -16,7 +16,7 @@ type Origin = {kind: string, id: string, label: string}
 type SendRequest = {
     template: string?, vars: JsonObject?, subject: string?, text: string?, html: string?,
     to: {Recipient}, cc: {Recipient}?, bcc: {Recipient}?, reply_to: string?,
-    attachments: {AttachmentRef}?, idempotency_key: string?, origin: Origin?, sink_op: string?,
+    attachments: {AttachmentRef}?, idempotency_key: string?, identity_key: string?, origin: Origin?, sink_op: string?,
 }
 type Addresses = {to: {string}, cc: {string}?, bcc: {string}?}
 type DeliveryMessage = Addresses & {
@@ -55,7 +55,8 @@ type MessageRow = {
 type Admission = Addresses & {
     sender: string, actor_context: string, template: string?, subject: string,
     html: string?, text: string?, from: Mailbox, reply_to: string?, attachments: {AttachmentRef}?,
-    library_assets: {AssetRef}?, idempotency_key: string?, content_hash: string?, origin: Origin?, resend_of: string?,
+    library_assets: {AssetRef}?, idempotency_key: string?, idempotency_scope: string?, content_hash: string?,
+    origin: Origin?, resend_of: string?,
 }
 type AdmissionResult = {message: SendResult, inserted: boolean}
 type MessageInsert = Admission & {id: string, created_at: integer, next_check_at: integer}
@@ -251,7 +252,8 @@ type ContentProvider = {
     get_info: (self: ContentProvider, input: {format: string}) -> (ContentInfo | ContentFailure | nil, error?),
     get_content: (self: ContentProvider, input: {format: string, max_size: number}) -> (Content | ContentFailure | nil, error?),
 }
-type SinkRequest = {sink_op: string, input: Record, idempotency_key: string, origin: string, automation_ref: {id: string}?}
+type SinkRequest = {sink_op: string, input: Record, idempotency_key: string, identity_key: string?,
+    origin: string, automation_ref: {id: string}?}
 type SinkResult = {success: true, result: string, dest_ref: MessageRef?}
 type SinkFailure = {success: false, error: {code: string, message: string, retriable: boolean, scope: string, details: Record?}}
 type WritableSink = {

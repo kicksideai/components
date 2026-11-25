@@ -31,9 +31,9 @@ local function result(row: types.KeyRow, content_hash: string): (types.SendResul
     return {message_id = row.id, status = row.status}, nil
 end
 
-local function find_key(sender: string, key: string, content_hash: string): (types.SendResult?, error?)
+local function find_key(scope: string, key: string, content_hash: string): (types.SendResult?, error?)
     return database.with_db(function(ex: database.Executor): (types.SendResult?, error?)
-        local row, err = reader.find_key(ex, sender, key)
+        local row, err = reader.find_key(ex, scope, key)
         if err or not row then return nil, err end
         return result(row, content_hash)
     end)
@@ -47,7 +47,8 @@ local function insert(input: types.Admission): (types.AdmissionResult?, error?)
         sender = input.sender, actor_context = input.actor_context, template = input.template,
         from = input.from, to = input.to, cc = input.cc, bcc = input.bcc, reply_to = input.reply_to,
         subject = input.subject, html = input.html, text = input.text, attachments = input.attachments,
-        idempotency_key = input.idempotency_key, content_hash = input.content_hash, origin = input.origin, resend_of = input.resend_of,
+        idempotency_key = input.idempotency_key, idempotency_scope = input.idempotency_scope,
+        content_hash = input.content_hash, origin = input.origin, resend_of = input.resend_of,
     }
     return database.with_tx(function(tx: database.Transaction, dialect: string): (types.AdmissionResult?, error?)
         local stored, err = repo.insert(tx, row)
@@ -93,23 +94,27 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     if actor_err then return nil, actor_err :: error end
     local actor = actor_row :: types.ActorRow
     local key = input.idempotency_key
-    local hash: string?
+    local hash, scope: string?
     if key then
+        scope = "sender:" .. actor.actor_id
         if input.sink_op then
             local origin = input.origin :: types.Origin
-            local digest, key_err = canonical_json.hash({origin.id, input.sink_op, key})
+            scope = "automation:" .. origin.id
+            local receipt = input.identity_key and {"identity", input.identity_key} or {"delivery", input.sink_op, key}
+            local digest, key_err = canonical_json.hash(receipt)
             if key_err then return nil, key_err :: error end
-            -- Direct keys cannot contain control characters.
-            key = "automation\n" .. (digest :: string)
+            key = digest :: string
         end
         local content: types.Record = {}
         for field, value in pairs(input) do
-            if field ~= "idempotency_key" and field ~= "origin" and field ~= "sink_op" then content[field] = value end
+            if field ~= "idempotency_key" and field ~= "identity_key" and field ~= "origin" and field ~= "sink_op" then
+                content[field] = value
+            end
         end
         local hash_err
         hash, hash_err = canonical_json.hash(content)
         if hash_err then return nil, hash_err :: error end
-        local existing, replay_err = find_key(actor.actor_id, key, hash :: string)
+        local existing, replay_err = find_key(scope, key, hash :: string)
         if existing or replay_err then return existing, replay_err end
     end
 
@@ -168,7 +173,8 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
         from = from,
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = reply_to,
         subject = parts.subject, html = parts.html, text = parts.text, attachments = input.attachments,
-        library_assets = parts.library_assets, idempotency_key = key, content_hash = hash, origin = origin, resend_of = resend_of,
+        library_assets = parts.library_assets, idempotency_key = key, idempotency_scope = scope,
+        content_hash = hash, origin = origin, resend_of = resend_of,
     })
     if save_err then return nil, save_err end
     if saved.inserted then

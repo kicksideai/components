@@ -51,6 +51,7 @@
     "bcc": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},
     "reply_to": {"type": "string", "format": "email"},
     "sink_op": {"enum": ["upsert", "create"], "description": "Operation stamped by the automation destination."},
+    "identity_key": {"type": "string", "minLength": 1, "description": "Stable record identity stamped by the automation destination."},
     "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 2048},
     "attachments": {
       "type": "array",

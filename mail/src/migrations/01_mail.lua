@@ -23,6 +23,7 @@ local tables: {string} = {
         reply_to TEXT,
         attachments TEXT NOT NULL,
         idempotency_key TEXT,
+        idempotency_scope TEXT,
         content_hash TEXT,
         job_id TEXT,
         driver_id TEXT,
@@ -38,6 +39,7 @@ local tables: {string} = {
         failed_text TEXT,
         resend_of TEXT,
         CHECK ((idempotency_key IS NULL) = (content_hash IS NULL)),
+        CHECK ((idempotency_key IS NULL) = (idempotency_scope IS NULL)),
         CHECK ((status = 'queued' AND next_attempt_at IS NOT NULL AND next_check_at IS NOT NULL
             AND actor_context IS NOT NULL AND finished_at IS NULL)
             OR (status <> 'queued' AND next_attempt_at IS NULL AND next_check_at IS NULL
@@ -152,7 +154,7 @@ local tables: {string} = {
 }
 
 local indexes: {string} = {
-    [[CREATE UNIQUE INDEX mail_message_idempotency ON mail_message(sender, idempotency_key)
+    [[CREATE UNIQUE INDEX mail_message_idempotency ON mail_message(idempotency_scope, idempotency_key)
         WHERE idempotency_key IS NOT NULL]],
     [[CREATE INDEX mail_message_sender_page ON mail_message(sender, created_at DESC, id DESC)]],
     [[CREATE INDEX mail_message_page ON mail_message(created_at DESC, id DESC)]],

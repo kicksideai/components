@@ -43,9 +43,10 @@ local function probe(input)
     end
     if input.operation == "write" or input.operation == "write_request" then
         local writable = assert(open("kickside.data:writable", "kickside.mail.sink:writable"))
+        local key = "record:" .. assert(security.actor()):id()
         local request = input.operation == "write_request" and input.message or {
             config = {}, sink_op = "create", input = input.message,
-            idempotency_key = "delivery-key", identity_key = "record-key", origin = "automation",
+            idempotency_key = key, identity_key = key, origin = "automation",
         }
         return writable:write(request)
     end
@@ -975,7 +976,7 @@ return {
                 test.is_nil(result.dest_ref.transport_metadata)
             end)
 
-            test.it("sends each Sync upsert once and acknowledges deletes without sending", function()
+            test.it("sends once per Sync identity and acknowledges deletes without sending", function()
                 assert(change(admin, "driver", "kickside.mail.harness:admitted").success)
                 assert(change(admin, "from_address", "mail@example.org").success)
                 local port = assert(registry.get("kickside.mail.sink:send_email"))
@@ -993,22 +994,27 @@ return {
 
                 request.dest_ref = first.dest_ref
                 request.idempotency_key = "source-item-v2"
+                local redelivery = assert(invoke(sender, "write_request", request))
+                test.is_true(redelivery.success)
+                test.eq(first.result, redelivery.result)
+                test.eq(first.dest_ref.message_id, redelivery.dest_ref.message_id)
+
+                request.idempotency_key = "source-item-v3"
                 request.input.subject = "Changed source item"
                 local changed = assert(invoke(sender, "write_request", request))
-                test.is_true(changed.success, tostring(changed.error and changed.error.message))
-                test.is_true(first.dest_ref.message_id ~= changed.dest_ref.message_id)
-                test.eq("sent", terminal(sender, {message_id = changed.dest_ref.message_id, status = "queued"}).status)
+                test.is_false(changed.success)
+                test.eq("idempotency_conflict", changed.error.code)
+                test.is_false(changed.error.retriable)
 
-                request.dest_ref = changed.dest_ref
                 request.input = assert(json.decode("{}"))
-                request.idempotency_key = "source-item-v3"
+                request.idempotency_key = "source-item-v4"
                 request.sink_op = "delete"
                 local deleted = assert(invoke(sender, "write_request", request))
                 test.is_true(deleted.success, tostring(deleted.error and deleted.error.message))
                 test.eq("noop", deleted.result)
                 test.is_nil(deleted.dest_ref)
                 local logged = assert(invoke(sender, "list_messages", {limit = 10}))
-                test.eq(2, #logged.items)
+                test.eq(1, #logged.items)
                 test.not_nil(port.data.operations.upsert)
                 test.not_nil(port.data.operations.delete)
             end)

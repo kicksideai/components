@@ -15,15 +15,16 @@ function M.insert(tx: sql.Transaction, row: types.MessageInsert): (types.InsertO
     local rows, err = tx:query([[INSERT INTO mail_message (
         id, created_at, status, next_attempt_at, next_check_at, sender, actor_context, template,
         recipients, subject, html, text, from_address, from_name, reply_to, attachments, idempotency_key, content_hash,
-        origin_kind, origin_id, origin_label, resend_of
-    ) VALUES ($1,$2,'queued',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
-    ON CONFLICT (sender, idempotency_key) WHERE idempotency_key IS NOT NULL
+        origin_kind, origin_id, origin_label, resend_of, idempotency_scope
+    ) VALUES ($1,$2,'queued',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+    ON CONFLICT (idempotency_scope, idempotency_key) WHERE idempotency_key IS NOT NULL
     DO UPDATE SET id=mail_message.id RETURNING id,status,content_hash]], {
         row.id, row.created_at, row.next_check_at, row.sender, row.actor_context, row.template or sql.NULL,
         recipients, row.subject, row.html or sql.NULL, row.text or sql.NULL, row.from.address,
         row.from.name or sql.NULL, row.reply_to or sql.NULL, refs, row.idempotency_key or sql.NULL,
         row.content_hash or sql.NULL, row.origin and row.origin.kind or sql.NULL,
         row.origin and row.origin.id or sql.NULL, row.origin and row.origin.label or sql.NULL, row.resend_of or sql.NULL,
+        row.idempotency_scope or sql.NULL,
     })
     if err then return nil, err end
     local stored = rows[1] :: types.KeyRow

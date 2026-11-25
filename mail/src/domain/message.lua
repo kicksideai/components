@@ -16,7 +16,8 @@ end
 
 local REQUEST_FIELDS = {
     template = true, vars = true, subject = true, text = true, html = true, to = true,
-    cc = true, bcc = true, reply_to = true, attachments = true, idempotency_key = true, origin = true, sink_op = true,
+    cc = true, bcc = true, reply_to = true, attachments = true, idempotency_key = true, identity_key = true,
+    origin = true, sink_op = true,
 }
 
 local function nonempty(value: unknown): boolean
@@ -307,6 +308,9 @@ function M.validate(raw: unknown): (types.SendRequest?, error?)
     if input.idempotency_key ~= nil
         and (not nonempty(input.idempotency_key) or #input.idempotency_key > M.MAX_KEY_BYTES or input.idempotency_key:find("%c")) then
         return nil, invalid("invalid_idempotency_key", "Idempotency key must be non-empty, contain no control characters, and be at most 2048 bytes")
+    end
+    if input.identity_key ~= nil and (not input.sink_op or not nonempty(input.identity_key)) then
+        return nil, invalid("invalid_identity_key", "A stable identity key requires an automation write")
     end
     if input.attachments ~= nil then
         local err = M.attachments_error(input.attachments)

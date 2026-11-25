@@ -23,7 +23,7 @@ return {run = test.run_cases(function()
                 local row = {id = uuid.v4(), created_at = 1, next_check_at = 2, sender = uuid.v4(),
                     actor_context = "test", from = {address = "mail@example.org"},
                     to = {"reader@example.org"}, subject = "Original", text = "Ready",
-                    idempotency_key = uuid.v4(), content_hash = "original"}
+                    idempotency_scope = "sender:fixture", idempotency_key = uuid.v4(), content_hash = "original"}
                 local inserted = assert(repo.insert(tx, row))
                 test.is_true(inserted.inserted)
                 test.eq(row.id, inserted.id)

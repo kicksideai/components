@@ -11,9 +11,9 @@ local RESEND_COLUMNS = "id,status,template,subject,recipients,reply_to,attachmen
 local SUMMARY_WINDOW = 10000
 local M = {}
 
-function M.find_key(ex: database.Executor, sender: string, key: string): (types.KeyRow?, error?)
-    local rows, err = ex:query("SELECT id, status, content_hash FROM mail_message WHERE sender=$1 AND idempotency_key=$2",
-        {sender, key})
+function M.find_key(ex: database.Executor, scope: string, key: string): (types.KeyRow?, error?)
+    local rows, err = ex:query("SELECT id, status, content_hash FROM mail_message WHERE idempotency_scope=$1 AND idempotency_key=$2",
+        {scope, key})
     if err then return nil, err end
     return rows[1] :: types.KeyRow?, nil
 end
