@@ -5,13 +5,11 @@ local principals = require("principals")
 
 local function handler()
     return request.handle(client.require_admin, function(req)
-        local limit, since = req:query("limit"), req:query("since")
-        local size = limit == nil and 50 or math.tointeger(tonumber(limit))
-        local start = since and math.tointeger(tonumber(since)) or nil
-        if not size or (since and not start) then
-            return nil, request.invalid("Limit and since must be integers")
-        end
-        return principals.page("sender", client.list_messages({limit = size, since = start, status = req:query("status") :: string?,
+        local limit, limit_err = request.query_integer(req, "limit")
+        if limit_err then return nil, limit_err end
+        local since, since_err = request.query_integer(req, "since")
+        if since_err then return nil, since_err end
+        return principals.page("sender", client.list_messages({limit = limit or 50, since = since, status = req:query("status") :: string?,
             q = req:query("q") :: string?, template = req:query("message") :: string?, cursor = req:query("cursor") :: string?}))
     end)
 end

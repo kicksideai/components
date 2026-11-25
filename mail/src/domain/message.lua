@@ -98,16 +98,9 @@ function M.limit_error(code: string, label: string, limit: string, maximum: inte
         details = {code = code, limit = limit, maximum = maximum}})
 end
 
-function M.recipients_error(addresses: types.Addresses, maximum: integer?): error?
+function M.recipients_error<T>(addresses: {to: {T}, cc: {T}?, bcc: {T}?}, maximum: integer?): error?
     if maximum and #addresses.to + #(addresses.cc or {}) + #(addresses.bcc or {}) > maximum then
         return M.limit_error("too_many_recipients", "The mail driver recipient limit is exceeded", "max_recipients", maximum)
-    end
-    return nil
-end
-
-function M.recipient_bound(input: types.SendRequest, maximum: integer): error?
-    if #input.to + #(input.cc or {}) + #(input.bcc or {}) > maximum then
-        return M.limit_error("too_many_recipients", "The mail recipient limit is exceeded", "max_recipients", maximum)
     end
     return nil
 end

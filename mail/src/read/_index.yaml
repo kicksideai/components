@@ -6,8 +6,9 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://settings.lua
-    modules: [contract, env, funcs, security]
+    modules: [env, funcs, security]
     imports:
+      config: kickside.mail.driver:config
       types: kickside.mail:types
   - name: driver_selection
     kind: function.lua

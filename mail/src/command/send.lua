@@ -126,10 +126,8 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     local found, driver_err = transports.status(selection.id)
     if driver_err then return nil, setup_error(driver_err) end
     local driver = found :: types.AdmittedTransport
-    if driver.max_recipients then
-        local limit_err = message.recipient_bound(input, driver.max_recipients)
-        if limit_err then return nil, limit_err end
-    end
+    local limit_err = message.recipients_error(input, driver.max_recipients)
+    if limit_err then return nil, limit_err end
     local addresses, recipient_err = recipients.resolve(input)
     if recipient_err then return nil, recipient_err end
 
