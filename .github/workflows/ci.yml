@@ -83,7 +83,10 @@ jobs:
             database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_mail"
             createdb "$database"
             trap 'dropdb "$database"' EXIT
-            make -C mail verify WIPPY_ARGS="--profile postgres --set vars.pg_host=$PGHOST --set vars.pg_port=$PGPORT --set vars.pg_database=$database"
+            db_args="--set vars.pg_host=$PGHOST --set vars.pg_port=$PGPORT --set vars.pg_database=$database"
+            make -C mail lockrefresh
+            make -C mail lint typecheck WIPPY_ARGS="--profile postgres $db_args"
+            make -C mail check-module test-pg WIPPY_ARGS="$db_args"
         - module: dashboard
           engine: sqlite
           commands: |
@@ -537,6 +540,12 @@ jobs:
         path: providers
         token: ${{ secrets.SOURCE_READ_TOKEN || github.token }}
         persist-credentials: false
+    - name: Report Mail structure findings
+      if: ${{ matrix.module == 'mail' && matrix.engine == 'sqlite' }}
+      continue-on-error: true
+      run: |
+        python3 -B scripts/test_check_structure.py
+        make -C mail structure
     - name: Build, lint and Lua module tests
       env:
         PGPORT: '5433'

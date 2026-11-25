@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { checkDependencies, checkEndpoints, parseYamlDocuments, run } from '../../work/scripts/module-rules.mjs'
+import { spawnSync } from 'node:child_process'
 import { access, readFile, readdir, stat } from 'node:fs/promises'
-import { dirname, extname, relative, resolve, sep } from 'node:path'
+import { basename, dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -15,6 +16,31 @@ function report(message) {
 async function exists(path) {
   try { await access(path); return true } catch { return false }
 }
+
+async function checkStructure() {
+  const checker = resolve(root, '../scripts/check_structure.py')
+  const modules = [root]
+  const peers = ['../mail-admin', '../../providers/mail-resend', '../../providers/mail-sendgrid', '../../providers/mail-mailgun']
+  for (const path of peers) {
+    const peer = resolve(root, path)
+    if (await exists(resolve(peer, 'wippy.yaml'))) modules.push(peer)
+  }
+  console.log('Mail structure check (report only)')
+  for (const moduleDir of modules) {
+    const args = ['-B', checker, moduleDir, '--greenfield', basename(moduleDir)]
+    for (const peer of modules) {
+      if (peer !== moduleDir) args.push('--peer', peer)
+    }
+    const { error, status, signal } = spawnSync('python3', args, { stdio: 'inherit' })
+    if (error) throw error
+    if (status !== 0 && status !== 1) {
+      throw new Error(`Structure checker failed for ${basename(moduleDir)} (${signal || status})`)
+    }
+  }
+}
+
+await checkStructure()
+if (process.argv[2] === '--structure-only') process.exit(0)
 
 async function walk(directory) {
   const out = []

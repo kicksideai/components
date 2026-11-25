@@ -1,4 +1,4 @@
 # SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 organization: kickside
 module: mail-harness
-description: Standalone harness that runs the kickside/mail test suites.
+description: Standalone Mail test harness with SQLite and a PostgreSQL runtime profile.

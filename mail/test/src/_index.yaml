@@ -7,6 +7,7 @@ entries:
     meta: { title: KickSide }
   - name: db
     kind: db.sql.sqlite
+    meta: { comment: The postgres profile replaces this database entry. }
     file: ./.wippy/mail-test.sqlite
     foreign_keys: true
     pool: { max_open: 1, max_idle: 1 }
