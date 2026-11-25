@@ -22,7 +22,7 @@ end
 
 local function role_scope(groups: {string}): security.Scope
     local resolved = assert(funcs.call("kickside.security.runtime:resolve_groups", {groups = groups}))
-    return assert(identity.scope_from_groups(resolved.groups, resolved.policy_ids))
+    return assert(identity.scope_from_groups(resolved.groups, resolved.policy_ids)) :: security.Scope
 end
 
 local function member(groups: {string}): (security.Actor, security.Scope)
