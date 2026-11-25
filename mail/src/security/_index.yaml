@@ -72,6 +72,34 @@ entries:
       resources: [kickside.mail:db_config]
       actions: [db.get]
       effect: allow
+  - name: projection_db
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: []
+      actions: [db.get]
+      effect: allow
+  - name: projection_sync
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.mail.jobs:library_sync]
+      actions: [kickside.execution.defer]
+      effect: allow
+  - name: projection_config
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.mail:db_config, kickside.core.jobs:policy, kickside.mail.jobs:library_sync]
+      actions: [registry.get]
+      effect: allow
+  - name: library_threads
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.core:threads, find, append_events, list_events, catch_up_projection, prune_boundary]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
   - name: outbox_config
     kind: security.policy
     meta: { private: true }

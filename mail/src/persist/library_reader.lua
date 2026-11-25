@@ -14,7 +14,7 @@ local function asset_resource(row: types.LibraryRow): types.Resource
     end
     return {kind = "asset", name = row.name, title = row.title, description = row.description,
         html = "", text = "", schema = {type = "object", properties = {}}, samples = {}, asset = asset,
-        state = row.state, origin = row.origin, revision = row.revision, author = row.author,
+        state = row.state, origin = row.origin, origin_label = row.origin_label, revision = row.revision, author = row.author,
         created_at = row.created_at, updated_at = row.updated_at}
 end
 
@@ -27,16 +27,18 @@ local function resource(row: types.LibraryRow): (types.Resource?, error?)
     return {
         kind = row.kind, name = row.name, title = row.title, description = row.description, html = row.html, text = row.text,
         subject = row.subject, base = row.base, schema = canonical.normalize_schema(schema) :: types.VariableSchema,
-        samples = canonical.object(samples) :: types.JsonObject, state = row.state, origin = row.origin,
+        samples = canonical.object(samples) :: types.JsonObject, state = row.state, origin = row.origin, origin_label = row.origin_label,
         revision = row.revision, author = row.author, created_at = row.created_at, updated_at = row.updated_at,
         archived = row.archived == true or row.archived == 1,
     }, nil
 end
 
-local ASSET_SELECT = [[SELECT a.*, 'asset' AS kind, a.upload_id AS asset_upload_id,
+local ASSET_SELECT = [[SELECT a.name,a.title,a.description,a.origin,a.origin_label,a.revision,a.author,a.created_at,a.updated_at,
+    'asset' AS kind, a.upload_id AS asset_upload_id,
     CASE WHEN a.origin IS NULL THEN 'created' ELSE 'customized' END AS state,
-    f.filename,f.content_type,f.size_bytes
-    FROM mail_library_asset a JOIN mail_asset_file f ON f.upload_id=a.upload_id]]
+    COALESCE(a.filename,f.filename) AS filename, COALESCE(a.content_type,f.content_type) AS content_type,
+    COALESCE(a.size_bytes,f.size_bytes) AS size_bytes
+    FROM mail_library_asset a LEFT JOIN mail_asset_file f ON f.upload_id=a.upload_id]]
 
 function M.get(db: types.Executor, key: types.ResourceKey): (types.Resource?, error?)
     if key.kind == "asset" then
@@ -50,15 +52,27 @@ function M.get(db: types.Executor, key: types.ResourceKey): (types.Resource?, er
         return asset_resource(reset[1] :: types.LibraryRow), nil
     end
     local rows, err = db:query([[SELECT * FROM (
-        SELECT revision,kind,name,title,description,html,text,subject,base,schema_json,samples_json,state,origin,
+        SELECT revision,kind,name,title,description,html,text,subject,base,schema_json,samples_json,state,origin,origin_label,
             author,created_at,updated_at,archived FROM mail_library WHERE kind=$1 AND name=$2
         UNION ALL
-        SELECT revision,kind,name,title,description,html,text,subject,base,schema_json,samples_json,state,origin,
+        SELECT revision,kind,name,title,description,html,text,subject,base,schema_json,samples_json,state,origin,NULL,
             author,created_at,updated_at,FALSE FROM mail_library_revision WHERE kind=$1 AND name=$2 AND state='original'
     ) AS effective ORDER BY revision DESC LIMIT 1]], {key.kind, key.name})
     if err then return nil, err end
     if not rows[1] then return nil, nil end
     return resource(rows[1] :: types.LibraryRow)
+end
+
+function M.projected_state(ex: types.Executor, key: types.ResourceKey): (types.ProjectedState?, error?)
+    local rows, err
+    if key.kind == "asset" then
+        rows, err = ex:query("SELECT created_at,upload_id,last_seq FROM mail_library_asset WHERE name=$1", {key.name})
+    else
+        rows, err = ex:query("SELECT created_at,archived,last_seq FROM mail_library WHERE kind=$1 AND name=$2",
+            {key.kind, key.name})
+    end
+    if err then return nil, err end
+    return rows[1] :: types.ProjectedState?, nil
 end
 
 function M.deleted_revision(ex: types.Executor, key: types.ResourceKey): (integer?, error?)
@@ -173,7 +187,8 @@ function M.summary_page(db: types.Executor, dialect: string, declarations: {type
         .. table.concat(sources, " UNION ALL ") .. "), summary AS (SELECT COUNT(*) AS total FROM matched)"
         .. ", page AS (SELECT * FROM (" .. table.concat(pages, " UNION ALL ")
         .. ") AS candidates ORDER BY kind,name LIMIT " .. page_limit .. ")"
-        .. [[ SELECT page.*,summary.total,a.upload_id,f.filename,f.content_type,f.size_bytes,
+        .. [[ SELECT page.*,summary.total,a.upload_id,COALESCE(a.filename,f.filename) AS filename,
+        COALESCE(a.content_type,f.content_type) AS content_type, COALESCE(a.size_bytes,f.size_bytes) AS size_bytes,
         CASE WHEN page.state='original' THEN COALESCE((SELECT MAX(r.revision) FROM mail_library_revision r
             WHERE r.kind=page.kind AND r.name=page.name AND r.state='original'),0) ELSE page.revision END AS effective_revision
         FROM summary LEFT JOIN page ON 1=1

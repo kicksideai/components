@@ -7,6 +7,7 @@ local tables = {
     "mail_message", "mail_library", "mail_asset_file", "mail_library_revision",
     "mail_library_asset", "mail_message_asset",
     "mail_library_reference", "mail_library_preview",
+    "mail_library_history", "mail_library_upload_ref", "mail_library_live",
 }
 
 local indexes = {
@@ -16,6 +17,7 @@ local indexes = {
     "mail_library_state", "mail_library_base", "mail_asset_file_due",
     "mail_library_revision_asset", "mail_library_asset_upload", "mail_message_asset_upload",
     "mail_library_reference_to", "mail_library_preview_expiry",
+    "mail_library_history_page", "mail_library_upload_ref_reap",
 }
 
 local function inspect_schema(db_id: string)

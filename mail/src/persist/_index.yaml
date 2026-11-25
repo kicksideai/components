@@ -55,3 +55,38 @@ entries:
     source: file://preview_repo.lua
     modules: [json]
     imports: { types: kickside.mail:types }
+  - name: history_repo
+    kind: library.lua
+    meta: {private: true}
+    source: file://history_repo.lua
+    modules: [sql]
+    imports: {types: kickside.mail:types}
+  - name: upload_ref_repo
+    kind: library.lua
+    meta: {private: true}
+    source: file://upload_ref_repo.lua
+    imports: {types: kickside.mail:types}
+  - name: live_repo
+    kind: library.lua
+    meta: {private: true}
+    source: file://live_repo.lua
+    imports: {types: kickside.mail:types}
+  - name: library_projection
+    kind: function.lua
+    meta: {type: projection.worker, private: true, component_owned: true}
+    source: file://projection.lua
+    method: run
+    modules: [time]
+    imports:
+      types: kickside.mail:types
+      jobs: kickside.core.jobs:jobs
+      fold: kickside.mail.domain:fold
+      db: kickside.mail.persist:db
+      library_repo: kickside.mail.persist:library_repo
+      library_reader: kickside.mail.persist:library_reader
+      history_repo: kickside.mail.persist:history_repo
+      reference_repo: kickside.mail.persist:reference_repo
+      live_repo: kickside.mail.persist:live_repo
+      upload_ref_repo: kickside.mail.persist:upload_ref_repo
+    security:
+      policies: [kickside.mail.security:projection_db, kickside.mail.security:projection_config, kickside.mail.security:projection_sync]

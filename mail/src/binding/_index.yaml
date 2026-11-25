@@ -7,11 +7,29 @@ entries:
     meta:
       title: Mail library
       class: [kickside.mail.library]
-      thread_class: kickside.mail.library
+      thread: {class: kickside.mail.library}
       provision:
         scope: system
         grants:
           - {subject_id: "system:kickside.mail.retention", subject_type: user, access_mask: 1}
+      retention: {event_days: 365}
+      events:
+        input:
+          - {type: kickside.mail.events:resource.created}
+          - {type: kickside.mail.events:resource.updated}
+          - {type: kickside.mail.events:resource.base_set}
+          - {type: kickside.mail.events:resource.reset}
+          - {type: kickside.mail.events:resource.restored}
+          - {type: kickside.mail.events:resource.archived}
+          - {type: kickside.mail.events:resource.deleted}
+          - {type: kickside.mail.events:asset.added}
+          - {type: kickside.mail.events:asset.restored}
+          - {type: kickside.mail.events:asset.removed}
+        output: []
+      projections:
+        - kind: kickside.mail:library_tables
+          worker_ref: func://kickside.mail.persist:library_projection
+          input_mode: prefetch_events
     contracts:
       - contract: kickside.contract:component
         methods:

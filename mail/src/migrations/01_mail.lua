@@ -46,7 +46,8 @@ local tables: {string} = {
         CHECK (status = 'sent' OR provider_message_id IS NULL)
     )]],
     [[CREATE TABLE mail_library (
-        revision @identity@,
+        row_id @identity@,
+        revision BIGINT NOT NULL DEFAULT 0,
         kind TEXT NOT NULL CHECK (kind IN ('base', 'message', 'part')),
         name TEXT NOT NULL,
         title TEXT NOT NULL,
@@ -59,6 +60,8 @@ local tables: {string} = {
         samples_json TEXT NOT NULL,
         state TEXT NOT NULL CHECK (state IN ('created', 'customized')),
         origin TEXT,
+        origin_label TEXT,
+        last_seq BIGINT NOT NULL DEFAULT 0,
         author TEXT NOT NULL,
         created_at BIGINT NOT NULL,
         updated_at BIGINT NOT NULL,
@@ -100,15 +103,43 @@ local tables: {string} = {
         PRIMARY KEY (kind, name, revision)
     )]],
     [[CREATE TABLE mail_library_asset (
-        revision @identity@,
+        row_id @identity@,
+        revision BIGINT NOT NULL DEFAULT 0,
         name TEXT NOT NULL UNIQUE,
         title TEXT NOT NULL,
         description TEXT NOT NULL,
         origin TEXT,
+        origin_label TEXT,
         author TEXT NOT NULL,
         created_at BIGINT NOT NULL,
         updated_at BIGINT NOT NULL,
-        upload_id TEXT REFERENCES mail_asset_file(upload_id)
+        upload_id TEXT,
+        filename TEXT,
+        content_type TEXT,
+        size_bytes BIGINT,
+        last_seq BIGINT NOT NULL DEFAULT 0
+    )]],
+    [[CREATE TABLE mail_library_history (
+        seq BIGINT PRIMARY KEY NOT NULL,
+        kind TEXT NOT NULL,
+        name TEXT NOT NULL,
+        version BIGINT NOT NULL,
+        action TEXT NOT NULL,
+        author TEXT NOT NULL,
+        note TEXT,
+        restored_from BIGINT,
+        at BIGINT NOT NULL
+    )]],
+    [[CREATE TABLE mail_library_upload_ref (
+        upload_id TEXT PRIMARY KEY NOT NULL,
+        asset TEXT NOT NULL,
+        live @boolean@ NOT NULL CHECK (live IN (FALSE, TRUE)),
+        last_seq BIGINT NOT NULL
+    )]],
+    [[CREATE TABLE mail_library_live (
+        id BIGINT PRIMARY KEY NOT NULL CHECK (id = 1),
+        projected_seq BIGINT NOT NULL,
+        template_seq BIGINT NOT NULL
     )]],
     [[CREATE TABLE mail_library_reference (
         from_kind TEXT NOT NULL,
@@ -154,6 +185,8 @@ local indexes: {string} = {
     [[CREATE INDEX mail_library_revision_asset ON mail_library_revision(asset_upload_id)
         WHERE asset_upload_id IS NOT NULL]],
     [[CREATE INDEX mail_library_asset_upload ON mail_library_asset(upload_id)]],
+    [[CREATE INDEX mail_library_history_page ON mail_library_history(kind,name,seq DESC)]],
+    [[CREATE INDEX mail_library_upload_ref_reap ON mail_library_upload_ref(live,last_seq)]],
     [[CREATE INDEX mail_library_reference_to ON mail_library_reference(to_kind,to_name,from_kind,from_name)]],
     [[CREATE INDEX mail_library_preview_expiry ON mail_library_preview(expires_at,id)]],
     [[CREATE INDEX mail_message_asset_upload ON mail_message_asset(upload_id) WHERE upload_id IS NOT NULL]],
@@ -183,6 +216,7 @@ end
 
 local function drop(db: types.Executor)
     for _, name in ipairs({
+        "mail_library_live", "mail_library_upload_ref", "mail_library_history",
         "mail_library_preview", "mail_library_reference", "mail_message_asset", "mail_library_asset",
         "mail_library_revision", "mail_asset_file", "mail_library", "mail_message",
     }) do

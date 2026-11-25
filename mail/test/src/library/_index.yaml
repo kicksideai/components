@@ -145,3 +145,34 @@ entries:
       autoinit: kickside.component:autoinit
       fixtures: app.mail_library:fixtures
       test: wippy.test:test
+  - name: projection_test
+    kind: function.lua
+    meta: {type: test, suite: mail_library_projection}
+    source: file://projection_test.lua
+    method: run
+    modules: [contract, fs, funcs, json, security, sql, time, uuid]
+    imports:
+      events: kickside.mail.domain:events
+      resource: kickside.mail.domain:resource
+      originals: kickside.mail.render:originals
+      autoinit: kickside.component:autoinit
+      test: wippy.test:test
+  - name: projection_editor_context
+    kind: security.policy
+    policy:
+      resources: "*"
+      actions: [contract.security, funcs.security]
+      effect: allow
+  - name: projection_editor_notifications
+    kind: security.policy
+    policy:
+      resources: [kickside.core.retention:notify, kickside.core.threads:emit_update, kickside.core.threads:cursor_waiter_signal, kickside.core.jobs.persist:pool_nudge]
+      actions: [funcs.call]
+      effect: allow
+  - name: binding_declaration_test
+    kind: function.lua
+    meta: {type: test, suite: mail_library_projection_wiring}
+    source: file://binding_declaration_test.lua
+    method: run
+    modules: [registry]
+    imports: {test: wippy.test:test}
