@@ -101,8 +101,8 @@ entries:
     entry_point: delivery.js
     icon: tabler:send
     description: Delivery settings for Mail in System Settings. Delivery administrators choose one of the
-      services Mail admits, see whether it is ready, edit its settings and Mail's sender settings through
-      the platform settings card, and send a test email to themselves.
+      services Mail admits, see whether it is ready, edit the settings of each installed service and Mail's
+      sender settings through the platform settings card, and send a test email to themselves.
   props:
     type: object
     properties:
@@ -120,11 +120,22 @@ entries:
   kind: registry.entry
   meta:
     type: kickside.settings:block
-    comment: The Mail block in System Settings; it claims the kickside.mail namespace and embeds the chosen service's namespace.
+    comment: The one Mail block in System Settings. It claims Mail's namespace and the first-party driver namespaces,
+      whose settings it shows inside the delivery section.
   key: mail
   title: Mail
   icon: tabler:mail
   group: Integrations
   order: 30
-  namespace: kickside.mail
   component_tag: kickside-mail-delivery
+  namespaces:
+  - kickside.mail
+  - kickside.mail.resend
+  - kickside.mail.sendgrid
+  - kickside.mail.mailgun
+  config:
+    namespaces:
+    - kickside.mail
+    - kickside.mail.resend
+    - kickside.mail.sendgrid
+    - kickside.mail.mailgun

@@ -2,11 +2,12 @@
 <script setup lang="ts">
 import { host } from '@wippy-fe/proxy'
 import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
-import { computed, ref, shallowRef } from 'vue'
+import { computed, reactive, ref, shallowRef } from 'vue'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
+import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import SettingsGroup from '@kickside/ui-kit/SettingsGroup.vue'
 import SettingsItem from '@kickside/ui-kit/SettingsItem.vue'
@@ -15,12 +16,13 @@ import { activity, delivery as deliveryApi, isDenied } from '../api'
 import { deliveryFailure, describe } from '../copy'
 import { useMailInvalidation } from '../realtime'
 import { navigate } from '../navigation'
-import type { DeliveryStatus, LogMessage } from '../types'
+import type { DeliveryStatus, LogMessage, TransportStatus } from '../types'
 import { chooseService, isConflict } from './api'
 import SettingsProvider, { type ProviderConfig } from './SettingsProvider.vue'
 
-// Mail's delivery block: the admitted services from Mail's delivery status, the chosen one's own settings and Mail's
-// sender settings, each namespace through the platform settings card.
+// Mail's delivery block: the admitted services from Mail's delivery status, the chosen one's own settings directly
+// under the choice, every other installed service's settings in a collapsed section, and Mail's sender settings.
+// Each namespace renders through the platform settings card from the settings_ns that the service reports.
 const loading = ref(true), denied = ref(false)
 const error = ref('')
 const status = shallowRef<DeliveryStatus>()
@@ -85,10 +87,12 @@ async function choose(id: string | undefined) {
   }
 }
 
-const serviceSettings = computed<ProviderConfig | undefined>(() => {
-  const item = selected.value
-  return item && { namespace: item.settings_ns, title: item.title, icon: item.icon, help: item.description }
-})
+const settingsOf = (item: TransportStatus): ProviderConfig =>
+  ({ namespace: item.settings_ns, title: item.title, icon: item.icon, help: item.description })
+const serviceSettings = computed(() => selected.value && settingsOf(selected.value))
+// A collapsed service mounts its settings card only while open, so its settings are read when someone looks at them.
+const others = computed(() => transports.value.filter(item => item.id !== selected.value?.id))
+const expanded = reactive<Record<string, boolean>>({})
 const senderSettings: ProviderConfig = {
   namespace: 'kickside.mail', title: 'Sender', icon: 'tabler:at',
   help: 'Who recipients see the email from, where replies go, and how long Mail keeps the delivery log.',
@@ -193,8 +197,15 @@ const testBlocked = computed(() => selected.value ? '' : 'Choose a service to se
         </SettingsItem>
       </SettingsGroup>
 
-      <SettingsProvider :config="senderSettings" />
       <SettingsProvider v-if="serviceSettings" :key="serviceSettings.namespace" :config="serviceSettings" />
+
+      <SettingsGroup v-if="others.length" :title="selected ? 'Other services' : 'Services'" class="mail-other-services">
+        <Disclosure v-for="item in others" :key="item.id" v-model:open="expanded[item.id]" :label="item.title">
+          <SettingsProvider v-if="expanded[item.id]" :config="settingsOf(item)" />
+        </Disclosure>
+      </SettingsGroup>
+
+      <SettingsProvider :config="senderSettings" />
 
       <SettingsGroup title="Test">
         <SettingsItem title="Send a test email" :description="testBlocked || 'Sends a short message to you with the saved settings.'">

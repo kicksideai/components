@@ -63,22 +63,34 @@ the Liquid grammar over HTML highlights template expressions inside markup.
 
 ## Delivery settings
 
-`kickside.mail.admin:delivery_block` is Mail's block in System → Settings →
-Integrations, rendered by `kickside-mail-delivery`. It lists the transports
-Mail admits from `GET /api/v1/mail/delivery`, each with its readiness and setup
-issue, and switches the service from a dropdown: the block writes
-the `driver` key in the `kickside.mail` namespace through `PUT /api/v1/settings` with the
-`driver_revision` Mail reported, so a concurrent change is refused and read
-again. The chosen service's settings namespace and Mail's own `kickside.mail`
-settings (From address, From name, Reply-to, log retention) render through the
-platform's `kickside-settings-provider` card, which reads, validates and saves
-each namespace. A test email goes to the signed-in administrator.
+`kickside.mail.admin:delivery_block` is Mail's one block in System → Settings →
+Integrations, rendered by `kickside-mail-delivery`. Drivers declare Settings
+definitions only and have no Settings entry of their own: the block claims
+`kickside.mail` and the first-party driver namespaces (`kickside.mail.resend`,
+`kickside.mail.sendgrid`, `kickside.mail.mailgun`) in `namespaces:` and passes
+the same list in `config`.
+
+The block lists the transports Mail admits from `GET /api/v1/mail/delivery`,
+each with its readiness and setup issue, and switches the service from a
+dropdown: the block writes the `driver` key in the `kickside.mail` namespace
+through `PUT /api/v1/settings` with the `driver_revision` Mail reported, so a
+concurrent change is refused and read again. Directly under the choice, the
+chosen service's settings render from the `settings_ns` its status reports.
+Every other admitted service has a collapsed section that renders its settings
+when opened, so a service can be set up before it is chosen. Mail's own
+`kickside.mail` settings (From address, From name, Reply-to, log retention)
+follow. Each namespace renders through the platform's
+`kickside-settings-provider` card, which reads, validates and saves it with its
+own Save, and shows a stored secret only as set. A test email goes to the
+signed-in administrator.
+
+The block renders every admitted transport from the delivery status, so a
+driver outside the claimed list shows its settings here too. Its namespace is
+unclaimed, so Settings also gives it a generated entry of its own.
 
 The provider card saves its fields one by one and sends no revision, because
 Settings lists no per-setting revision; a refused field can leave the fields
-before it saved. Each transport's settings namespace also keeps its own
-generated Settings entry, because a block can claim only namespaces it names.
-Both belong to Platform Settings.
+before it saved. This belongs to Platform Settings.
 
 ## Installation and access
 
@@ -106,6 +118,8 @@ Routes inside the tab are `/system/mail`, `/system/mail/<messages|bases|parts|as
 Use the Wippy runtime Mail requires (v0.3.68a or newer, with the Jet text escape option) and Node 22.
 The build materializes the locked UI Kit artifact without adding it to the host
 import map, and writes the component to `static/`, which the module embeds.
+The UI Kit has no HTTP envelope or build chunking helpers, so the module keeps
+its own single copy in `ui/src/http.ts` and `ui/wc-build.mjs`.
 
 ```sh
 make setup build typecheck ui-test lint strict check test pack

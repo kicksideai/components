@@ -33,7 +33,9 @@ assert.equal(entries.filter(entry => entry.meta?.type === 'ui.nav_item').length,
 assert.deepEqual(entries.filter(entry => entry.meta?.type === 'view.component').map(entry => entry.name).sort(), ['admin', 'delivery'])
 const block = owned.get('kickside.mail.admin:delivery_block')
 assert.equal(block.meta.type, 'kickside.settings:block')
-assert.equal(block.namespace, 'kickside.mail')
+assert.equal(block.namespace, undefined)
+assert.equal(block.namespaces[0], 'kickside.mail')
+assert.deepEqual(block.config.namespaces, block.namespaces)
 assert.equal(block.component_tag, owned.get('kickside.mail.admin:delivery').meta.tag_name)
 
 const tab = owned.get('kickside.mail.admin:settings_tab')

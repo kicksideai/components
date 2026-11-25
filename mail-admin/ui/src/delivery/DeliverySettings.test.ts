@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { host, loadByTagName } from '@wippy-fe/proxy'
 import { describe, expect, it, vi } from 'vitest'
 import DeliverySettings from './DeliverySettings.vue'
-import { notify } from '../test/setup'
+import { hostVisible, notify } from '../test/setup'
 import { calls, get, message, ok, post, put, refuse, serve } from '../test/fixtures'
 import type { DeliveryStatus, TransportStatus } from '../types'
 
@@ -50,7 +50,7 @@ async function open() {
 const button = (wrapper: Awaited<ReturnType<typeof open>>, label: string) =>
   wrapper.findAll('button').find(node => node.text() === label || node.attributes('aria-label') === label)
 const providers = (wrapper: Awaited<ReturnType<typeof open>>) =>
-  wrapper.findAll('kickside-settings-provider').map(node => JSON.parse(node.attributes('config') ?? '{}') as { namespace: string; title: string })
+  wrapper.findAll('kickside-settings-provider').map(node => JSON.parse(node.attributes('config') ?? '{}') as { namespace: string; title: string; icon?: string; help?: string })
 async function choose(wrapper: Awaited<ReturnType<typeof open>>, id: string) {
   wrapper.findComponent({ name: 'Select' }).vm.$emit('update:modelValue', id)
   await flushPromises()
@@ -72,12 +72,45 @@ describe('Mail delivery settings block', () => {
     wrapper.unmount()
   })
 
-  it('shows the sender fields, then the chosen service settings, through the platform settings provider', async () => {
+  it('shows the chosen service settings under the choice, then the sender fields, through the platform settings provider', async () => {
     serve(server({ driver: mailgun }).routes)
     const wrapper = await open()
     expect(loadByTagName).toHaveBeenCalledWith('kickside-settings-provider', expect.anything())
-    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail', 'kickside.mail.mailgun'])
-    expect(providers(wrapper)[1].title).toBe('Mailgun')
+    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail.mailgun', 'kickside.mail'])
+    expect(providers(wrapper)[0]).toEqual({ namespace: 'kickside.mail.mailgun', title: 'Mailgun', icon: 'tabler:mail', help: 'Sends through Mailgun.' })
+    wrapper.unmount()
+  })
+
+  it('keeps every other installed service in a collapsed section that opens its settings from the namespace it reports', async () => {
+    const relay: TransportStatus = { id: 'acme.relay:transport', title: 'Acme Relay', icon: 'tabler:plug', description: 'Sends through Acme.',
+      settings_ns: 'acme.relay', ready: false, idempotent: false, code: 'api_key_required', reason: 'Add an Acme API key.' }
+    const { routes } = server({ driver: mailgun })
+    serve([get('/api/v1/mail/delivery', () => ok({ transports: [...transports, relay], driver_revision: 4,
+      driver: { id: mailgun, label: 'Mailgun' }, configured: true, ready: true })), ...routes])
+    const wrapper = await open()
+    const toggles = wrapper.findAll('.mail-other-services .kx-disclosure-toggle')
+    expect(toggles.map(node => node.text())).toEqual(['Resend', 'Acme Relay'])
+    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail.mailgun', 'kickside.mail'])
+    await toggles[1].trigger('click')
+    await flushPromises()
+    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail.mailgun', 'acme.relay', 'kickside.mail'])
+    wrapper.unmount()
+  })
+
+  it('reads the delivery status again when the host shows the block again', async () => {
+    const { state, routes } = server({ driver: mailgun })
+    serve(routes)
+    const wrapper = await open()
+    hostVisible.value = false
+    await flushPromises()
+    state.driver = resend
+    state.revision++
+    hostVisible.value = true
+    await flushPromises()
+    await flushPromises()
+    expect(calls('get').filter(([path]) => path === '/api/v1/mail/delivery')).toHaveLength(2)
+    expect(wrapper.findComponent({ name: 'Select' }).props('modelValue')).toBe(resend)
+    expect(providers(wrapper)[0].namespace).toBe('kickside.mail.resend')
     wrapper.unmount()
   })
 
@@ -120,7 +153,7 @@ describe('Mail delivery settings block', () => {
     expect(host.confirm).toHaveBeenCalledOnce()
     expect(calls('put')).toEqual([['/api/v1/settings', { namespace: 'kickside.mail', key: 'driver', value: resend, expected_revision: 7 }]])
     expect(state.driver).toBe(resend)
-    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail', 'kickside.mail.resend'])
+    expect(providers(wrapper).map(item => item.namespace)).toEqual(['kickside.mail.resend', 'kickside.mail'])
     expect(wrapper.text()).toContain('Mail now sends through Resend.')
     wrapper.unmount()
   })
