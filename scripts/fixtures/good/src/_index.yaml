@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.good
+
+entries:
+  - name: definition
+    kind: ns.definition
+    meta: { title: Good fixture }
+
+  - name: target_db
+    kind: ns.requirement
+    meta: { value_kind: db.sql, comment: "Database for the item table." }
+    targets:
+      - entry: acme.good:db_config
+        path: .meta.db_id
+      - entry: acme.good.migrations:01_items
+        path: .meta.target_db
+
+  - name: api_router
+    kind: ns.requirement
+    meta: { value_kind: http.router }
+    targets:
+      - entry: acme.good.api:get_item.endpoint
+        path: .meta.router
+
+  - name: user_security_scope
+    kind: ns.requirement
+    default: kickside.security.groups:members
+    meta: { value_kind: security.scope }
+    targets:
+      - entry: acme.good.security:module_access
+        path: .groups +=
+      - entry: acme.good.security:module_runtime
+        path: .groups +=
+      - entry: acme.good.security:member_endpoints
+        path: .groups +=
+
+  - name: db_config
+    kind: registry.entry
+    meta: { comment: Database id supplied by target_db. }
+
+  - name: items
+    kind: contract.definition
+    meta: { comment: The module's public contract. }
+
+  - name: types
+    kind: library.lua
+    source: file://types.lua
+
+  - name: client
+    kind: library.lua
+    source: file://client.lua
+    modules: [contract]
+    imports:
+      types: acme.good:types

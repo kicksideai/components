@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: acme
+module: small
+description: Template-shaped fixture with no command layer.

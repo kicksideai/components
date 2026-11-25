@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.settings
+entries:
+  - name: validate_driver
+    kind: function.lua
+    source: file://validate.lua
+    method: run
+    imports:
+      transports: kickside.mail.read:transports

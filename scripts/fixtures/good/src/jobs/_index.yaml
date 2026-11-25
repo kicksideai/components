@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.good.jobs
+
+entries:
+  - name: sweep
+    kind: function.lua
+    source: file://sweep.lua
+    method: run
+    imports:
+      writer: acme.good.command:writer

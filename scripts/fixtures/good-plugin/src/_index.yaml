@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.good.plugin
+
+entries:
+  - name: definition
+    kind: ns.definition
+    meta: { title: Good plugin fixture }
+
+  - name: dep.good
+    kind: ns.dependency
+    component: acme/good
+    version: "*"
+
+  - name: hook
+    kind: contract.binding
+    contracts:
+      - contract: acme.good:items
+        methods:
+          get: acme.good.plugin:hook_get
+
+  - name: hook_get
+    kind: function.lua
+    source: file://client.lua
+    method: get
+
+  - name: client
+    kind: library.lua
+    source: file://client.lua
+    imports:
+      host: acme.good:client
+      types: acme.good:types
+
+  - name: host_plugin
+    kind: security.policy
+    meta: { private: true }
+    groups: [acme.good.security:plugins]
+    policy:
+      resources: [acme.good.plugin:hook]
+      actions: [contract.open]
+      effect: allow

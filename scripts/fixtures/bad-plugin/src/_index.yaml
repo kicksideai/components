@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.bad.plugin
+
+entries:
+  - name: definition
+    kind: ns.definition
+    meta: { title: Bad plugin fixture }
+
+  - name: dep.bad
+    kind: ns.dependency
+    component: acme/bad
+    version: "*"
+
+  - name: host_db
+    kind: ns.requirement
+    targets:
+      - entry: acme.bad:db_config
+        path: .meta.db_id
+
+  - name: host_plugin
+    kind: security.policy
+    meta: { private: true }
+    groups: [acme.bad.security:plugins, acme.bad.security:secret]
+    policy:
+      resources: [acme.bad.plugin:host_plugin]
+      actions: [contract.open]
+      effect: allow

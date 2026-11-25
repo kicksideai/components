@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.bad
+
+entries:
+  - name: definition
+    kind: ns.definition
+    meta: { title: Bad fixture, comment: Violates every structure rule }
+
+  - name: target_db
+    kind: ns.requirement
+    default: app:db
+    targets:
+      - entry: acme.bad.migrations:01_items
+        path: .meta.target_db
+
+  - name: helpers
+    kind: library.lua
+    source: file://helpers.lua
+
+  - name: shared
+    kind: library.lua
+    source: file://command/shared.lua
+
+  - name: missing
+    kind: library.lua
+    source: file://missing.lua

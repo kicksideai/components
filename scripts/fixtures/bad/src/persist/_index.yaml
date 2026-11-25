@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.bad.persist
+
+entries:
+  - name: repo
+    kind: library.lua
+    source: file://repo.lua
+    modules: [sql, http_client]
+    imports:
+      rules: acme.bad.domain:rules
+      settings: acme.settings:client
+
+  - name: projection
+    kind: function.lua
+    meta: { type: projection.worker }
+    source: file://projection.lua
+    method: fold
+    modules: [funcs]

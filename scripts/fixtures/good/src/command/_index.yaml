@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.good.command
+
+entries:
+  - name: writer
+    kind: library.lua
+    source: file://writer.lua
+    imports:
+      rules: acme.good.domain:rules
+      repo: acme.good.persist:repo
+      reader: acme.good.read:reader

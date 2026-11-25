@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.good.api
+
+entries:
+  - name: get_item
+    kind: function.lua
+    source: file://get_item.lua
+    method: handler
+    modules: [http]
+    imports:
+      client: acme.good:client
+      types: acme.good:types
+      access: acme.good.api:access
+
+  - name: access
+    kind: library.lua
+    source: file://access.lua
+
+  - name: get_item.endpoint
+    kind: http.endpoint
+    method: GET
+    path: /good/items
+    func: acme.good.api:get_item

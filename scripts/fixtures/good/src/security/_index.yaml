@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.good.security
+
+entries:
+  - name: module_access
+    kind: security.policy
+    meta:
+      title: Good
+      intent: module_access
+      includes:
+        - acme.good.security:module_runtime
+        - acme.good.security:member_endpoints
+    groups: []
+    policy:
+      resources: [acme.good:*, acme.good.api:*]
+      actions: [registry.get, registry.find]
+      effect: allow
+
+  - name: module_runtime
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources: [acme.good:*, acme.good.binding:*]
+      actions: [contract.get, contract.open, contract.call, funcs.call]
+      effect: allow
+
+  - name: member_endpoints
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources: [acme.good.api:get_item.endpoint]
+      actions: access
+      effect: allow
+
+  - name: projection_public_meta
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: "*"
+      actions: component.runtime_meta.write
+      effect: allow
+      conditions:
+        - field: meta.impl_id
+          operator: eq
+          value: acme.good.binding:item_kind
+
+  - name: plugin_host
+    kind: security.policy
+    meta: { private: true, comment: Host-owned member of the plugin group. }
+    groups: [acme.good.security:plugins]
+    policy:
+      resources: [acme.good:items]
+      actions: [contract.get]
+      effect: allow

@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.security
+entries:
+  - name: live_sets
+    kind: security.policy
+    policy:
+      resources: ["kickside.mail.projection:*"]
+      actions: [registry.overlay.create.template.jet, registry.overlay.update.template.jet, registry.overlay.delete.template.jet]
+      effect: allow
+  - name: scratch_sets
+    kind: security.policy
+    policy:
+      resources: ["kickside.mail.draft:*"]
+      actions: [registry.overlay.create.template.set, registry.overlay.delete.template.set]
+      effect: allow
+  - name: scratch_with_read
+    kind: security.policy
+    policy:
+      resources: ["kickside.mail.draft:*"]
+      actions: [registry.overlay.create.template.jet, template.get]
+      effect: allow
+  - name: unmanaged_overlay
+    kind: security.policy
+    policy:
+      resources: ["kickside.mail.other:*", "kickside.mail.mailgun.draft:*"]
+      actions: [registry.overlay.create.template.jet]
+      effect: allow
+  - name: broad_overlay_action
+    kind: security.policy
+    policy:
+      resources: ["kickside.mail.projection:*"]
+      actions: ["registry.overlay.*"]
+      effect: allow
+  - name: module_access
+    kind: security.policy
+    meta: {intent: module_access}
+    policy:
+      resources: ["kickside.mail.draft:*"]
+      actions: [registry.get]
+      effect: allow
+  - name: live_marker_read
+    kind: security.policy
+    policy:
+      resources: [kickside.mail.projection:marker]
+      actions: [registry.get]
+      effect: allow

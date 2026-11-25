@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.good.read
+
+entries:
+  - name: reader
+    kind: library.lua
+    source: file://reader.lua
+    imports:
+      repo: acme.good.persist:repo

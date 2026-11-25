@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.bad.domain
+
+entries:
+  - name: rules
+    kind: library.lua
+    source: file://rules.lua
+    modules: [sql, contract]
+    imports:
+      writer: acme.bad.commands:writer
+      client: acme.bad:client
+    meta: { comment: Pure rules, no IO }
+    meta: { comment: duplicate }
+
+  - name: escape
+    kind: library.lua
+    source: file://../helpers.lua

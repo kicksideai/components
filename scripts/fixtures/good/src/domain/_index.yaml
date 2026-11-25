@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.good.domain
+
+entries:
+  - name: rules
+    kind: library.lua
+    source: file://rules.lua
+    modules: [json]
+    imports:
+      types: acme.good:types
