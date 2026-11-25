@@ -256,3 +256,4 @@ entries:
     modules: [contract, fs, funcs, http_client, json, registry, security, sql, system, uuid]
     imports:
       test: wippy.test:test
+      identity: kickside.execution:execution_identity

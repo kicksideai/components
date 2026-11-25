@@ -10,6 +10,7 @@ local security = require("security")
 local system = require("system")
 local uuid = require("uuid")
 local test = require("test")
+local identity = require("identity")
 
 local TAB_ACCESS = "kickside.mail.api:library_list.endpoint"
 
@@ -19,11 +20,15 @@ local function gateway(path: string): string
     return "http://" .. address .. path
 end
 
+local function role_scope(groups: {string}): security.Scope
+    local resolved = assert(funcs.call("kickside.security.runtime:resolve_groups", {groups = groups}))
+    return assert(identity.scope_from_groups(resolved.groups, resolved.policy_ids))
+end
+
 local function member(groups: {string}): (security.Actor, security.Scope)
-    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
     local id = uuid.v4()
     local actor = assert(security.new_actor(id, {user_id = id, security_groups = groups}))
-    return actor, assert(security.named_scope(materialized.scope_name))
+    return actor, role_scope(groups)
 end
 
 -- A signed-in session with a bearer token, the way the pages call the API.
@@ -36,10 +41,9 @@ local function signed_in(groups: {string}): string
         assert(db:execute("INSERT INTO app_user_groups (user_id,group_id) VALUES ($1,$2)", {id, group}))
     end
     assert(db:release())
-    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
     local actor = assert(security.new_actor(id, {user_id = id, email = id .. "@example.org", security_groups = groups}))
     local tokens = assert(security.token_store("kickside.users.security:tokens"))
-    local token = assert(tokens:create(actor, assert(security.named_scope(materialized.scope_name)), {expiration = "1h"}))
+    local token = assert(tokens:create(actor, role_scope(groups), {expiration = "1h"}))
     tokens:close()
     return token
 end
