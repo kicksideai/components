@@ -3,7 +3,6 @@
 """Check the generated Mail error and diagnostic code reference."""
 
 import argparse
-from collections import defaultdict
 from pathlib import Path
 import re
 import sys
@@ -25,26 +24,23 @@ DECLARATIONS = (
 
 
 def declared_codes(root):
-    found = defaultdict(set)
+    found = set()
     for path in sorted(root.rglob("*.lua")):
         relative = path.relative_to(root).as_posix()
         source = "\n".join(line for line in path.read_text().splitlines() if not line.lstrip().startswith("--"))
         for pattern in DECLARATIONS:
-            for code in re.findall(pattern, source):
-                found[code].add(relative)
+            found.update(re.findall(pattern, source))
         if relative == "domain/failure.lua":
             # TEXT contains the public Activity codes, including external errors that Mail maps.
             text = source.split("local TEXT = {", 1)[1].split("\n}", 1)[0]
-            for code in re.findall(r"^\s*([a-z][a-z0-9_]*)\s*=", text, re.MULTILINE):
-                found[code].add(relative)
+            found.update(re.findall(r"^\s*([a-z][a-z0-9_]*)\s*=", text, re.MULTILINE))
     return found
 
 
-def reference(root):
-    codes = declared_codes(root)
-    width = max(map(len, codes)) + 2
-    rows = [f'{"Code":<{width}}Declared in']
-    rows.extend(f"{code:<{width}}{', '.join(sorted(codes[code]))}" for code in sorted(codes))
+def reference(meanings):
+    width = max(map(len, meanings)) + 2
+    rows = [f'{"Code":<{width}}Meaning']
+    rows.extend(f"{code:<{width}}{meaning}" for code, meaning in sorted(meanings.items()))
     return START + "\n\n```text\n" + "\n".join(rows) + "\n```\n\n" + END
 
 
@@ -55,11 +51,26 @@ def main():
     path = ROOT / "README.md"
     content = path.read_text()
     before, start, rest = content.partition(START)
-    _, end, after = rest.partition(END)
+    section, end, after = rest.partition(END)
     if not start or not end:
         print("README is missing the Mail codes section markers", file=sys.stderr)
         return 1
-    expected = before + reference(ROOT) + after
+    meanings = {}
+    for code, meaning in re.findall(r"(?m)^([a-z][a-z0-9_]*) {2,}(\S.*)$", section):
+        if code in meanings:
+            print(f"Duplicate meaning for {code}.", file=sys.stderr)
+            return 1
+        meanings[code] = meaning
+    codes = declared_codes(ROOT)
+    missing = sorted(codes - meanings.keys())
+    extra = sorted(meanings.keys() - codes)
+    if missing or extra:
+        for code in missing:
+            print(f"Document the meaning of {code} in the Mail codes table.", file=sys.stderr)
+        for code in extra:
+            print(f"Remove the undeclared code {code} from the Mail codes table.", file=sys.stderr)
+        return 1
+    expected = before + reference(meanings) + after
     if args.update:
         path.write_text(expected)
     elif content != expected:

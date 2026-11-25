@@ -103,7 +103,7 @@ key is the Mail message ID and remains the same across retries. Declare
 error's kind and retry flag. Mail records retry or terminal status durably
 and normalizes known classifications for ordinary senders. The driver
 authoring example and error mapping explain the complete provider-side
-wiring. [Worked driver and harness](https://github.com/kicksideai/providers/blob/main/mail-resend/src/driver-authoring.md)
+wiring. [Write a Mail driver](https://github.com/kicksideai/components/blob/main/mail/src/driver-authoring.md)
 
 **Public Lua helpers**
 
@@ -149,13 +149,18 @@ stored `driver` setting (0 while it holds its default); pass it as
 `expected_revision` when writing `driver` so a concurrent change is refused. When configuration is incomplete,
 `code` identifies the issue and `reason` tells the administrator what to do.
 
+### Host requirements
+
+- `clock` provides the `now()` clock for library writes, preview expiry, and the retention owner. It defaults to Wippy's runtime clock.
+- `http_transport` provides the `request(method, url, options)` function used by Mail's public HTTP driver helper. It defaults to Wippy's HTTP client, which enforces the driver's outbound policy.
+
 ## Template library
 
 The library stores messages, base templates, parts, and image assets. Messages, bases, and parts have HTML and text faces. A message also has a subject, a variable schema with samples, and the name of its base. A part declares its inputs. The starter library ships Standard and Plain bases and composes Notice from editable parts.
 
 Each edit appends an event to the library component’s thread. Create, update, base change, reset, and restore events carry the resulting resource snapshot. Content across both faces and the description is limited to 512 KiB per resource. The projection updates the library, reference index, and History together. The resource revision is its subject version, and `seq` is its position on the shared library thread. Unedited packaged originals start at revision zero.
 
-The `library_sync` job publishes Jet sets from the committed projection. Mail supports single-node template publishing in this release. A render checks the live registry marker against the committed template sequence and returns retryable `mail_library_publishing` while publication is pending. Jobs retries transient publication failures. At boot and during retention, Mail compares the live marker with the committed template sequence and enqueues publication if it is behind. Committed edits remain available through the library read model after projection.
+The `library_sync` job publishes Jet sets from the committed projection. Mail supports single-node template publishing in this release. A render checks the live registry marker against the committed template sequence and returns retryable `mail_library_publishing` while publication is pending. Jobs retries transient publication failures. At boot, Mail enqueues publication if the live marker is behind the committed template sequence. During normal operation, a lease-release hint for an exhausted library job lets the retention owner reconcile the marker. Jobs permits the enqueuer to choose `max_attempts`; Mail gives a publication job three transient attempts. The worker returns native failures with their retry flags intact. The pinned Jobs release classifies retryability by kind. Committed edits remain available through the library read model after projection.
 
 A message selects its base as data. The base provides a `body()` block and the message supplies that block's content. Include a part by its absolute Jet name and pass its inputs as the context.
 
@@ -195,153 +200,153 @@ Asset list summaries include a `used_by.messages` count. Asset details return th
 
 ## Error codes
 
-The native error kind and retry flag come from the operation. The generated reference lists Mail-defined error codes, setup reasons and diagnostics. External errors can retain their original codes. The writable destination and sender-facing Activity apply their declared mappings.
+The native error kind and retry flag come from the operation. The reference lists Mail-defined error codes, setup reasons and diagnostics. External errors can retain their original codes. The writable destination and sender-facing Activity apply their declared mappings.
 
 <!-- BEGIN MAIL CODES -->
 
 ```text
-Code                                   Declared in
-access_denied                          domain/failure.lua
-api_key_invalid                        driver/config.lua
-api_key_required                       driver/config.lua
-attachment_empty                       domain/failure.lua, domain/message.lua
-attachment_encoding_failed             domain/failure.lua, driver/http.lua
-attachment_unavailable                 domain/failure.lua, read/content.lua
-attachments_too_large                  domain/failure.lua, domain/message.lua
-authentication_required                api/request.lua
-authorization_refused                  driver/http.lua
-body_required                          domain/message.lua, render/render.lua
-credentials_invalid                    driver/http.lua
-delivery_deadline_exceeded             driver/http.lua
-delivery_deadline_invalid              driver/http.lua
-delivery_failed                        command/outbox.lua, domain/failure.lua, read/activity.lua
-delivery_interrupted                   command/outbox.lua, domain/failure.lua
-delivery_state_changed                 command/outbox.lua
-delivery_uncertain                     command/outbox.lua, domain/failure.lua, domain/policy.lua
-driver_not_admitted                    command/send.lua, domain/config.lua, domain/failure.lua
-driver_not_configured                  domain/config.lua
-driver_not_installed                   read/transports.lua
-driver_required                        read/transports.lua
-duplicate_mail_resource                command/preview.lua, domain/edit.lua
-duplicate_template_name                render/originals.lua
-from_address_invalid                   domain/config.lua
-from_address_required                  domain/config.lua
-from_name_invalid                      domain/config.lua
-from_not_allowed                       domain/message.lua
-gmail_html_clipping                    render/render.lua
-html_too_large                         domain/message.lua
-http_context_required                  api/request.lua
-idempotency_conflict                   command/send.lua, sink/write.lua
-incomplete_attachment                  domain/failure.lua, read/content.lua
-invalid_address                        domain/message.lua
-invalid_attachment                     domain/failure.lua, domain/message.lua
-invalid_attachment_filename            domain/failure.lua, domain/message.lua
-invalid_attachment_size                domain/failure.lua, domain/message.lua
-invalid_body                           domain/message.lua, render/render.lua
-invalid_config                         domain/config.lua, domain/failure.lua, sink/write.lua
-invalid_content_id                     domain/failure.lua, domain/message.lua, read/content.lua
-invalid_header_text                    domain/message.lua
-invalid_idempotency_key                domain/message.lua
-invalid_identity_key                   domain/message.lua
-invalid_mail_asset                     binding/library.lua, command/assets.lua, command/library_edits.lua, command/preview.lua, domain/resource.lua, read/content.lua, read/library.lua
-invalid_mail_command_id                domain/edit.lua
-invalid_mail_draft                     command/preview.lua
-invalid_mail_filter                    domain/resource.lua, read/history.lua, read/library.lua
-invalid_mail_origin                    domain/message.lua
-invalid_mail_resource                  command/library_edits.lua, domain/resource.lua
-invalid_mail_resources                 command/library_edits.lua, command/preview.lua
-invalid_mail_revision                  command/assets.lua, domain/edit.lua, read/history.lua
-invalid_mail_test                      command/send.lua
-invalid_message                        domain/message.lua
-invalid_recent_senders_cursor          persist/message_reader.lua
-invalid_request                        api/request.lua, command/send.lua, read/activity.lua, sink/write.lua
-invalid_revision_note                  domain/resource.lua
-invalid_subject                        domain/message.lua
-invalid_template                       domain/message.lua, read/library.lua, read/preview.lua
-invalid_template_declaration           render/originals.lua
-invalid_template_vars                  domain/vars.lua
-invalid_transport_status               domain/config.lua
-lease_lost                             command/outbox.lua, domain/failure.lua
-mail_activity_denied                   client.lua
-mail_asset_media_type                  domain/assets.lua
-mail_asset_size                        domain/assets.lua
-mail_asset_source_gone                 persist/asset_file_repo.lua
-mail_asset_version_unavailable         persist/asset_file_repo.lua
-mail_base_not_found                    domain/edit.lua
-mail_command_id_conflict               command/threads.lua
-mail_content_unavailable               command/send.lua
-mail_db_unconfigured                   persist/db.lua
-mail_delivery_denied                   client.lua
-mail_directory_unavailable             api/principals.lua
-mail_draft_workspace_unavailable       render/scratch.lua
-mail_event_snapshot_missing            domain/events.lua
-mail_job_link_missing                  command/send.lua
-mail_library_catching_up               command/library.lua, command/library_edits.lua
-mail_library_changed                   command/library.lua, persist/asset_file_repo.lua
-mail_library_component_required        command/library.lua
-mail_library_denied                    client.lua, command/library.lua, command/preview.lua
-mail_library_overlay_missing           command/live.lua, render/live.lua
-mail_library_publication_failed        jobs/library_sync.lua
-mail_library_publish_conflict          command/live.lua
-mail_library_publishing                render/live.lua
-mail_library_read_denied               read/library.lua
-mail_library_thread_missing            read/thread_events.lua
-mail_library_write_denied              read/library.lua
-mail_message_unavailable               command/outbox.lua
-mail_original_changed                  domain/resource.lua
-mail_original_not_editable             render/live.lua
-mail_preview_digest_failed             domain/digest.lua
-mail_preview_expired                   command/library_edits.lua, command/preview.lua
-mail_preview_mismatch                  command/library_edits.lua
-mail_preview_required                  command/library_edits.lua
-mail_preview_stale                     command/library_edits.lua
-mail_projection_resource_missing       domain/fold.lua
-mail_projection_source_gap             persist/projection.lua
-mail_projection_timestamp              persist/projection.lua
-mail_provider_detail_redaction_failed  driver/http.lua
-mail_realtime_refused                  command/notify.lua
-mail_resource_collision                domain/resource.lua
-mail_resource_in_use                   command/library.lua, command/library_edits.lua, render/scratch.lua
-mail_resource_is_shipped               command/library_edits.lua
-mail_resource_not_customized           command/library_edits.lua
-mail_resource_not_found                domain/edit.lua, read/library.lua
-mail_resource_too_large                domain/resource.lua
-mail_revision_conflict                 domain/edit.lua
-mail_revision_not_found                read/history.lua
-mail_revision_pruned                   read/library.lua, read/thread_events.lua
-mail_revision_unrestorable             read/history.lua
-mail_send_denied                       client.lua, domain/failure.lua
-mail_template_archived                 read/library.lua
-mail_unknown_event                     domain/fold.lua
-message_encoding_failed                domain/failure.lua, driver/http.lua
-message_not_found                      persist/message_reader.lua
-message_rejected                       domain/failure.lua, driver/http.lua
-message_too_large                      domain/failure.lua, domain/message.lua
-not_found                              sink/write.lua
-permission_denied                      sink/write.lua
-provider_endpoint_invalid              driver/config.lua
-provider_error                         sink/write.lua
-provider_rejected                      domain/failure.lua, driver/http.lua
-provider_request_failed                domain/failure.lua, driver/http.lua
-provider_response_invalid              command/outbox.lua, domain/failure.lua
-provider_transport_failed              domain/failure.lua, driver/http.lua
-provider_unavailable                   domain/failure.lua, driver/http.lua, sink/write.lua
-rate_limited                           domain/failure.lua, driver/http.lua, sink/write.lua
-recipient_address_missing              command/recipients.lua, command/send.lua
-recipient_lookup_failed                command/recipients.lua
-recipient_required                     domain/message.lua
-reply_to_invalid                       domain/config.lua
-settings_read_failed                   driver/config.lua, read/driver_selection.lua
-subject_required                       domain/message.lua
-subject_too_long                       domain/message.lua
-template_body_conflict                 domain/message.lua
-template_not_found                     read/library.lua
-template_render_failed                 render/render.lua
-template_set_unavailable               render/render.lua
-text_too_large                         domain/message.lua
-too_many_attachments                   domain/message.lua
-too_many_recipients                    domain/failure.lua, domain/message.lua
-unsupported_operation                  sink/write.lua
+Code                                   Meaning
+access_denied                          The principal lacks the requested access.
+api_key_invalid                        Provide an API key without invalid characters.
+api_key_required                       Set the delivery provider API key.
+attachment_empty                       An attachment has no bytes.
+attachment_encoding_failed             Mail could not encode the attachment for the provider.
+attachment_unavailable                 The attachment could not be read.
+attachments_too_large                  Reduce the combined size of the attachments.
+authentication_required                Sign in before calling Mail.
+authorization_refused                  The provider refused the account or its sending permissions.
+body_required                          Supply a text or HTML body.
+credentials_invalid                    Check the credentials configured for the provider.
+delivery_deadline_exceeded             The delivery deadline elapsed.
+delivery_deadline_invalid              Provide the absolute Jobs deadline in RFC3339 format.
+delivery_failed                        Delivery failed without a public provider classification.
+delivery_interrupted                   The delivery job ended without a known outcome.
+delivery_state_changed                 The delivery record changed while the worker held it.
+delivery_uncertain                     Check the provider before sending the message again.
+driver_not_admitted                    The transport binding cannot open in Mail's transports group.
+driver_not_configured                  Configure the selected driver's Settings namespace.
+driver_not_installed                   Install the selected transport binding.
+driver_required                        Select an admitted transport in Mail delivery settings.
+duplicate_mail_resource                A request names the same resource more than once.
+duplicate_template_name                Installed declarations name the same Mail template.
+from_address_invalid                   Set a valid sender address in Mail settings.
+from_address_required                  Set a sender address in Mail settings.
+from_name_invalid                      Check the sender display name and its length.
+from_not_allowed                       Use the installation's configured sender.
+gmail_html_clipping                    The rendered HTML may be clipped by Gmail.
+html_too_large                         Reduce the size of the HTML body.
+http_context_required                  Call this handler through its HTTP endpoint.
+idempotency_conflict                   The same delivery or sender key was used with different content.
+incomplete_attachment                  The source returned fewer or inconsistent bytes for the attachment.
+invalid_address                        Use valid email addresses or supported user identifiers.
+invalid_attachment                     Provide a supported attachment reference.
+invalid_attachment_filename            Provide a safe filename for the attachment.
+invalid_attachment_size                Provide an attachment with a valid byte length.
+invalid_body                           Provide text and HTML bodies as strings.
+invalid_config                         Complete Mail or its provider's configuration.
+invalid_content_id                     Use a valid Content-ID for an inline attachment.
+invalid_header_text                    Remove control characters from the mail header.
+invalid_idempotency_key                Use a nonempty delivery key of at most 2048 bytes without control characters.
+invalid_identity_key                   Supply a nonempty stable identity on an automation write.
+invalid_mail_asset                     Use a valid upload reference with the asset operation.
+invalid_mail_command_id                Provide a valid command ID.
+invalid_mail_draft                     Check the draft operation and content shape.
+invalid_mail_filter                    Use one of the supported library or Activity filters.
+invalid_mail_origin                    Provide a valid origin for the request's producer.
+invalid_mail_resource                  Check the kind, name and content of the resource.
+invalid_mail_resources                 Provide a valid batch of resource edits.
+invalid_mail_revision                  Provide a valid resource revision or event sequence.
+invalid_mail_test                      Send-test input must name a template or use the documented delivery test fields.
+invalid_message                        The send request contains unsupported fields or values.
+invalid_recent_senders_cursor          Restart paging with a valid recent-senders cursor.
+invalid_request                        Correct the operation's input and retry.
+invalid_revision_note                  Keep revision notes to 500 characters.
+invalid_subject                        Use a subject suitable for a mail header.
+invalid_template                       Provide a valid template name or pair variables with a template.
+invalid_template_declaration           Check the installed template declaration and its referenced faces.
+invalid_template_vars                  Check the supplied variables against the template schema.
+invalid_transport_status               The driver's status response is incomplete or malformed.
+lease_lost                             The delivery worker no longer holds its job lease.
+mail_activity_denied                   The principal lacks access to delivery Activity.
+mail_asset_media_type                  Use one of the supported image formats.
+mail_asset_size                        Use an image within the Mail asset size limit.
+mail_asset_source_gone                 The historical upload is no longer available for restore.
+mail_asset_version_unavailable         The requested image version cannot be read.
+mail_base_not_found                    Select an available base template.
+mail_command_id_conflict               The command ID already identifies a different edit.
+mail_content_unavailable               The Mail content source could not be read.
+mail_db_unconfigured                   Bind the Mail database requirement.
+mail_delivery_denied                   The principal lacks Administer mail delivery.
+mail_directory_unavailable             Mail could not resolve display names through the principal directory.
+mail_draft_workspace_unavailable       Mail could not open the draft template workspace.
+mail_event_snapshot_missing            The library event lacks its required resource snapshot.
+mail_job_link_missing                  Mail could not link a queued delivery to its durable job.
+mail_library_catching_up               The library projection has not processed the required events.
+mail_library_changed                   The library changed during the operation. Read it again before editing.
+mail_library_component_required        The operation requires the installation's Mail library component.
+mail_library_denied                    The principal lacks Edit mail library.
+mail_library_job_payload_invalid       The publication job lacks the template sequence it owns.
+mail_library_overlay_missing           The live template overlay could not be opened.
+mail_library_publish_conflict          Templates changed while Mail was publishing them.
+mail_library_publishing                Wait for publication of the committed template revision.
+mail_library_read_denied               The principal lacks component READ on the Mail library.
+mail_library_thread_missing            The Mail library's component thread could not be found.
+mail_library_write_denied              The principal lacks component WRITE on the Mail library.
+mail_message_unavailable               Mail could not read the message needed by the operation.
+mail_original_changed                  The installed original differs from the reviewed source.
+mail_original_not_editable             The original's module has not granted Mail overlay access.
+mail_preview_digest_failed             Mail could not identify the reviewed draft.
+mail_preview_expired                   Review the draft again after its preview expires.
+mail_preview_mismatch                  The reviewed content, caller or operation differs from the save.
+mail_preview_required                  Review the draft before saving this edit.
+mail_preview_stale                     Review again using the current resource revisions.
+mail_projection_resource_missing       A projected resource required by the operation is missing.
+mail_projection_source_gap             Required events are missing from the projection input.
+mail_projection_timestamp              The event timestamp cannot be projected.
+mail_provider_detail_redaction_failed  Mail suppressed unsafe provider diagnostic detail.
+mail_realtime_refused                  The realtime service refused a Mail change notification.
+mail_resource_collision                A packaged or existing resource already uses this name.
+mail_resource_in_use                   Remove references before deleting the resource.
+mail_resource_is_shipped               Reset a shipped resource to its original instead of deleting it.
+mail_resource_not_customized           The resource has no customization to reset.
+mail_resource_not_found                The requested resource does not exist.
+mail_resource_too_large                Reduce combined source and description content to 512 KiB.
+mail_revision_conflict                 The resource was edited after the supplied expected revision.
+mail_revision_not_found                The requested history entry does not exist.
+mail_revision_pruned                   Retention removed the requested historical event.
+mail_revision_unrestorable             The historical action does not contain a restorable snapshot.
+mail_send_denied                       The principal lacks Send mail.
+mail_template_archived                 Restore the archived template before sending it.
+mail_unknown_event                     The library received an unsupported event type.
+message_encoding_failed                Mail could not encode the provider request.
+message_not_found                      The message does not exist or is hidden from the caller.
+message_rejected                       The provider rejected the message.
+message_too_large                      Reduce the size of the message before sending it.
+not_found                              A record required by the writable mail operation is unavailable.
+permission_denied                      The writable mail operation lacks the required authority.
+provider_endpoint_invalid              Supply an HTTPS endpoint in the required form.
+provider_error                         The writable mail operation encountered an unclassified provider failure.
+provider_rejected                      The provider refused delivery.
+provider_request_failed                The HTTP client refused or could not make the provider request.
+provider_response_invalid              The provider response could not be interpreted.
+provider_transport_failed              The HTTP exchange did not return a response.
+provider_unavailable                   The delivery service is temporarily unavailable.
+rate_limited                           Wait before retrying a rate-limited delivery.
+recipient_address_missing              A referenced user has no deliverable address.
+recipient_lookup_failed                Mail could not resolve a referenced recipient.
+recipient_required                     Supply at least one To recipient.
+reply_to_invalid                       Provide a valid Reply-To address.
+settings_read_failed                   The required Settings namespace could not be read.
+subject_required                       Provide a nonempty subject.
+subject_too_long                       Shorten the message subject.
+template_body_conflict                 Choose template rendering or supply a raw subject and body.
+template_not_found                     Select an available template.
+template_render_failed                 Mail could not render the selected template or draft.
+template_set_unavailable               The template set required for rendering could not be opened.
+text_too_large                         Reduce the size of the plain-text body.
+too_many_attachments                   Remove attachments to meet Mail's limit.
+too_many_recipients                    Reduce the combined number of To, Cc and Bcc recipients.
+unsupported_operation                  Use an operation declared by the Mail destination.
 ```
 
 <!-- END MAIL CODES -->
