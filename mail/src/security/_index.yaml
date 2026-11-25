@@ -210,7 +210,7 @@ entries:
       resources: [kickside.settings:settings, kickside.settings:settings_binding, get_namespace]
       actions: [registry.get, contract.get, contract.open, contract.call]
       effect: allow
-  - name: settings_revision_read
+  - name: settings_driver_read
     kind: security.policy
     meta: { private: true }
     policy:
@@ -223,6 +223,13 @@ entries:
     policy:
       resources: [kickside.settings.api:list_settings.endpoint]
       actions: [access]
+      effect: allow
+  - name: driver_selection_call
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.mail.read:driver_selection]
+      actions: [funcs.call]
       effect: allow
   - name: template_access
     kind: security.policy

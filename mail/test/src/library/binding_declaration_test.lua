@@ -4,6 +4,21 @@ local test = require("test")
 local resource = require("resource")
 
 local function cases()
+    test.it("keeps Settings list access inside the Mail driver selection reader", function()
+        local grant = "kickside.mail.security:settings_admin_read"
+        for _, id in ipairs({"kickside.mail.binding:mailer_send", "kickside.mail.binding:mailer_resend",
+            "kickside.mail.binding:mailer_send_delivery_test", "kickside.mail.binding:library_send_test",
+            "kickside.mail.binding:mailer_delivery_status", "kickside.mail.delivery:deliver"}) do
+            for _, policy in ipairs(assert(registry.get(id)).data.security.policies) do
+                test.neq(grant, policy, id)
+            end
+        end
+        local reader = assert(registry.get("kickside.mail.read:driver_selection"))
+        test.is_true(reader.meta.private)
+        test.is_nil(reader.data.security.groups)
+        test.eq(grant, reader.data.security.policies[2])
+    end)
+
     test.it("mounts the publication fixture through Mail's declared library requirement", function()
         local adapter = assert(registry.get("kickside.mail:live_registry"))
         test.eq("ns.requirement", adapter.kind)

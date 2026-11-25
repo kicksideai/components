@@ -50,8 +50,8 @@ end
 local function run(input: types.JobInput): (types.Record?, error?)
     local job = input.job
     local lease = {token = job.lease_token, execution_seq = job.execution_seq}
-    local values, settings_err = settings.mail()
-    local active_driver = values and values.driver
+    local selection, settings_err = settings.driver()
+    local active_driver = selection and selection.id
     local row, row_err = outbox.start(input.payload.message_id, job.id, lease,
         active_driver ~= "" and active_driver or nil)
     if row_err then return nil, row_err end

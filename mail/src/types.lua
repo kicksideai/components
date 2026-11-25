@@ -210,7 +210,8 @@ type TemplateSet = {
     release: (self: TemplateSet) -> (),
 }
 type SchemaIssue = {schema_path: string, instance_path: string}
-type Settings = {driver: string, from_address: string, from_name: string, reply_to: string, log_retention_days: unknown?}
+type Settings = {from_address: string, from_name: string, reply_to: string, log_retention_days: unknown?}
+type DriverSelection = {id: string, revision: integer}
 type ApiSettings = {api_key: string?}
 type SettingsResult = {success: boolean, values: Record?, overridden: {string}?, error: string?}
 type SettingResult = {success: boolean, value: unknown, revision: integer?, error: string?}
@@ -322,6 +323,7 @@ return {
     ToolTemplateList = ToolTemplateList, TemplateSet = TemplateSet, SchemaIssue = SchemaIssue,
     Settings = Settings, ApiSettings = ApiSettings,
     SettingsResult = SettingsResult, SettingResult = SettingResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
+    DriverSelection = DriverSelection,
     Mailer = Mailer, Transport = Transport, TransportStatus = TransportStatus, TransportReadiness = TransportReadiness, AdmittedTransport = AdmittedTransport, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
     ContentFailure = ContentFailure, ContentProvider = ContentProvider, SinkRequest = SinkRequest,
     SinkResult = SinkResult, SinkFailure = SinkFailure, WritableSink = WritableSink, Realtime = Realtime, DeliveryStatus = DeliveryStatus, TestSend = TestSend, HttpAuth = HttpAuth, HttpResponse = HttpResponse,

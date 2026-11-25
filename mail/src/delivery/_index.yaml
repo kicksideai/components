@@ -25,8 +25,7 @@ entries:
         - kickside.mail.security:deferred_delivery
         - kickside.mail.security:asset_bytes
         - kickside.mail.security:transport_calls
-        - kickside.mail.security:settings_read
-        - kickside.mail.security:settings_admin_read
+        - kickside.mail.security:driver_selection_call
         - kickside.mail.security:mail_db
         - kickside.mail.security:mail_config
         - kickside.core.jobs.security:module_access

@@ -121,7 +121,9 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     local values, settings_err = settings.mail()
     if settings_err then return nil, setup_error(settings_err) end
     local mail_settings = values :: types.Settings
-    local found, driver_err = transports.status(mail_settings.driver)
+    local selection, selection_err = settings.driver()
+    if selection_err then return nil, selection_err end
+    local found, driver_err = transports.status(selection.id)
     if driver_err then return nil, setup_error(driver_err) end
     local driver = found :: types.AdmittedTransport
     if driver.max_recipients then

@@ -6,9 +6,21 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://settings.lua
-    modules: [contract, env, security]
+    modules: [contract, env, funcs, security]
     imports:
       types: kickside.mail:types
+  - name: driver_selection
+    kind: function.lua
+    meta: {private: true}
+    source: file://driver_selection.lua
+    method: read
+    modules: [contract]
+    imports: {types: kickside.mail:types}
+    security:
+      actor: {id: "system:kickside.mail.driver_selection"}
+      policies:
+        - kickside.mail.security:settings_driver_read
+        - kickside.mail.security:settings_admin_read
   - name: content
     kind: library.lua
     meta: {private: true}

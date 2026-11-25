@@ -24,14 +24,14 @@ local function status(): (types.DeliveryStatus?, error?)
     local values, err = settings.mail()
     if err then return nil, err end
     local mail_settings = values :: types.Settings
-    local driver_revision, revision_err = settings.revision("kickside.mail", "driver")
-    if revision_err then return nil, revision_err end
+    local selection, selection_err = settings.driver()
+    if selection_err then return nil, selection_err end
     local available, list_err = transports.list()
     if list_err then return nil, list_err end
 
     local selected: types.AdmittedTransport?
     for _, candidate in ipairs(available) do
-        if candidate.id == mail_settings.driver then
+        if candidate.id == selection.id then
             selected = candidate :: types.AdmittedTransport?
             break
         end
@@ -40,7 +40,7 @@ local function status(): (types.DeliveryStatus?, error?)
     if selected then
         driver_err = config.transport_ready_error(selected)
     else
-        local _, open_err = transports.open(mail_settings.driver)
+        local _, open_err = transports.open(selection.id)
         driver_err = open_err
         if not driver_err then driver_err = config.driver_not_admitted() end
     end
@@ -52,7 +52,7 @@ local function status(): (types.DeliveryStatus?, error?)
     if issue and details.code ~= "invalid_config" and details.code ~= "driver_not_admitted" then return nil, issue end
     return {driver = selected and {id = selected.id, label = selected.title} or nil,
         configured = issue == nil, ready = issue == nil, transports = available, from = from, reply_to = reply_to,
-        driver_revision = driver_revision :: integer,
+        driver_revision = selection.revision :: integer,
         code = (details.reason_code or details.code) :: string?,
         reason = issue and ((details.reason :: string?) or issue:message()) or nil}, nil
 end

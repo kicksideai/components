@@ -250,7 +250,7 @@ entries:
         - kickside.mail.security:asset_bytes
         - kickside.mail.security:transport_calls
         - kickside.mail.security:settings_read
-        - kickside.mail.security:settings_admin_read
+        - kickside.mail.security:driver_selection_call
         - kickside.mail.security:mail_db
         - kickside.mail.security:mail_config
         - kickside.mail.security:deferred_delivery
@@ -322,8 +322,7 @@ entries:
     security:
       policies:
         - kickside.mail.security:settings_read
-        - kickside.mail.security:settings_revision_read
-        - kickside.mail.security:settings_admin_read
+        - kickside.mail.security:driver_selection_call
         - kickside.mail.security:transport_calls
       groups: [kickside.mail.security:transports]
   - name: mailer_send_delivery_test
