@@ -172,7 +172,6 @@ entries:
         - kickside.mail.security:scratch_sets
         - kickside.mail.security:library_threads
         - kickside.mail.security:library_threads_caller
-        - kickside.core.security:module_runtime
         - kickside.mail.security:job_notify
         - kickside.core.security:module_access
         - kickside.mail.security:overlay_originals
