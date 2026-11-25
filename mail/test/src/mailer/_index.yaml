@@ -154,8 +154,8 @@ entries:
       compiler: kickside.workflows.compiler:compiler
       canonical_json: kickside.contract:canonical_json
       jobs: kickside.core.jobs:jobs
-      policy: kickside.mail.outbox:policy
-      database: kickside.mail.outbox:database
+      policy: kickside.mail.domain:policy
+      database: kickside.mail.persist:db
       jobs_cancel: kickside.core.jobs.persist:lifecycle_cancel
   - name: fixture_db
     kind: security.policy
@@ -218,8 +218,8 @@ entries:
       compiler: kickside.workflows.compiler:compiler
       canonical_json: kickside.contract:canonical_json
       jobs: kickside.core.jobs:jobs
-      policy: kickside.mail.outbox:policy
-      database: kickside.mail.outbox:database
+      policy: kickside.mail.domain:policy
+      database: kickside.mail.persist:db
       jobs_cancel: kickside.core.jobs.persist:lifecycle_cancel
   - name: port_declaration_test
     kind: function.lua
@@ -233,8 +233,7 @@ entries:
   - name: owner_clock
     kind: library.lua
     source: file://owner_clock.lua
-    modules: [ctx]
-    imports: {policy: kickside.mail.outbox:policy}
+    modules: [ctx, time]
   - name: lease_hint
     kind: library.lua
     source: file://lease_hint.lua

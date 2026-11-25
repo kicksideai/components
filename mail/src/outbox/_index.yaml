@@ -2,40 +2,25 @@
 version: "1.0"
 namespace: kickside.mail.outbox
 entries:
-  - name: policy
-    kind: library.lua
-    source: file://policy.lua
-    modules: [time]
-  - name: database
-    kind: library.lua
-    source: file://database.lua
-    modules: [registry, sql]
-    imports:
-      types: kickside.mail:types
-      error_envelope: kickside.contract:error_envelope
   - name: store
     kind: library.lua
     source: file://store.lua
-    modules: [sql, json, uuid]
+    modules: [sql, json, uuid, time]
     imports:
-      database: kickside.mail.outbox:database
+      database: kickside.mail.persist:db
       jobs: kickside.core.jobs:jobs
       asset_store: kickside.mail.library:asset_store
-      policy: kickside.mail.outbox:policy
+      policy: kickside.mail.domain:policy
       types: kickside.mail:types
-  - name: failure
-    kind: library.lua
-    source: file://failure.lua
-    imports: {types: kickside.mail:types}
   - name: log
     kind: library.lua
     source: &log_source file://log.lua
-    modules: &log_modules [security, sql, uuid]
+    modules: &log_modules [security, sql, uuid, time]
     imports: &log_imports
-      database: kickside.mail.outbox:database
+      database: kickside.mail.persist:db
       identity: kickside.execution:execution_identity
-      failure: kickside.mail.outbox:failure
-      policy: kickside.mail.outbox:policy
+      failure: kickside.mail.domain:failure
+      policy: kickside.mail.domain:policy
       store: kickside.mail.outbox:store
       types: kickside.mail:types
   - name: get_message
@@ -60,15 +45,15 @@ entries:
     method: deliver
     modules: [sql, logger, time]
     imports:
-      database: kickside.mail.outbox:database
+      database: kickside.mail.persist:db
       drivers: kickside.mail:drivers_registry
       delivery: kickside.mail.service:delivery
       identity: kickside.execution:execution_identity
       jobs: kickside.core.jobs:jobs
       lease_release: kickside.core.jobs:lease_release
-      message: kickside.mail:message
+      message: kickside.mail.domain:message
       attachments: kickside.mail.service:attachments
-      policy: kickside.mail.outbox:policy
+      policy: kickside.mail.domain:policy
       realtime: kickside.mail:realtime
       settings: kickside.mail:settings
       store: kickside.mail.outbox:store
@@ -94,19 +79,19 @@ entries:
     imports:
       client: kickside.mail:client
       types: kickside.mail:types
-      message: kickside.mail:message
-      asset_refs: kickside.mail.library:asset_refs
+      message: kickside.mail.domain:message
+      asset_refs: kickside.mail.domain:assets
   - name: owner
     kind: function.lua
     meta: { private: true, type: kickside.retention.owner }
     source: file://owner.lua
     method: run
-    modules: [sql]
+    modules: [sql, time]
     imports:
       asset_store: kickside.mail.library:asset_store
-      database: kickside.mail.outbox:database
+      database: kickside.mail.persist:db
       jobs: kickside.core.jobs:jobs
-      policy: kickside.mail.outbox:policy
+      policy: kickside.mail.domain:policy
       realtime: kickside.mail:realtime
       settings: kickside.mail:settings
       store: kickside.mail.outbox:store

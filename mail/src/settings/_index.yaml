@@ -66,9 +66,9 @@ entries:
     method: address
     imports: &validation_imports
       types: kickside.mail:types
-      message: kickside.mail:message
+      message: kickside.mail.domain:message
       drivers: kickside.mail:drivers_registry
-      policy: kickside.mail.outbox:policy
+      policy: kickside.mail.domain:policy
       settings: kickside.mail:settings
   - name: validate_from_name
     kind: function.lua

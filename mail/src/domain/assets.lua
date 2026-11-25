@@ -116,24 +116,6 @@ function M.referenced(markup: string, id: string): boolean
     return referenced_ids(markup)[id] == true
 end
 
-function M.source_reference(source: string?, name: string): boolean
-    if not source then return false end
-    local pos = 1
-    while pos <= #source do
-        local first, last = source:find("assets", pos, true)
-        if not first or not last then return false end
-        pos = last + 1
-        if not source:sub(first - 1, first - 1):match("[%w_]") then
-            local suffix = source:sub(pos)
-            local key = suffix:match("^%s*%.%s*([%w_%-]+)")
-                or suffix:match([=[^%s*%[%s*"([^"]+)"%s*%]]=])
-                or suffix:match([=[^%s*%[%s*'([^']+)'%s*%]]=])
-            if key == name then return true end
-        end
-    end
-    return false
-end
-
 function M.context(items: {types.Resource}, attachments: {types.AttachmentRef}?): types.JsonObject
     local taken: {[string]: boolean} = {}
     for _, ref in ipairs(attachments or {}) do
@@ -173,6 +155,13 @@ function M.select(html: string, items: {types.Resource}, context: types.JsonObje
         end
     end
     return selected
+end
+
+function M.content_url(name: string, revision: integer): string
+    local path_name = name:gsub("[^%w_.~-]", function(character)
+        return string.format("%%%02X", string.byte(character))
+    end)
+    return "/api/v1/mail/library/asset/" .. path_name .. "/content?revision=" .. tostring(revision)
 end
 
 return M

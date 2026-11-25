@@ -104,6 +104,31 @@ function M.recipients_error(addresses: types.Addresses, maximum: integer?): erro
     return nil
 end
 
+function M.recipient_bound(input: types.SendRequest, maximum: integer): error?
+    if #input.to + #(input.cc or {}) + #(input.bcc or {}) > maximum then
+        return M.limit_error("too_many_recipients", "The mail recipient limit is exceeded", "max_recipients", maximum)
+    end
+    return nil
+end
+
+function M.normalize_addresses(input: types.Addresses): types.Addresses
+    local addresses = {to = {}}
+    local seen: {[string]: boolean} = {}
+    for _, field in ipairs({"to", "cc", "bcc"}) do
+        local selected: {string} = {}
+        for _, address in ipairs(input[field] or {}) do
+            local at = address:find("@", 1, true) :: integer
+            local key = address:sub(1, at) .. address:sub(at + 1):lower()
+            if not seen[key] then
+                seen[key] = true
+                selected[#selected + 1] = address
+            end
+        end
+        if #selected > 0 then addresses[field] = selected end
+    end
+    return addresses :: types.Addresses
+end
+
 function M.body_error(text: string?, html: string?): error?
     if text and #text > M.MAX_BODY_BYTES then
         return M.limit_error("text_too_large", "Text body exceeds the byte limit", "max_text_bytes", M.MAX_BODY_BYTES)
@@ -208,17 +233,15 @@ local function user_recipient(value: unknown): boolean
     return true
 end
 
-local ORIGIN_KINDS = {workflow = true, automation = true, agent = true, module = true, test = true}
-
 function M.origin_text(value: unknown): boolean
     return type(value) == "string" and #value <= 256 and utf8.len(value) ~= nil
         and value:find("%S") ~= nil and value:find("%c") == nil
 end
 
 local function origin_error(value: unknown): error?
-    if type(value) ~= "table" or type(value.kind) ~= "string" or not ORIGIN_KINDS[value.kind]
+    if type(value) ~= "table" or not M.origin_text(value.kind)
         or not M.origin_text(value.id) or (value.label ~= "" and not M.origin_text(value.label)) then
-        return invalid("invalid_mail_origin", "Origin requires a supported kind, ID and label")
+        return invalid("invalid_mail_origin", "Origin requires a kind, ID and label")
     end
     for key in pairs(value) do
         if key ~= "kind" and key ~= "id" and key ~= "label" then

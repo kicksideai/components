@@ -204,7 +204,7 @@ function M.summary(db: sql.DB, declarations: {types.LibraryDeclaration}, filter:
 end
 
 function M.read(key: types.ResourceKey): (types.Resource?, error?)
-    return database.read(function(db: sql.DB): (types.Resource?, error?) return M.get(db, key) end)
+    return database.with_db(function(db: sql.DB): (types.Resource?, error?) return M.get(db, key) end)
 end
 
 function M.asset_usage(db: types.Executor, name: string?, affected: types.AssetUsageFilter?): (types.AssetUsage?, error?)

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.persist
+entries:
+  - name: db
+    kind: library.lua
+    meta: { private: true }
+    source: file://db.lua
+    modules: [registry, sql]
+    imports:
+      types: kickside.mail:types
+      error_envelope: kickside.contract:error_envelope

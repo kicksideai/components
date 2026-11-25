@@ -4,10 +4,9 @@ local registry = require("registry")
 local contract = require("contract")
 local funcs = require("funcs")
 local settings = require("settings")
-local message = require("message")
+local config = require("config")
 
-local M = {}
-local LIMITS = {"max_recipients", "max_message_bytes"}
+local M = {sender = config.sender, reply_to = config.reply_to}
 local REQUIRED = {"id", "label", "icon", "description", "binding", "settings_ns", "available_func"}
 
 function M.discover(): ({[string]: types.Driver}?, error?)
@@ -23,14 +22,8 @@ function M.discover(): ({[string]: types.Driver}?, error?)
                     details = {code = "invalid_driver_descriptor"}})
             end
         end
-        for _, field in ipairs(LIMITS) do
-            local value = data[field]
-            if value ~= nil and (type(value) ~= "number" or value < 1 or value % 1 ~= 0) then
-                return nil, errors.new({kind = errors.INVALID, retryable = false,
-                    message = "Mail driver " .. tostring(entry.id) .. " requires a positive integer for " .. field,
-                    details = {code = "invalid_driver_descriptor"}})
-            end
-        end
+        local limit_err = config.descriptor_error(data, tostring(entry.id))
+        if limit_err then return nil, limit_err end
         local view = data.settings_view
         if view ~= nil and (type(view) ~= "string" or not view:match("^[a-z][a-z0-9_.-]*%-[a-z0-9_.-]+$")) then
             return nil, errors.new({kind = errors.INVALID, retryable = false,
@@ -88,33 +81,6 @@ function M.check_available(driver: types.Driver): error?
     if not state.available then return settings.missing(state.reason :: string, state.code) end
     local _, open_err = M.transport(driver)
     return open_err
-end
-
-function M.sender(config: types.Settings): (types.Mailbox?, error?)
-    local address = config.from_address
-    if not address or not address:find("%S") then
-        return nil, settings.missing("A mail From address is required", "from_address_required", "Enter a From address to send mail.")
-    end
-    if not message.address(address) then
-        return nil, settings.missing("The mail From address is invalid", "from_address_invalid",
-            "Enter a valid From address, such as support@example.com.")
-    end
-    local name = config.from_name
-    if name ~= nil then
-        local issue = message.from_name_issue(name)
-        if issue then return nil, settings.missing(issue, "from_name_invalid") end
-    end
-    return {address = address, name = name and name:find("%S") and name or nil}, nil
-end
-
-function M.reply_to(config: types.Settings): (string?, error?)
-    local address = config.reply_to
-    if not address or address == "" then return nil, nil end
-    if not message.address(address) then
-        return nil, settings.missing("The mail Reply-To address is invalid", "reply_to_invalid",
-            "Enter a valid Reply-to address or leave it blank.")
-    end
-    return address, nil
 end
 
 return M

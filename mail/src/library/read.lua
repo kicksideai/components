@@ -6,6 +6,7 @@ local resources = require("resources")
 local store = require("store")
 local settings = require("settings")
 local policy = require("policy")
+local time = require("time")
 local outbox = require("outbox")
 local keyset = require("keyset")
 local asset_refs = require("asset_refs")
@@ -14,7 +15,7 @@ local funcs = require("funcs")
 local M = {}
 
 local function read_asset_usage(name: string?): (types.AssetUsage?, error?)
-    local usage, err = database.read(function(db: sql.DB): (types.AssetUsage?, error?)
+    local usage, err = database.with_db(function(db: sql.DB): (types.AssetUsage?, error?)
         return store.asset_usage(db, name)
     end)
     if err then return nil, err end
@@ -31,7 +32,8 @@ local function recent_since(): (integer?, error?)
     if err then return nil, err end
     local days = policy.retention_days(config.log_retention_days)
     if not days then return nil, settings.missing("Mail delivery log retention days are invalid") end
-    return policy.now() - days * policy.DAY_MS, nil
+    local now = time.now():unix_nano() // 1000000
+    return now - days * policy.DAY_MS, nil
 end
 
 local function used_by(item: types.Resource): (types.UsedBy?, error?)
@@ -135,7 +137,7 @@ function M.history(input: types.ResourceKey): ({types.Revision}?, error?)
     if bad_key then return nil, bad_key end
     local _, err = resources.get(input)
     if err then return nil, err end
-    return database.read(function(db: sql.DB): ({types.Revision}?, error?)
+    return database.with_db(function(db: sql.DB): ({types.Revision}?, error?)
         return store.history(db, input)
     end)
 end

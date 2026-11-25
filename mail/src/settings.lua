@@ -2,9 +2,9 @@
 local types = require("types")
 local contract = require("contract")
 local registry = require("registry")
-local message = require("message")
+local config = require("config")
 
-local M = {}
+local M = {missing = config.setup_error}
 
 function M.namespace(namespace: string): (types.SettingsResult?, error?)
     local definition, definition_err = contract.get("kickside.settings:settings")
@@ -26,31 +26,15 @@ function M.read(namespace: string): (types.Record?, error?)
     return result.values, nil
 end
 
-function M.missing(text: string, reason_code: string?, reason: string?): error
-    return errors.new({kind = errors.INVALID, message = text, retryable = false,
-        details = {code = "invalid_config", reason_code = reason_code, reason = reason}})
-end
-
-local function valid_key(value: unknown): boolean
-    if type(value) ~= "string" or not message.header_length(value) then return false end
-    for _, codepoint in utf8.codes(value) do
-        if codepoint == 0x20 or codepoint == 0xA0 or codepoint == 0x1680
-            or (codepoint >= 0x2000 and codepoint <= 0x200A)
-            or codepoint == 0x202F or codepoint == 0x205F or codepoint == 0x3000 then
-            return false
-        end
-    end
-    return true
-end
-
 function M.api_key(values: types.ApiSettings, service: string?): (string?, error?)
     local key = values.api_key
     local credential = service and ("a " .. service .. " API key") or "an API key"
-    if not key or key == "" then
-        return nil, M.missing("Add " .. credential .. " to send mail.", "api_key_required")
+    local issue = config.api_key_issue(key)
+    if issue == "api_key_required" then
+        return nil, M.missing("Add " .. credential .. " to send mail.", issue)
     end
-    if not valid_key(key) then
-        return nil, M.missing("Enter " .. credential .. " without spaces or line breaks.", "api_key_invalid")
+    if issue then
+        return nil, M.missing("Enter " .. credential .. " without spaces or line breaks.", issue)
     end
     return key, nil
 end

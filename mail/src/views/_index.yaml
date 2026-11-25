@@ -334,14 +334,12 @@ entries:
   - name: catalog
     kind: library.lua
     source: file://catalog.lua
-    modules: [json]
     imports:
       types: kickside.mail:types
-      canonical_json: kickside.contract:canonical_json
-      error_envelope: kickside.contract:error_envelope
+      vars: kickside.mail.domain:vars
       client: kickside.mail:client
       resources: kickside.mail.library:resources
-      jet: kickside.mail.library:jet
+      jet: kickside.mail.domain:jet
   - name: render
     kind: library.lua
     source: file://render.lua
@@ -349,11 +347,11 @@ entries:
     imports:
       types: kickside.mail:types
       catalog: kickside.mail.views:catalog
-      message: kickside.mail:message
+      message: kickside.mail.domain:message
       globals: kickside.mail.views:globals
-      jet: kickside.mail.library:jet
+      jet: kickside.mail.domain:jet
       resources: kickside.mail.library:resources
-      asset_refs: kickside.mail.library:asset_refs
+      asset_refs: kickside.mail.domain:assets
   - name: globals
     kind: library.lua
     source: file://globals.lua

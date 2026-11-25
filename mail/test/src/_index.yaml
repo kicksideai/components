@@ -159,9 +159,9 @@ entries:
     modules: [templates]
     imports:
       test: wippy.test:test
-      message: kickside.mail:message
+      message: kickside.mail.domain:message
       render: kickside.mail.views:render
-      failure: kickside.mail.outbox:failure
+      failure: kickside.mail.domain:failure
   - name: dep.blocks
     kind: ns.dependency
     component: kickside/blocks

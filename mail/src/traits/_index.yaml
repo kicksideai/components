@@ -46,7 +46,7 @@ entries:
     imports: &tool_imports
       types: kickside.mail:types
       client: kickside.mail:client
-      message: kickside.mail:message
+      message: kickside.mail.domain:message
   - name: mail_list_templates
     kind: function.lua
     meta:

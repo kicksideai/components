@@ -12,7 +12,7 @@ entries:
       client: kickside.mail:client
       settings: kickside.mail:settings
       drivers: kickside.mail:drivers_registry
-      message: kickside.mail:message
+      message: kickside.mail.domain:message
       render: kickside.mail.views:render
       attachments: kickside.mail.service:attachments
       recipients: kickside.mail.service:recipients
@@ -63,13 +63,11 @@ entries:
     kind: function.lua
     source: file://../views/catalog.lua
     method: list_templates
-    modules: &catalog_modules [json]
     imports: &catalog_imports
       types: kickside.mail:types
-      canonical_json: kickside.contract:canonical_json
-      error_envelope: kickside.contract:error_envelope
+      vars: kickside.mail.domain:vars
       client: kickside.mail:client
-      jet: kickside.mail.library:jet
+      jet: kickside.mail.domain:jet
       resources: kickside.mail.library:resources
       realtime: kickside.mail:realtime
     security: &catalog_security
@@ -81,7 +79,6 @@ entries:
     kind: function.lua
     source: file://../views/catalog.lua
     method: get_template
-    modules: *catalog_modules
     imports: *catalog_imports
     security: *catalog_security
   - name: preview
@@ -91,7 +88,7 @@ entries:
     imports:
       types: kickside.mail:types
       client: kickside.mail:client
-      message: kickside.mail:message
+      message: kickside.mail.domain:message
       render: kickside.mail.views:render
       attachments: kickside.mail.service:attachments
     security:
@@ -107,6 +104,7 @@ entries:
     source: file://delivery.lua
     modules: [http_client, json, base64, time]
     imports:
+      redact: kickside.mail.domain:redact
       types: kickside.mail:types
       error_envelope: kickside.contract:error_envelope
   - name: attachments
@@ -116,12 +114,12 @@ entries:
     imports:
       client: kickside.mail:client
       types: kickside.mail:types
-      message: kickside.mail:message
-      asset_refs: kickside.mail.library:asset_refs
+      message: kickside.mail.domain:message
+      asset_refs: kickside.mail.domain:assets
   - name: recipients
     kind: library.lua
     source: file://recipients.lua
     modules: [contract]
     imports:
       types: kickside.mail:types
-      message: kickside.mail:message
+      message: kickside.mail.domain:message

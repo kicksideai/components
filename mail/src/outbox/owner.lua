@@ -2,6 +2,7 @@
 local database = require("database")
 local jobs = require("jobs")
 local policy = require("policy")
+local time = require("time")
 local settings = require("settings")
 local sql = require("sql")
 local store = require("store")
@@ -14,7 +15,7 @@ local INTERRUPTED = {dead = true, cancelled = true, missing = true, done = true}
 local function due(now: integer, input: types.OwnerInput): ({types.MessageRow}?, error?)
     local change = input.change
     local locator = change and change.owner_locator
-    return database.read(function(db: sql.DB): ({types.MessageRow}?, error?)
+    return database.with_db(function(db: sql.DB): ({types.MessageRow}?, error?)
         local rows, err = db:query([[SELECT id, job_id, next_check_at FROM mail_message
             WHERE status='queued' AND next_check_at<=$1 ORDER BY next_check_at,id LIMIT $2]], {now, policy.BATCH})
         if err then return nil, err end
@@ -36,7 +37,7 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
     for index, row in ipairs(pending) do ids[index] = row.job_id end
     local states, status_err = jobs.get_job_statuses(ids)
     if status_err then return status_err end
-    local changed, write_err = database.transaction(function(tx: sql.Transaction, _dialect: string): ({string}?, error?)
+    local changed, write_err = database.with_tx(function(tx: sql.Transaction, _dialect: string): ({string}?, error?)
         local failed: {string} = {}
         for _, row in ipairs(pending) do
             local status = states[row.job_id] or "missing"
@@ -63,7 +64,7 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
 end
 
 local function sweep(now: integer, retention_ms: integer): (types.OwnerResult?, error?)
-    return database.transaction(function(tx: sql.Transaction, _dialect: string): (types.OwnerResult?, error?)
+    return database.with_tx(function(tx: sql.Transaction, _dialect: string): (types.OwnerResult?, error?)
         local unlink_err = asset_store.drop_expired_links(tx, now - retention_ms, policy.BATCH, now)
         if unlink_err then return nil, unlink_err end
         local result, delete_err = tx:execute([[DELETE FROM mail_message WHERE id IN (
@@ -98,7 +99,7 @@ local function run(input: types.OwnerInput): types.OwnerResult
     if not days then
         return {success = false, error = settings.missing("Mail delivery log retention days are invalid")}
     end
-    local now = policy.now()
+    local now = time.now():unix_nano() // 1000000
     local err = reconcile(now, input)
     if err then return {success = false, error = err} end
     local collected, blocked, collect_err = asset_store.collect(now, policy.BATCH, now + policy.RECHECK_MS)

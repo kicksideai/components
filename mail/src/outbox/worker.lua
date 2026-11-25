@@ -80,7 +80,7 @@ local function deliver(input: types.JobInput): (types.Record?, error?)
         delivery_err = errors.new({kind = errors.INTERNAL, message = "The mail driver returned no delivery result",
             retryable = false, details = {code = "provider_response_invalid"}})
     end
-    local now = policy.now()
+    local now = time.now():unix_nano() // 1000000
     local next_at: integer?
     local cause: types.MessageError?
     local options: types.Record = {}
@@ -92,13 +92,13 @@ local function deliver(input: types.JobInput): (types.Record?, error?)
             code = type(code) == "string" and code:match("^[a-z][a-z0-9_]*$") and code or "delivery_failed",
             message = delivery.clean_detail(delivery_err:message(), content) or "Mail delivery failed",
             provider_detail = delivery.clean_detail(details and details.provider_detail, content)}
-        next_at = policy.retry_at(delivery_err, row.attempts, now)
+        next_at = policy.retry_at(delivery_err, row.attempts, now, true)
         options.record = {status = "failed", error = cause.code}
         if next_at then
             options.rearm = time.unix(next_at // 1000, (next_at % 1000) * 1000000):utc():format("2006-01-02T15:04:05.000Z07:00")
         end
     end
-    local completion, commit_err = database.transaction(function(tx: sql.Transaction, _dialect: string): (types.JobCompletion?, error?)
+    local completion, commit_err = database.with_tx(function(tx: sql.Transaction, _dialect: string): (types.JobCompletion?, error?)
         local done, err = jobs.complete_tx(tx, job.id, lease, options)
         if err then return nil, err end
         local changed

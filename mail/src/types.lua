@@ -72,6 +72,7 @@ type OwnerResult = {success: boolean, deleted: integer?, deadline_ms: integer?, 
     error: error?, blocked: {BlockedAsset}?}
 type AssetContent = {revision: integer, content_type: string, bytes: string}
 type ResourceKey = {kind: string, name: string}
+type ResourceReferences = {bases: {string}, parts: {string}, assets: {string}}
 type ResourceContent = {
     kind: string, name: string,
     title: string, description: string, html: string, text: string, base: string?,
@@ -199,7 +200,8 @@ return {
     MessageError = MessageError, MessageRow = MessageRow, Admission = Admission, AdmissionResult = AdmissionResult,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,
     OwnerResult = OwnerResult, BlockedAsset = BlockedAsset,
-    ResourceKey = ResourceKey, ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
+    ResourceKey = ResourceKey, ResourceReferences = ResourceReferences,
+    ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,

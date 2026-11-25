@@ -23,6 +23,10 @@ local READER_POLICIES = {
     "kickside.mail.security:template_access",
 }
 
+local function now_ms(): integer
+    return time.now():unix_nano() // 1000000
+end
+
 local function open(id, binding)
     local definition, err = contract.get(id)
     if err then return nil, err end
@@ -219,7 +223,7 @@ return {
             end)
             test.after_each(function()
                 if #settlement_rows == 0 then return end
-                assert(database.transaction(function(tx)
+                assert(database.with_tx(function(tx)
                     for _, row in ipairs(settlement_rows) do
                         local _, mail_err = tx:execute("DELETE FROM mail_message WHERE id=$1", {row.id})
                         if mail_err then return nil, mail_err end
@@ -320,7 +324,7 @@ return {
                     capture_with(admin)
                     local input = body()
                     input.subject = "Fixture http_" .. fault
-                    local started = policy.now()
+                    local started = now_ms()
                     local queued = assert(invoke(sender, "send", input))
                     local pending = await_message(log_admin, queued.message_id, function(row)
                         return row.last_error ~= nil or row.status == "sent"
@@ -330,7 +334,7 @@ return {
                     test.eq("provider_transport_failed", pending.last_error.code)
                     test.eq(errors.UNAVAILABLE, pending.last_error.kind)
                     test.is_true(pending.next_attempt_at >= started + 1000)
-                    test.is_true(pending.next_attempt_at <= policy.now() + 1000)
+                    test.is_true(pending.next_attempt_at <= now_ms() + 1000)
 
                     local job_id = persisted(queued.message_id).job_id
                     local woken = assert(jobs.wake_job(job_id, {control = true}))
@@ -360,11 +364,11 @@ return {
                     local failure = errors.new({kind = kind, message = "Test outage", retryable = true})
                     local attempt, now = 1, 0
                     while now <= 3600000 do
-                        now = assert(policy.retry_at(failure, attempt, now), "Delivery exhausted within one hour")
+                        now = assert(policy.retry_at(failure, attempt, now, true), "Delivery exhausted within one hour")
                         attempt = attempt + 1
                     end
                     test.is_true(attempt <= policy.MAX_ATTEMPTS)
-                    test.is_nil(policy.retry_at(failure, policy.MAX_ATTEMPTS, now))
+                    test.is_nil(policy.retry_at(failure, policy.MAX_ATTEMPTS, now, true))
                 end
             end)
 
@@ -373,11 +377,11 @@ return {
                     return errors.new({kind = errors.RATE_LIMITED, message = "Test rate limit", retryable = retryable,
                         details = {retry_after_ms = hint}})
                 end
-                test.eq(121000, policy.retry_at(failure(120000, true), 1, 1000))
-                test.eq(901000, policy.retry_at(failure(7200000, true), 1, 1000))
-                test.eq(3000, policy.retry_at(failure(10, true), 2, 1000))
-                test.eq(2000, policy.retry_at(failure("invalid", true), 1, 1000))
-                test.is_nil(policy.retry_at(failure(120000, false), 1, 1000))
+                test.eq(121000, policy.retry_at(failure(120000, true), 1, 1000, true))
+                test.eq(901000, policy.retry_at(failure(7200000, true), 1, 1000, true))
+                test.eq(3000, policy.retry_at(failure(10, true), 2, 1000, true))
+                test.eq(2000, policy.retry_at(failure("invalid", true), 1, 1000, true))
+                test.is_nil(policy.retry_at(failure(120000, false), 1, 1000, true))
             end)
 
             test.it("stops retrying at the attempt limit", function()
@@ -644,11 +648,11 @@ return {
             end)
 
             test.it("settles jobs that are cancelled or no longer stored", function()
-                local admitted_at = policy.now() + 3600000
+                local admitted_at = now_ms() + 3600000
                 local recheck_at = admitted_at + policy.RECHECK_MS
                 local hinted, cancelled, missing = {id = uuid.v7()}, {id = uuid.v7()}, {id = uuid.v7()}
                 settlement_rows = {hinted, cancelled, missing}
-                assert(database.transaction(function(tx, dialect)
+                assert(database.with_tx(function(tx, dialect)
                     for _, row in ipairs(settlement_rows) do
                         local job_id: string = uuid.v7()
                         if row ~= missing then
@@ -959,7 +963,7 @@ return {
                 assert(change(admin, "from_address", "mail@example.org").success)
                 local input = template_request()
                 input.origin = {kind = "module", id = "app:recent-senders", label = "Recent senders"}
-                local since = policy.now()
+                local since = now_ms()
                 local first = assert(invoke(sender, "send", input))
                 test.eq("sent", terminal(sender, first).status)
                 local second = assert(invoke(sender, "send", input))

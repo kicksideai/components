@@ -88,10 +88,6 @@ entries:
     source: file://realtime.lua
     modules: [contract, logger]
     imports: { types: kickside.mail:types }
-  - name: message
-    kind: library.lua
-    source: file://message.lua
-    imports: { types: kickside.mail:types }
   - name: client
     kind: library.lua
     source: file://client.lua
@@ -101,12 +97,12 @@ entries:
     kind: library.lua
     source: file://settings.lua
     modules: [contract, registry]
-    imports: { types: kickside.mail:types, message: kickside.mail:message }
+    imports: { types: kickside.mail:types, config: kickside.mail.domain:config }
   - name: drivers_registry
     kind: library.lua
     source: file://drivers_registry.lua
     modules: [registry, contract, funcs]
-    imports: { settings: kickside.mail:settings, types: kickside.mail:types, message: kickside.mail:message }
+    imports: { settings: kickside.mail:settings, types: kickside.mail:types, config: kickside.mail.domain:config }
   - name: mailer
     kind: contract.definition
     meta: { title: Mailer }

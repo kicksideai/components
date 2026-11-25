@@ -3,6 +3,7 @@ local database = require("database")
 local jobs = require("jobs")
 local json = require("json")
 local policy = require("policy")
+local time = require("time")
 local sql = require("sql")
 local types = require("types")
 local uuid = require("uuid")
@@ -19,7 +20,7 @@ local function result(row: types.MessageRow, content_hash: string): (types.SendR
 end
 
 function M.find_key(sender: string, key: string, content_hash: string): (types.SendResult?, error?)
-    return database.read(function(db: sql.DB): (types.SendResult?, error?)
+    return database.with_db(function(db: sql.DB): (types.SendResult?, error?)
         local rows, err = db:query("SELECT id, status, content_hash FROM mail_message WHERE sender=$1 AND idempotency_key=$2",
             {sender, key})
         if err then return nil, err end
@@ -30,13 +31,13 @@ end
 
 function M.insert(input: types.Admission): (types.AdmissionResult?, error?)
     local id = uuid.v7()
-    local now = policy.now()
+    local now = time.now():unix_nano() // 1000000
     local recipients, recipients_err = json.encode({to = input.to, cc = input.cc, bcc = input.bcc})
     if recipients_err then return nil, recipients_err end
     local refs, refs_err = json.encode(input.attachments or {})
     if refs_err then return nil, refs_err end
 
-    return database.transaction(function(tx: sql.Transaction, dialect: string): (types.AdmissionResult?, error?)
+    return database.with_tx(function(tx: sql.Transaction, dialect: string): (types.AdmissionResult?, error?)
         local rows, err = tx:query([[INSERT INTO mail_message (
             id, created_at, status, next_attempt_at, next_check_at, sender, actor_context, template,
             recipients, subject, html, text, from_address, from_name, reply_to, attachments, idempotency_key, content_hash,
@@ -74,7 +75,7 @@ function M.insert(input: types.Admission): (types.AdmissionResult?, error?)
 end
 
 function M.start(id: string, job_id: string, driver_id: string?): (types.MessageRow?, error?)
-    return database.read(function(db: sql.DB): (types.MessageRow?, error?)
+    return database.with_db(function(db: sql.DB): (types.MessageRow?, error?)
         local rows, err = db:query([[UPDATE mail_message SET attempts=attempts+1, driver_id=$1
             WHERE id=$2 AND job_id=$3 AND status='queued' RETURNING *]], {driver_id or sql.NULL, id, job_id})
         if err then return nil, err end
@@ -117,7 +118,7 @@ function M.origin(row: types.MessageRow): types.Origin?
 end
 
 function M.recent_senders(template: string, since: integer): ({types.RecentSender}?, error?)
-    return database.read(function(db: sql.DB): ({types.RecentSender}?, error?)
+    return database.with_db(function(db: sql.DB): ({types.RecentSender}?, error?)
         local rows, err = db:query([[SELECT sender,origin_kind,origin_id,origin_label,COUNT(*) AS count
             FROM mail_message WHERE template=$1 AND created_at>=$2 AND status='sent'
             GROUP BY sender,origin_kind,origin_id,origin_label
@@ -132,7 +133,7 @@ function M.recent_senders(template: string, since: integer): ({types.RecentSende
 end
 
 function M.recent_sender_counts(templates: {string}, since: integer): ({[string]: integer}?, error?)
-    return database.read(function(db: sql.DB): ({[string]: integer}?, error?)
+    return database.with_db(function(db: sql.DB): ({[string]: integer}?, error?)
         local args: {unknown} = {since}
         local placeholders = {}
         for i, name in ipairs(templates) do

@@ -6,6 +6,7 @@ local sql = require("sql")
 local store = require("store")
 local failure = require("failure")
 local policy = require("policy")
+local time = require("time")
 local types = require("types")
 local uuid = require("uuid")
 
@@ -58,7 +59,7 @@ local function read_message(message_id: string, columns: string, sender: string?
     if type(message_id) ~= "string" or not uuid.validate(message_id) then
         return nil, invalid("A message ID is required")
     end
-    return database.read(function(db: sql.DB): (types.MessageRow?, error?)
+    return database.with_db(function(db: sql.DB): (types.MessageRow?, error?)
         local query = "SELECT " .. columns .. " FROM mail_message WHERE id=$1"
         local params = {message_id}
         if sender then
@@ -143,7 +144,7 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
     end
     local sender, err = viewer()
     if err then return nil, err end
-    return database.read(function(db: sql.DB): (types.ListResult?, error?)
+    return database.with_db(function(db: sql.DB, dialect: string): (types.ListResult?, error?)
         local args: {unknown} = {}
         local filters: {string} = {}
         local function bind(value: unknown): string
@@ -163,8 +164,6 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
             .. scope .. " LIMIT " .. tostring(SUMMARY_WINDOW + 1) .. ") AS counted"
         local page_source = "mail_message"
         if input.q and input.q ~= "" then
-            local dialect, dialect_err = db:type()
-            if dialect_err then return nil, dialect_err end
             local search = search_clause(dialect, bind(input.q:lower()))
             search_cte = "search_window AS MATERIALIZED (SELECT id,created_at,subject,recipients FROM mail_message"
                 .. scope .. order .. bound .. "), matches AS MATERIALIZED (SELECT id,created_at FROM search_window WHERE "
@@ -173,7 +172,8 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
             filters = {}
             page_source = "matches"
         end
-        local start = (policy.now() // policy.DAY_MS) * policy.DAY_MS
+        local now = time.now():unix_nano() // 1000000
+        local start = (now // policy.DAY_MS) * policy.DAY_MS
         local failures = "SELECT COUNT(*) AS failed_today FROM mail_message WHERE status='failed' AND finished_at>="
             .. bind(start) .. " AND finished_at<" .. bind(start + policy.DAY_MS)
         if owner then failures = failures .. " AND " .. owner end

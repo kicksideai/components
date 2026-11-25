@@ -14,6 +14,7 @@ local realtime = require("realtime")
 local preview_id = require("preview_id")
 local attachments = require("attachments")
 local asset_refs = require("asset_refs")
+local source_refs = require("source_refs")
 local asset_store = require("asset_store")
 local notifier = require("notifier")
 local funcs = require("funcs")
@@ -29,8 +30,8 @@ local function asset_sources(tx: sql.Transaction, name: string, items: types.Res
     local seen: {[string]: boolean} = {}
     local function add(item: types.ResourceContent)
         local id = resources.key(item)
-        if not seen[id] and (asset_refs.source_reference(item.html, name) or asset_refs.source_reference(item.text, name)
-            or asset_refs.source_reference(item.subject, name)) then
+        if not seen[id] and (source_refs.source_reference(item.html, name) or source_refs.source_reference(item.text, name)
+            or source_refs.source_reference(item.subject, name)) then
             seen[id] = true
             sources[#sources + 1] = {kind = item.kind, name = item.name}
         end
@@ -205,7 +206,7 @@ local function change(edits: {types.LibraryEdit}, operation: string, receipt: st
     end
 
     local published = false
-    local saved, err = database.transaction(function(tx: sql.Transaction, dialect: string): ({types.Resource}?, error?)
+    local saved, err = database.with_tx(function(tx: sql.Transaction, dialect: string): ({types.Resource}?, error?)
         local result, write_err = write(tx, dialect)
         if write_err then return nil, write_err end
         if keys[1].kind ~= "asset" then

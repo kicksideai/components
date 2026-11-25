@@ -5,7 +5,7 @@ local store = require("store")
 
 local function remove(keys)
     if #keys == 0 then return end
-    assert(database.transaction(function(tx)
+    assert(database.with_tx(function(tx)
         for _, key in ipairs(keys) do
             local err = store.remove(tx, key, true)
             if err then return nil, err end

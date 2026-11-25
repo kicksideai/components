@@ -1,6 +1,4 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local time = require("time")
-
 local M = {
     MAX_ATTEMPTS = 32,
     MAX_RETENTION_DAYS = 3650,
@@ -17,14 +15,16 @@ local RETRYABLE = {
     [errors.TIMEOUT] = true,
 }
 
-function M.now(): integer
-    return time.now():unix_nano() // 1000000
-end
-
-function M.retry_at(err: error, attempts: integer, now: integer): integer?
+function M.retry_at(err: error, attempts: integer, now: integer, idempotent: boolean): integer?
     if attempts >= M.MAX_ATTEMPTS or not err:retryable() then return nil end
     local details = err:details()
-    if not RETRYABLE[err:kind()] and not (details and details.code == "send_in_progress") then return nil end
+    local kind = err:kind()
+    local code = details and details.code
+    if not RETRYABLE[kind] and code ~= "send_in_progress" then return nil end
+    if not idempotent and (kind == errors.TIMEOUT or code == "provider_transport_failed"
+        or code == "send_in_progress" or code == "delivery_uncertain") then
+        return nil
+    end
     local delay = math.min(CAP_MS, BASE_MS * 2 ^ (attempts - 1))
     local hint = details and details.retry_after_ms
     if type(hint) == "number" and hint >= 0 and hint < math.huge then

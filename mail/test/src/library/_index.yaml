@@ -14,7 +14,7 @@ entries:
     source: file://fixtures.lua
     modules: [funcs]
     imports:
-      database: kickside.mail.outbox:database
+      database: kickside.mail.persist:db
       store: kickside.mail.library:store
   - name: library_test
     kind: function.lua
@@ -25,7 +25,7 @@ entries:
     imports:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
-      jet: kickside.mail.library:jet
+      jet: kickside.mail.domain:jet
   - name: draft_render
     kind: library.lua
     source: file://draft_render.lua

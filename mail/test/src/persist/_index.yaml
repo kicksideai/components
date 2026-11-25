@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.mail_persist
+entries:
+  - name: db_test
+    kind: function.lua
+    meta: { type: test, suite: mail_persist }
+    source: file://db_test.lua
+    method: run
+    modules: [registry, uuid]
+    imports:
+      test: wippy.test:test
+      db: kickside.mail.persist:db

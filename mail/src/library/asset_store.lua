@@ -13,7 +13,7 @@ function M.component_id(): string
 end
 
 function M.reserve(asset: types.Asset, deadline: integer): (boolean?, error?)
-    return database.transaction(function(tx: sql.Transaction): (boolean?, error?)
+    return database.with_tx(function(tx: sql.Transaction): (boolean?, error?)
         local _, err = tx:execute([[INSERT INTO mail_asset_file
             (upload_id,filename,content_type,size_bytes,width,height,due_at) VALUES ($1,$2,$3,$4,$5,$6,$7)]],
             {asset.upload_id, asset.filename, asset.content_type, asset.size, asset.width or sql.NULL,
@@ -90,7 +90,7 @@ function M.link(tx: sql.Transaction, id: string, refs: {types.AssetRef}?): error
 end
 
 function M.refs(id: string): ({types.AssetRef}?, error?)
-    return database.read(function(db: sql.DB): ({types.AssetRef}?, error?)
+    return database.with_db(function(db: sql.DB): ({types.AssetRef}?, error?)
         local rows, err = db:query("SELECT name,content_id,original,upload_id FROM mail_message_asset WHERE message_id=$1 ORDER BY name", {id})
         return rows :: {types.AssetRef}?, err
     end)
@@ -111,7 +111,7 @@ function M.drop_expired_links(tx: sql.Transaction, cutoff: integer, limit: integ
 end
 
 function M.collect(now_ms: integer, limit: integer, blocked_until: integer): (integer?, {types.BlockedAsset}?, error?)
-    local rows, read_err = database.read(function(db: sql.DB): ({types.Record}?, error?)
+    local rows, read_err = database.with_db(function(db: sql.DB): ({types.Record}?, error?)
         local found, err = db:query([[SELECT upload_id FROM mail_asset_file WHERE due_at<=$1
             ORDER BY due_at,upload_id LIMIT $2]], {now_ms, limit})
         return found :: {types.Record}?, err
@@ -133,7 +133,7 @@ function M.collect(now_ms: integer, limit: integer, blocked_until: integer): (in
         end
     end
     if #rows > 0 then
-        local _, err = database.transaction(function(tx: sql.Transaction): (boolean?, error?)
+        local _, err = database.with_tx(function(tx: sql.Transaction): (boolean?, error?)
             for _, id in ipairs(removed) do
                 local _, delete_err = tx:execute("DELETE FROM mail_asset_file WHERE upload_id=$1 AND due_at<=$2", {id, now_ms})
                 if delete_err then return nil, delete_err end

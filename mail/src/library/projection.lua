@@ -89,13 +89,13 @@ local function reconcile(tx: sql.Transaction, dialect: string): (boolean?, error
 end
 
 function M.reconcile(): (boolean?, error?)
-    return database.transaction(reconcile)
+    return database.with_tx(reconcile)
 end
 
 function M.boot(): {status: string, message: string?}
     local values, read_err = globals.library_samples()
     if read_err then return {status = "error", message = read_err:message()} end
-    local _, err = database.transaction(function(tx: sql.Transaction, dialect: string): (boolean?, error?)
+    local _, err = database.with_tx(function(tx: sql.Transaction, dialect: string): (boolean?, error?)
         local _, projection_err = reconcile(tx, dialect)
         if projection_err then return nil, projection_err end
         local items, load_err = resources.load(tx)
