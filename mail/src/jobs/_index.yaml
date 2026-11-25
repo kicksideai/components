@@ -18,6 +18,7 @@ entries:
       actor: { id: "system:kickside.mail.retention" }
       policies:
         - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_binding_open
         - kickside.mail.security:realtime_topics
         - kickside.mail.security:mail_db
         - kickside.mail.security:mail_config
@@ -53,6 +54,7 @@ entries:
         - kickside.mail.security:live_marker_write
         - kickside.mail.security:overlay_originals
         - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_binding_open
         - kickside.mail.security:realtime_topics
         - kickside.core.retention:notify_access
   - name: reconcile

@@ -192,6 +192,7 @@ entries:
       - { name: "kickside.mail:library_editor_grant", value: {subject_id: "app:mail_editors", subject_type: group, access_mask: 3} }
       - { name: "kickside.mail:clock", value: "app.mail_harness:owner_clock" }
       - { name: "kickside.mail:http_transport", value: "app.mail_harness:http_client" }
+      - { name: "kickside.mail:realtime_binding", value: "app.mail_realtime:realtime_binding" }
   - name: dep.driver_example
     kind: ns.dependency
     component: example/mail-relay

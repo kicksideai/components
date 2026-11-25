@@ -72,6 +72,12 @@ entries:
     meta: {value_kind: library.lua, description: HTTP client adapter used by Mail transport helpers.}
     targets:
       - {entry: kickside.mail.driver:http, path: .imports.http_client}
+  - name: realtime_binding
+    kind: ns.requirement
+    default: kickside.realtime:realtime_binding
+    meta: {value_type: string, description: ID of the app's default realtime contract binding.}
+    targets:
+      - {entry: kickside.mail.security:realtime_binding_open, path: .policy.resources}
   - name: api_router
     kind: ns.requirement
     meta: { value_kind: http.router, comment: Authenticated router for the Mail administration API. }

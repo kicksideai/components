@@ -603,8 +603,15 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.contract:realtime, kickside.realtime:realtime_binding, broadcast]
+      resources: [kickside.contract:realtime, broadcast]
       actions: [registry.get, contract.get, contract.open, contract.call]
+      effect: allow
+  - name: realtime_binding_open
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: kickside.realtime:realtime_binding
+      actions: [registry.get, contract.open]
       effect: allow
   - name: realtime_topics
     kind: security.policy

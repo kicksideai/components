@@ -2,6 +2,12 @@
 version: "1.0"
 namespace: app.mail_realtime
 entries:
+  - name: realtime_binding
+    kind: contract.binding
+    contracts:
+      - contract: kickside.contract:realtime
+        default: true
+        methods: {broadcast: app.mail_realtime:broadcast, notify: app.mail_realtime:notify}
   - name: fixture_migration
     kind: function.lua
     meta: { type: migration, timestamp: '2026-11-23T23:00:00Z', target_db: app:db }
@@ -30,7 +36,7 @@ entries:
     meta: {type: test, suite: mail_realtime}
     source: file://notify_test.lua
     method: run
-    modules: [funcs, sql]
+    modules: [funcs, registry, sql]
     imports:
       test: wippy.test:test
       api_fixtures: app.mail_api:fixtures

@@ -7,6 +7,8 @@ Mail queues email from an installation-managed address and delivers it through a
 
 Install KickSide Settings, Contract, Component, Core, Jobs, Execution, Users, Uploads, `wippy/views`, and at least one mail driver. Bind `kickside.mail:target_db` to the SQL resource Jobs uses. Mail opens the Users provisioning contract under the caller and reads each distinct user ID once. The pinned Users contract exposes a single-user lookup. Mail supplies the ContentProvider call permissions at admission and in the attachment reader. Uploads checks component access under the caller at admission and under the sender’s current identity in the worker. Drivers receive the bytes after those checks. Template discovery follows the caller’s registry visibility. Template declarations can provide `template.origin_label` for display in the library.
 
+If the app installs its own default implementation of `kickside.contract:realtime`, bind `kickside.mail:realtime_binding` to that implementation's ID.
+
 Assign **Send mail** to groups that may send messages. **Edit mail library** grants access to list, inspect, preview, and edit library resources. Assign **Administer mail delivery** to administrators who manage the Mail settings through the platform Settings surface. The installed driver has a separate administration capability. Mailer contract callers can read their own delivery log. The Activity HTTP endpoints require delivery administration. Assign **Read all mail delivery logs** to groups that need to read messages from all senders.
 
 ## Settings

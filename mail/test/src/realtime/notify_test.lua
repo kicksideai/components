@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local test = require("test")
 local funcs = require("funcs")
+local registry = require("registry")
 local sql = require("sql")
 local api_fixtures = require("api_fixtures")
 local library_fixtures = require("library_fixtures")
@@ -18,6 +19,9 @@ return {run = test.run_cases(function()
         end)
 
         test.it("commits the library write when the realtime binding refuses the broadcast", function()
+            local binding = assert(registry.get("app.mail_realtime:realtime_binding"))
+            test.is_true(binding.data.contracts[1].default)
+            test.is_nil(registry.get("kickside.realtime:realtime_binding"))
             local editor = api_fixtures.session("editor_sender")
             local executor = assert(funcs.new():with_actor(editor.actor):with_scope(editor.scope))
             local part = {kind = "part", name = PART, title = "Realtime fixture", description = "",

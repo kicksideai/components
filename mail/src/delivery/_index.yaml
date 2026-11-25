@@ -21,6 +21,7 @@ entries:
       actor: { id: "system:kickside.mail.delivery" }
       policies:
         - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_binding_open
         - kickside.mail.security:realtime_topics
         - kickside.mail.security:deferred_delivery
         - kickside.mail.security:asset_bytes
