@@ -45,7 +45,10 @@ end
 function M.handle(check: (() -> error?)?, run: (http.Request) -> (unknown, error?), status: integer?,
     respond: ((http.Request, http.Response, unknown) -> error?)?)
     local req, res = http.request(), http.response()
-    if not req or not res then return nil, errors.new({kind = errors.UNAVAILABLE, message = "HTTP context required"}) end
+    if not req or not res then
+        return nil, errors.new({kind = errors.UNAVAILABLE, message = "HTTP context required",
+            retryable = false, details = {code = "http_context_required"}})
+    end
     res:set_content_type(http.CONTENT.JSON)
     local actor, actor_err = security.actor()
     if actor_err then return fail(res, actor_err) end

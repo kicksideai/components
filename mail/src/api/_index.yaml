@@ -26,6 +26,7 @@ entries:
       client: kickside.mail:client
   - name: capabilities.endpoint
     kind: http.endpoint
+    meta: {comment: Read the caller’s Mail capabilities.}
     method: GET
     func: capabilities
     path: /mail/capabilities
@@ -45,6 +46,7 @@ entries:
         - kickside.mail.security:principal_directory_resolve
   - name: library_list.endpoint
     kind: http.endpoint
+    meta: {comment: List a page of library resources.}
     method: GET
     func: library_list
     path: /mail/library
@@ -59,6 +61,7 @@ entries:
     security: *principal_labels
   - name: library_get.endpoint
     kind: http.endpoint
+    meta: {comment: Read the selected library resource.}
     method: GET
     func: library_get
     path: /mail/library/{kind}/{name}
@@ -73,6 +76,7 @@ entries:
       types: kickside.mail:types
   - name: library_asset_content.endpoint
     kind: http.endpoint
+    meta: {comment: Read the bytes of an image revision.}
     method: GET
     func: library_asset_content
     path: /mail/library/asset/{name}/content
@@ -86,6 +90,7 @@ entries:
       client: kickside.mail:client
   - name: library_create.endpoint
     kind: http.endpoint
+    meta: {comment: Create a library resource.}
     method: POST
     func: library_create
     path: /mail/library
@@ -99,6 +104,7 @@ entries:
       client: kickside.mail:client
   - name: library_update.endpoint
     kind: http.endpoint
+    meta: {comment: Update a library resource.}
     method: PUT
     func: library_update
     path: /mail/library/{kind}/{name}
@@ -112,6 +118,7 @@ entries:
       client: kickside.mail:client
   - name: library_save.endpoint
     kind: http.endpoint
+    meta: {comment: Save a reviewed batch of template edits.}
     method: POST
     func: library_save
     path: /mail/library/save
@@ -125,6 +132,7 @@ entries:
       client: kickside.mail:client
   - name: library_set_base.endpoint
     kind: http.endpoint
+    meta: {comment: Change a message’s layout.}
     method: POST
     func: library_set_base
     path: /mail/library/message/{name}/base
@@ -138,6 +146,7 @@ entries:
       client: kickside.mail:client
   - name: library_reset.endpoint
     kind: http.endpoint
+    meta: {comment: Reset a resource to its packaged version.}
     method: POST
     func: library_reset
     path: /mail/library/{kind}/{name}/reset
@@ -151,6 +160,7 @@ entries:
       client: kickside.mail:client
   - name: library_delete.endpoint
     kind: http.endpoint
+    meta: {comment: Delete or archive a library resource.}
     method: DELETE
     func: library_delete
     path: /mail/library/{kind}/{name}
@@ -165,6 +175,7 @@ entries:
     security: *principal_labels
   - name: library_history.endpoint
     kind: http.endpoint
+    meta: {comment: Read a history page or revision.}
     method: GET
     func: library_history
     path: /mail/library/{kind}/{name}/history
@@ -178,6 +189,7 @@ entries:
       client: kickside.mail:client
   - name: library_restore.endpoint
     kind: http.endpoint
+    meta: {comment: Restore a saved revision.}
     method: POST
     func: library_restore
     path: /mail/library/{kind}/{name}/restore
@@ -191,6 +203,7 @@ entries:
       client: kickside.mail:client
   - name: library_preview.endpoint
     kind: http.endpoint
+    meta: {comment: Render a saved message or reviewed draft.}
     method: POST
     func: library_preview
     path: /mail/library/preview
@@ -204,6 +217,7 @@ entries:
       client: kickside.mail:client
   - name: library_send_test.endpoint
     kind: http.endpoint
+    meta: {comment: Queue a test of a library message.}
     method: POST
     func: library_send_test
     path: /mail/library/send-test
@@ -218,6 +232,7 @@ entries:
     security: *principal_labels
   - name: activity_list.endpoint
     kind: http.endpoint
+    meta: {comment: List delivery log entries.}
     method: GET
     func: activity_list
     path: /mail/activity
@@ -232,6 +247,7 @@ entries:
     security: *principal_labels
   - name: activity_get.endpoint
     kind: http.endpoint
+    meta: {comment: Read a delivery log entry.}
     method: GET
     func: activity_get
     path: /mail/activity/{id}
@@ -244,6 +260,7 @@ entries:
       client: kickside.mail:client
   - name: activity_resend.endpoint
     kind: http.endpoint
+    meta: {comment: Queue another delivery of a failed message.}
     method: POST
     func: activity_resend
     path: /mail/activity/{id}/resend
@@ -256,6 +273,7 @@ entries:
       client: kickside.mail:client
   - name: delivery_status.endpoint
     kind: http.endpoint
+    meta: {comment: Read delivery configuration and readiness.}
     method: GET
     func: delivery_status
     path: /mail/delivery
@@ -269,6 +287,7 @@ entries:
       types: kickside.mail:types
   - name: delivery_send_test.endpoint
     kind: http.endpoint
+    meta: {comment: Queue a delivery configuration test.}
     method: POST
     func: delivery_send_test
     path: /mail/delivery/send-test
