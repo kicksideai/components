@@ -134,6 +134,9 @@ entries:
     imports: *library_imports
     security: &library_preview_frame
       policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
+        - kickside.mail.security:library_threads_caller
         - kickside.mail.security:library_component_read
         - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry
@@ -159,6 +162,8 @@ entries:
     imports: *library_imports
     security: &library_write_frame
       policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
         - kickside.mail.security:library_component_read
         - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry
@@ -242,6 +247,11 @@ entries:
       delivery: kickside.mail.read:delivery
     security: &mailer_send_frame
       policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_threads_caller
         - kickside.mail.security:realtime_calls
         - kickside.mail.security:realtime_topics
         - kickside.mail.security:site_url
@@ -304,6 +314,9 @@ entries:
     imports: *mailer_imports
     security:
       policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
+        - kickside.mail.security:library_threads_caller
         - kickside.mail.security:library_component_read
         - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry

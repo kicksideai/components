@@ -38,3 +38,10 @@ entries:
     method: read
     imports:
       attachments: kickside.mail.command:attachments
+    security:
+      policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_threads_caller

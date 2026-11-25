@@ -68,7 +68,7 @@ entries:
     meta:
       title: Read all mail delivery logs
       surface: kickside.mail
-      intent: tool_access
+      intent: module_management
       includes: [kickside.mail.security:module_runtime]
     groups: []
     policy:
@@ -187,7 +187,7 @@ entries:
     meta:
       title: Administer mail delivery
       surface: kickside.mail
-      intent: settings_access
+      intent: module_management
       includes: [kickside.mail.security:log_admin, kickside.mail.security:delivery_endpoints]
     groups: []
     policy:
@@ -329,6 +329,22 @@ entries:
         - get_content
         - security
       actions: [registry.get, contract.call, contract.security, funcs.call, funcs.security]
+      effect: allow
+  - name: attachment_provider
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    groups: []
+    policy:
+      resources: [kickside.contract:content_provider, kickside.uploads:content_provider]
+      actions: [contract.get, contract.open]
+      effect: allow
+  - name: attachment_methods
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    groups: []
+    policy:
+      resources: [get_info, get_content]
+      actions: [contract.call]
       effect: allow
   - name: mail_retention_actor
     kind: registry.entry
@@ -561,6 +577,7 @@ entries:
   - name: delivery_endpoints
     kind: security.policy
     meta: { private: true }
+    groups: []
     policy:
       resources:
         - kickside.mail.api:activity_list.endpoint
