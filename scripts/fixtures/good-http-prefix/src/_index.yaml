@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.goodhttp
+entries:
+  - name: definition
+    kind: ns.definition
+  - name: us_api_base_url
+    kind: ns.requirement
+    default: https://api.example.org/v3/*
+    targets:
+      - {entry: acme.goodhttp.security:http_access, path: ".policy.resources +="}
+  - name: eu_api_base_url
+    kind: ns.requirement
+    default: https://api.eu.example.org/v3/*
+    targets:
+      - {entry: acme.goodhttp.security:http_access, path: ".policy.resources +="}

@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+organization: acme
+module: badconsumer
+description: References private platform entries.

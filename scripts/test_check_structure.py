@@ -68,6 +68,32 @@ def fixture(name):
     return os.path.join(FIXTURES, name)
 
 
+EXPECTED_BAD_PLATFORM = {
+    ("src/jobs/_index.yaml", 12, "meta.private: true"),
+    ("src/jobs/_index.yaml", 13, "private 'persist' namespace"),
+    ("src/jobs/_index.yaml", 14, "meta.service_only: true"),
+    ("src/jobs/_index.yaml", 16, "private 'persist' namespace"),
+    ("src/jobs/worker.lua", 3, "meta.private: true"),
+    ("src/jobs/worker.lua", 4, "binding namespace"),
+    ("src/jobs/worker.lua", 5, "handler of kplat.jobs:other_binding method run"),
+    ("src/jobs/worker.lua", 6, "private 'persist' namespace (no such entry declared)"),
+    ("src/security/_index.yaml", 9, "used as a policy resource"),
+    ("src/security/_index.yaml", 16, "neither a contract's default binding nor a component kind"),
+}
+
+EXPECTED_BAD_PLUGIN = {
+    ("S6", "src/_index.yaml", 18),
+    ("S6", "src/_index.yaml", 24),
+}
+
+
+def fixture(name):
+    return os.path.join(FIXTURES, name)
+
+
+PLATFORM = [fixture("platform")]
+
+
 class StructureCheckTest(unittest.TestCase):
     def test_mail_structure_target_passes_on_mail(self):
         repo = Path(HERE).parent
@@ -110,7 +136,7 @@ class StructureCheckTest(unittest.TestCase):
         m = check_structure.run(fixture("bad"), greenfield=["bad"], peer_dirs=[fixture("bad-plugin")])
         got = {(f.rule, f.file, f.line) for f in m.findings}
         self.assertEqual(got, EXPECTED_BAD)
-        self.assertEqual({f.rule for f in m.findings}, set(check_structure.RULES))
+        self.assertEqual({f.rule for f in m.findings}, set(check_structure.RULES) - {"S17"})
 
     def test_s10_applies_only_to_greenfield_modules(self):
         m = check_structure.run(fixture("bad"))
@@ -131,6 +157,20 @@ class StructureCheckTest(unittest.TestCase):
     def test_module_without_command_layer_keeps_writer_in_persist(self):
         m = check_structure.run(fixture("small"))
         self.assertEqual([str(f) for f in m.findings], [])
+
+    def test_http_prefixes_from_own_policy_requirement_defaults_are_allowed(self):
+        m = check_structure.run(fixture("good-http-prefix"))
+        self.assertEqual([str(f) for f in m.findings], [])
+
+    def test_http_prefixes_are_refused_without_the_own_http_requirement(self):
+        m = check_structure.run(fixture("bad-http-prefix"), peer_dirs=[fixture("good-http-prefix")])
+        self.assertEqual({(f.rule, f.file, f.line) for f in m.findings}, {
+            ("S14", "src/_index.yaml", 10),
+            ("S14", "src/_index.yaml", 16),
+            ("S14", "src/_index.yaml", 22),
+            ("S14", "src/_index.yaml", 28),
+            ("S14", "src/security/_index.yaml", 8),
+        })
 
     def test_layer_overrides_place_module_specific_folders(self):
         m = check_structure.run(fixture("mail"))
@@ -171,6 +211,51 @@ class StructureCheckTest(unittest.TestCase):
         self.assertIsNotNone(check_structure.foreign_private(fake, "acme.good.read:reader", [peer]))
         self.assertIsNone(check_structure.foreign_private(fake, "acme.good.security:plugins", [peer], "groups"))
         self.assertIsNotNone(check_structure.foreign_private(fake, "acme.good.security:plugins", [peer]))
+
+    def test_platform_index_records_entry_facts(self):
+        p = check_structure.Platform(PLATFORM)
+        self.assertEqual({m.root_ns for m in p.modules}, {"kplat.jobs", "kickside.settings"})
+        runtime = p.entries["kplat.jobs.security:module_runtime"]
+        self.assertTrue(runtime.private)
+        self.assertEqual(runtime.where, "core/kjobs/src/security/_index.yaml:15")
+        self.assertEqual(p.entries["kplat.jobs.security:module_access"].role, "module_access policy")
+        self.assertTrue(p.entries["kplat.jobs.security:worker_only"].service_only)
+        self.assertEqual(p.entries["kplat.jobs.persist:repo"].segment, "persist")
+        self.assertTrue(p.entries["kplat.jobs:api_binding"].default_binding)
+        self.assertFalse(p.entries["kplat.jobs:other_binding"].default_binding)
+        self.assertEqual(p.entries["kplat.jobs.binding:run_func"].role, "binding function")
+        self.assertEqual(p.entries["kplat.jobs:list_handler"].handler_of, "kplat.jobs:other_binding method run")
+        self.assertEqual(p.entries["kplat.jobs.api:status"].handler_of, "endpoint kplat.jobs.api:status.endpoint")
+        self.assertEqual(p.entries["kplat.jobs.api:status.endpoint"].role, "endpoint")
+        self.assertIs(p.owner("kplat.jobs.persist"), p.owner("kplat.jobs"))
+        self.assertIs(p.resolve("kplat.jobs:jobs.enqueue"), p.entries["kplat.jobs:jobs"])
+
+    def test_public_platform_references_pass(self):
+        m = check_structure.run(fixture("good-platform"), platform=PLATFORM)
+        self.assertEqual([str(f) for f in m.findings], [])
+
+    def test_private_platform_references_are_refused_with_the_platform_file(self):
+        m = check_structure.run(fixture("bad-platform"), platform=PLATFORM)
+        self.assertEqual({f.rule for f in m.findings}, {"S17"})
+        got = {(f.file, f.line) for f in m.findings}
+        self.assertEqual(got, {(rel, line) for rel, line, _ in EXPECTED_BAD_PLATFORM})
+        for rel, line, why in EXPECTED_BAD_PLATFORM:
+            message = next(f.message for f in m.findings if (f.file, f.line) == (rel, line))
+            self.assertIn(why, message)
+            self.assertRegex(message, r"\((?:core|platform)/[\w/]+_index\.yaml:\d+\)$|no such entry declared\)$")
+
+    def test_endpoint_outside_policy_resources_and_allowlisted_endpoint_pass(self):
+        p = check_structure.Platform(PLATFORM)
+        self.assertIsNone(check_structure.platform_private(p, "kplat.jobs.api:status.endpoint", False))
+        self.assertIsNotNone(check_structure.platform_private(p, "kplat.jobs.api:status.endpoint", True))
+        self.assertIsNone(check_structure.platform_private(p, "kickside.settings.api:list_settings.endpoint", True))
+
+    def test_platform_namespaces_move_from_s6_heuristic_to_s17(self):
+        without = check_structure.run(fixture("bad-platform"))
+        self.assertNotIn("S17", {f.rule for f in without.findings})
+        self.assertIn("S6", {f.rule for f in without.findings})
+        with_platform = check_structure.run(fixture("bad-platform"), platform=PLATFORM)
+        self.assertNotIn("S6", {f.rule for f in with_platform.findings})
 
     def test_lua_lexer_ignores_comments_and_keeps_string_lines(self):
         strings, code = check_structure.lua_lex('-- SELECT x FROM t\nlocal a = [[\nSELECT 1 FROM t]]\nlocal b = "x"\n')

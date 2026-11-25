@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kplat.jobs.binding
+
+entries:
+  - name: run_func
+    kind: function.lua
+    source: file://run_func.lua
+    method: run

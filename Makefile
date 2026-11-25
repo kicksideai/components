@@ -4,7 +4,13 @@
 CANDIDATE_MODULES := $(sort $(patsubst %/wippy.yaml,%,$(wildcard */wippy.yaml)))
 MODULES := $(foreach m,$(CANDIDATE_MODULES),$(if $(wildcard $(m)/.release-disabled),,$(m)))
 
-.PHONY: list build lint test publish
+PLATFORM_SOURCE ?= ../kickside
+
+.PHONY: list build lint test publish structure-mail-platform
+
+structure-mail-platform:
+	python3 -B scripts/check_structure.py mail --greenfield mail --peer mail-admin --platform "$(PLATFORM_SOURCE)/core" --platform "$(PLATFORM_SOURCE)/platform"
+	python3 -B scripts/check_structure.py mail-admin --peer mail --platform "$(PLATFORM_SOURCE)/core" --platform "$(PLATFORM_SOURCE)/platform"
 
 list:
 	@echo $(MODULES)

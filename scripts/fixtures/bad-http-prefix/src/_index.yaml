@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.badhttp
+entries:
+  - name: definition
+    kind: ns.definition
+
+  - name: wildcard_host
+    kind: ns.requirement
+    default: https://*.example.org/v3/*
+    targets:
+      - {entry: acme.badhttp.security:http_access, path: ".policy.resources +="}
+
+  - name: registry_wildcard
+    kind: ns.requirement
+    default: acme.badhttp:*
+    targets:
+      - {entry: acme.badhttp.security:http_access, path: ".policy.resources +="}
+
+  - name: registry_url
+    kind: ns.requirement
+    default: https://api.example.org/v3/*
+    targets:
+      - {entry: acme.badhttp.security:registry_access, path: ".policy.resources +="}
+
+  - name: mixed_action_url
+    kind: ns.requirement
+    default: https://api.example.org/v3/*
+    targets:
+      - {entry: acme.badhttp.security:mixed_access, path: "data.policy.resources +="}

@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.badconsumer.security
+
+entries:
+  - name: status_access
+    kind: security.policy
+    policy:
+      resources: [kplat.jobs.api:status.endpoint]
+      actions: access
+      effect: allow
+
+  - name: other_call
+    kind: security.policy
+    policy:
+      resources: [kplat.jobs:other_binding]
+      actions: contract.call
+      effect: allow

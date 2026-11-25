@@ -544,6 +544,7 @@ jobs:
       if: ${{ matrix.module == 'mail' && matrix.engine == 'sqlite' }}
       run: |
         python3 -B scripts/test_check_structure.py
+        make structure-mail-platform
     - name: Build, lint and Lua module tests
       env:
         PGPORT: '5433'

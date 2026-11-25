@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.goodhttp.security
+entries:
+  - name: http_access
+    kind: security.policy
+    policy:
+      resources: []
+      actions: [http_client.request]
+      effect: allow

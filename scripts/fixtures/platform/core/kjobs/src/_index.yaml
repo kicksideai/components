@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kplat.jobs
+
+entries:
+  - name: definition
+    kind: ns.definition
+
+  - name: api
+    kind: contract.definition
+    methods:
+      run: { description: Runs a job. }
+
+  - name: api_binding
+    kind: contract.binding
+    contracts:
+      - contract: kplat.jobs:api
+        default: true
+        methods:
+          run: kplat.jobs.binding:run_func
+
+  - name: other_binding
+    kind: contract.binding
+    contracts:
+      - contract: kplat.jobs:api
+        methods:
+          run: kplat.jobs:list_handler
+
+  - name: jobs
+    kind: library.lua
+    source: file://jobs.lua
+
+  - name: list_handler
+    kind: function.lua
+    source: file://list_handler.lua
+    method: run
+
+  - name: secret_fn
+    kind: function.lua
+    meta: { private: true }
+    source: file://secret_fn.lua
+    method: run

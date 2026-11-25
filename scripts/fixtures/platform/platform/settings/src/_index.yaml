@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.settings
+
+entries:
+  - name: definition
+    kind: ns.definition

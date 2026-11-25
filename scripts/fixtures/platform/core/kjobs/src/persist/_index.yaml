@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kplat.jobs.persist
+
+entries:
+  - name: repo
+    kind: library.lua
+    source: file://repo.lua
+
+  - name: nudge_access
+    kind: security.policy
+    policy:
+      resources: kplat.jobs.persist:repo
+      actions: funcs.call
+      effect: allow

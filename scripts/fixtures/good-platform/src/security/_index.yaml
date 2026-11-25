@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.consumer.security
+
+entries:
+  - name: settings_list
+    kind: security.policy
+    policy:
+      resources: [kickside.settings.api:list_settings.endpoint]
+      actions: access
+      effect: allow
+
+  - name: jobs_call
+    kind: security.policy
+    policy:
+      resources: [kplat.jobs:api_binding]
+      actions: contract.call
+      effect: allow

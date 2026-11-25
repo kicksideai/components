@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-"""Structure checker for KickSide modules (gates S1-S16).
+"""Structure checker for KickSide modules (gates S1-S17).
 
 Usage:
-    check_structure.py <module_dir> [--json] [--greenfield NAME[,NAME]]... [--peer DIR]...
+    check_structure.py <module_dir> [--json] [--greenfield NAME[,NAME]]... [--peer DIR]... [--platform DIR]...
 
 Rules:
     S1  SQL only in src/persist and src/migrations
@@ -20,14 +20,21 @@ Rules:
     S11 modules with command/: transport reaches logic only through <root>:client and <root>:types
     S12 persist holds SQL only: no contract, http_client or funcs modules, no foreign client imports
     S13 a module names no id or namespace of a peer that depends on it (plugins, drivers, consumers)
-    S14 security.policy resources are exact ids (exceptions for rulebook I1/I2, Mail overlays,
-        and '*' with exact eq conditions on own ids)
+    S14 security.policy resources are exact ids (own-namespace wildcards only on module_access and
+        its private runtime policy, rulebook I1/I2; '*' only with exact eq conditions on own ids;
+        HTTP URL prefixes only from the module's own requirements)
     S15 no app: ids in source (requirement defaults, entries, Lua strings)
     S16 no pcall/xpcall in src Lua outside tests
+    S17 a platform entry is referenced only when public (PLATFORM_PUBLIC, contract definitions,
+        default bindings and component kinds, non-private libraries and policies outside private
+        namespaces); private and service-only entries, private namespaces, binding and handler
+        functions, other bindings, and endpoints used as policy resources are refused
 
 --greenfield names match the module directory basename or its root namespace.
 --peer loads another module: references into it are checked exactly (S6), and a peer that
 declares an ns.dependency on this module is a dependent whose ids this module may not name (S13).
+--platform indexes every module under a platform checkout (a directory with src/_index.yaml);
+references into platform namespaces are judged by S17 instead of the S6 segment heuristic.
 Exit code: 0 clean, 1 findings, 2 usage error.
 """
 
@@ -57,6 +64,7 @@ RULES = {
     "S14": "policy resource is not an exact id",
     "S15": "app: id in source",
     "S16": "pcall in source Lua",
+    "S17": "private platform entry referenced",
 }
 
 # Layer order, highest first. An entry may import its own folder, another folder on the same
@@ -112,7 +120,31 @@ OVERLAY_NAMESPACES = {
 }
 OVERLAY_ENTRY_ACTION = re.compile(r"registry\.overlay\.(?:create|update|delete)\.[a-z0-9_]+(?:\.[a-z0-9_]+)*")
 EXACT_OPERATORS = {"eq"}
+HTTP_URL_PREFIX = re.compile(r"https?://(?:[a-zA-Z0-9.-]+|\[[a-fA-F0-9:.]+\])(?::[0-9]+)?/(?:[^*?#\\\s]*/)?\*")
 TEST_META_TYPES = {"test", "test_helper", "test_support"}
+
+# S17: platform entries the handbook names as consumer API. Exact ids, or "ns:*" for every
+# entry of that namespace not marked meta.private. These override every refusal except meta.private.
+PLATFORM_PUBLIC = {
+    "kickside.contract:*": "base contracts and libraries (handbook 02 'Contract identity'; rulebook E3, E4, H5, M9)",
+    "kickside.data:*": "pullable/writable contracts and helpers (handbook 02; rulebook B7, O1, O2)",
+    "kickside.trigger:*": "trigger contracts (handbook 02)",
+    "kickside.core.jobs:jobs": "durable job API (rulebook G5; handbook 20 'Schedule a durable job')",
+    "kickside.core:threads": "threads contract opened under the caller (rulebook F6)",
+    "kickside.core.threads:thread_status": "get_status method of every component kind (handbook 01, 03; rulebook E3)",
+    "kickside.execution:execution_identity": "sole identity constructor (rulebook G1)",
+    "kickside.component:component": "component service library (rulebook C10, E1, E15)",
+    "kickside.component:attachment_seal_access": "producer functions attach it (core/component/src/README.md)",
+    "kickside.settings:settings": "settings contract (rulebook J8)",
+    "kickside.settings.api:list_settings.endpoint": "settings contract list requires access on it (rulebook J8; handbook 17)",
+    "kickside.settings.api:put_settings.endpoint": "settings contract set/unset require access on it (rulebook J8; handbook 17)",
+    "kickside.contract.http:user_security_scope": "shared member scope (rulebook I8)",
+    "kickside.security.groups:members": "published member scope default (rulebook C3)",
+    "kickside.inbox:block.review": "human approval Block (rulebook O8)",
+    "kickside.uploads:content_provider": "consumers open it with the version id (platform/uploads/src/README.md)",
+    "kickside.workflows:run": "Run Workflow writable port (handbook 21 'Run Workflow')",
+    "kickside.workflows:run_sink": "workflow run sink for Data Sync (handbook 22 section 6)",
+}
 
 REF_RE = re.compile(r"[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+:(?:\*|[A-Za-z0-9_][A-Za-z0-9_.\-]*)")
 APP_ID_RE = re.compile(r"(?<![\w.\-/])app(?:\.[a-z0-9_]+)*:[a-z_][\w.\-]*")
@@ -553,6 +585,150 @@ class Module:
         return out
 
 
+# ---------------------------------------------------------------- platform index (S17)
+
+class PlatformEntry:
+    """Facts about one platform registry entry that decide whether a consumer may name it."""
+
+    __slots__ = ("id", "kind", "private", "service_only", "module", "file", "line", "role",
+                 "segment", "handler_of", "default_binding", "component_kind", "intent")
+
+    def __init__(self, module, root, entry):
+        meta = entry.data.get("meta") if isinstance(entry.data.get("meta"), dict) else {}
+        self.id, self.kind, self.module = entry.id, entry.kind, module
+        self.private = meta.get("private") is True
+        self.service_only = meta.get("service_only") is True
+        self.intent = meta.get("intent")
+        self.file = os.path.relpath(os.path.join(module.path, entry.yaml_rel), root).replace(os.sep, "/")
+        self.line = entry.line
+        rel = entry.ns[len(module.root_ns) + 1:].split(".") if entry.ns.startswith(module.root_ns + ".") else []
+        self.segment = next((seg for seg in rel if seg in PRIVATE_SEGMENTS), None)
+        self.handler_of = None
+        self.default_binding = False
+        self.component_kind = False
+        if entry.kind == "library.lua" and entry.ns == module.root_ns and entry.name in PUBLIC_NAMES:
+            self.role = "public library"
+        elif entry.kind == "library.lua":
+            self.role = "library"
+        elif entry.kind == "security.policy":
+            self.role = "module_access policy" if self.intent == "module_access" else "policy"
+        elif entry.kind == "http.endpoint":
+            self.role = "endpoint"
+        elif meta.get("type") == "kickside.settings:definition":
+            self.role = "setting"
+        elif entry.kind == "function.lua" and "binding" in rel:
+            self.role = "binding function"
+        else:
+            self.role = entry.kind
+
+    @property
+    def where(self):
+        return f"{self.file}:{self.line}"
+
+
+class Platform:
+    """Registry index of platform checkouts: every directory under a root holding src/_index.yaml."""
+
+    def __init__(self, roots):
+        self.modules = []
+        self.entries = {}
+        self.ns_owner = {}
+        for root in roots:
+            root = os.path.abspath(root)
+            for dirpath, dirnames, _ in os.walk(root):
+                dirnames[:] = sorted(d for d in dirnames if d not in ("node_modules", ".wippy", ".git"))
+                if os.path.isfile(os.path.join(dirpath, "src", "_index.yaml")):
+                    dirnames[:] = []
+                    self._index(Module(dirpath), root)
+        for pe in self.entries.values():
+            if pe.kind == "contract.binding":
+                self._bind(pe)
+
+    def _index(self, module, root):
+        if not module.root_ns:
+            return
+        self.modules.append(module)
+        for ns in module.namespaces:
+            self.ns_owner.setdefault(ns, module)
+        for e in module.entries:
+            self.entries.setdefault(e.id, PlatformEntry(module, root, e))
+        for e in module.entries:
+            if e.kind == "http.endpoint" and isinstance(e.data.get("func"), str):
+                self._handler(e.ns, str(e.data["func"]), f"endpoint {e.id}")
+
+    def _bind(self, pe):
+        entry = pe.module.by_id[pe.id]
+        contracts = entry.data.get("contracts")
+        for item in contracts if isinstance(contracts, YList) else []:
+            if not isinstance(item, YMap):
+                continue
+            if item.get("default") is True:
+                pe.default_binding = True
+            if item.get("contract") == "kickside.contract:component":
+                pe.component_kind = True
+            methods = item.get("methods")
+            for method, func in (methods.items() if isinstance(methods, YMap) else ()):
+                if isinstance(func, str):
+                    self._handler(entry.ns, str(func), f"{pe.id} method {method}")
+
+    def _handler(self, ns, func, owner):
+        target = self.entries.get(func if ":" in func else f"{ns}:{func}")
+        if target is not None and target.kind == "function.lua" and target.handler_of is None:
+            target.handler_of = owner
+
+    def owner(self, ns):
+        if ns in self.ns_owner:
+            return self.ns_owner[ns]
+        prefixed = [p for p in self.modules if ns.startswith(p.root_ns + ".")]
+        return max(prefixed, key=lambda p: len(p.root_ns)) if prefixed else None
+
+    def resolve(self, ref):
+        """The entry a reference names: the exact id, else ns:name for a method reference ns:name.method."""
+        if ref in self.entries:
+            return self.entries[ref]
+        ns, name = ref.split(":", 1)
+        return self.entries.get(f"{ns}:{name.split('.')[0]}") if "." in name else None
+
+
+def platform_allowlisted(ref, pe):
+    ns = ref.split(":", 1)[0]
+    return ref in PLATFORM_PUBLIC or (pe is not None and pe.id in PLATFORM_PUBLIC) or f"{ns}:*" in PLATFORM_PUBLIC
+
+
+def platform_private(platform, ref, as_resource):
+    """Returns why ref names a non-public platform entry, else None."""
+    ns, name = ref.split(":", 1)
+    owner = platform.owner(ns)
+    if owner is None:
+        return None
+    pe = platform.resolve(ref)
+    if pe is None:
+        rel = ns[len(owner.root_ns) + 1:].split(".") if ns.startswith(owner.root_ns + ".") else []
+        seg = next((s for s in rel if s in PRIVATE_SEGMENTS), None)
+        if seg and not platform_allowlisted(ref, None):
+            return f"namespace {ns} is {owner.name}'s private '{seg}' namespace (no such entry declared)"
+        return None
+    if pe.private:
+        return f"{pe.kind} {pe.id} is meta.private: true ({pe.where})"
+    if platform_allowlisted(ref, pe):
+        return None
+    if pe.service_only:
+        return f"{pe.kind} {pe.id} is meta.service_only: true ({pe.where})"
+    if pe.kind == "security.policy" and pe.id.split(":", 1)[1] == "module_runtime":
+        return f"{pe.id} is {owner.name}'s runtime policy, included by its module_access (rulebook I2) ({pe.where})"
+    if pe.segment:
+        return f"{pe.role} {pe.id} sits in {owner.name}'s private '{pe.segment}' namespace ({pe.where})"
+    if pe.role == "binding function":
+        return f"{pe.id} is a function in {owner.name}'s binding namespace ({pe.where})"
+    if pe.handler_of:
+        return f"function {pe.id} is the handler of {pe.handler_of} ({pe.where})"
+    if pe.kind == "contract.binding" and not (pe.default_binding or pe.component_kind):
+        return f"contract binding {pe.id} is neither a contract's default binding nor a component kind ({pe.where})"
+    if pe.kind == "http.endpoint" and as_resource:
+        return f"HTTP endpoint {pe.id} of {owner.name} used as a policy resource ({pe.where})"
+    return None
+
+
 # ---------------------------------------------------------------- rules
 
 def check_s1(m):
@@ -781,7 +957,7 @@ def settings_tab_endpoint(m, entry, ref, line, key, peers):
     return not isinstance(target_meta, dict) or not target_meta.get("private")
 
 
-def check_s6(m, peers):
+def check_s6(m, peers, platform=None):
     seen = set()
     named = dependents(m, peers)
 
@@ -795,6 +971,8 @@ def check_s6(m, peers):
         owner = owning_peer(ref.split(":", 1)[0], peers)
         if owner is not None and owner in named:
             return  # S13 reports names of dependent modules
+        if owner is None and platform is not None and platform.owner(ref.split(":", 1)[0]) is not None:
+            return  # S17 judges platform entries from the platform index
         reason = foreign_private(m, ref, peers, key)
         if reason:
             report(rel, line, ref, reason, where)
@@ -990,8 +1168,10 @@ def check_s14(m):
 
     Own-namespace wildcards are allowed where rulebook I1/I2 show them: module_access with
     registry.get/registry.find, and the private runtime policy it includes with the I2 actions.
-    Mail overlay wildcards grant typed overlay entry operations and template.get on draft sets.
-    A '*' resource is exact only when every condition is an eq match on an own entry id."""
+    Mail overlay wildcards allow typed overlay actions and draft-set template reads (Q2).
+    A '*' resource is exact only when every condition is an eq match on an own entry id.
+    HTTP URL prefixes may only come from own requirements targeting policy resources."""
+    check_requirement_policy_resources(m)
     overlay_namespaces = OVERLAY_NAMESPACES.get(m.root_ns, ())
     access = [e for e in m.entries if e.kind == "security.policy"
               and isinstance(e.data.get("meta"), dict) and e.data["meta"].get("intent") == "module_access"]
@@ -1055,10 +1235,42 @@ def as_list(value):
     return [str(v) for v in value if isinstance(v, str)] if isinstance(value, list) else []
 
 
-def resource_items(rule):
-    res = rule.get("resources")
+def check_requirement_policy_resources(m):
+    for requirement in m.entries:
+        if requirement.kind != "ns.requirement":
+            continue
+        for target in requirement.data.get("targets") or []:
+            if not isinstance(target, dict):
+                continue
+            path = target.get("path")
+            if not isinstance(path, str):
+                continue
+            path = path.strip().removesuffix("+=").rstrip().removeprefix(".").removeprefix("data.")
+            if path != "policy.resources":
+                continue
+            entry_id = target.get("entry")
+            if not isinstance(entry_id, str):
+                continue
+            policy_id = entry_id if ":" in entry_id else f"{requirement.ns}:{entry_id}"
+            policy = m.by_id.get(policy_id)
+            if policy is None or policy.kind != "security.policy":
+                continue
+            rule = policy.data.get("policy")
+            actions = rule.get("actions") if isinstance(rule, dict) else None
+            own_http = (
+                m.own(requirement.ns) and m.own(policy.ns)
+                and actions in ("http_client.request", ["http_client.request"])
+            )
+            for resource, line in resource_items(requirement.data, "default"):
+                if "*" in resource and not (own_http and HTTP_URL_PREFIX.fullmatch(resource)):
+                    m.add("S14", requirement.yaml_rel, line,
+                          f"requirement {requirement.id} resource {resource} is not an exact id for policy {policy.id}")
+
+
+def resource_items(rule, key="resources"):
+    res = rule.get(key)
     if isinstance(res, str):
-        yield str(res), line_of(rule, "resources")
+        yield str(res), line_of(rule, key)
     elif isinstance(res, YList):
         for i, r in enumerate(res):
             if isinstance(r, str):
@@ -1091,15 +1303,55 @@ def check_s16(m):
             m.add("S16", rel, lineno(code, mt.start()), f"{mt.group(0)} in source")
 
 
-def run(module_dir, greenfield=(), peer_dirs=()):
+def policy_resource_keys(m, e):
+    """YAML keys under which a string of entry e is a policy resource."""
+    if e.kind == "security.policy":
+        return {"resources"}
+    if e.kind == "ns.requirement":
+        for t in e.data.get("targets") or []:
+            if isinstance(t, dict) and isinstance(t.get("path"), str) and "policy.resources" in t["path"]:
+                return {"default"}
+    return set()
+
+
+def check_s17(m, platform, peers):
+    """A platform entry is named only when public; S6 keeps judging sibling modules."""
+    if platform is None:
+        return
+    seen = set()
+
+    def judge(rel, line, ref, as_resource):
+        ns = ref.split(":", 1)[0]
+        if m.own(ns) or ns in OVERLAY_NAMESPACES.get(m.root_ns, ()) or owning_peer(ns, peers) is not None:
+            return
+        reason = platform_private(platform, ref, as_resource)
+        if reason and (rel, line, ref) not in seen:
+            seen.add((rel, line, ref))
+            m.add("S17", rel, line, f"platform reference {ref}: {reason}")
+
+    for e in m.entries:
+        resource_keys = policy_resource_keys(m, e)
+        for s, line, key in walk_strings(e.data):
+            if key not in PROSE_KEYS and REF_RE.fullmatch(s):
+                judge(e.yaml_rel, line, str(s), key in resource_keys)
+    for rel in m.lua_files:
+        for line, s in m.lua(rel)[0]:
+            if REF_RE.fullmatch(s):
+                judge(rel, line, s, False)
+
+
+def run(module_dir, greenfield=(), peer_dirs=(), platform=None):
+    """platform is a Platform index (or a list of platform directories) enabling S17."""
     m = Module(module_dir)
     peers = [Module(p) for p in peer_dirs if os.path.abspath(p) != m.path]
+    if platform is not None and not isinstance(platform, Platform):
+        platform = Platform(platform) if platform else None
     check_s1(m)
     check_s2(m)
     check_s3(m)
     check_s4(m)
     check_s5(m)
-    check_s6(m, peers)
+    check_s6(m, peers, platform)
     check_s7(m, peers)
     check_s8(m)
     check_s9(m)
@@ -1110,6 +1362,7 @@ def run(module_dir, greenfield=(), peer_dirs=()):
     check_s14(m)
     check_s15(m)
     check_s16(m)
+    check_s17(m, platform, peers)
     order = {r: i for i, r in enumerate(RULES)}
     m.findings.sort(key=lambda f: (order[f.rule], f.file, f.line, f.message))
     return m
@@ -1123,9 +1376,11 @@ def main(argv=None):
                     help="greenfield module name or root namespace (repeatable, comma separated)")
     ap.add_argument("--peer", action="append", default=[],
                     help="sibling module dir: exact S6 checks, and S13 when it depends on this module")
+    ap.add_argument("--platform", action="append", default=[],
+                    help="platform checkout dir (repeatable): indexes its modules and enables S17")
     args = ap.parse_args(argv)
     greenfield = [g.strip() for item in args.greenfield for g in item.split(",") if g.strip()]
-    m = run(args.module_dir, greenfield, args.peer)
+    m = run(args.module_dir, greenfield, args.peer, Platform(args.platform) if args.platform else None)
     if args.json:
         json.dump({"module": m.name, "root_namespace": m.root_ns,
                    "findings": [f.as_dict() for f in m.findings]}, sys.stdout, indent=2)
