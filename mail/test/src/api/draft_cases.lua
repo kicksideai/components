@@ -190,12 +190,15 @@ local function register(support)
                 create(editor, dependent)
                 message = dependent.name
             end
-            local second = update(editor, {
+            local receipt = update(editor, {
                 kind = target.kind, name = target.name, html = good_html, text = target.text,
                 title = "Healthy current revision", description = target.description,
                 subject = target.subject, base = target.base, schema = target.schema, samples = target.samples,
                 expected_revision = first.revision,
             })
+            test.is_true(receipt.committed)
+            local second = data(editor, "GET", route)
+            test.eq(receipt.seq, second.seq)
             local historical_seq, current_revision = seed_history(editor, second, bad_html)
             target.expected_revision = current_revision
             target.title = second.title

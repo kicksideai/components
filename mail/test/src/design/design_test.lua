@@ -57,6 +57,13 @@ local function key(kind, name)
     return {kind = kind, name = name}
 end
 
+local function read_written(executor, resource, receipt)
+    test.is_true(receipt.committed)
+    local current = ok(executor, "library_read", resource)
+    test.eq(receipt.seq, current.seq)
+    return current
+end
+
 local function edit(item)
     return {
         kind = item.kind, name = item.name, title = item.title, description = item.description,
@@ -230,21 +237,22 @@ return {run = test.run_cases(function()
             args.preview_id = receipt_id:gsub(".$", function(c) return c == "a" and "b" or "a" end)
             refusal(editor, "library_save", args, "mail_preview_mismatch")
             args.preview_id = receipt_id
-            local saved = ok(editor, "library_save", args).items[1]
+            local resource = key(button.kind, button.name)
+            local saved = read_written(editor, resource, ok(editor, "library_save", args))
             local conflict = refusal(editor, "library_save", args, "mail_preview_stale")
             test.eq(saved.revision, conflict.revision)
             test.eq(button.name, conflict.resource.name)
 
             local reset_request = {kind = button.kind, name = button.name, expected_revision = saved.revision}
             reset_request.preview_id = ok(editor, "library_preview", {reset = reset_request, message = "notice"}).preview_id
-            local reset = ok(editor, "library_reset", reset_request)
-            test.eq("original", ok(editor, "library_read", key(button.kind, button.name)).state)
+            local reset = read_written(editor, resource, ok(editor, "library_reset", reset_request))
+            test.eq("original", reset.state)
             local restore_request = {kind = button.kind, name = button.name,
                 expected_revision = reset.revision, seq = saved.seq}
             restore_request.preview_id = ok(editor, "library_preview", {restore = restore_request, message = "notice"}).preview_id
-            local restored = ok(editor, "library_restore", restore_request)
+            local restored = read_written(editor, resource, ok(editor, "library_restore", restore_request))
             test.neq(saved.revision, restored.revision)
-            test.eq(candidate.text, ok(editor, "library_read", key(button.kind, button.name)).text)
+            test.eq(candidate.text, restored.text)
         end)
 
         local function draft_button()

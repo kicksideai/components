@@ -59,6 +59,7 @@ local function register(support)
         for _, row in ipairs({hinted, cancelled}) do
             local cancelled_job = assert(jobs.cancel(row.job_id))
             test.is_true(cancelled_job.canceled)
+            test.eq("cancelled", assert(jobs.get_job(row.job_id)).status)
         end
 
         local function owner(now, change)
@@ -67,9 +68,9 @@ local function register(support)
             assert(result.success, tostring(result.error))
             return result
         end
-        local function interrupted(row, at)
+        local function interrupted(row, at, label)
             local message = assert(invoke(sender, "get_message", row.id))
-            test.eq("failed", message.status)
+            test.eq("failed", message.status, label)
             test.eq("delivery_interrupted", message.last_error.code)
             test.eq(at, persisted(row.id).finished_at)
             no_body(row.id)
@@ -78,7 +79,7 @@ local function register(support)
         local hinted_at = admitted_at + 1
         owner(hinted_at, {kind = "lease_released", job_id = hinted.job_id,
             owner_locator = {kind = "mail-message", id = hinted.id}})
-        interrupted(hinted, hinted_at)
+        interrupted(hinted, hinted_at, "cancelled job with a lease-release hint")
         owner(recheck_at - 1)
         for _, row in ipairs({cancelled, missing}) do
             local before_recheck = persisted(row.id)
@@ -86,8 +87,8 @@ local function register(support)
             test.eq(recheck_at, before_recheck.next_check_at)
         end
         owner(recheck_at)
-        interrupted(cancelled, recheck_at)
-        interrupted(missing, recheck_at)
+        interrupted(cancelled, recheck_at, "cancelled job at the scheduled check")
+        interrupted(missing, recheck_at, "missing job at the scheduled check")
     end)
 
     test.it("settles a dead final execution when the lease-release hint is missed", function()
