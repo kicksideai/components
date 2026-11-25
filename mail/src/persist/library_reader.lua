@@ -127,6 +127,13 @@ function M.summary_page(db: database.Executor, dialect: string, declarations: {t
         if assets then apply(asset_filters, filter.state == "created" and "a.origin IS NULL" or "a.origin IS NOT NULL") end
     end
     if templates and filter.base then apply(template_filters, "l.kind='message' AND l.base=" .. bind(filter.base)) end
+    if (templates or assets) and filter.names then
+        local placeholders: {string} = {}
+        for _, name in ipairs(filter.names :: {string}) do placeholders[#placeholders + 1] = bind(name) end
+        local list = "(" .. table.concat(placeholders, ",") .. ")"
+        apply(template_filters, "l.name IN " .. list)
+        apply(asset_filters, "a.name IN " .. list)
+    end
     if (templates or assets) and filter.q and filter.q ~= "" then
         local needle = bind(filter.q:lower())
         local function search(fields: {string}): string

@@ -286,6 +286,28 @@ return {run = test.run_cases(function()
             test.not_nil(notice.html:find('src="cid:chart" alt="Weekly chart" width="534"', 1, true))
             test.not_nil(notice.text:find("Weekly chart", 1, true))
         end)
+        test.it("looks up summaries by exact names in one bounded page", function()
+            local found = assert(call("list", {kind = "part", names = {"signature", "image", "missing-part"}}))
+            local names = {}
+            for _, item in ipairs(found.items) do names[#names + 1] = item.name .. ":" .. item.title end
+            test.eq(2, found.total)
+            test.eq(2, #found.items)
+            test.eq("image", found.items[1].name)
+            test.eq("signature", found.items[2].name)
+            test.is_nil(found.next_cursor)
+            local mixed = assert(call("list", {names = {"standard", "logo"}}))
+            test.eq(2, #mixed.items, table.concat(names, ","))
+            test.eq("asset", mixed.items[1].kind)
+            test.eq("base", mixed.items[2].kind)
+            local too_many = {}
+            for i = 1, 101 do too_many[i] = "part-" .. i end
+            local refused, err = call("list", {names = too_many})
+            test.is_nil(refused)
+            test.eq("invalid_mail_filter", err:details().code)
+            local bad, bad_err = call("list", {names = {"Not A Name"}})
+            test.is_nil(bad)
+            test.eq("invalid_mail_filter", bad_err:details().code)
+        end)
         test.it("renders Notice on Plain without the Standard card or branded frame", function()
             local notice = assert(call("get", {kind = "message", name = "notice"}))
             notice.base = "plain"

@@ -157,9 +157,15 @@ local function summary_page(filter: types.ResourceFilter, after: types.ResourceK
     local originals, err = originals_reader.list()
     if err then return nil, err end
     local declarations: {types.LibraryDeclaration} = {}
+    local wanted: {[string]: boolean}?
+    if filter.names then
+        wanted = {}
+        for _, name in ipairs(filter.names :: {string}) do (wanted :: {[string]: boolean})[name] = true end
+    end
     for _, declared in pairs(originals) do
         local item = declared.resource
         local selected = (not filter.kind or item.kind == filter.kind) and (not filter.base or item.base == filter.base)
+            and (not wanted or wanted[item.name] == true)
             and resource.matches(item, filter.q and filter.q:lower())
         declarations[#declarations + 1] = {kind = item.kind, name = item.name, base = item.base, selected = selected and 1 or 0}
     end

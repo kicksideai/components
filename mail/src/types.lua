@@ -99,7 +99,7 @@ type Resource = {
     asset: Asset?, original: OriginalSource?, state: string, origin: string?, origin_label: string?, revision: integer, author: string?, created_at: integer?, updated_at: integer?, used_by: UsedBy?,
     archived: boolean?, seq: integer?, projected: boolean?, committed: boolean?,
 }
-type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?}
+type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?, names: {string}?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
 type SenderPage = {items: {RecentSender}, next_cursor: string?}
 type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}

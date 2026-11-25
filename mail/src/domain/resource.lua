@@ -9,6 +9,8 @@ local MAX_DISPLAY_BYTES = 4096
 local MAX_SUBJECT_BYTES = 64 * 1024
 local MAX_SCHEMA_BYTES = 32 * 1024
 local MAX_NOTE_BYTES = 4096
+-- A names lookup resolves at most one library page of references.
+local MAX_LOOKUP_NAMES = 100
 M.MAX_VARIABLE_BYTES = 64 * 1024
 M.MAX_EDITS = 12
 -- Bound JSON-escaped snapshots to the Threads event row limit.
@@ -43,13 +45,22 @@ function M.check_input_key(key: types.ResourceKey): error?
     return nil
 end
 
+local function valid_names(names: unknown): boolean
+    if names == nil then return true end
+    if type(names) ~= "table" or #names == 0 or #names > MAX_LOOKUP_NAMES then return false end
+    for _, name in ipairs(names :: {unknown}) do
+        if not valid_name(name) then return false end
+    end
+    return true
+end
+
 function M.check_filter(filter: types.ResourceFilter): error?
-    if type(filter) ~= "table" or (filter.q ~= nil and (type(filter.q) ~= "string"
+    if type(filter) ~= "table" or not valid_names(filter.names) or (filter.q ~= nil and (type(filter.q) ~= "string"
         or #filter.q > MAX_DISPLAY_BYTES or filter.q:find("%z") or not utf8.len(filter.q)))
         or (filter.kind ~= nil and filter.kind ~= "base" and filter.kind ~= "message" and filter.kind ~= "part" and filter.kind ~= "asset")
         or (filter.state ~= nil and filter.state ~= "original" and filter.state ~= "customized" and filter.state ~= "created")
         or (filter.base ~= nil and not valid_name(filter.base)) then
-        return M.error(errors.INVALID, "invalid_mail_filter", "Provide a valid resource kind, state, base and search query")
+        return M.error(errors.INVALID, "invalid_mail_filter", "Provide a valid resource kind, state, base, names and search query")
     end
     return nil
 end

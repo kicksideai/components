@@ -214,6 +214,13 @@ return {run = test.run_cases(function()
             test.neq(page.items[1].name, next_page.items[1].name)
         end)
 
+        test.it("looks up library summaries by a comma-separated list of exact names", function()
+            local page = data(session("editor"), "GET", "/library?kind=part&names=signature,image")
+            test.eq(2, page.total)
+            test.eq("image", page.items[1].name)
+            test.eq("signature", page.items[2].name)
+        end)
+
         test.it("shares preview, save and restore between design tools and HTTP", function()
             local editor = session("editor")
             local tools = assert(funcs.new():with_actor(editor.actor):with_scope(editor.scope))

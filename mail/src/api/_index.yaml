@@ -34,6 +34,7 @@ entries:
     source: file://library_list.lua
     method: handler
     imports:
+      types: kickside.mail:types
       principals: kickside.mail.api:principals
       request: kickside.mail.api:request
       client: kickside.mail:client

@@ -33,6 +33,13 @@
     },
     "base": {
       "type": "string"
+    },
+    "names": {
+      "type": "array",
+      "description": "Exact resource names to look up; at most 100.",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {"type": "string"}
     }
   },
   "additionalProperties": false
