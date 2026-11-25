@@ -2,90 +2,10 @@
 version: "1.0"
 namespace: kickside.mail.migrations
 entries:
-  - name: 01_messages
+  - name: 01_mail
     kind: function.lua
     meta: { type: migration, timestamp: '2026-11-23T00:00:00Z' }
-    source: file://01_messages.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 02_library
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:01:00Z' }
-    source: file://02_library.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 03_library_revisions
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:02:00Z' }
-    source: file://03_library_revisions.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 04_message_origin
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:03:00Z' }
-    source: file://04_message_origin.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 05_message_template_index
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:04:00Z' }
-    source: file://05_message_template_index.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 06_failed_content
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:05:00Z' }
-    source: file://06_failed_content.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 07_library_assets
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:06:00Z' }
-    source: file://07_library_assets.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 08_activity_failed_at
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:07:00Z' }
-    source: file://08_activity_failed_at.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 09_library_history
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:08:00Z' }
-    source: file://09_library_history.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 10_asset_usage
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:09:00Z' }
-    source: file://10_asset_usage.lua
-    method: migrate
-    imports:
-      migration: wippy.migration:migration
-      types: kickside.mail:types
-  - name: 11_library_page_indexes
-    kind: function.lua
-    meta: { type: migration, timestamp: '2026-11-23T00:10:00Z' }
-    source: file://11_library_page_indexes.lua
+    source: file://01_mail.lua
     method: migrate
     imports:
       migration: wippy.migration:migration

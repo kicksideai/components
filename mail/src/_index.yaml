@@ -43,17 +43,7 @@ entries:
     meta: { value_kind: db.sql, comment: The SQL database configured for Jobs. }
     targets:
       - { entry: kickside.mail:db_config, path: ".meta.db_id" }
-      - { entry: kickside.mail.migrations:01_messages, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:02_library, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:03_library_revisions, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:04_message_origin, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:05_message_template_index, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:06_failed_content, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:07_library_assets, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:08_activity_failed_at, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:09_library_history, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:10_asset_usage, path: ".meta.target_db" }
-      - { entry: kickside.mail.migrations:11_library_page_indexes, path: ".meta.target_db" }
+      - { entry: kickside.mail.migrations:01_mail, path: ".meta.target_db" }
       - { entry: kickside.mail.security:outbox_db, path: ".policy.resources" }
   - name: library_editor_grant
     kind: ns.requirement

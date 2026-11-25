@@ -144,6 +144,13 @@ entries:
     modules: [contract]
     imports:
       test: wippy.test:test
+  - name: schema_migration_test
+    kind: function.lua
+    meta: { type: test, suite: mail_schema }
+    source: file://schema_migration_test.lua
+    method: run
+    modules: [registry, sql]
+    imports: { test: wippy.test:test }
   - name: message_test
     kind: function.lua
     meta: { type: test, suite: mail }
