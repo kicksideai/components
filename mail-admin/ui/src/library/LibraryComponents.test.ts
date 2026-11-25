@@ -6,7 +6,7 @@ import MailAdmin from '../app/MailAdmin.vue'
 import { library as libraryApi } from '../api'
 import { calls, dana, get, ok, post, refuse, resource, revision, row, serve } from '../test/fixtures'
 import { dialogButton } from '../test/mail'
-import { notify } from '../test/setup'
+import { hostVisible, notify } from '../test/setup'
 
 const logo = resource('asset', 'logo', { title: 'Mail logo', state: 'customized', revision: 3, origin_label: 'Mail',
   asset: { source: 'upload', filename: 'logo.png', content_type: 'image/png', size: 2048 }, used_by: { messages: ['notice'] } })
@@ -94,6 +94,19 @@ describe('Images', () => {
     expect(host.confirm).not.toHaveBeenCalled()
     expect(calls('delete')).toHaveLength(0)
     expect(document.body.textContent).toContain('Spring banner is in use')
+    wrapper.unmount()
+  })
+
+  it('reads the images again when the host shows the page again', async () => {
+    routes()
+    const wrapper = await open('assets')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+    hostVisible.value = false
+    await flushPromises()
+    routes([get('/api/v1/mail/library', () => ok({ items: [row(banner, { asset: banner.asset, used_by: { messages: 0 } })] }))])
+    hostVisible.value = true
+    await flushPromises()
+    expect(wrapper.findAll('tbody tr').map(node => node.text())).toEqual([expect.stringContaining('Spring banner')])
     wrapper.unmount()
   })
 })

@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { api, host } from '@wippy-fe/proxy'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MailAdmin from '../app/MailAdmin.vue'
-import { notify } from '../test/setup'
+import { hostVisible, notify } from '../test/setup'
 import { calls, dana, get, ok, post, put, refuse, remove, resource, revision, row, serve } from '../test/fixtures'
 import type { Resource } from '../types'
 
@@ -349,6 +349,34 @@ describe('Library resource editor', () => {
     notify('mail.library')
     await flushPromises()
     expect(wrapper.text()).toContain('This resource no longer exists')
+    wrapper.unmount()
+  })
+
+  it('reads the resource and its History again when the host shows the page again, keeping the draft', async () => {
+    let current: Resource = welcome
+    let history = [revision(welcome, 3)]
+    serve([
+      editorCapabilities,
+      deliveryStatus,
+      get('/api/v1/mail/library', () => ok({ items: [...library] })),
+      get('/api/v1/mail/library/message/welcome', () => ok(current)),
+      get('/api/v1/mail/library/message/welcome/history', () => ok({ items: history.map(({ content, state, ...entry }) => entry) })),
+      post('/api/v1/mail/library/preview', () => ok({ subject: 'Hi', html: '<p>x</p>', text: 'x' })),
+    ])
+    const wrapper = await open('messages/welcome/content')
+    await (await body(wrapper)).setValue('mine')
+    const reads = (path: string) => calls('get').filter(([candidate]) => candidate === path).length
+    const before = { resource: reads('/api/v1/mail/library/message/welcome'), history: reads('/api/v1/mail/library/message/welcome/history') }
+    hostVisible.value = false
+    await flushPromises()
+    current = { ...welcome, revision: 4, html: 'theirs', author_label: { kind: 'user', id: 'user-2', label: 'Marco Ruiz' } }
+    history = [revision(current, 4), revision(welcome, 3)]
+    hostVisible.value = true
+    await flushPromises()
+    expect(reads('/api/v1/mail/library/message/welcome')).toBe(before.resource + 1)
+    expect(reads('/api/v1/mail/library/message/welcome/history')).toBe(before.history + 1)
+    expect(((await body(wrapper)).element as HTMLTextAreaElement).value).toBe('mine')
+    expect(wrapper.text()).toContain('Marco Ruiz saved Customer welcome while you were editing.')
     wrapper.unmount()
   })
 })

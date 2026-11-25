@@ -199,4 +199,18 @@ describe('Mail administration shell', () => {
     expect(subscriptions.has('mail.library')).toBe(false)
     expect(subscriptions.has('mail.activity')).toBe(false)
   })
+
+  it('reads the listed kind again when the host shows the page again', async () => {
+    serveLibrary(capabilities, rows.filter(item => item.kind === 'message'))
+    const wrapper = await open('messages')
+    expect(rowNames(wrapper)).toEqual(['Notice', 'Weekly report'])
+    hostVisible.value = false
+    await flushPromises()
+    serveLibrary(capabilities, rows.filter(item => item.name === 'weekly'))
+    hostVisible.value = true
+    await flushPromises()
+    expect(libraryParams().filter(params => params.kind === 'message').length).toBeGreaterThanOrEqual(2)
+    expect(rowNames(wrapper)).toEqual(['Weekly report'])
+    wrapper.unmount()
+  })
 })

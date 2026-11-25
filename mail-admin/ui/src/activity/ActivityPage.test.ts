@@ -2,7 +2,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import MailAdmin from '../app/MailAdmin.vue'
-import { notify } from '../test/setup'
+import { hostVisible, notify } from '../test/setup'
 import { calls, get, message, ok, post, refuse, resource, serve } from '../test/fixtures'
 
 const failedId = '0b9f1c2e-1111-4222-8333-444455556666'
@@ -172,6 +172,25 @@ describe('Mail activity', () => {
     expect(wrapper.find('.mail-drawer-title').text()).toContain('Invoice reminder (sent)')
     const last = calls('get').filter(([path]) => path === '/api/v1/mail/activity').at(-1)
     expect(last?.[1]).toMatchObject({ params: { status: 'failed', limit: '50' } })
+    wrapper.unmount()
+  })
+
+  it('reads Activity again when the host shows the page again', async () => {
+    routes()
+    const wrapper = await open('activity')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+    hostVisible.value = false
+    await flushPromises()
+    serve([
+      activityCapabilities,
+      deliveryStatus,
+      get('/api/v1/mail/library', () => ok({ items: [] })),
+      get('/api/v1/mail/activity', () => ok({ items: [sent], has_more: false, total: 1, failed_today: 0 })),
+    ])
+    hostVisible.value = true
+    await flushPromises()
+    expect(wrapper.findAll('tbody tr').map(row => row.text())).toEqual([expect.stringContaining('Weekly report')])
+    expect(wrapper.find('.kx-notice.error').exists()).toBe(false)
     wrapper.unmount()
   })
 })
