@@ -32,7 +32,7 @@ function M.reconcile(boot: boolean?): (boolean?, error?)
     return queued, nil
 end
 
-local function snapshot(ex: database.Executor): ({seq: integer, projected_seq: integer, rows: {types.Resource}}?, error?)
+local function snapshot(ex: database.Executor): (types.LiveSnapshot?, error?)
     local before, err = state.get(ex)
     if err then return nil, err end
     local rows, read_err = reader.live_rows(ex)
@@ -57,8 +57,9 @@ local function attempt(min_seq: integer?): (boolean?, error?)
     if list_err then return nil, list_err end
     local entries = listed :: {types.JetEntry}
     local marker = live.published(entries)
-    local data, read_err = database.with_db(snapshot)
+    local value, read_err = database.with_db(snapshot)
     if read_err then return nil, read_err end
+    local data = value :: types.LiveSnapshot
     if min_seq and data.projected_seq < min_seq then return false, nil end
     if marker and marker >= data.seq then return false, nil end
     local declared, declaration_err = originals.list()

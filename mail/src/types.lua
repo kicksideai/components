@@ -186,6 +186,7 @@ type ProjectedState = {created_at: integer, archived: boolean | integer | nil, u
 type HistoryRow = {seq: integer, kind: string, name: string, version: integer, action: string, author: string,
     note: string?, restored_from: integer?, at: integer}
 type LiveState = {projected_seq: integer, template_seq: integer}
+type LiveSnapshot = {seq: integer, projected_seq: integer, rows: {Resource}}
 type FoldEffect = {
     upsert: ProjectedResource?, upsert_asset: ProjectedAsset?, archive: boolean?, delete: boolean?,
     refs: {ResourceKey}?, retire: {upload_id: string, last_seq: integer}?,
@@ -313,7 +314,7 @@ return {
     LibraryEvent = LibraryEvent, LibraryEventBody = LibraryEventBody, EventContent = EventContent, EventAsset = EventAsset,
     PrefetchedLibraryEvent = PrefetchedLibraryEvent, ProjectionInput = ProjectionInput,
     ProjectedResource = ProjectedResource, ProjectedAsset = ProjectedAsset, ProjectedState = ProjectedState,
-    HistoryRow = HistoryRow, LiveState = LiveState, FoldEffect = FoldEffect,
+    HistoryRow = HistoryRow, LiveState = LiveState, LiveSnapshot = LiveSnapshot, FoldEffect = FoldEffect,
     JsonObject = JsonObject, Record = Record, Recipient = Recipient, Mailbox = Mailbox,
     Asset = Asset, AssetWrite = AssetWrite, AssetContent = AssetContent, AssetPart = AssetPart, AssetReadRequest = AssetReadRequest, AssetRef = AssetRef, InlineAssets = InlineAssets, AttachmentRef = AttachmentRef, Attachment = Attachment, Origin = Origin, SendRequest = SendRequest, Addresses = Addresses,
     DeliveryMessage = DeliveryMessage, TransportRequest = TransportRequest, SendResult = SendResult, TemplateRequest = TemplateRequest,
