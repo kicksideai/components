@@ -7,10 +7,11 @@ local settings = require("settings")
 local config = require("config")
 local store = require("store")
 local types = require("types")
-local realtime = require("realtime")
+local notify = require("notify")
 local asset_store = require("asset_store")
 local asset_file_repo = require("asset_file_repo")
 local repo = require("message_repo")
+local preview_repo = require("preview_repo")
 
 local INTERRUPTED = {dead = true, cancelled = true, missing = true, done = true}
 
@@ -57,7 +58,7 @@ local function reconcile(now: integer, input: types.OwnerInput): error?
         return failed, nil
     end)
     if write_err then return write_err end
-    for _, id in ipairs(changed) do realtime.message(id, "failed") end
+    if #changed > 0 then notify.activity() end
     return nil
 end
 
@@ -71,7 +72,15 @@ local function sweep(now: integer, retention_ms: integer): (types.OwnerResult?, 
         if read_err then return nil, read_err end
         local asset_due, asset_err = asset_file_repo.next_due(tx)
         if asset_err then return nil, asset_err end
+        local _, prune_err = preview_repo.prune(tx, now // 1000, policy.BATCH)
+        if prune_err then return nil, prune_err end
+        local preview_expiry, preview_err = preview_repo.next_expiry(tx)
+        if preview_err then return nil, preview_err end
         local next_check = deadlines.check_at
+        if preview_expiry then
+            local expiry = preview_expiry * 1000
+            next_check = next_check and math.min(next_check, expiry) or expiry
+        end
         local earliest = deadlines.finished_at
         if asset_due then next_check = next_check and math.min(next_check, asset_due) or asset_due end
         if earliest then

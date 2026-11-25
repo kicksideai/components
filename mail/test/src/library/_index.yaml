@@ -24,7 +24,7 @@ entries:
     modules: [funcs]
     imports:
       database: kickside.mail.persist:db
-      store: kickside.mail.library:store
+      store: kickside.mail.command:library
   - name: library_test
     kind: function.lua
     meta: { type: test, suite: mail_library }

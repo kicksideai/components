@@ -61,6 +61,13 @@ function M.get(db: types.Executor, key: types.ResourceKey): (types.Resource?, er
     return resource(rows[1] :: types.LibraryRow)
 end
 
+function M.deleted_revision(ex: types.Executor, key: types.ResourceKey): (integer?, error?)
+    local rows, err = ex:query([[SELECT revision FROM mail_library_revision
+        WHERE kind=$1 AND name=$2 AND action='deleted' ORDER BY revision DESC LIMIT 1]], {key.kind, key.name})
+    if err then return nil, err end
+    return rows[1] and (rows[1].revision :: integer) or 0, nil
+end
+
 function M.rows(db: types.Executor, filter: types.ResourceFilter, include_archived: boolean?): ({types.Resource}?, error?)
     local result = sql.builder.select("*"):from("mail_library")
     if not include_archived then result = result:where(sql.builder.expr("archived=FALSE")) end
@@ -204,7 +211,7 @@ end
 function M.history(db: types.Executor, key: types.ResourceKey, revision: integer?): ({types.Revision}?, error?)
     local query = [[SELECT r.*,f.filename,f.content_type,f.size_bytes
         FROM mail_library_revision r LEFT JOIN mail_asset_file f ON f.upload_id=r.asset_upload_id
-        WHERE r.kind=$1 AND r.name=$2]]
+        WHERE r.kind=$1 AND r.name=$2 AND r.action<>'deleted']]
     local params: {string | integer} = {key.kind, key.name}
     if revision then
         query = query .. " AND r.revision=$3"

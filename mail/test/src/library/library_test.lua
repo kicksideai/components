@@ -13,7 +13,16 @@ local HTML = "kickside.mail.views:templates"
 local TEXT = "kickside.mail.views:text_templates"
 local OWNER = NS .. "projection"
 
+local function review(draft, executor)
+    draft.message = draft.message or "notice"
+    local result = assert((executor or funcs.new()):call(NS .. "preview_edits", draft))
+    return assert(result.preview_id, result.errors[1] and result.errors[1].message)
+end
+
 local function call(method, input)
+    if method == "create" then
+        input.preview_id = review({message = input.kind == "message" and input.name or "notice", create = input})
+    end
     return funcs.call(NS .. method, input)
 end
 
@@ -67,6 +76,7 @@ return {run = test.run_cases(function()
             local part = own(candidate("part", "publication-check", "Old HTML", "Old text"))
             local saved = assert(call("create", part))
             part.html, part.expected_revision = "New HTML", saved.revision
+            part.preview_id = review({resources = {part}})
             local faulty = assert(funcs.new():with_context({mail_test_projection_error = true}))
             local result, err = faulty:call(NS .. "update", part)
             test.is_nil(result)
@@ -85,6 +95,7 @@ return {run = test.run_cases(function()
                 (id INTEGER REFERENCES mail_test_commit_parent(id) DEFERRABLE INITIALLY DEFERRED)]]))
             assert(db:release())
             part.html, part.expected_revision = "New HTML", saved.revision
+            part.preview_id = review({resources = {part}})
             local faulty = assert(funcs.new():with_context({mail_test_commit_error = part.name}))
             local result, err = faulty:call(NS .. "update", part)
             db = assert(sql.get("app:db"))
@@ -210,22 +221,23 @@ return {run = test.run_cases(function()
 
             part.html = '{{ if .label == "from base" }}{{ missing_value }}{{ else }}{{ .label }}{{ end }}'
             part.expected_revision = saved_part.revision
-            local changed, failure = call("update", part)
-            test.is_nil(changed)
-            test.eq(errors.INVALID, failure:kind())
-            test.eq("template_render_failed", failure:details().code)
-            test.eq(message.name, failure:details().resource.name)
-            test.eq("html", failure:details().face)
-            test.eq("Mail could not render this template.", failure:message())
-            test.not_nil(failure:details().engine_message:find("missing_value", 1, true))
+            local invalid = assert(call("preview_edits", {message = message.name, resources = {part}}))
+            test.is_nil(invalid.preview_id)
+            local failure = invalid.errors[1]
+            test.eq("template_render_failed", failure.code)
+            test.eq(message.name, failure.resource.name)
+            test.eq("html", failure.face)
+            test.eq("Mail could not render this template.", failure.message)
+            test.not_nil(failure.engine_message:find("missing_value", 1, true))
             test.eq(saved_part.revision, assert(call("get", {kind = "part", name = part.name})).revision)
             test.eq(rendered.html, assert(executor:call(NS .. "render", {template = message.name, vars = message.samples})).html)
 
             part.html = "Changed {{ .label }}"
+            part.preview_id = review({message = message.name, resources = {part}}, executor)
             local updated = assert(executor:call(NS .. "update", part))
             test.eq("mail-editor", updated.author)
             test.is_true(updated.revision > saved_part.revision)
-            local conflict, conflict_err = call("update", part)
+            local conflict, conflict_err = executor:call(NS .. "update", part)
             test.is_nil(conflict)
             test.eq(errors.CONFLICT, conflict_err:kind())
             local removed, in_use = call("delete", {kind = "base", name = base.name, expected_revision = saved_base.revision})
@@ -234,7 +246,10 @@ return {run = test.run_cases(function()
             test.eq("mail_resource_in_use", in_use:details().code)
             test.eq(1, #in_use:details().messages)
             test.eq(message.name, in_use:details().messages[1])
-            local switched = assert(call("set_base", {name = message.name, base = "plain", expected_revision = saved_message.revision}))
+            message.base = "plain"
+            local switch = {name = message.name, base = message.base, expected_revision = saved_message.revision}
+            switch.preview_id = review({message = message.name, set_base = switch})
+            local switched = assert(call("set_base", switch))
             local switched_render = assert(executor:call(NS .. "render", {template = message.name, vars = message.samples}))
             test.is_nil(switched_render.html:find("Frame", 1, true))
             test.not_nil(switched_render.html:find("Changed A &amp; &lt;B&gt;", 1, true))
@@ -252,13 +267,25 @@ return {run = test.run_cases(function()
             test.is_nil(value(HTML, "part/" .. part.name))
             test.is_nil(value(TEXT, "part/" .. part.name))
 
-            part.expected_revision = nil
+            part.expected_revision, part.preview_id = nil, nil
             local recreated = assert(call("create", part))
             test.is_true(recreated.revision > updated.revision)
             local stale, stale_err = call("delete", {kind = "part", name = part.name, expected_revision = updated.revision})
             test.is_nil(stale)
             test.eq("mail_revision_conflict", stale_err:details().code)
             assert(call("delete", {kind = "part", name = part.name, expected_revision = recreated.revision}))
+        end)
+
+        test.it("keeps a create preview stale after the resource is deleted", function()
+            local part = own(candidate("part", "replayed-create", "Replay HTML", "Replay text"))
+            local saved = assert(call("create", part))
+            assert(call("delete", {kind = part.kind, name = part.name, expected_revision = saved.revision}))
+            local replayed, err = funcs.call(NS .. "create", part)
+            test.is_nil(replayed)
+            test.eq(errors.CONFLICT, assert(err):kind())
+            test.eq("mail_preview_stale", err:details().code)
+            local recreated = assert(call("create", part))
+            test.is_true(recreated.revision > saved.revision)
         end)
 
         test.it("refuses to send an archived message and restores its previous revision", function()
@@ -283,8 +310,9 @@ return {run = test.run_cases(function()
             test.eq("archived", history[1].action)
             test.eq(archived.revision, history[1].revision)
 
-            local restored = assert(call("restore", {kind = item.kind, name = item.name,
-                expected_revision = archived.revision, revision = saved.revision}))
+            local restore = {kind = item.kind, name = item.name, expected_revision = archived.revision, revision = saved.revision}
+            restore.preview_id = review({message = item.name, restore = restore})
+            local restored = assert(call("restore", restore))
             test.is_false(restored.archived)
             local rendered = assert(call("render", {template = item.name, vars = {}}))
             test.eq(item.subject, rendered.subject)
@@ -297,6 +325,7 @@ return {run = test.run_cases(function()
             test.eq("original", original.state)
             local edit = candidate("part", key.name, "Customized {{ site.title }}", "Custom text {{ site.title }}")
             edit.expected_revision = original.revision
+            edit.preview_id = review({resources = {edit}})
             local saved = assert(call("update", edit))
             test.eq(original.origin, saved.origin)
             test.eq("customized", saved.state)
@@ -318,7 +347,9 @@ return {run = test.run_cases(function()
             assert(changes:apply())
             test.eq("success", assert(call("reconcile")).status)
             test.eq("Customized Example", assert(value(HTML, "part/header", data)))
-            local reset = assert(call("reset", {kind = key.kind, name = key.name, expected_revision = saved.revision}))
+            local reset_request = {kind = key.kind, name = key.name, expected_revision = saved.revision}
+            reset_request.preview_id = review({reset = reset_request})
+            local reset = assert(call("reset", reset_request))
             test.eq("original", reset.state)
             test.eq("New original Example", assert(value(HTML, "part/header", data)))
         end)
@@ -329,6 +360,11 @@ return {run = test.run_cases(function()
             local actor = assert(security.new_actor("history-editor", {security_groups = {"app:mail_editors"}}))
             local editor = assert(funcs.new():with_actor(actor):with_scope(scope))
             local function read(method, input)
+                if method == "update" then
+                    input.preview_id = review({resources = {input}}, editor)
+                elseif method == "reset" or method == "restore" then
+                    input.preview_id = review({[method] = input}, editor)
+                end
                 local result, err = editor:call(NS .. method, input)
                 if err then error(method .. ": " .. err:message() .. " (" .. tostring((err:details() or {}).code) .. ")") end
                 return result
@@ -359,7 +395,7 @@ return {run = test.run_cases(function()
             test.eq("customized", restored.state)
             local rejected, conflict = editor:call(NS .. "restore", restore)
             test.is_nil(rejected)
-            test.eq("mail_revision_conflict", conflict:details().code)
+            test.eq("mail_preview_stale", conflict:details().code)
             for i = 1, 26 do
                 edit.expected_revision = restored.revision
                 edit.title = "Layout " .. i
@@ -395,9 +431,9 @@ return {run = test.run_cases(function()
                 part.html, part.text = "{{ .after }}", "{{ .after }}"
                 part.schema.properties = {after = {type = "string"}}
                 part.samples = {after = "New"}
-                local changed, err = call("update", part)
-                test.is_nil(changed)
-                test.eq(errors.INVALID, err:kind())
+                local invalid = assert(call("preview_edits", {message = message.name, resources = {part}}))
+                test.is_nil(invalid.preview_id)
+                test.eq("template_render_failed", invalid.errors[1].code)
             end
             base.html = base.html:gsub("before", "after"):gsub("Old", "New")
             base.text = base.html
@@ -405,23 +441,24 @@ return {run = test.run_cases(function()
             test.not_nil(preview.html:find("New one New two Body", 1, true))
             test.eq(old.html, assert(call("render", {template = message.name, vars = {}})).html)
             local revision = two.expected_revision
+            local receipt = review({message = message.name, resources = {base, one, two}})
             two.expected_revision = 0
-            local saved, stale = call("save", {resources = {base, one, two}, note = "Together"})
+            local saved, stale = call("save", {resources = {base, one, two}, preview_id = receipt, note = "Together"})
             test.is_nil(saved)
-            test.eq("mail_revision_conflict", stale:details().code)
+            test.eq("mail_preview_mismatch", stale:details().code)
             two.expected_revision = revision
             local valid_html = two.html
             two.html = "{{ .undefined }}"
-            local broken, invalid = call("save", {resources = {base, one, two}})
+            local broken, invalid = call("save", {resources = {base, one, two}, preview_id = receipt})
             test.is_nil(broken)
-            test.eq(errors.INVALID, invalid:kind())
+            test.eq("mail_preview_mismatch", invalid:details().code)
             for _, item in ipairs({base, one, two}) do
                 test.eq(item.expected_revision, assert(call("get", item)).revision)
                 test.eq(1, #assert(call("history", item)))
             end
             test.eq(old.html, assert(call("render", {template = message.name, vars = {}})).html)
             two.html = valid_html
-            local changed = assert(call("save", {resources = {base, one, two}, note = "Together"}))
+            local changed = assert(call("save", {resources = {base, one, two}, preview_id = receipt, note = "Together"}))
             test.eq(3, #changed)
             test.eq(preview.html, assert(call("render", {template = message.name, vars = {}})).html)
             for _, item in ipairs(changed) do

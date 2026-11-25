@@ -19,12 +19,10 @@ entries:
       recipients: kickside.mail.service:recipients
       canonical_json: kickside.contract:canonical_json
       identity: kickside.execution:execution_identity
-      jobs: kickside.core.jobs:jobs
-      notifier: kickside.core.retention:notifier
       store: kickside.mail.outbox:store
       log: kickside.mail.outbox:log
       resources: kickside.mail.library:resources
-      realtime: kickside.mail:realtime
+      notify: kickside.mail.command:notify
     security: &send_security
       policies:
         - kickside.mail.security:realtime_calls

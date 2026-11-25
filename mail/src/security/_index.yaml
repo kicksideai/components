@@ -319,6 +319,7 @@ entries:
         - kickside.mail.library:delete
         - kickside.mail.library:render
         - kickside.mail.library:render_draft
+        - kickside.mail.library:preview_edits
         - kickside.mail.service:library_send_test
       actions: [funcs.call, registry.get]
       effect: allow
@@ -513,6 +514,6 @@ entries:
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.realtime:mail.library.changed, kickside.realtime:mail.message.changed]
+      resources: [kickside.realtime:mail.library, kickside.realtime:mail.activity]
       actions: [realtime.broadcast]
       effect: allow

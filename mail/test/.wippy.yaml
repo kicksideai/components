@@ -20,11 +20,13 @@ workspace:
 override:
   kickside.mail.binding:library:meta.provision.grants:
     - {subject_id: "system:kickside.mail.retention", subject_type: user, access_mask: 1}
-    - {subject_id: "wippy.test:runner", subject_type: user, access_mask: 1}
+    - {subject_id: "wippy.test:runner", subject_type: user, access_mask: 3}
     - {subject_id: "app:mail_editors", subject_type: group, access_mask: 3}
   kickside.workflows.agent:flows_read:imports.published_catalog: kickside.mail.harness:workflow_catalog_fault
-  kickside.mail.library:update:imports.live: app.mail_library:projection_fault
-  kickside.mail.library:update:imports.database: app.mail_library:projection_database
+  kickside.mail.command:library:modules: [security]
+  kickside.mail.command:library:imports.time: kickside.mail.harness:owner_clock
+  kickside.mail.command:library:imports.live: app.mail_library:projection_fault
+  kickside.mail.command:library:imports.database: app.mail_library:projection_database
   kickside.mail.render:scratch:imports.render: app.mail_library:draft_render
   kickside.mail.security:send_access:groups: [app:mail_senders]
   kickside.core.jobs:policy:meta.proc.max_execution: 3s

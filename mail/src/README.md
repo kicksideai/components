@@ -69,7 +69,9 @@ A message selects its base as data. The base provides a `body()` block and the m
 
 Parts read passed inputs through the dot context. Templates can also read `site.title`, `site.url`, `sender.name`, `message.subject`, and `message.preheader` in both faces. Use `vars` for declared message variables.
 
-Lua callers with **Edit mail library** call functions in `kickside.mail.library`. Use `list` and `get` to read resources, `render` to render a message, and `render_draft` to preview a candidate against a selected message. Call `create`, `update`, `set_base`, `reset`, or `delete` to edit the library. Edits to an existing resource require its current `expected_revision`. Reset restores the current shipped original.
+Lua callers with **Edit mail library** call functions in `kickside.mail.library`. Use `list` and `get` to read resources, `render` to render a message, and `render_draft` to display a candidate against a selected message. For a non-image create, update, save, base change, reset, or restore, call `preview_edits` with the proposed operation and use the returned `preview_id` on the write. For HTTP use `POST /mail/library/preview?review=true`. Preview IDs belong to the issuing actor and expire after 15 minutes. Writes to an existing resource also require its current `expected_revision`. Reset restores the current shipped original.
+
+Mail broadcasts topic-only `mail.library` and `mail.activity` invalidations after writes commit. Subscribers read the affected view through the API using their own access.
 
 ## Library images
 

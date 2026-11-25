@@ -111,22 +111,26 @@ type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}
 type Original = {resource: Resource, entries: {[string]: string}}
 type ResourceMap = {[string]: Resource}
 type OriginalMap = {[string]: Original}
-type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?}
-type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?}
+type LibraryWorkspace = {
+    ex: Executor, items: ResourceMap, originals: OriginalMap,
+    loaded: {[string]: boolean},
+}
+type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?, preview_id: string?}
+type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?, preview_id: string?}
 type ResourceCreate = ResourceKey & {note: string?, preview_id: string?, from: ResourceKey?, title: string?, description: string?,
     html: string?, text: string?, base: string?, subject: string?, schema: VariableSchema?, samples: JsonObject?}
 type AssetWrite = {name: string, upload_id: string, expected_revision: integer?, width: integer?, height: integer?, note: string?,
     title: string?, description: string?}
-type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?}
+type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?, preview_id: string?}
 type ResourceRestore = ResourceRevision & {revision: integer}
 type RevisionChange = {action: string, state: string, restored_from: integer?, note: string?}
 type LibraryWrite = {item: Resource, released: {Record}}
 type Revision = RevisionChange & {kind: string, name: string, revision: integer, version: integer,
     content: ResourceContent, author: string, created_at: integer}
 type OriginalRevisions = {[string]: {[string]: integer}}
-type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, resources: {ResourceContent}?, message: string, vars: JsonObject?}
+type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, resources: {ResourceEdit}?, message: string, vars: JsonObject?}
 type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?}
-type EditPreview = DraftRequest & {create: ResourceCreate?}
+type EditPreview = DraftRequest & {create: ResourceCreate?, set_base: ResourceBaseEdit?, reset: ResourceRevision?, restore: ResourceRestore?}
 type DraftIssue = {code: string, engine_message: string?, message: string, resource: ResourceKey, face: string, candidate_resources: {ResourceKey}}
 type PreviewWarning = {code: string, message: string, bytes: integer, threshold_bytes: integer}
 type DraftPreview = {subject: string?, html: string?, text: string?, errors: {DraftIssue},
@@ -207,14 +211,21 @@ type WritableSink = {
     origin: (SinkRequest) -> (string?, SinkFailure?),
     fail: (string, string?, boolean?, string?, Record?) -> SinkFailure,
 }
-type Realtime = {broadcast: (self: Realtime, input: {topic: string, data: Record}) -> ({success: boolean, error: string?}?, error?)}
+type Realtime = {broadcast: (self: Realtime, input: {topic: string}) -> ({success: boolean, error: string?}?, error?)}
 type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, from: Mailbox?, reply_to: string?, code: string?, reason: string?}
 type TestSend = {message: string, vars: JsonObject?}
 
 type HttpAuth = {user: string, pass: string}
 type HttpResponse = {status_code: number, headers: {[string]: string | {string}}, body: string}
 
+local function origin_text(value: unknown): boolean
+    return type(value) == "string" and #value <= 256 and utf8.len(value) ~= nil
+        and value:find("%S") ~= nil and value:find("%c") == nil
+end
+
+
 return {
+    origin_text = origin_text,
     DB = DB, Executor = Executor, Transaction = Transaction, TransactionWork = TransactionWork, TransportResult = TransportResult,
     MessageRef = MessageRef, ListRequest = ListRequest, ListQuery = ListQuery, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, Admission = Admission, AdmissionResult = AdmissionResult,
@@ -224,7 +235,7 @@ return {
     OwnerResult = OwnerResult, BlockedAsset = BlockedAsset, ComponentAccessContract = ComponentAccessContract,
     ResourceKey = ResourceKey, ResourceReferences = ResourceReferences, ReferenceClosure = ReferenceClosure, PreviewRow = PreviewRow,
     ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
-    Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, ResourceRevision = ResourceRevision,
+    Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, LibraryWorkspace = LibraryWorkspace, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
     ResourceRestore = ResourceRestore, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
     ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,

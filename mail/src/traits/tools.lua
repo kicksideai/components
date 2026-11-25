@@ -4,7 +4,6 @@ local client = require("client")
 local ctx = require("ctx")
 local funcs = require("funcs")
 local logger = require("logger")
-local message = require("message")
 
 local function list_templates(): (types.ToolTemplateList?, error?)
     local mailer, err = client.open()
@@ -33,7 +32,7 @@ end
 local function workflow_label(ref: unknown): string
     if type(ref) ~= "table" then return "" end
     local title = ref.title
-    if message.origin_text(title) then return title :: string end
+    if types.origin_text(title) then return title :: string end
     if type(ref.id) ~= "string" or ref.id == "" then return "" end
     local result, err = funcs.call("kickside.workflows.agent:flows_read", {
         action = "catalog", catalog_id = "flows:" .. ref.id,
@@ -45,7 +44,7 @@ local function workflow_label(ref: unknown): string
         return ""
     end
     local item = result and result.item
-    if type(item) == "table" and message.origin_text(item.title) then return item.title :: string end
+    if type(item) == "table" and types.origin_text(item.title) then return item.title :: string end
     return ""
 end
 

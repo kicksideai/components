@@ -11,17 +11,6 @@ entries:
       database: kickside.mail.persist:db
       content: kickside.mail.read:content
       asset_file_repo: kickside.mail.persist:asset_file_repo
-  - name: store
-    kind: library.lua
-    source: file://store.lua
-    imports:
-      types: kickside.mail:types
-      library_reader: kickside.mail.persist:library_reader
-      library_repo: kickside.mail.persist:library_repo
-      reference_repo: kickside.mail.persist:reference_repo
-      references: kickside.mail.domain:references
-      library: kickside.mail.read:library
-      asset_store: kickside.mail.library:asset_store
   - name: resources
     kind: library.lua
     source: file://resources.lua
@@ -29,23 +18,6 @@ entries:
       types: kickside.mail:types
       resource: kickside.mail.domain:resource
       library: kickside.mail.read:library
-  - name: preview_id
-    kind: library.lua
-    source: file://preview_id.lua
-    modules: [crypto, env]
-    imports:
-      types: kickside.mail:types
-      canonical_json: kickside.contract:canonical_json
-      secret_cipher: kickside.contract:secret_cipher
-      resources: kickside.mail.library:resources
-  - name: edits
-    kind: library.lua
-    source: file://edits.lua
-    imports:
-      types: kickside.mail:types
-      resources: kickside.mail.library:resources
-      store: kickside.mail.library:store
-      live: kickside.mail.render:live
   - name: list
     kind: function.lua
     method: list
@@ -105,29 +77,18 @@ entries:
   - name: create
     kind: function.lua
     method: create
-    source: &service_source file://service.lua
-    modules: &service_modules [security, time, uuid, funcs, logger]
-    imports: &service_imports
+    source: &write_source file://writes.lua
+    imports: &write_imports
       types: kickside.mail:types
       client: kickside.mail:client
-      database: kickside.mail.persist:db
-      resources: kickside.mail.library:resources
-      store: kickside.mail.library:store
-      edits: kickside.mail.library:edits
-      live: kickside.mail.render:live
-      originals: kickside.mail.render:originals
-      scratch: kickside.mail.render:scratch
-      globals: kickside.mail.render:globals
-      settings: kickside.mail.read:settings
-      realtime: kickside.mail:realtime
-      preview_id: kickside.mail.library:preview_id
-      content: kickside.mail.read:content
-      asset_refs: kickside.mail.domain:assets
-      asset_store: kickside.mail.library:asset_store
-      notifier: kickside.core.retention:notifier
-      error_envelope: kickside.contract:error_envelope
+      writer: kickside.mail.command:library
+      edits: kickside.mail.command:library_edits
+      assets: kickside.mail.command:assets
+      preview: kickside.mail.command:preview
     security: &bound_write_security
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - &realtime_calls kickside.mail.security:realtime_calls
         - &realtime_topics kickside.mail.security:realtime_topics
         - &outbox_db kickside.mail.security:outbox_db
@@ -139,7 +100,6 @@ entries:
         - &overlay_projection kickside.mail.security:overlay_projection
         - &overlay_originals kickside.mail.security:overlay_originals
         - &overlay_drafts kickside.mail.security:overlay_drafts
-        - kickside.settings:reader_secrets
         - &asset_adopt kickside.mail.security:asset_adoption
         - &asset_adopt_action kickside.mail.security:asset_adoption_action
         - &asset_notify kickside.core.retention:notify_access
@@ -152,11 +112,12 @@ entries:
   - name: restore
     kind: function.lua
     method: restore
-    source: *service_source
-    modules: *service_modules
-    imports: *service_imports
+    source: *write_source
+    imports: *write_imports
     security: &write_security
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - *realtime_calls
         - *realtime_topics
         - *outbox_db
@@ -174,67 +135,48 @@ entries:
   - name: asset_add
     kind: function.lua
     method: asset_add
-    source: *service_source
-    modules: *service_modules
-    imports: *service_imports
+    source: *write_source
+    imports: *write_imports
     security: *write_security
   - name: save
     kind: function.lua
     method: save
-    source: *service_source
-    modules: *service_modules
-    imports: *service_imports
+    source: *write_source
+    imports: *write_imports
     security: *bound_write_security
   - name: update
     kind: function.lua
     method: update
-    source: *service_source
-    modules: *service_modules
-    imports: *service_imports
+    source: *write_source
+    imports: *write_imports
     security: *write_security
   - name: set_base
     kind: function.lua
     method: set_base
-    source: *service_source
-    modules: *service_modules
-    imports: *service_imports
+    source: *write_source
+    imports: *write_imports
     security: *write_security
   - name: reset
     kind: function.lua
     method: reset
-    source: *service_source
-    modules: *service_modules
-    imports: *service_imports
+    source: *write_source
+    imports: *write_imports
     security: *write_security
   - name: delete
     kind: function.lua
     method: delete
-    source: *service_source
-    modules: *service_modules
-    imports: *service_imports
+    source: *write_source
+    imports: *write_imports
     security: *write_security
   - name: render_draft
     kind: function.lua
     method: render_draft
-    source: &draft_preview_source file://draft_preview.lua
-    modules: &draft_preview_modules [security, time]
-    imports: &draft_preview_imports
-      types: kickside.mail:types
-      client: kickside.mail:client
-      database: kickside.mail.persist:db
-      resources: kickside.mail.library:resources
-      store: kickside.mail.library:store
-      edits: kickside.mail.library:edits
-      scratch: kickside.mail.render:scratch
-      render: kickside.mail.render:render
-      live_preview: kickside.mail.read:preview
-      vars: kickside.mail.domain:vars
-      globals: kickside.mail.render:globals
-      settings: kickside.mail.read:settings
-      preview_id: kickside.mail.library:preview_id
-      message: kickside.mail.domain:message
+    source: *write_source
+    imports: *write_imports
     security:
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
@@ -246,26 +188,27 @@ entries:
   - name: preview_edits
     kind: function.lua
     method: preview_edits
-    source: *draft_preview_source
-    modules: *draft_preview_modules
-    imports: *draft_preview_imports
+    source: *write_source
+    imports: *write_imports
     security:
       policies:
+        - kickside.mail.security:library_component_read
+        - kickside.mail.security:library_component_registry
         - kickside.mail.security:outbox_db
         - kickside.mail.security:outbox_config
         - kickside.mail.security:template_access
         - kickside.mail.security:site_url
         - kickside.mail.security:settings_read
         - kickside.mail.security:overlay_owner
+        - kickside.mail.security:overlay_originals
+        - kickside.core.retention:notify_access
         - kickside.mail.security:overlay_drafts
-        - kickside.settings:reader_secrets
         - kickside.mail.security:asset_bytes
   - name: render
     kind: function.lua
     method: render
-    source: *draft_preview_source
-    modules: *draft_preview_modules
-    imports: *draft_preview_imports
+    source: *write_source
+    imports: *write_imports
     security:
       policies:
         - kickside.mail.security:library_component_read
@@ -283,10 +226,9 @@ entries:
       type: bootloader
       requires: [wippy.migration:migration_bootloader]
       order: 35
-    source: *service_source
+    source: *write_source
     method: boot
-    modules: *service_modules
-    imports: *service_imports
+    imports: *write_imports
     security:
       policies:
         - kickside.mail.security:outbox_db

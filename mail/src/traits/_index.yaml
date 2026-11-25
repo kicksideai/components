@@ -46,7 +46,6 @@ entries:
     imports: &tool_imports
       types: kickside.mail:types
       client: kickside.mail:client
-      message: kickside.mail.domain:message
   - name: mail_list_templates
     kind: function.lua
     meta:
@@ -258,13 +257,13 @@ entries:
       title: Preview Mail Library Draft
       llm_alias: MailLibraryPreview
       llm_description: >-
-        Preview one or more edited resources together using resources, or one proposed new resource using create.
+        Preview edited resources using resources, a new resource using create, or a revision operation using reset or restore.
         Choose a message by stable name. For a new message choose its proposed name. For a new base or part choose
         an existing message. Message bodies define a Jet body block, the base field selects its frame, and parts
         can be included with a map of their inputs. Optional vars replace the chosen message's samples for the
         displayed render. Save validation always checks samples and affected messages. Read errors for the
         resource, face and optional engine_message, and dependent_messages for affected messages. A clean preview returns
-        a preview_id to use when saving or creating the exact same content. Preview makes no library changes.
+        a preview_id to use with the same operation and revisions. Non-asset writes require that ID.
       input_schema:
         type: object
         additionalProperties: false
@@ -272,6 +271,8 @@ entries:
         oneOf:
           - {required: [resources]}
           - {required: [create]}
+          - {required: [reset]}
+          - {required: [restore]}
         properties:
           message: *resource_name
           resources:
@@ -280,7 +281,7 @@ entries:
             items: &resource_edit
               type: object
               additionalProperties: false
-              required: &content_required [kind, name, title, description, html, text, schema, samples]
+              required: [kind, name, title, description, html, text, schema, samples, expected_revision]
               properties: &edit_fields
                 kind: &template_kind {type: string, enum: [message, base, part]}
                 name: *resource_name
@@ -311,6 +312,22 @@ entries:
               subject: *face
               base: *resource_name
               note: *text
+          reset:
+            type: object
+            additionalProperties: false
+            required: [kind, name, expected_revision]
+            properties: &review_revision
+              kind: *resource_kind
+              name: *resource_name
+              expected_revision: *resource_revision
+              note: *text
+          restore:
+            type: object
+            additionalProperties: false
+            required: [kind, name, expected_revision, revision]
+            properties:
+              <<: *review_revision
+              revision: {type: integer, minimum: 1}
           vars: *samples
           attachments:
             type: array
@@ -381,7 +398,7 @@ entries:
       input_schema:
         type: object
         additionalProperties: false
-        required: [resources]
+        required: [resources, preview_id]
         properties:
           resources:
             type: array
@@ -428,7 +445,7 @@ entries:
       input_schema:
         type: object
         additionalProperties: false
-        required: [kind, name]
+        required: [kind, name, preview_id]
         properties:
           <<: *create_fields
           preview_id: *preview_id
@@ -502,17 +519,23 @@ entries:
       llm_alias: MailLibraryReset
       llm_description: >-
         Reset a customized shipped resource to its original content. Use the revision from MailLibraryRead
-        as expected_revision. The library checks affected messages and keeps history. A refusal contains
+        as expected_revision. For a non-asset reset, pass the preview_id returned by MailLibraryPreview.
+        The library checks affected messages and keeps history. A refusal contains
         success=false, code and error, with the current revision or draft diagnostics when applicable.
       input_schema:
         type: object
         additionalProperties: false
         required: [kind, name, expected_revision]
+        anyOf: &asset_or_preview
+          - properties:
+              kind: {const: asset}
+          - required: [preview_id]
         properties: &revision_request
           kind: *resource_kind
           name: *resource_name
           expected_revision: *resource_revision
           note: *text
+          preview_id: *preview_id
       output_schema: *revision_output
     source: *design_source
     method: reset
@@ -554,7 +577,7 @@ entries:
                 created_at: {type: integer}
                 content:
                   type: object
-                  required: *content_required
+                  required: [kind, name, title, description, html, text, schema, samples]
                   properties:
                     <<: *edit_fields
                     kind: *resource_kind
@@ -575,13 +598,14 @@ entries:
       llm_alias: MailLibraryRestore
       llm_description: >-
         Restore content from MailLibraryHistory as a new revision. Pass the selected revision and use the
-        current revision from MailLibraryRead as expected_revision. The library validates content and affected
-        messages before restoring. A refusal returns success=false, code and error, with the current revision
+        current revision from MailLibraryRead as expected_revision. For a non-asset restore, pass the
+        preview_id returned by MailLibraryPreview. The library validates content and affected messages. A refusal returns success=false, code and error, with the current revision
         or draft diagnostics when applicable.
       input_schema:
         type: object
         additionalProperties: false
         required: [kind, name, revision, expected_revision]
+        anyOf: *asset_or_preview
         properties:
           <<: *revision_request
           revision: {type: integer, minimum: 1}

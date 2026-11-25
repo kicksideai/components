@@ -56,18 +56,22 @@ local function sorted(names: {[string]: boolean}): {string}
     return result
 end
 
+function M.asset_names(content: types.ResourceContent): {string}
+    local names: {[string]: boolean} = {}
+    asset_names(content.html, names)
+    asset_names(content.text, names)
+    if content.subject then asset_names(content.subject, names) end
+    return sorted(names)
+end
+
 function M.refs(content: types.ResourceContent): types.ResourceReferences
     local bases: {[string]: boolean} = {}
     local parts: {[string]: boolean} = {}
-    local assets: {[string]: boolean} = {}
     for _, key in ipairs(M.template_keys(content)) do
         if key.kind == "base" then bases[key.name] = true end
         if key.kind == "part" then parts[key.name] = true end
     end
-    asset_names(content.html, assets)
-    asset_names(content.text, assets)
-    if content.subject then asset_names(content.subject, assets) end
-    return {bases = sorted(bases), parts = sorted(parts), assets = sorted(assets)}
+    return {bases = sorted(bases), parts = sorted(parts), assets = M.asset_names(content)}
 end
 
 function M.keys(item: types.ResourceContent): {types.ResourceKey}

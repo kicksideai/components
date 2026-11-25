@@ -6,14 +6,11 @@ local settings = require("settings")
 local config = require("config")
 local canonical_json = require("canonical_json")
 local identity = require("identity")
-local logger = require("logger")
-local jobs = require("jobs")
-local notifier = require("notifier")
 local store = require("store")
 local log = require("log")
 local security = require("security")
 local resources = require("resources")
-local realtime = require("realtime")
+local notify = require("notify")
 local message = require("message")
 local live_preview = require("live_preview")
 local attachments = require("attachments")
@@ -98,11 +95,9 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     })
     if save_err then return nil, save_err end
     if saved.inserted then
-        realtime.message(saved.message.message_id, saved.message.status)
-        local _, notify_err = notifier.notify({kind = "owner_eligibility_changed"})
-        if notify_err then logger:error("Mail retention notification failed", {error = tostring(notify_err)}) end
-        local _, nudge_err = jobs.nudge_workers()
-        if nudge_err then logger:error("Mail job notification failed", {error = tostring(nudge_err)}) end
+        notify.activity()
+        notify.retention()
+        notify.nudge()
     end
     return saved.message, nil
 end

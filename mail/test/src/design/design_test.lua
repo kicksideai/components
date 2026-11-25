@@ -5,11 +5,10 @@ local funcs = require("funcs")
 local json = require("json")
 local registry = require("registry")
 local security = require("security")
+local sql = require("sql")
 local time = require("time")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
-local normalize = require("normalize")
-local receipt = require("preview_id")
 
 local NS = "kickside.mail.traits:"
 local POLICY = "kickside.mail.security:"
@@ -21,12 +20,13 @@ local ALIASES = {
     asset_add = "MailAssetAdd", library_history = "MailLibraryHistory", library_restore = "MailLibraryRestore", send_test = "MailSendTest",
 }
 
-local function caller(id, can_edit, can_send)
+local function caller(id, can_edit, can_send, call_library)
     local groups = can_edit and {"app:mail_editors"} or {}
     local actor = assert(security.new_actor(id, {user_id = id, email = ADDRESS, security_groups = groups}))
     local policies = {assert(security.policy(POLICY .. "module_access")), assert(security.policy(POLICY .. "module_runtime"))}
     if can_edit then policies[#policies + 1] = assert(security.policy(POLICY .. "library_access")) end
     if can_send then policies[#policies + 1] = assert(security.policy(POLICY .. "send_access")) end
+    if call_library then policies[#policies + 1] = assert(security.policy(POLICY .. "library_design_calls")) end
     local scope = assert(security.new_scope(policies))
     return assert(funcs.new():with_actor(actor):with_scope(scope)), actor, scope
 end
@@ -228,22 +228,89 @@ return {run = test.run_cases(function()
             local receipt_id = args.preview_id
             args.preview_id = receipt_id:gsub(".$", function(c) return c == "a" and "b" or "a" end)
             refusal(editor, "library_save", args, "mail_preview_mismatch")
-            args.preview_id = assert(receipt.issue({assert(normalize.normalize(candidate))}, EDITOR, "update",
-                time.now():unix() - 3600))
-            refusal(editor, "library_save", args, "mail_preview_expired")
             args.preview_id = receipt_id
             local saved = ok(editor, "library_save", args).items[1]
-            local conflict = refusal(editor, "library_save", args, "mail_revision_conflict")
+            local conflict = refusal(editor, "library_save", args, "mail_preview_stale")
             test.eq(saved.revision, conflict.revision)
             test.eq(button.name, conflict.resource.name)
 
-            local reset = ok(editor, "library_reset", {kind = button.kind, name = button.name, expected_revision = saved.revision})
+            local reset_request = {kind = button.kind, name = button.name, expected_revision = saved.revision}
+            reset_request.preview_id = ok(editor, "library_preview", {reset = reset_request, message = "notice"}).preview_id
+            local reset = ok(editor, "library_reset", reset_request)
             test.eq("original", ok(editor, "library_read", key(button.kind, button.name)).state)
-            local restored = ok(editor, "library_restore", {kind = button.kind, name = button.name,
-                expected_revision = reset.revision, revision = saved.revision})
+            local restore_request = {kind = button.kind, name = button.name,
+                expected_revision = reset.revision, revision = saved.revision}
+            restore_request.preview_id = ok(editor, "library_preview", {restore = restore_request, message = "notice"}).preview_id
+            local restored = ok(editor, "library_restore", restore_request)
             test.neq(saved.revision, restored.revision)
             test.eq(candidate.text, ok(editor, "library_read", key(button.kind, button.name)).text)
         end)
+
+        local function draft_button()
+            local editor = caller(EDITOR, true, false, true)
+            local button = ok(editor, "library_read", key("part", "button"))
+            owned[#owned + 1] = key(button.kind, button.name)
+            local candidate = edit(button)
+            candidate.text = candidate.text .. "\n"
+            return editor, candidate
+        end
+
+        test.it("stores the actor and candidate revision before a preview authorizes a write", function()
+            local editor, candidate = draft_button()
+            local resources = {candidate}
+            local preview = ok(editor, "library_preview", {message = "notice", resources = resources})
+            local db = assert(sql.get("app:db"))
+            local rows = assert(db:query([[SELECT actor, expected_json, expires_at FROM mail_library_preview
+                WHERE id=$1]], {preview.preview_id}))
+            assert(db:release())
+            test.eq(1, #rows)
+            test.eq(EDITOR, rows[1].actor)
+            local versions = assert(json.decode(rows[1].expected_json))
+            test.eq(candidate.expected_revision, versions["part/button"])
+            test.is_true(rows[1].expires_at > time.now():unix())
+
+            local args = {resources = resources, preview_id = preview.preview_id}
+            refusal(caller("another-editor", true, false), "library_save", args, "mail_preview_mismatch")
+            test.is_true(ok(editor, "library_save", args).items[1].revision > candidate.expected_revision)
+        end)
+
+        test.it("classifies reuse of a successful write's preview as stale", function()
+            local editor, candidate = draft_button()
+            local resources = {candidate}
+            local preview = ok(editor, "library_preview", {message = "notice", resources = resources})
+            local args = {resources = resources, preview_id = preview.preview_id}
+            local saved = ok(editor, "library_save", args).items[1]
+            local result, err = editor:call("kickside.mail.library:save", args)
+            test.is_nil(result)
+            test.eq(errors.CONFLICT, err:kind())
+            test.eq("mail_preview_stale", err:details().code)
+            test.eq(saved.revision, ok(editor, "library_read", key(saved.kind, saved.name)).revision)
+        end)
+
+        test.it("rejects a stored preview after its expiry", function()
+            local editor, candidate = draft_button()
+            local resources = {candidate}
+            local preview = ok(editor, "library_preview", {message = "notice", resources = resources})
+            local db = assert(sql.get("app:db"))
+            local stored = assert(db:query("SELECT expires_at FROM mail_library_preview WHERE id=$1", {preview.preview_id}))
+            assert(db:release())
+            local after_expiry = {mail_test_now = assert(stored[1]).expires_at * 1000}
+
+            local expired_editor = assert(editor:with_context(after_expiry))
+            local result, err = expired_editor:call("kickside.mail.library:save", {resources = resources, preview_id = preview.preview_id})
+            test.is_nil(result)
+            test.eq(errors.INVALID, err:kind())
+            test.eq("mail_preview_expired", err:details().code)
+
+            local owner = assert(funcs.new():with_context(after_expiry))
+            local swept = assert(owner:call("kickside.mail.outbox:owner", {}))
+            test.is_true(swept.success)
+            db = assert(sql.get("app:db"))
+            local rows = assert(db:query("SELECT id FROM mail_library_preview WHERE id=$1", {preview.preview_id}))
+            assert(db:release())
+            test.eq(0, #rows)
+        end)
+
         test.it("lists broken dependents and refuses the whole save when the library changes after preview", function()
             local editor = caller(EDITOR, true, false)
             local button = ok(editor, "library_read", key("part", "button"))

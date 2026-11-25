@@ -83,11 +83,6 @@ entries:
     kind: library.lua
     source: file://types.lua
     modules: [sql]
-  - name: realtime
-    kind: library.lua
-    source: file://realtime.lua
-    modules: [contract, logger]
-    imports: { types: kickside.mail:types }
   - name: client
     kind: library.lua
     source: file://client.lua

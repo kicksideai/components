@@ -199,7 +199,7 @@ function M.resources(filter: types.ResourceFilter): ({types.Resource}?, error?)
     end)
 end
 
-function M.require_read(): error?
+local function require_access(mask: integer, mode: string): error?
     local denied = client.require_library()
     if denied then return denied end
     local definition, definition_err = contract.get("kickside.component:component_service")
@@ -207,14 +207,23 @@ function M.require_read(): error?
     local service, open_err = definition:open()
     if open_err then return open_err end
     local result, call_err = (service :: types.ComponentAccessContract):get_access_context({
-        component_id = content.library_component_id(), access_mask = component_types.ACCESS.READ, include_context = false,
+        component_id = content.library_component_id(), access_mask = mask, include_context = false,
     })
     if call_err then return component_envelope.call_error(call_err, "get_access_context") end
     local err = component_envelope.error_of(result, "get_access_context")
     if err and err:kind() == errors.PERMISSION_DENIED then
-        return error_envelope.wrap(err, "Mail library component READ access is required", {code = "mail_library_read_denied"})
+        return error_envelope.wrap(err, "Mail library component " .. mode:upper() .. " access is required",
+            {code = "mail_library_" .. mode .. "_denied"})
     end
     return err
+end
+
+function M.require_read(): error?
+    return require_access(component_types.ACCESS.READ, "read")
+end
+
+function M.require_write(): error?
+    return require_access(component_types.ACCESS.WRITE, "write")
 end
 
 function M.live_message(name: unknown): (types.Resource?, error?)

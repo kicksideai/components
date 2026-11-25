@@ -50,9 +50,14 @@ local function write_asset(tx: types.Transaction, item: types.Resource, change: 
 end
 
 function M.write(tx: types.Transaction, item: types.Resource, change: types.RevisionChange): (types.LibraryWrite?, error?)
-    local history, history_err = tx:query([[SELECT version FROM mail_library_revision
+    local history, history_err = tx:query([[SELECT version,action FROM mail_library_revision
         WHERE kind=$1 AND name=$2 ORDER BY revision DESC LIMIT 1]], {item.kind, item.name})
     if history_err then return nil, history_err end
+    if history[1] and history[1].action == "deleted" then
+        local _, err = tx:execute([[DELETE FROM mail_library_revision WHERE kind=$1 AND name=$2 AND action='deleted']],
+            {item.kind, item.name})
+        if err then return nil, err end
+    end
     local version = (history[1] and (history[1].version :: integer) or 0) + 1
     if item.kind == "asset" then return write_asset(tx, item, change, version) end
     local encoded_schema, schema_err = json.encode(item.schema)
@@ -84,7 +89,7 @@ function M.write(tx: types.Transaction, item: types.Resource, change: types.Revi
     return {item = item, released = released :: {types.Record}}, nil
 end
 
-function M.remove(tx: types.Transaction, key: types.ResourceKey, deleting: boolean): ({types.Record}?, error?)
+function M.remove(tx: types.Transaction, key: types.ResourceKey, deleting: boolean, revision: integer?): ({types.Record}?, error?)
     if key.kind == "asset" then
         local live, err = tx:query("DELETE FROM mail_library_asset WHERE name=$1 RETURNING upload_id", {key.name})
         if err then return nil, err end
@@ -97,8 +102,15 @@ function M.remove(tx: types.Transaction, key: types.ResourceKey, deleting: boole
         return live :: {types.Record}, nil
     end
     if deleting then
-        local _, err = tx:execute("DELETE FROM mail_library_revision WHERE kind=$1 AND name=$2", {key.kind, key.name})
+        local _, err = tx:execute([[DELETE FROM mail_library_revision WHERE kind=$1 AND name=$2 AND revision <> $3]],
+            {key.kind, key.name, revision or 0})
         if err then return nil, err end
+        if revision then
+            local _, mark_err = tx:execute([[UPDATE mail_library_revision SET action='deleted',version=0,
+                title='',description='',html='',text='',subject=NULL,base=NULL,schema_json='{}',samples_json='{}',note=NULL
+                WHERE kind=$1 AND name=$2 AND revision=$3]], {key.kind, key.name, revision})
+            if mark_err then return nil, mark_err end
+        end
     end
     local _, err = tx:execute("DELETE FROM mail_library WHERE kind=$1 AND name=$2", {key.kind, key.name})
     if err then return nil, err end

@@ -61,6 +61,19 @@ local run = test.run_cases(function()
             assert(db:release())
         end)
         local function call(method, input)
+            local draft
+            if input.kind ~= "asset" then
+                local message = input.kind == "message" and input.name or "notice"
+                if method == "create" then
+                    draft = {message = message, create = input}
+                elseif method == "update" then
+                    draft = {message = message, resources = {input}}
+                end
+            end
+            if draft then
+                local preview = assert(editor:call(LIBRARY .. "preview_edits", draft))
+                input.preview_id = assert(preview.preview_id, preview.errors[1] and preview.errors[1].message)
+            end
             local result, err = editor:call(LIBRARY .. method, input)
             return assert(result, tostring(err))
         end

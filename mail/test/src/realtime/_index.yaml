@@ -26,3 +26,13 @@ entries:
     source: file://broadcast.lua
     method: notify
     modules: [json, security, sql]
+  - name: notify_test
+    kind: function.lua
+    meta: {type: test, suite: mail_realtime}
+    source: file://notify_test.lua
+    method: run
+    modules: [funcs, sql]
+    imports:
+      test: wippy.test:test
+      api_fixtures: app.mail_api:fixtures
+      library_fixtures: app.mail_library:fixtures

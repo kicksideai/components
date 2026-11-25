@@ -51,6 +51,13 @@ return {run = test.run_cases(function()
     test.describe("Mail draft workspace", function()
         local editor, actor, scope, owned, initial, live_html
 
+        local function create(item)
+            local draft = {message = item.kind == "message" and item.name or "notice", create = item}
+            local result = assert(editor:call(NS .. "preview_edits", draft))
+            item.preview_id = assert(result.preview_id, result.errors[1] and result.errors[1].message)
+            return assert(editor:call(NS .. "create", item))
+        end
+
         test.before_each(function()
             owned = {}
             scope = assert(security.new_scope({
@@ -59,7 +66,7 @@ return {run = test.run_cases(function()
             }))
             actor = assert(security.new_actor("workspace-editor", {security_groups = {"app:mail_editors"}}))
             editor = assert(funcs.new():with_actor(actor):with_scope(scope))
-            initial = assert(editor:call(NS .. "create", resource("message", MESSAGE, "Live body")))
+            initial = create(resource("message", MESSAGE, "Live body"))
             owned[1] = {kind = "message", name = MESSAGE}
             live_html = assert(editor:call(NS .. "render", {template = MESSAGE, vars = {}})).html
             test.not_nil(live_html:find("Live body", 1, true))
@@ -84,16 +91,17 @@ return {run = test.run_cases(function()
             test.not_nil(result.html:find("Next body", 1, true))
             test.eq(0, #workspace())
             live_is_unchanged()
-            local saved = assert(editor:call(NS .. "save", {resources = {edit}}))
+            local review = assert(editor:call(NS .. "preview_edits", {message = MESSAGE, resources = {edit}}))
+            local saved = assert(editor:call(NS .. "save", {resources = {edit}, preview_id = assert(review.preview_id)}))
             test.eq(edit.html, saved[1].html)
             test.neq(initial.revision, saved[1].revision)
             test.eq(0, #workspace())
         end
 
         test.it("builds scratch entries for only the message and its referenced base", function()
-            local base = assert(editor:call(NS .. "create", resource("base", "workspace-base", "{{ block body() }}{{ end }}")))
+            local base = create(resource("base", "workspace-base", "{{ block body() }}{{ end }}"))
             owned[#owned + 1] = {kind = "base", name = base.name}
-            local extra = assert(editor:call(NS .. "create", resource("part", PART, "Unrelated part")))
+            local extra = create(resource("part", PART, "Unrelated part"))
             owned[#owned + 1] = {kind = "part", name = extra.name}
             local draft = resource("message", MESSAGE, "Closure body")
             draft.base = base.name
@@ -122,13 +130,14 @@ return {run = test.run_cases(function()
         test.it("evaluates and saves after cancelled save validation without committing the edit", function()
             local draft = resource("message", MESSAGE, "Cancelled save body")
             draft.expected_revision = initial.revision
-            cancel_after_publication(editor, "save", {resources = {draft}})
+            local review = assert(editor:call(NS .. "preview_edits", {message = MESSAGE, resources = {draft}}))
+            cancel_after_publication(editor, "save", {resources = {draft}, preview_id = assert(review.preview_id)})
             live_is_unchanged()
             preview_and_save()
         end)
 
         test.it("discards a cancelled candidate with different resources and a deleted part", function()
-            local part = assert(editor:call(NS .. "create", resource("part", PART, "Live part")))
+            local part = create(resource("part", PART, "Live part"))
             owned[2] = {kind = "part", name = PART}
             local edited = resource("part", PART, "Cancelled part")
             local extra = resource("part", "workspace-extra", "Draft-only part")

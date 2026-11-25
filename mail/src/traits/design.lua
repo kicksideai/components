@@ -8,7 +8,9 @@ local M = {}
 local LIBRARY = "kickside.mail.library:"
 local REFUSALS = {
     mail_revision_conflict = true,
+    mail_preview_required = true,
     mail_preview_mismatch = true,
+    mail_preview_stale = true,
     mail_preview_expired = true,
     mail_resource_not_customized = true,
 }
@@ -37,20 +39,6 @@ local function write_one(method: string, input: unknown): (types.Record | types.
     return summary(item :: types.Resource), nil
 end
 
-local function require_preview(input: unknown): (types.Record?, error?)
-    local denied = client.require_library()
-    if denied then return nil, denied end
-    if type(input) ~= "table" then
-        return tool_result.fail(errors.INVALID, "Provide a mail library write request")
-    end
-    local value = (input :: types.Record).preview_id
-    if value == nil or value == "" then
-        return tool_result.domain_error("Preview these changes first, then pass the returned preview_id",
-            {code = "mail_preview_required"}), nil
-    end
-    return nil, nil
-end
-
 function M.list(input: types.LibraryPageRequest): (unknown, error?)
     local value, err = call(LIBRARY .. "list_page", input)
     if err then return nil, err end
@@ -77,8 +65,6 @@ function M.preview(input: types.EditPreview): (unknown, error?)
 end
 
 function M.save(input: types.ResourceSave): (unknown, error?)
-    local required, invalid = require_preview(input)
-    if invalid or required then return required, invalid end
     local saved, err = call(LIBRARY .. "save", input)
     if err then return refusal(err) end
     local rows: {types.LibraryRowSummary} = {}
@@ -87,8 +73,6 @@ function M.save(input: types.ResourceSave): (unknown, error?)
 end
 
 function M.create(input: types.ResourceCreate): (unknown, error?)
-    local required, invalid = require_preview(input)
-    if invalid or required then return required, invalid end
     return write_one("create", input)
 end
 

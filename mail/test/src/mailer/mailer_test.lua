@@ -613,10 +613,13 @@ return {
                 template.vars.subject = string.rep("é", 256)
                 local value, err = invoke(sender, "send", template)
                 refusal(value, err, errors.INVALID, "subject_too_long")
-                local amplifying = assert(funcs.call("kickside.mail.library:create", {
+                local draft = {
                     kind = "message", name = "rendered-text-boundary", from = {kind = "message", name = "notice"},
                     text = "{{ block body() }}" .. string.rep("{{ vars.message }}", 65) .. "{{ end }}",
-                }))
+                }
+                local preview = assert(funcs.call("kickside.mail.library:preview_edits", {message = draft.name, create = draft}))
+                draft.preview_id = assert(preview.preview_id)
+                local amplifying = assert(funcs.call("kickside.mail.library:create", draft))
                 template.template = amplifying.name
                 template.vars.subject = "Status"
                 template.vars.message = string.rep("a", 4096)

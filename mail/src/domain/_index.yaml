@@ -57,3 +57,7 @@ entries:
     kind: library.lua
     source: file://jet.lua
     imports: { types: kickside.mail:types }
+  - name: edit
+    kind: library.lua
+    source: file://edit.lua
+    imports: {types: kickside.mail:types, resource: kickside.mail.domain:resource}

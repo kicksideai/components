@@ -233,14 +233,9 @@ local function user_recipient(value: unknown): boolean
     return true
 end
 
-function M.origin_text(value: unknown): boolean
-    return type(value) == "string" and #value <= 256 and utf8.len(value) ~= nil
-        and value:find("%S") ~= nil and value:find("%c") == nil
-end
-
 local function origin_error(value: unknown): error?
-    if type(value) ~= "table" or not M.origin_text(value.kind)
-        or not M.origin_text(value.id) or (value.label ~= "" and not M.origin_text(value.label)) then
+    if type(value) ~= "table" or not types.origin_text(value.kind)
+        or not types.origin_text(value.id) or (value.label ~= "" and not types.origin_text(value.label)) then
         return invalid("invalid_mail_origin", "Origin requires a kind, ID and label")
     end
     for key in pairs(value) do

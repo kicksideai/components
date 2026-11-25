@@ -10,8 +10,6 @@ local uuid = require("uuid")
 local test = require("test")
 local library_fixtures = require("library_fixtures")
 local fixtures = require("fixtures")
-local normalize = require("normalize")
-local receipt = require("preview_id")
 local session = fixtures.session
 local settings = fixtures.settings
 
@@ -35,6 +33,31 @@ local function data(who, method, path, payload, expected)
     assert(status == (expected or 200), method .. " " .. path .. " returned " .. status .. ": " .. raw)
     test.is_true(body.success, raw)
     return body.data
+end
+
+local function review(who, message, edit)
+    edit.message = message
+    local result = data(who, "POST", "/library/preview?review=true", edit)
+    return assert(result.preview_id, result.errors[1] and result.errors[1].message)
+end
+
+local function create(who, item)
+    item.preview_id = review(who, item.kind == "message" and item.name or "notice", {create = item})
+    return data(who, "POST", "/library", item, 201)
+end
+
+local function update(who, item, message)
+    item.preview_id = review(who, message or (item.kind == "message" and item.name or "notice"), {resources = {item}})
+    return data(who, "PUT", "/library/" .. item.kind .. "/" .. item.name, item)
+end
+
+local function revision_write(who, operation, item, fields, message)
+    fields.kind, fields.name = item.kind, item.name
+    fields.expected_revision = item.revision
+    local route = "/library/" .. item.kind .. "/" .. item.name .. "/" .. operation
+    local draft = {[operation == "base" and "set_base" or operation] = fields}
+    fields.preview_id = review(who, message or (item.kind == "message" and item.name or "notice"), draft)
+    return data(who, "POST", route, fields)
 end
 
 local function await_delivery(who, id)
@@ -163,7 +186,7 @@ return {run = test.run_cases(function()
             local edit = {kind = shipped.kind, name = shipped.name, title = shipped.title, description = shipped.description,
                 html = shipped.html, text = shipped.text, subject = "Customized subject", base = shipped.base,
                 schema = shipped.schema, samples = shipped.samples, expected_revision = shipped.revision}
-            data(editor, "PUT", route, edit)
+            update(editor, edit)
             local current = data(editor, "GET", route)
             test.eq("customized", current.state)
             test.eq("Customized subject", current.subject)
@@ -174,7 +197,7 @@ return {run = test.run_cases(function()
             test.eq(shipped.samples.subject, current.original.samples.subject)
             test.eq(403, (request(session("sender"), "GET", route)))
             local part = own(fixture("part", "original-source-local", "Local part"))
-            data(editor, "POST", "/library", part, 201)
+            create(editor, part)
             test.is_nil(data(editor, "GET", "/library/part/" .. part.name).original)
         end)
 
@@ -263,7 +286,7 @@ return {run = test.run_cases(function()
         test.it("returns an exact total and one order across stored and packaged library pages", function()
             local editor = session("editor")
             for _, name in ipairs({"zz-paging", "aa-paging"}) do
-                data(editor, "POST", "/library", own(fixture("part", name, "Pagination entry")), 201)
+                create(editor, own(fixture("part", name, "Pagination entry")))
             end
             local route = "/library?kind=part&view=summary&limit=2"
             local all = data(editor, "GET", "/library?kind=part").items
@@ -350,6 +373,7 @@ return {run = test.run_cases(function()
             end
             assert_maps("GET", "/library/part/header", nil, 200)
             assert_maps("GET", "/library/asset/logo", nil, 200)
+            part.preview_id = review(editor, "notice", {create = part})
             assert_maps("POST", "/library", part, 201)
             assert_maps("GET", route, nil, 200)
             assert_maps("GET", "/library?kind=part&q=empty-maps", nil, 200)
@@ -361,14 +385,14 @@ return {run = test.run_cases(function()
             local item = own(fixture("message", "history-actions", "{{ block body() }}Initial{{ end }}"))
             item.base, item.subject = "plain", "Initial subject"
             local route = "/library/message/" .. item.name
-            local created = data(editor, "POST", "/library", item, 201)
-            data(editor, "POST", "/library", own(fixture("part", "history-interleave", "Part")), 201)
+            local created = create(editor, item)
+            create(editor, own(fixture("part", "history-interleave", "Part")))
             item.expected_revision = created.revision
             item.note = "Reword subject"
             item.subject = "Edited subject"
-            local edited = data(editor, "PUT", route, item)
-            local moved = data(editor, "POST", route .. "/base", {base = "standard", expected_revision = edited.revision})
-            local restored = data(editor, "POST", route .. "/restore", {revision = created.revision, expected_revision = moved.revision})
+            local edited = update(editor, item)
+            local moved = revision_write(editor, "base", edited, {base = "standard"})
+            local restored = revision_write(editor, "restore", moved, {revision = created.revision})
             local history = data(editor, "GET", route .. "/history").items
             test.eq(4, #history)
             test.eq("restored", history[1].action)
@@ -384,18 +408,97 @@ return {run = test.run_cases(function()
             test.eq(created.revision, history[4].revision)
             local original = own(data(editor, "GET", "/library/base/plain"))
             original.expected_revision = original.revision
-            local custom = data(editor, "PUT", "/library/base/plain", original)
-            data(editor, "POST", "/library/base/plain/reset", {expected_revision = custom.revision})
+            local custom = update(editor, original)
+            revision_write(editor, "reset", custom, {})
             local reset = data(editor, "GET", "/library/base/plain/history").items[1]
             test.eq("reset", reset.action)
             test.eq("original", reset.state)
             test.eq(2, reset.version)
         end)
 
+        test.it("requires a reviewed draft for an HTTP edit", function()
+            local editor = session("editor")
+            local item = own(fixture("message", "reviewed-edit", "{{ block body() }}Before{{ end }}"))
+            item.subject = "Reviewed edit"
+            local route = "/library/message/" .. item.name
+            local created = create(editor, item)
+            item.expected_revision = created.revision
+            item.preview_id = nil
+            item.html = "{{ block body() }}After{{ end }}"
+            local status, rejected = request(editor, "PUT", route, item)
+            test.eq(400, status)
+            test.eq("mail_preview_required", rejected.code)
+            test.eq(created.revision, data(editor, "GET", route).revision)
+            local saved = update(editor, item)
+            test.eq(item.html, saved.html)
+        end)
+
+        test.it("requires a reviewed draft for an HTTP restore", function()
+            local editor = session("editor")
+            local item = own(fixture("message", "reviewed-restore", "{{ block body() }}Before{{ end }}"))
+            item.subject = "Reviewed restore"
+            local route = "/library/message/" .. item.name
+            local created = create(editor, item)
+            local status, rejected = request(editor, "POST", route .. "/restore",
+                {revision = created.revision, expected_revision = created.revision})
+            test.eq(400, status)
+            test.eq("mail_preview_required", rejected.code)
+            test.eq(1, #data(editor, "GET", route .. "/history").items)
+            item.expected_revision = created.revision
+            local edited = update(editor, item)
+            local source = {kind = "message", name = item.name, expected_revision = edited.revision, revision = created.revision}
+            item.expected_revision = edited.revision
+            source.preview_id = review(editor, item.name, {resources = {item}})
+            status, rejected = request(editor, "POST", route .. "/restore", source)
+            test.eq(400, status)
+            test.eq("mail_preview_mismatch", rejected.code)
+            source.preview_id = nil
+            local receipt = review(editor, item.name, {restore = source})
+            source.preview_id, source.revision = receipt, edited.revision
+            status, rejected = request(editor, "POST", route .. "/restore", source)
+            test.eq(400, status)
+            test.eq("mail_preview_mismatch", rejected.code)
+            source.revision = created.revision
+            local restored = data(editor, "POST", route .. "/restore", source)
+            local history = data(editor, "GET", route .. "/history").items
+            test.eq(restored.revision, history[1].revision)
+            test.eq("restored", history[1].action)
+            test.eq(1, history[1].restored_from)
+        end)
+
+        test.it("stores a randomly assigned preview with a fifteen minute expiry", function()
+            local editor = session("editor")
+            local item = own(fixture("message", "stored-preview", "{{ block body() }}Before{{ end }}"))
+            item.subject = "Stored preview"
+            local created = create(editor, item)
+            item.expected_revision = created.revision
+            local before = time.now():unix()
+            local draft = {message = item.name, resources = {item}}
+            local caller = assert(funcs.new():with_actor(editor.actor):with_scope(editor.scope))
+            local first = assert(caller:call("kickside.mail.library:preview_edits", draft))
+            local second = assert(caller:call("kickside.mail.library:preview_edits", draft))
+            local db = assert(sql.get("app:db"))
+            local rows, read_err = db:query([[SELECT id, digest, expected_json, actor, expires_at FROM mail_library_preview
+                WHERE id IN ($1, $2)]], {first.preview_id or "", second.preview_id or ""})
+            assert(db:release())
+            assert(rows, read_err)
+            test.eq(2, #rows)
+            test.is_true(uuid.validate(first.preview_id))
+            test.is_true(uuid.validate(second.preview_id))
+            test.neq(first.preview_id, second.preview_id)
+            test.eq(rows[1].digest, rows[2].digest)
+            for _, row in ipairs(rows) do
+                test.is_true(row.expires_at >= before + 900)
+                test.is_true(row.expires_at <= time.now():unix() + 900)
+                test.eq(editor.id, row.actor)
+                test.eq(created.revision, assert(json.decode(row.expected_json))[item.kind .. "/" .. item.name])
+            end
+        end)
+
         test.it("labels library authors and delivery senders through the principal directory", function()
             local editor = session("editor")
             local item = own(fixture("part", "label-part", "Content"))
-            data(editor, "POST", "/library", item, 201)
+            create(editor, item)
             local row = data(editor, "GET", "/library/part/" .. item.name)
             test.eq(editor.id, row.author)
             test.eq(editor.id, row.author_label.id)
@@ -427,7 +530,7 @@ return {run = test.run_cases(function()
             local sender = session("sender")
             local item = own(fixture("message", "recent-sender-labels", "{{ block body() }}Content{{ end }}"))
             item.base, item.subject = "plain", "Sender labels"
-            data(editor, "POST", "/library", item, 201)
+            create(editor, item)
             failed(sender.id, "Recent", "reader@example.org", nil, item.name)
             failed(ZERO, "Recent unknown", "unknown@example.org", nil, item.name)
             local resource = data(editor, "GET", "/library/message/" .. item.name)
@@ -496,16 +599,16 @@ return {run = test.run_cases(function()
             test.eq(2, summary())
             local item = own(fixture("message", "asset-usage", "{{ block body() }}Usage{{ end }}"))
             item.base, item.subject = "standard", "Usage"
-            local saved = data(editor, "POST", "/library", item, 201)
+            local saved = create(editor, item)
             test.eq(3, summary())
             test.eq("asset-usage", used_by()[1])
             test.eq("notice", used_by()[2])
             item.base, item.expected_revision = "plain", saved.revision
-            saved = data(editor, "PUT", "/library/message/" .. item.name, item)
+            saved = update(editor, item)
             test.eq(2, summary())
             test.eq("notice", used_by()[1])
             item.base, item.expected_revision = "standard", saved.revision
-            saved = data(editor, "PUT", "/library/message/" .. item.name, item)
+            saved = update(editor, item)
             test.eq(3, summary())
             data(editor, "DELETE", "/library/message/" .. item.name, {expected_revision = saved.revision})
             test.eq(2, summary())
@@ -578,7 +681,7 @@ return {run = test.run_cases(function()
             end
             local exact = own(fixture("part", string.rep("p", 128), string.rep("h", 65536)))
             exact.note = string.rep("n", 4096)
-            local created = data(editor, "POST", "/library", exact, 201)
+            local created = create(editor, exact)
             test.eq(65536, #created.html)
             test.eq(128, #created.name)
             local status, err = request(editor, "POST", "/library/preview",
@@ -607,9 +710,9 @@ return {run = test.run_cases(function()
             test.eq(262144, send_error.details.maximum)
             local resource = own({kind = "message", name = "render-budget-copy",
                 from = {kind = "message", name = "notice"}, samples = vars})
-            status, refused = request(editor, "POST", "/library", resource)
-            test.eq(400, status)
-            test.eq("html_too_large", refused.code)
+            local review_result = data(editor, "POST", "/library/preview?review=true", {message = resource.name, create = resource})
+            test.is_nil(review_result.preview_id)
+            test.eq("html_too_large", review_result.errors[1].code)
             test.eq(404, (request(editor, "GET", "/library/message/" .. resource.name)))
             vars.message = string.rep("x", 64 * 1024)
             status, refused = request(editor, "POST", "/library/preview", {message = "notice", vars = vars})
@@ -620,13 +723,13 @@ return {run = test.run_cases(function()
         test.it("names the candidate sources when a draft message include fails", function()
             local editor = session("editor")
             local part = own(fixture("part", "candidate-part", "Static"))
-            data(editor, "POST", "/library", part, 201)
+            create(editor, part)
             local base = own(fixture("base", "candidate-base",
                 '{{ include "/part/candidate-part" }}{{ block body() }}{{ end }}'))
-            data(editor, "POST", "/library", base, 201)
+            create(editor, base)
             local message = own(fixture("message", "candidate-message", "{{ block body() }}Content{{ end }}"))
             message.base, message.subject = base.name, "Candidate diagnostic"
-            data(editor, "POST", "/library", message, 201)
+            create(editor, message)
             part.html = "{{ missing_value }}"
             local _, body = request(editor, "POST", "/library/preview", {message = message.name, resource = part})
             test.eq(message.name, body.details.resource.name)
@@ -656,6 +759,14 @@ return {run = test.run_cases(function()
             test.eq(errors.INVALID, body.kind, raw)
             test.eq("template_render_failed", body.code, raw)
             cycle_failure(body.error, body.details, path, diagnostic)
+        end
+
+        local function review_cycle(editor, draft, diagnostic)
+            local result = data(editor, "POST", "/library/preview?review=true", draft)
+            test.is_nil(result.preview_id)
+            local issue = assert(result.errors[1])
+            test.eq("template_render_failed", issue.code)
+            cycle_failure(issue.message, issue, "review", diagnostic)
         end
 
         local function tool_cycle(editor, tool, payload, diagnostic)
@@ -712,7 +823,7 @@ return {run = test.run_cases(function()
                 if graph.peer then
                     local source = graph.peer == "base" and "Peer {{ block body() }}{{ end }}" or "Peer"
                     peer = own(fixture(graph.peer, "cycle-peer", source))
-                    data(editor, "POST", "/library", peer, 201)
+                    create(editor, peer)
                 end
                 if graph.kind == "message" and graph.word == "extends" and peer then target.base = peer.name end
                 local good_html = target.html
@@ -729,9 +840,6 @@ return {run = test.run_cases(function()
                         seed_source("mail_library", peer, source)
                     end
                 end
-                local function sign(operation)
-                    return assert(receipt.issue({assert(normalize.normalize(target))}, editor.id, operation, time.now():unix()))
-                end
                 local function alive()
                     local preview = data(editor, "POST", "/library/preview", {message = "notice"})
                     test.not_nil(preview.html)
@@ -740,26 +848,25 @@ return {run = test.run_cases(function()
                 -- A pre-existing source may name a resource that has yet to be created.
                 arm_peer(true)
                 target.html = bad_html
-                http_cycle(editor, "POST", "/library", target, graph.diagnostic)
-                target.preview_id = sign("create")
-                tool_cycle(agent, "library_create", target, graph.diagnostic)
-                target.preview_id = nil
+                local create_draft = {message = target.kind == "message" and target.name or "notice", create = target}
+                review_cycle(editor, create_draft, graph.diagnostic)
+                tool_cycle(agent, "library_preview", create_draft, graph.diagnostic)
                 test.eq(404, (request(editor, "GET", route)))
                 alive()
                 arm_peer(false)
 
                 target.html = good_html
-                local first = data(editor, "POST", "/library", target, 201)
+                local first = create(editor, target)
                 local message = target.name
                 if target.kind ~= "message" then
                     local body = "Cycle content"
                     if target.kind == "part" then body = directive("include", target.kind, target.name) end
                     local dependent = own(fixture("message", "cycle-dependent", "{{ block body() }}" .. body .. "{{ end }}"))
                     dependent.base, dependent.subject = target.kind == "base" and target.name or "standard", "Cycle"
-                    data(editor, "POST", "/library", dependent, 201)
+                    create(editor, dependent)
                     message = dependent.name
                 end
-                local second = data(editor, "PUT", route, {
+                local second = update(editor, {
                     kind = target.kind, name = target.name, html = good_html, text = target.text,
                     title = "Healthy current revision", description = target.description,
                     subject = target.subject, base = target.base, schema = target.schema, samples = target.samples,
@@ -773,17 +880,16 @@ return {run = test.run_cases(function()
                 http_cycle(editor, "POST", "/library/preview", preview, graph.diagnostic)
                 tool_cycle(agent, "library_preview", preview, graph.diagnostic)
                 alive()
-                http_cycle(editor, "PUT", route, target, graph.diagnostic)
-                http_cycle(editor, "POST", "/library/save", {resources = {target}}, graph.diagnostic)
-                tool_cycle(agent, "library_save", {resources = {target}, preview_id = sign("update")}, graph.diagnostic)
+                review_cycle(editor, preview, graph.diagnostic)
                 alive()
 
                 -- A revision imported from an earlier installation may contain invalid source.
                 seed_source("mail_library_revision", first, bad_html)
                 local restore = {kind = target.kind, name = target.name,
                     revision = first.revision, expected_revision = second.revision}
-                http_cycle(editor, "POST", route .. "/restore", restore, graph.diagnostic)
-                tool_cycle(agent, "library_restore", restore, graph.diagnostic)
+                local restore_draft = {message = message, restore = restore}
+                review_cycle(editor, restore_draft, graph.diagnostic)
+                tool_cycle(agent, "library_preview", restore_draft, graph.diagnostic)
                 arm_peer(false)
                 local stored = data(editor, "GET", route)
                 test.eq(second.revision, stored.revision)
@@ -797,12 +903,12 @@ return {run = test.run_cases(function()
         test.it("serves library edits and candidate previews through the router", function()
             local editor = session("editor")
             local base = own(fixture("base", "http-frame", "[{{ block body() }}{{ end }}]"))
-            local saved_base = data(editor, "POST", "/library", base, 201)
+            local saved_base = create(editor, base)
             local msg = own(fixture("message", "http-message", "{{ block body() }}Body{{ end }}"))
             msg.base, msg.subject = base.name, "Hello"
-            local saved = data(editor, "POST", "/library", msg, 201)
-            local copy = data(editor, "POST", "/library", own({kind = "message", name = "http-copy",
-                from = {kind = "message", name = msg.name}, title = "Copy of the fixture"}), 201)
+            local saved = create(editor, msg)
+            local copy = create(editor, own({kind = "message", name = "http-copy",
+                from = {kind = "message", name = msg.name}, title = "Copy of the fixture"}))
             test.eq(msg.subject, copy.subject)
             test.eq(msg.base, copy.base)
             local list = data(editor, "GET", "/library?kind=message&state=created&q=fixture")
@@ -833,23 +939,25 @@ return {run = test.run_cases(function()
             draft.html = draft.text
             draft.expected_revision = saved.revision
             base.expected_revision = saved_base.revision
-            local result = data(editor, "POST", "/library/save", {resources = {draft, base}, note = "Save both"})
+            local batch = {resources = {draft, base}, note = "Save both"}
+            batch.preview_id = review(editor, msg.name, {resources = batch.resources})
+            local result = data(editor, "POST", "/library/save", batch)
             test.eq(2, #result.items)
             copy.expected_revision = copy.revision
             copy.title = "New copy name"
-            local single = data(editor, "PUT", "/library/message/" .. copy.name, copy)
-            local moved = data(editor, "POST", name .. "/base", {base = "plain", expected_revision = result.items[1].revision})
+            local single = update(editor, copy)
+            local moved = revision_write(editor, "base", result.items[1], {base = "plain"})
             local revisions = data(editor, "GET", name .. "/history")
             test.eq(3, #revisions.items)
             test.eq("Save both", revisions.items[2].note)
-            local restored = data(editor, "POST", name .. "/restore", {revision = saved.revision, expected_revision = moved.revision})
+            local restored = revision_write(editor, "restore", moved, {revision = saved.revision})
             test.eq(base.name, restored.base)
             local shipped = own(data(editor, "GET", "/library/base/plain"))
             local original_revision = shipped.revision
             shipped.html, shipped.text = base.html, base.text
             shipped.expected_revision = original_revision
-            local customized = data(editor, "PUT", "/library/base/plain", shipped)
-            local reset = data(editor, "POST", "/library/base/plain/reset", {expected_revision = customized.revision})
+            local customized = update(editor, shipped)
+            local reset = revision_write(editor, "reset", customized, {})
             test.eq("original", reset.state)
             test.is_true(reset.revision > original_revision)
 
@@ -858,7 +966,7 @@ return {run = test.run_cases(function()
             data(editor, "DELETE", "/library/base/" .. base.name, {expected_revision = result.items[2].revision})
         end)
 
-        test.it("emits library and delivery wake-ups only for committed state", function()
+        test.it("broadcasts topic-only library and Activity invalidations after commit", function()
             local db = assert(sql.get("app:db"))
             assert(db:execute("DELETE FROM mail_realtime_fixture"))
             assert(db:release())
@@ -866,36 +974,33 @@ return {run = test.run_cases(function()
             local admin = session("delivery")
             configure()
             local item = own(fixture("base", "event-frame", "{{ block body() }}{{ end }}"))
-            local saved = data(editor, "POST", "/library", item, 201)
-            item.expected_revision = 0
-            test.eq(409, (request(editor, "PUT", "/library/base/" .. item.name, item)))
-            local send = data(editor, "POST", "/library/send-test", {message = "notice"}, 202)
+            local saved = create(editor, item)
+            test.eq(409, (request(editor, "POST", "/library", item)))
+            local send = data(editor, "POST", "/library/send-test", {
+                message = "notice", vars = {subject = "Realtime fixture delivery"},
+            }, 202)
+            activity_rows[#activity_rows + 1] = send.message_id
             local deadline = time.now():add(10 * time.SECOND):unix_nano()
             local events
             repeat
                 db = assert(sql.get("app:db"))
-                events = assert(db:query("SELECT topic, data, observed FROM mail_realtime_fixture WHERE subject IN ($1,$2)",
-                    {item.name, send.message_id}))
+                events = assert(db:query("SELECT data, observed FROM mail_realtime_fixture WHERE subject='fixture'"))
                 assert(db:release())
                 if #events < 3 then time.sleep("20ms") end
             until #events >= 3 or time.now():unix_nano() >= deadline
             test.eq(3, #events)
             local seen = {}
             for _, event in ipairs(events) do
-                local payload = assert(json.decode(event.data))
-                if event.topic == "mail.library.changed" then
-                    test.eq("base", payload.kind)
-                    test.eq(item.name, payload.name)
-                    test.eq(saved.revision, payload.revision)
+                local envelope = assert(json.decode(event.data))
+                local fields = 0
+                for _ in pairs(envelope) do fields = fields + 1 end
+                test.eq(1, fields)
+                if envelope.topic == "mail.library" then
                     test.eq(tostring(saved.revision), event.observed)
-                    test.is_nil(payload.html)
                     seen.library = true
                 else
-                    test.eq("mail.message.changed", event.topic)
-                    test.eq(send.message_id, payload.message_id)
-                    test.is_nil(payload.subject)
-                    if payload.status == "sent" then test.eq("sent", event.observed) end
-                    seen[payload.status] = true
+                    test.eq("mail.activity", envelope.topic)
+                    seen[event.observed] = true
                 end
             end
             test.is_true(seen.library)
