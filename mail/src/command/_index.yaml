@@ -9,6 +9,7 @@ entries:
     modules: [time]
   - name: library
     kind: library.lua
+    meta: {private: true}
     source: file://library.lua
     modules: [security, logger, uuid]
     imports:
@@ -59,6 +60,7 @@ entries:
       types: kickside.mail:types
   - name: library_edits
     kind: library.lua
+    meta: {private: true}
     source: file://library_edits.lua
     imports:
       usage: kickside.mail.read:usage
@@ -79,6 +81,7 @@ entries:
       live_repo: kickside.mail.persist:live_repo
   - name: assets
     kind: library.lua
+    meta: {private: true}
     source: file://assets.lua
     modules: [time, uuid]
     imports:
@@ -96,10 +99,12 @@ entries:
       asset_file_repo: kickside.mail.persist:asset_file_repo
   - name: uploads
     kind: library.lua
+    meta: {private: true}
     source: file://uploads.lua
     modules: [funcs]
   - name: preview
     kind: library.lua
+    meta: {private: true}
     source: file://preview.lua
     modules: [security, uuid]
     imports:
@@ -126,6 +131,7 @@ entries:
       render: kickside.mail.render:render
   - name: notify
     kind: library.lua
+    meta: {private: true}
     source: file://notify.lua
     modules: [contract, logger]
     imports:

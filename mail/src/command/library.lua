@@ -176,7 +176,7 @@ end
 function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.LibraryWriteOptions): (types.LibrarySaveResult?, error?)
     local invalid = edit_rules.validate(edits, operation)
     if invalid then return nil, invalid end
-    local command_id, id_err = edit_rules.command_id(opts.command_id)
+    local command_id, id_err = edit_rules.command_id(opts.command_id or uuid.v4())
     if id_err then return nil, id_err end
     local actor, actor_err = security.actor()
     if actor_err then return nil, actor_err end

@@ -74,7 +74,6 @@ function M.validate(edits: {types.LibraryEdit}, operation: string): error?
 end
 
 function M.command_id(value: string?): (string?, error?)
-    if value == nil then return uuid.v4(), nil end
     if type(value) ~= "string" or not uuid.validate(value) then
         return nil, resources.error(errors.INVALID, "invalid_mail_command_id", "Command ID must be a UUID")
     end
