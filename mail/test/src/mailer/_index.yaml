@@ -93,6 +93,7 @@ entries:
     imports:
       test: wippy.test:test
       config: kickside.mail.driver:config
+      api_fixtures: app.mail_api:fixtures
     security:
       policies: [app.mail_harness:transport_probe_contract]
   - name: transports_test
@@ -104,6 +105,7 @@ entries:
     imports:
       test: wippy.test:test
       config: kickside.mail.driver:config
+      api_fixtures: app.mail_api:fixtures
   - name: endpoints
     kind: registry.entry
     endpoints:
@@ -126,7 +128,7 @@ entries:
       blocks: kickside.blocks:blocks
       compiler: kickside.workflows.compiler:compiler
       jobs: kickside.core.jobs:jobs
-      database: kickside.mail.persist:db
+      database: app:database_fixture
       api_fixtures: app.mail_api:fixtures
       admission_cases: app.mail_harness:admission_cases
       delivery_retry_cases: app.mail_harness:delivery_retry_cases
@@ -155,16 +157,17 @@ entries:
     modules: [security, json, uuid]
     imports:
       library_fixtures: app.mail_library:fixtures
-      database: kickside.mail.persist:db
+      database: app:database_fixture
   - name: delivery_retention_cases
     kind: library.lua
     source: file://delivery_retention_cases.lua
     modules: [funcs, sql, time, uuid]
     imports:
       jobs: kickside.core.jobs:jobs
-      database: kickside.mail.persist:db
+      database: app:database_fixture
       policy: kickside.mail.domain:policy
       api_fixtures: app.mail_api:fixtures
+      library_fixtures: app.mail_library:fixtures
   - name: interrupted_delivery
     kind: function.lua
     meta: {type: kickside.core.jobs.worker}
@@ -173,9 +176,10 @@ entries:
     modules: [funcs, sql, time, uuid]
     imports:
       jobs: kickside.core.jobs:jobs
-      database: kickside.mail.persist:db
+      database: app:database_fixture
       policy: kickside.mail.domain:policy
       api_fixtures: app.mail_api:fixtures
+      library_fixtures: app.mail_library:fixtures
   - name: automation_cases
     kind: library.lua
     source: file://automation_cases.lua
@@ -261,7 +265,7 @@ entries:
       blocks: kickside.blocks:blocks
       compiler: kickside.workflows.compiler:compiler
       jobs: kickside.core.jobs:jobs
-      database: kickside.mail.persist:db
+      database: app:database_fixture
       api_fixtures: app.mail_api:fixtures
       admission_cases: app.mail_harness:admission_cases
       delivery_retry_cases: app.mail_harness:delivery_retry_cases

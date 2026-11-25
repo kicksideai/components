@@ -8,10 +8,9 @@ local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
 local database = require("database")
 local jet = require("jet")
-local previews = require("previews")
 local test = require("test")
 
-local OWNER = "kickside.mail.render:scratch"
+local OWNER = jet.draft_owner
 local DRAFT = "kickside.mail.draft:"
 local MESSAGE = "workspace-message"
 local PART = "workspace-part"
@@ -31,7 +30,10 @@ local function abandoned_workspace(items, expires_at)
     local id = uuid.v4()
     local prefix = jet.scratch_namespace(id)
     if expires_at then
-        assert(database.with_db(function(db) return previews.reserve(db, id, expires_at) end))
+        assert(database.with_db(function(db)
+            return db:execute([[INSERT INTO mail_library_preview (id,actor,operation,digest,expected_json,expires_at)
+                VALUES ($1,'','scratch','','{}',$2)]], {id, expires_at})
+        end))
     end
     local changes = assert(registry.overlay(OWNER)):changes()
     for _, face in ipairs({"html", "text"}) do
@@ -135,7 +137,7 @@ return {run = test.run_cases(function()
             local prefix = abandoned_workspace({draft}, expires)
             local function sweep(at)
                 local executor = assert(funcs.new():with_context({mail_test_now = at * 1000}))
-                local report = assert(executor:call("kickside.mail.jobs:owner", {}))
+                local report = assert(executor:call(fixtures.retention_id(), {}))
                 assert(report.success, tostring(report.error))
             end
             sweep(expires - 1)
@@ -185,7 +187,7 @@ return {run = test.run_cases(function()
                     meta = {name = "part/leftover", depends_on = {set}}, data = {set = set, source = "Leftover"}}))
             end
             assert(changes:apply())
-            local boot = assert(funcs.call("kickside.mail.jobs:reconcile"))
+            local boot = assert(fixtures.boot())
             test.eq("success", boot.status, boot.message)
             test.eq(0, #workspace())
             live_is_unchanged()

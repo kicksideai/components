@@ -7,6 +7,31 @@ local registry = require("registry")
 local time = require("time")
 local json = require("json")
 local api_fixtures = require("api_fixtures")
+local autoinit = require("autoinit")
+local jet = require("jet")
+
+local function library_component_id()
+    return autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
+end
+
+local function mail_hook(kind)
+    local id
+    for _, entry in ipairs(assert(registry.find({[".kind"] = "function.lua", ["meta.type"] = kind}))) do
+        if entry.id:match("^kickside%.mail[.:]") then
+            assert(not id, "Multiple Mail hooks for " .. kind)
+            id = entry.id
+        end
+    end
+    return assert(id, "Missing Mail hook for " .. kind)
+end
+
+local function retention_id()
+    return mail_hook("kickside.retention.owner")
+end
+
+local function boot(executor)
+    return (executor or funcs.new()):call(mail_hook("bootloader"))
+end
 
 local function await(check, label)
     local deadline = time.now():add(8 * time.SECOND):unix_nano()
@@ -34,8 +59,8 @@ end
 
 local function sync_job(seq, after_id)
     local jobs = assert(database.with_db(function(ex)
-        return ex:query("SELECT id,payload,attempts,execution_seq,last_error,status FROM kickside_job WHERE job_type=$1 ORDER BY created_at,id",
-            {"kickside.mail.jobs:library_sync"})
+        return ex:query([[SELECT id,job_type,payload,attempts,execution_seq,last_error,status FROM kickside_job
+            WHERE owner_kind=$1 AND owner_id=$2 ORDER BY created_at,id]], {"mail-library", library_component_id()})
     end))
     for _, job in ipairs(jobs) do
         local payload = assert(json.decode(job.payload))
@@ -54,8 +79,8 @@ end
 local function await_sync_idle()
     await(function()
         local ready, err = database.with_db(function(ex)
-            local jobs, err = ex:query("SELECT id FROM kickside_job WHERE job_type=$1 AND status IN ('pending','running') LIMIT 1",
-                {"kickside.mail.jobs:library_sync"})
+            local jobs, err = ex:query([[SELECT id FROM kickside_job WHERE owner_kind=$1 AND owner_id=$2
+                AND status IN ('pending','running') LIMIT 1]], {"mail-library", library_component_id()})
             if err then return nil, err end
             return #jobs == 0, nil
         end)
@@ -82,7 +107,7 @@ local function remove(keys)
         end
         return true, nil
     end))
-    local overlay = assert(registry.overlay("kickside.mail.render:live"))
+    local overlay = assert(registry.overlay(jet.owner))
     for _, entry in ipairs(assert(overlay:entries())) do
         if entry.id == "kickside.mail.projection:marker" then
             local changes = overlay:changes()
@@ -91,8 +116,8 @@ local function remove(keys)
             break
         end
     end
-    local boot = assert(funcs.call("kickside.mail.jobs:reconcile"))
-    assert(boot.status == "success", boot.message)
+    local result = assert(boot())
+    assert(result.status == "success", result.message)
     await_current_live()
 end
 
@@ -143,4 +168,5 @@ local function foreign_list(input)
 end
 
 return {sync_job = sync_job, await_current_live = await_current_live, await_sync_idle = await_sync_idle, await_live = await_live, await_sync_failure = await_sync_failure, await = await, remove = remove, invoke = invoke, call = call, async = async, editor = editor, foreign_list = foreign_list,
-    render = render, mailer = mailer, invoke_mailer = invoke_mailer}
+    render = render, mailer = mailer, invoke_mailer = invoke_mailer,
+    library_component_id = library_component_id, retention_id = retention_id, boot = boot}

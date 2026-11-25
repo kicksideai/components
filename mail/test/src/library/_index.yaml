@@ -11,53 +11,28 @@ entries:
     imports:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
-      content: kickside.mail.read:content
-      lookup: kickside.uploads.persist:upload_query_repo
+      lookup: app.mail_library:upload_fixture
       api_fixtures: app.mail_api:fixtures
       component: kickside.component:component
       jobs: kickside.core.jobs:jobs
+      jet: kickside.mail.domain:jet
   - name: site_url_storage
     kind: env.storage.static
     values: {PUBLIC_API_URL: "https://example.org"}
   - name: upload_fixture
-    kind: function.lua
-    source: file://upload_fixture.lua
-    method: run
-    modules: [contract, security]
-    imports:
+    kind: library.lua
+    source: &upload_fixture_source file://upload_fixture.lua
+    modules: &upload_fixture_modules [contract, funcs, security]
+    imports: &upload_fixture_imports
       uploads: kickside.uploads:uploads
       upload_types: kickside.uploads:types
-    security:
-      policies:
-        - app.mail_library:store_component
-        - app.mail_library:store_component_config
-        - kickside.uploads.security:module_access
-        - kickside.core.retention:notify_access
-        - kickside.core.jobs.security:module_access
-        - kickside.core.jobs.persist:pool_nudge_access
-        - app.mail_harness:fixture_db
-        - app:uploads_storage_access
-  - name: store_component
-    kind: security.policy
-    policy:
-      resources: [kickside.component:component_service, kickside.component.binding:component_service_impl,
-        query, register]
-      actions: [contract.get, contract.open, contract.call]
-      effect: allow
-  - name: store_component_config
-    kind: security.policy
-    policy:
-      resources: [kickside.component:db_config, kickside.component:policy, kickside.uploads:uploads_component,
-        kickside.core:policy]
-      actions: [registry.get]
-      effect: allow
-  - name: store_upload_calls
-    kind: security.policy
-    groups: [app.mail_api:upload_editor_sender, app.mail_api:upload_editor, app.mail_api:upload_sender]
-    policy:
-      resources: [app.mail_library:upload_fixture]
-      actions: [funcs.call]
-      effect: allow
+      database: app:database_fixture
+  - name: seed_upload
+    kind: function.lua
+    source: *upload_fixture_source
+    method: run
+    modules: *upload_fixture_modules
+    imports: *upload_fixture_imports
   - name: site_url
     kind: env.variable
     variable: PUBLIC_API_URL
@@ -76,9 +51,11 @@ entries:
     source: &fixtures_source file://fixtures.lua
     modules: &fixtures_modules [contract, funcs, registry, time, json]
     imports: &fixtures_imports
-      database: kickside.mail.persist:db
+      database: app:database_fixture
       client: kickside.mail:client
       api_fixtures: app.mail_api:fixtures
+      autoinit: kickside.component:autoinit
+      jet: kickside.mail.domain:jet
   - name: invoke
     kind: function.lua
     source: *fixtures_source
@@ -128,10 +105,7 @@ entries:
       fixtures: app.mail_library:fixtures
       api_fixtures: app.mail_api:fixtures
       autoinit: kickside.component:autoinit
-      database: kickside.mail.persist:db
-      reader: kickside.mail.persist:library_reader
-      live: kickside.mail.render:live
-      originals: kickside.mail.render:originals
+      jobs: kickside.core.jobs:jobs
   - name: deny_marker_read
     kind: security.policy
     policy:
@@ -141,8 +115,8 @@ entries:
   - name: deny_library_wait
     kind: security.policy
     policy:
-      resources: [kickside.mail.command:catch_up]
-      actions: [funcs.call]
+      resources: [catch_up_projection]
+      actions: [contract.call]
       effect: deny
   - name: deny_library_append
     kind: security.policy
@@ -176,9 +150,8 @@ entries:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       api_fixtures: app.mail_api:fixtures
-      database: kickside.mail.persist:db
+      database: app:database_fixture
       jet: kickside.mail.domain:jet
-      previews: kickside.mail.persist:preview_repo
   - name: assets_test
     kind: function.lua
     meta: { type: test, suite: mail_assets }
@@ -190,11 +163,8 @@ entries:
       test: wippy.test:test
       fixtures: app.mail_library:fixtures
       upload_types: kickside.uploads:types
-      lookup: kickside.uploads.persist:upload_query_repo
+      lookup: app.mail_library:upload_fixture
       settings: app.mail_api:fixtures
-      asset_file_repo: kickside.mail.persist:asset_file_repo
-      attachments: kickside.mail.command:attachments
-      content: kickside.mail.read:content
       prune: kickside.core.retention:prune
       asset_interleave: app.mail_library:asset_interleave
       asset_lifetime_cases: app.mail_library:asset_lifetime_cases
@@ -206,12 +176,9 @@ entries:
     modules: [contract, funcs, security, sql, uuid, base64, time]
     imports:
       fixtures: app.mail_library:fixtures
-      lookup: kickside.uploads.persist:upload_query_repo
+      lookup: app.mail_library:upload_fixture
       settings: app.mail_api:fixtures
-      attachments: kickside.mail.command:attachments
-      content: kickside.mail.read:content
-      database: kickside.mail.persist:db
-      ledger: kickside.mail.persist:asset_file_repo
+      database: app:database_fixture
       asset_interleave: app.mail_library:asset_interleave
   - name: asset_content_cases
     kind: library.lua
@@ -220,10 +187,8 @@ entries:
     imports:
       fixtures: app.mail_library:fixtures
       upload_types: kickside.uploads:types
-      lookup: kickside.uploads.persist:upload_query_repo
+      lookup: app.mail_library:upload_fixture
       settings: app.mail_api:fixtures
-      attachments: kickside.mail.command:attachments
-      content: kickside.mail.read:content
   - name: asset_delivery_cases
     kind: library.lua
     source: file://asset_delivery_cases.lua
@@ -231,9 +196,8 @@ entries:
     imports:
       fixtures: app.mail_library:fixtures
       upload_types: kickside.uploads:types
-      lookup: kickside.uploads.persist:upload_query_repo
+      lookup: app.mail_library:upload_fixture
       settings: app.mail_api:fixtures
-      attachments: kickside.mail.command:attachments
   - name: asset_expiry_test
     kind: function.lua
     meta: { type: test, suite: mail_asset_expiry }
@@ -250,15 +214,15 @@ entries:
   - name: upload_storage
     kind: library.lua
     source: file://upload_storage.lua
+    modules: [fs]
     imports:
-      storage: kickside.uploads.binding:storage_adapter_default
       asset_interleave: app.mail_library:asset_interleave
   - name: acl_test
     kind: function.lua
     meta: { type: test, suite: mail_library_acl }
     source: file://acl_test.lua
     method: run
-    modules: [funcs, security, uuid]
+    modules: [contract, funcs, security, uuid]
     imports:
       autoinit: kickside.component:autoinit
       fixtures: app.mail_library:fixtures
@@ -269,11 +233,12 @@ entries:
     meta: {type: test, suite: mail_library_projection}
     source: file://projection_test.lua
     method: run
-    modules: [contract, funcs, json, security, sql, time, uuid]
+    modules: [contract, funcs, json, registry, security, sql, time, uuid]
     imports:
       events: kickside.mail.domain:events
       resource: kickside.mail.domain:resource
-      originals: kickside.mail.render:originals
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
       autoinit: kickside.component:autoinit
       test: wippy.test:test
   - name: projection_fixture
@@ -308,4 +273,8 @@ entries:
     source: file://binding_declaration_test.lua
     method: run
     modules: [registry]
-    imports: {test: wippy.test:test, resource: kickside.mail.domain:resource}
+    imports:
+      test: wippy.test:test
+      resource: kickside.mail.domain:resource
+      fixtures: app.mail_library:fixtures
+      jet: kickside.mail.domain:jet

@@ -7,6 +7,7 @@ local sql = require("sql")
 local time = require("time")
 local uuid = require("uuid")
 local library_fixtures = require("library_fixtures")
+local api_fixtures = require("api_fixtures")
 local autoinit = require("autoinit")
 
 local function register(support)
@@ -88,9 +89,7 @@ local function register(support)
 
     local function seed_history(editor, item, invalid_html)
         local actor = assert(security.new_actor(editor.id, {user_id = editor.id, security_groups = {"app:mail_editors"}}))
-        local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set",
-            {groups = {"app.mail_library:projection_fixture"}}))
-        local scope = assert(security.named_scope(materialized.scope_name))
+        local scope = api_fixtures.role_scope({"app.mail_library:projection_fixture"})
         local definition = assert(contract.get("kickside.core:threads"))
         local threads = assert(definition:with_actor(actor):with_scope(scope):open())
         local thread = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
@@ -109,7 +108,7 @@ local function register(support)
             kind = "kickside.mail:library_tables", target_seq = receipt.max_seq,
             deadline = time.now():add(5 * time.SECOND):format(time.RFC3339)})
         assert(projection and projection.done, tostring(catch_err or (projection or {}).reason))
-        local published = assert(funcs.call("kickside.mail.jobs:reconcile"))
+        local published = assert(library_fixtures.boot())
         assert(published.status == "success", published.message)
         library_fixtures.await_current_live()
         return receipt.max_seq - 1, item.revision + 2

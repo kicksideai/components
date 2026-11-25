@@ -7,18 +7,21 @@ entries:
     meta: { type: test, suite: mail_persist }
     source: file://db_test.lua
     method: run
-    modules: [registry, uuid]
+    modules: [funcs, registry]
     imports:
       test: wippy.test:test
-      db: kickside.mail.persist:db
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      database: app:database_fixture
   - name: message_test
     kind: function.lua
     meta: { type: test, suite: mail_persist }
     source: file://message_test.lua
     method: run
-    modules: [uuid]
+    modules: [funcs, sql, time, uuid]
     imports:
       test: wippy.test:test
-      db: kickside.mail.persist:db
-      reader: kickside.mail.persist:message_reader
-      repo: kickside.mail.persist:message_repo
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      database: app:database_fixture
+      delivery_wait: app.mail_harness:delivery_wait

@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+local contract = require("contract")
 local autoinit = require("autoinit")
 local funcs = require("funcs")
 local fixtures = require("fixtures")
@@ -22,10 +23,11 @@ return {run = test.run_cases(function()
         local granted
         local component_id = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
         local actor = assert(security.new_actor("system:lifecycle", {system = true, groups = {"system", "lifecycle"}}))
-        local owner = assert(funcs.new():with_actor(actor):with_scope(assert(security.named_scope("wippy.security:process"))))
+        local definition = assert(contract.get("kickside.component:component_service"))
+        local owner = assert(definition:with_actor(actor):with_scope(assert(security.named_scope("wippy.security:process"))):open())
 
         local function share(method, mask)
-            local result = assert(owner:call("kickside.component.binding:" .. method .. "_subtree_func", {
+            local result = assert(owner[method .. "_subtree"](owner, {
                 root_component_id = component_id,
                 subject = {subject_id = tostring(actor_id), subject_type = "user"}, access_mask = mask,
             }))

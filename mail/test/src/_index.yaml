@@ -53,6 +53,10 @@ entries:
       resources: [app:db]
       actions: [db.get]
       effect: allow
+  - name: database_fixture
+    kind: library.lua
+    source: file://database_fixture.lua
+    modules: [sql]
   - name: mail_senders
     kind: security.scope
   - name: mail_senders_composition

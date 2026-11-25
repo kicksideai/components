@@ -24,17 +24,18 @@ local function register(support)
         for _, item in ipairs(assert(fixtures.call(editor, "list", {kind = "part"})).items) do
             parts[item.name] = item
         end
-        local projection = assert(security.new_scope({assert(security.policy("kickside.mail.security:overlay_originals"))}))
         for _, name in ipairs({"image", "signature"}) do
             test.not_nil(parts[name])
             local item = assert(fixtures.call(editor, "get", {kind = "part", name = name}))
             test.eq("original", item.state)
-            for _, face in ipairs({name, name .. ".text"}) do
-                for _, action in ipairs({"registry.overlay.shadow", "registry.overlay.update.template.jet",
-                    "registry.overlay.delete.template.jet"}) do
-                    test.eq("allow", projection:evaluate(assert(security.actor()), action, "kickside.mail.views:" .. face))
-                end
-            end
+            own({kind = "part", name = name})
+            local edited = {kind = item.kind, name = item.name, title = item.title, description = item.description,
+                html = item.html .. "<!-- fixture -->", text = item.text .. "\n", schema = item.schema,
+                samples = item.samples, expected_revision = item.revision}
+            edited.preview_id = review({resources = {edited}})
+            local saved = assert(fixtures.call(editor, "update", edited))
+            fixtures.await_live(saved.seq)
+            test.eq(edited.html, assert(fixtures.call(editor, "get", {kind = "part", name = name})).html)
         end
         local notice = assert(fixtures.call(editor, "preview", {message = "notice", vars = {
             subject = "Status", inline_content_id = "chart", image_alt = "Weekly chart",
@@ -183,8 +184,8 @@ local function register(support)
         local missing, missing_err = value(HTML, "message/" .. message.name)
         test.is_nil(missing)
         test.eq(errors.NOT_FOUND, missing_err:kind())
-        test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
-        test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
+        test.eq("success", assert(fixtures.boot()).status)
+        test.eq("success", assert(fixtures.boot()).status)
         fixtures.await_current_live()
         test.eq(switched_render.html, assert(fixtures.render(executor, {template = message.name, vars = message.samples})).html)
         assert(call("delete", {kind = "message", name = message.name, expected_revision = switched.revision}))
@@ -273,7 +274,7 @@ local function register(support)
         assert(changes:update(entry))
         assert(changes:update(declaration))
         assert(changes:apply())
-        test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
+        test.eq("success", assert(fixtures.boot()).status)
         fixtures.await_live(saved.seq)
         test.eq("Customized Example", assert(value(HTML, "part/header", data)))
         local reset_request = {kind = key.kind, name = key.name, expected_revision = saved.revision}

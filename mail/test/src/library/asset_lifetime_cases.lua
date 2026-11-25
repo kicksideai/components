@@ -9,11 +9,8 @@ local time = require("time")
 local lookup = require("lookup")
 local settings = require("settings")
 local fixtures = require("fixtures")
-local attachments = require("attachments")
-local content = require("content")
 local interleave = require("asset_interleave")
 local database = require("database")
-local ledger = require("ledger")
 
 local function register(support)
     local test = support.test
@@ -44,7 +41,7 @@ local function register(support)
     test.it("keeps a pending restore reservation while Core prunes its source event", function()
         local source, first, _, restore = restore_history("restore-before-reap")
         local threads = library_thread()
-        local projection = {thread_id = content.library_component_id(), kind = "kickside.mail:library_tables"}
+        local projection = {thread_id = fixtures.library_component_id(), kind = "kickside.mail:library_tables"}
         assert(threads:pause_projection(projection))
         state.resume_projection = function()
             assert(threads:resume_projection(projection))
@@ -72,21 +69,17 @@ local function register(support)
     test.it("refuses a restore without appending after reaping claims its upload", function()
         local source, first, latest, restore = restore_history("reap-before-restore")
         local threads = library_thread()
-        local id = content.library_component_id()
+        local id = fixtures.library_component_id()
         local now = time.now():add(time.HOUR):unix_nano() // 1000000
         local before = assert(threads:find({thread_id = id})).event_count
         interleave.arm_reap(source.storage_path)
         -- Model a restore that already read its source when the reap claim commits.
-        local claimed = assert(database.with_tx(function(tx)
-            return ledger.claim_retired(tx, latest.seq, first.seq, 200, now)
+        local claimed = assert(database.with_db(function(db)
+            return db:execute("UPDATE mail_asset_file SET state='reaping',due_at=$1 WHERE upload_id=$2", {now, source.uuid})
         end))
-        local target
-        for _, row in ipairs(claimed) do
-            if row.upload_id == source.uuid then target = row end
-        end
-        test.not_nil(target)
+        test.eq(1, claimed.rows_affected)
         local owner = assert(funcs.new():with_context({mail_test_now = now}))
-        local reaping = assert(owner:async("kickside.mail.jobs:owner", {}))
+        local reaping = assert(owner:async(fixtures.retention_id(), {}))
         interleave.await("after_claim")
         local kept = state.storage:exists(source.storage_path)
         local value, err = fixtures.call(state.editor, "restore", restore)
@@ -107,10 +100,13 @@ local function register(support)
         local source, first, latest, restore = restore_history(name)
         local now = time.now():unix_nano() // 1000000
         if strand then
-            assert(database.with_tx(function(tx)
-                return ledger.hold_restore(tx, source.uuid, latest.seq, uuid.v4(), state.uploader,
-                    restore.command_id, now, now + 15 * 60 * 1000)
+            local reserved = assert(database.with_db(function(db)
+                return db:execute([[UPDATE mail_asset_file SET hold_seq=$1,hold_id=$2,
+                    restore_author=$3,restore_command_id=$4,restore_reserved_at=$5,restore_check_at=$6
+                    WHERE upload_id=$7]],
+                    {latest.seq + 1, uuid.v4(), state.uploader, restore.command_id, now, now + 15 * 60 * 1000, source.uuid})
             end))
+            test.eq(1, reserved.rows_affected)
             return source, first.seq, now
         end
         local writer = assert(state.editor:with_context({mail_test_now = now}))
@@ -226,7 +222,7 @@ local function register(support)
     test.it("publishes the replaced image revision in the library event log", function()
         local image = {kind = "asset", name = "history-image-probe", upload_id = upload("image/gif", gif())}
         state.owned[1] = image
-        local thread = content.library_component_id()
+        local thread = fixtures.library_component_id()
         local function query(statement, args)
             local db = assert(sql.get("app:db"))
             local rows, err = db:query(statement, args)

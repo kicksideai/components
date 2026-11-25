@@ -2,6 +2,7 @@
 local funcs = require("funcs")
 local json = require("json")
 local registry = require("registry")
+local jet = require("jet")
 local library_fixtures = require("library_fixtures")
 
 local function register(support)
@@ -36,7 +37,7 @@ local function register(support)
 
     test.it("previews and lists assets with an unrelated scratch entry and clears it on reconciliation", function()
         local editor = session("editor")
-        local owner = "kickside.mail.render:scratch"
+        local owner = jet.draft_owner
         local id = "kickside.mail.draft:html"
         local overlay = assert(registry.overlay(owner))
         local changes = overlay:changes()
@@ -47,7 +48,7 @@ local function register(support)
         test.not_nil(preview.html)
         test.not_nil(registry.get(id))
         local summary, body, raw = request(editor, "GET", "/library?kind=asset")
-        local boot = assert(funcs.call("kickside.mail.jobs:reconcile"))
+        local boot = assert(library_fixtures.boot())
         test.eq("success", boot.status, boot.message)
         local entries = assert(assert(registry.overlay(owner)):entries())
         for _, entry in ipairs(entries) do test.neq(id, entry.id) end

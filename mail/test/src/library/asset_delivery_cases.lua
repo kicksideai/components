@@ -8,7 +8,6 @@ local lookup = require("lookup")
 local settings = require("settings")
 local upload_types = require("upload_types")
 local fixtures = require("fixtures")
-local attachments = require("attachments")
 
 local function register(support)
     local test = support.test
@@ -74,15 +73,19 @@ local function register(support)
             expected_revision = original.revision})
         local large = call("add_asset", {kind = "asset", name = "large", upload_id = upload("image/gif", gif() .. string.rep("\0", 80000))})
         state.owned[2] = large
+        local message = define("message", "adopted-metadata-before-bytes",
+            '{{ block body() }}<img src="{{ assets.logo }}"><img src="{{ assets.large }}">{{ end }}')
+        message.subject, message.base = "Attachment budget", "plain"
+        message.text = "{{ block body() }}Attachment budget{{ end }}"
+        state.owned[3] = message
+        call("create", message)
+        state.configured = true
+        settings.settings("app.mail_harness:second", "mail@example.org")
         local adopted = assert(lookup.get(small.asset.upload_id))
         assert(state.storage:remove(adopted.storage_path))
-        local files, failure = attachments.complete({
-            library_assets = {
-                {name = "logo", content_id = "logo", upload_id = small.asset.upload_id},
-                {name = "large", content_id = "large", upload_id = large.asset.upload_id},
-            },
-            message_bytes = 4000, max_message_bytes = 100000,
-        }, {})
+        local files, failure = fixtures.mailer(state.editor, "send", {
+            template = message.name, vars = {}, to = {"reader@example.org"},
+        })
         assert(state.storage:writefile(adopted.storage_path, gif()))
         test.is_nil(files)
         test.eq("message_too_large", assert(failure):details().code)
@@ -119,7 +122,7 @@ local function register(support)
         assert(fixtures.call(state.editor, "delete", {kind = "message", name = message.name, expected_revision = template.revision}))
         assert(fixtures.call(state.editor, "delete", {kind = "asset", name = image.name, expected_revision = saved.revision}))
         prune_through(saved.seq)
-        local retained = assert(funcs.call("kickside.mail.jobs:owner", {}))
+        local retained = assert(funcs.call(fixtures.retention_id(), {}))
         test.is_true(retained.success, tostring(retained.error))
         test.is_true(state.storage:exists(record.storage_path), "The failed delivery keeps the adopted bytes")
         local expires = assert(failure.finished_at) + 30 * 24 * 60 * 60 * 1000 + 1
@@ -129,9 +132,7 @@ local function register(support)
         test.eq("message_not_found", assert(expired_err):details().code)
         sweep(expires)
         test.is_false(state.storage:exists(record.storage_path))
-        local missing, err = lookup.get(version)
-        test.is_nil(missing)
-        test.eq(errors.NOT_FOUND, assert(err):kind())
+        test.is_nil(lookup.get(version))
     end)
 
     test.it("refuses oversized files, unsupported media, and another person's upload", function()

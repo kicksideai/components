@@ -13,9 +13,6 @@ local json = require("json")
 local lookup = require("lookup")
 local settings = require("settings")
 local fixtures = require("fixtures")
-local asset_file_repo = require("asset_file_repo")
-local attachments = require("attachments")
-local content = require("content")
 local prune = require("prune")
 local interleave = require("asset_interleave")
 local asset_lifetime_cases = require("asset_lifetime_cases")
@@ -46,8 +43,7 @@ local run = test.run_cases(function()
             fixtures.remove(state.owned)
             if state.configured then settings.settings("", "") end
             for owner in pairs(state.uploaders) do
-                local result = assert(owner:call("app.mail_library:upload_fixture", {cleanup = true}))
-                assert(result.success, tostring(result.error))
+                lookup.cleanup(owner)
             end
         end)
         local function call(method, input)
@@ -68,9 +64,9 @@ local run = test.run_cases(function()
             if type(result) == "table" and input.kind ~= "asset" and method ~= "get" then fixtures.await_live(result.seq) end
             return assert(result, err and tostring(err) .. " " .. assert(json.encode(err:details() or {})))
         end
-        local function upload(mime, bytes, executor)
-            local owner = executor or state.editor
-            local source, err = owner:call("app.mail_library:upload_fixture", {mime = mime, bytes = bytes})
+        local function upload(mime, bytes, actor)
+            local owner = actor or state.actor
+            local source, err = lookup.store(owner, mime, bytes)
             assert(source, tostring(err))
             state.uploaders[owner] = true
             return source
@@ -87,13 +83,13 @@ local run = test.run_cases(function()
 
         local function sweep(now)
             local owner = assert(funcs.new():with_context({mail_test_now = now}))
-            local result = assert(owner:call("kickside.mail.jobs:owner", {}))
+            local result = assert(owner:call(fixtures.retention_id(), {}))
             assert(result.success, tostring(result.error))
             return result
         end
 
         local function prune_through(seq)
-            local thread = content.library_component_id()
+            local thread = fixtures.library_component_id()
             local definition = assert(contract.get("kickside.core:threads"))
             local threads = assert(definition:with_actor(state.actor):open())
             local before = assert(threads:find({thread_id = thread}))
@@ -105,6 +101,20 @@ local run = test.run_cases(function()
             assert(result, tostring(err))
             test.eq(seq, result.max_pruned_seq)
         end
+
+        test.it("refuses to append an adoption after its lease expires", function()
+            local name = "expired-adoption-lease"
+            local source = upload("image/gif", gif())
+            local now = time.now():add(time.HOUR):unix_nano() // 1000000
+            local late = assert(state.editor:with_context({mail_test_now = now}))
+            local result, failure = fixtures.call(late, "add_asset", {kind = "asset", name = name, upload_id = source})
+            test.is_nil(result)
+            test.eq("mail_asset_version_unavailable", assert(failure):details().code)
+            local item, missing = fixtures.call(state.editor, "get", {kind = "asset", name = name})
+            test.is_nil(item)
+            test.eq(errors.NOT_FOUND, assert(missing):kind())
+            sweep(now)
+        end)
 
         local cases = {
             test = test,
@@ -149,7 +159,7 @@ local expiry = test.run_cases(function()
 
             local function sweep(at)
                 local exec = assert(funcs.new():with_context({mail_test_now = at}))
-                return assert(exec:call("kickside.mail.jobs:owner", {}))
+                return assert(exec:call(fixtures.retention_id(), {}))
             end
             local first = sweep(now)
             local second = sweep(now)
@@ -171,22 +181,6 @@ local expiry = test.run_cases(function()
             test.is_true(second.deadline_ms > now)
             test.eq(second.deadline_ms, assets[1].due_at)
             test.eq(batch, #at_deadline.blocked)
-        end)
-
-        test.it("keeps an expired adoption lease closed after deferring collection", function()
-            local db = assert(sql.get("app:db"))
-            local version = uuid.v4()
-            local now = time.now():unix_nano() // 1000000
-            local lease = now - 1
-            local due = now + 60000
-            assert(db:execute([[INSERT INTO mail_asset_file
-                (upload_id,due_at) VALUES ($1,$2)]], {version, due}))
-            local tx = assert(db:begin())
-            local _, failure = asset_file_repo.hold_adoption(tx, version, lease, now, 1, "test")
-            assert(tx:rollback())
-            assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id=$1", {version}))
-            assert(db:release())
-            test.eq("mail_asset_version_unavailable", assert(failure):details().code)
         end)
 
         test.it("keeps an asset reference when a message enters the expiry batch after unlink starts", function()
@@ -216,7 +210,7 @@ local expiry = test.run_cases(function()
                 local lock = assert(db:begin())
                 local blocker = assert(lock:query("SELECT pg_backend_pid() AS pid"))[1].pid
                 assert(lock:query("SELECT message_id FROM mail_message_asset WHERE message_id=$1 FOR UPDATE", {first}))
-                local sweep = assert(exec:async("kickside.mail.jobs:owner", {}))
+                local sweep = assert(exec:async(fixtures.retention_id(), {}))
                 local deadline = time.now():add(25 * time.SECOND):unix_nano()
                 local waiting = {}
                 repeat
@@ -233,7 +227,7 @@ local expiry = test.run_cases(function()
                 report = assert(assert(sweep:result()):data())
                 test.eq(1, #waiting, "The expiry unlink waits on the first message")
             else
-                report = assert(exec:call("kickside.mail.jobs:owner", {}))
+                report = assert(exec:call(fixtures.retention_id(), {}))
                 assert(db:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff, late}))
             end
             local refs = assert(db:query("SELECT message_id FROM mail_message_asset WHERE upload_id=$1", {version}))
@@ -244,7 +238,7 @@ local expiry = test.run_cases(function()
             test.eq(late, refs[1].message_id)
             test.eq("held", held[1].state)
             if postgres then test.is_true(report.needs_continue) end
-            local next_report = assert(exec:call("kickside.mail.jobs:owner", {}))
+            local next_report = assert(exec:call(fixtures.retention_id(), {}))
             test.is_true(next_report.success, tostring(next_report.error))
             fixtures.await(function()
                 local check = assert(sql.get("app:db"))

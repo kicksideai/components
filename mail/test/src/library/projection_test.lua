@@ -5,7 +5,9 @@ local events = require("events")
 local funcs = require("funcs")
 local json = require("json")
 local resource = require("resource")
-local originals = require("originals")
+local fixtures = require("fixtures")
+local api_fixtures = require("api_fixtures")
+local registry = require("registry")
 local security = require("security")
 local sql = require("sql")
 local test = require("test")
@@ -13,7 +15,6 @@ local time = require("time")
 local uuid = require("uuid")
 
 local KIND = "kickside.mail:library_tables"
-local WORKER = "kickside.mail.persist:library_projection"
 local PREFIX = "kickside.mail.events:"
 local THREAD = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
 
@@ -26,9 +27,7 @@ end
 
 local function editor(id)
     local actor = assert(security.new_actor(id, {user_id = id, security_groups = {"app:mail_editors"}}))
-    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set",
-        {groups = {"app.mail_library:projection_fixture"}}))
-    local scope = assert(security.named_scope(materialized.scope_name))
+    local scope = api_fixtures.role_scope({"app.mail_library:projection_fixture"})
     local definition = assert(contract.get("kickside.core:threads"))
     return assert(definition:with_actor(actor):with_scope(scope):open())
 end
@@ -57,7 +56,7 @@ end
 
 local function pending_sync()
     return query([[SELECT owner_id,payload FROM kickside_job
-        WHERE job_type = 'kickside.mail.jobs:library_sync' AND owner_kind = 'mail-library' AND owner_id = $1]],
+        WHERE owner_kind = 'mail-library' AND owner_id = $1]],
         {THREAD})
 end
 
@@ -72,10 +71,16 @@ end
 local function cases()
     test.it("keeps packaged Mail content within the event snapshot limit", function()
         local count = 0
-        for _, declaration in pairs(assert(originals.list())) do
-            test.is_nil(resource.check_content(declaration.resource))
-            count = count + 1
-        end
+        local cursor
+        repeat
+            local page = assert(fixtures.call(nil, "list", {state = "original", limit = 100, cursor = cursor}))
+            for _, item in ipairs(page.items) do
+                local content = assert(fixtures.call(nil, "get", {kind = item.kind, name = item.name}))
+                test.is_nil(resource.check_content(content))
+                count = count + 1
+            end
+            cursor = page.next_cursor
+        until not cursor
         test.is_true(count > 0)
     end)
 
@@ -225,9 +230,11 @@ local function cases()
         test.eq(errors.PERMISSION_DENIED, assert(refused_err):kind())
         test.eq(last, watermark().projected_seq)
 
+        local binding = assert(registry.get("kickside.mail.binding:library"))
+        local worker = assert(binding.meta.projections[1].worker_ref:match("^func://(.+)$"))
         local batch = assert(threads:list_events({thread_id = THREAD, from_seq = first, to_seq = last, ascending = true}))
         local jobs_before = #pending_sync()
-        local replay, replay_err = funcs.call(WORKER, {thread_id = THREAD, events = batch.events,
+        local replay, replay_err = funcs.call(worker, {thread_id = THREAD, events = batch.events,
             range = {from_seq = first, to_seq = last}})
         assert(replay, tostring(replay_err))
         test.eq(last, replay.body.projected_seq)
@@ -242,7 +249,7 @@ local function cases()
         before_gap.seq, before_gap.created_at = last + 1, batch.events[#batch.events].created_at
         local skipped = event(id, "resource.archived", created, 5, "archived")
         skipped.seq, skipped.created_at = last + 3, before_gap.created_at
-        local result, gap = funcs.call(WORKER, {thread_id = THREAD, events = {before_gap, skipped},
+        local result, gap = funcs.call(worker, {thread_id = THREAD, events = {before_gap, skipped},
             range = {from_seq = before_gap.seq, to_seq = skipped.seq}})
         test.is_nil(result)
         test.eq(errors.INTERNAL, assert(gap):kind())
@@ -252,7 +259,7 @@ local function cases()
         test.eq(0, #query("SELECT seq FROM mail_library_history WHERE seq > $1", {last}))
         test.eq(jobs_before, #pending_sync())
 
-        local unknown, unknown_err = funcs.call(WORKER, {thread_id = THREAD,
+        local unknown, unknown_err = funcs.call(worker, {thread_id = THREAD,
             events = {{type = "kickside.threads:message.created", seq = last + 1, body = {}, created_at = before_gap.created_at}},
             range = {from_seq = last + 1, to_seq = last + 1}})
         test.is_nil(unknown)

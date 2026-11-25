@@ -76,7 +76,7 @@ local function register(support)
         assert(db:release())
         assert(result, tostring(prune_err))
         test.eq(first.seq, result.max_pruned_seq)
-        local owner = assert(funcs.call("kickside.mail.jobs:owner", {}))
+        local owner = assert(funcs.call(fixtures.retention_id(), {}))
         assert(owner.success, tostring(owner.error))
         db = assert(sql.get("app:db"))
         local rows = assert(db:query(

@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local funcs = require("funcs")
+local library_fixtures = require("library_fixtures")
 local sql = require("sql")
 local time = require("time")
 local uuid = require("uuid")
@@ -38,7 +39,7 @@ local function register(support)
                     local job, enqueue_err = jobs.enqueue_tx(tx, dialect, {
                         namespace = "mail", scope = row.id, key = "deliver",
                         owner_locator = {kind = "mail-message", id = row.id},
-                        job_type = "kickside.mail.delivery:deliver",
+                        job_type = "app.mail_harness:interrupted_delivery",
                         immutable_payload = {message_id = row.id}, parked = true,
                     })
                     if enqueue_err then return nil, enqueue_err end
@@ -62,7 +63,7 @@ local function register(support)
 
         local function owner(now, change)
             local executor = assert(funcs.new():with_context({mail_test_now = now}))
-            local result = assert(executor:call("kickside.mail.jobs:owner", {change = change}))
+            local result = assert(executor:call(library_fixtures.retention_id(), {change = change}))
             assert(result.success, tostring(result.error))
             return result
         end
@@ -113,7 +114,7 @@ local function register(support)
 
         local function sweep(at)
             local executor = assert(funcs.new():with_context({mail_test_now = at}))
-            local report = assert(executor:call("kickside.mail.jobs:owner", {}))
+            local report = assert(executor:call(library_fixtures.retention_id(), {}))
             assert(report.success, tostring(report.error))
         end
         sweep(recheck_at - 1)
@@ -143,7 +144,7 @@ local function register(support)
         end
         local function sweep(at)
             local executor = assert(funcs.new():with_context({mail_test_now = at}))
-            local report = assert(executor:call("kickside.mail.jobs:owner", {}))
+            local report = assert(executor:call(library_fixtures.retention_id(), {}))
             assert(report.success, tostring(report.error))
             return report
         end

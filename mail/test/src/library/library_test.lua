@@ -14,7 +14,7 @@ local THREAD = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.l
 
 local HTML = "kickside.mail.views:templates"
 local TEXT = "kickside.mail.views:text_templates"
-local OWNER = "kickside.mail.render:live"
+local OWNER = jet.owner
 
 local function review(draft, executor)
     draft.message = draft.message or "notice"

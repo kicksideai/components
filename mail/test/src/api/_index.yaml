@@ -43,6 +43,7 @@ entries:
     modules: [funcs, json, registry]
     imports:
       library_fixtures: app.mail_library:fixtures
+      jet: kickside.mail.domain:jet
   - name: draft_cases
     kind: library.lua
     source: file://draft_cases.lua
@@ -50,6 +51,7 @@ entries:
     imports:
       library_fixtures: app.mail_library:fixtures
       autoinit: kickside.component:autoinit
+      api_fixtures: app.mail_api:fixtures
   - name: delivery_cases
     kind: library.lua
     source: file://delivery_cases.lua

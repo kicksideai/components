@@ -3,6 +3,7 @@ local contract = require("contract")
 local funcs = require("funcs")
 local registry = require("registry")
 local security = require("security")
+local api_fixtures = require("api_fixtures")
 local test = require("test")
 local config = require("config")
 
@@ -31,8 +32,7 @@ end
 local function invoke(operation, message, group)
     local groups = {"app:user", group or "app.mail_api:driver_only"}
     local actor = assert(security.new_actor("mail-harness-transport-caller", {security_groups = groups}))
-    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
-    local scope = assert(security.named_scope(materialized.scope_name)):with(assert(security.policy("app.mail_harness:caller")))
+    local scope = api_fixtures.role_scope(groups):with(assert(security.policy("app.mail_harness:caller")))
     local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
     return executor:call("app.mail_harness:probe", {operation = operation, message = message})
 end
@@ -68,8 +68,7 @@ end
 local function change_driver(value)
     local groups = {"app.mail_harness:settings_editor"}
     local actor = assert(security.new_actor("mail-harness:transport-admin", {security_groups = groups}))
-    local materialized = assert(funcs.call("kickside.security.binding:materialize_group_set", {groups = groups}))
-    local scope = assert(security.named_scope(materialized.scope_name))
+    local scope = api_fixtures.role_scope(groups)
     local executor = assert(funcs.new():with_actor(actor):with_scope(scope))
     return assert(executor:call("app.mail_harness:probe", {
         operation = value and "set" or "unset", key = "driver", value = value,

@@ -8,11 +8,11 @@ local sql = require("sql")
 local time = require("time")
 local test = require("test")
 local fixtures = require("fixtures")
-local content = require("content")
 local lookup = require("lookup")
 local api_fixtures = require("api_fixtures")
 local component = require("component")
 local jobs = require("jobs")
+local jet = require("jet")
 
 local KIND = "kickside.mail.binding:library"
 
@@ -38,7 +38,7 @@ return {run = test.run_cases(function()
 
         test.after_all(function()
             if not deleting then return end
-            local component_id = content.library_component_id()
+            local component_id = fixtures.library_component_id()
             local thread_definition = assert(contract.get("kickside.core:threads"))
             local threads = assert(thread_definition:with_actor(lifecycle):with_scope(lifecycle_scope):open())
             local binding = assert(registry.get(KIND))
@@ -55,7 +55,7 @@ return {run = test.run_cases(function()
                     access_mask = grant.access_mask}))
                 assert(granted.success, tostring(granted.error))
             end
-            local boot = assert(funcs.call("kickside.mail.jobs:reconcile"))
+            local boot = assert(fixtures.boot())
             assert(boot.status == "success", tostring(boot.message))
             fixtures.await_current_live()
         end)
@@ -63,19 +63,19 @@ return {run = test.run_cases(function()
         test.it("describes the library through its component status binding", function()
             local declaration = assert(registry.get(KIND))
             test.eq("kickside.mail.binding:status", declaration.data.contracts[1].methods.get_status)
-            local status = assert(open("kickside.contract:component", content.library_component_id()):get_status({}))
+            local status = assert(open("kickside.contract:component", fixtures.library_component_id()):get_status({}))
             test.is_true(status.description:find("Mail library", 1, true) ~= nil)
         end)
 
         test.it("clears library state twice and leaves uploaded bytes for retention", function()
-            local component_id = content.library_component_id()
+            local component_id = fixtures.library_component_id()
             local now = time.now():add(time.HOUR):unix_nano() // 1000000
             local teardown = open("kickside.contract:deletable", component_id, now)
             local who = api_fixtures.session("upload_editor")
             local storage = assert(fs.get("app:uploads"))
             local gif = "GIF89a\1\0\1\0\128\0\0\0\0\0\255\255\255!\249\4\1\0\0\0\0,\0\0\0\0\1\0\1\0\0\2\2D\1\0;"
             local editor = assert(funcs.new():with_actor(who.actor):with_scope(who.scope))
-            local source = assert(editor:call("app.mail_library:upload_fixture", {mime = "image/gif", bytes = gif}))
+            local source = assert(lookup.store(who.actor, "image/gif", gif))
             local image = assert(fixtures.call(editor, "add_asset", {kind = "asset", name = "teardown-image", upload_id = source}))
             local upload = assert(lookup.get(image.asset.upload_id))
             local message = {kind = "message", name = "teardown-message", title = "Teardown", description = "",
@@ -94,7 +94,7 @@ return {run = test.run_cases(function()
                     "mail_library_preview", "mail_library_live", "mail_library_upload_ref"}) do
                     test.eq(0, #rows("SELECT 1 FROM " .. name .. " LIMIT 1"), name)
                 end
-                test.eq(0, #assert(assert(registry.overlay("kickside.mail.render:live")):entries()))
+                test.eq(0, #assert(assert(registry.overlay(jet.owner)):entries()))
                 local ledger = rows("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {upload.uuid})
                 test.eq(expected_due, assert(ledger[1]).due_at)
             end
@@ -126,13 +126,12 @@ return {run = test.run_cases(function()
                 return boundary == nil and err ~= nil
             end, "Component deletion did not purge the library and its thread")
             local retention = assert(funcs.new():with_context({mail_test_now = now}))
-            local swept = assert(retention:call("kickside.mail.jobs:owner", {}))
+            local swept = assert(retention:call(fixtures.retention_id(), {}))
             test.is_true(swept.success, tostring(swept.error))
             test.is_false(storage:exists(upload.storage_path))
             test.eq(0, #rows("SELECT 1 FROM mail_asset_file WHERE upload_id=$1", {upload.uuid}))
             test.eq(0, #rows("SELECT 1 FROM mail_library_live"))
-            local cleanup = assert(editor:call("app.mail_library:upload_fixture", {cleanup = true}))
-            assert(cleanup.success, tostring(cleanup.error))
+            lookup.cleanup(who.actor)
         end)
     end)
 end)}

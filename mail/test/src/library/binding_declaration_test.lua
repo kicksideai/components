@@ -2,43 +2,76 @@
 local registry = require("registry")
 local test = require("test")
 local resource = require("resource")
+local fixtures = require("fixtures")
+local jet = require("jet")
+
+local function entry(id)
+    return assert(registry.get(id))
+end
+
+local function method(binding, name)
+    return entry(entry(binding).data.contracts[1].methods[name])
+end
+
+local function imported(owner, alias)
+    return entry(owner.data.imports[alias])
+end
+
+local function granted(policy)
+    return entry(entry(policy).data.policy.resources[1])
+end
+
+local function job(import_alias)
+    for _, candidate in ipairs(assert(registry.find({[".kind"] = "function.lua", ["meta.type"] = "kickside.core.jobs.worker"}))) do
+        local imports = candidate.data.imports
+        if candidate.id:match("^kickside%.mail[.:]") and imports and imports[import_alias] then
+            return candidate
+        end
+    end
+    error("No Mail worker imports " .. import_alias)
+end
 
 local function cases()
     test.it("keeps Settings list access inside the Mail driver selection reader", function()
         local grant = "kickside.mail.security:settings_admin_read"
-        for _, id in ipairs({"kickside.mail.binding:mailer_send", "kickside.mail.binding:mailer_resend",
-            "kickside.mail.binding:mailer_send_delivery_test", "kickside.mail.binding:library_send_test",
-            "kickside.mail.binding:mailer_delivery_status", "kickside.mail.delivery:deliver"}) do
-            for _, policy in ipairs(assert(registry.get(id)).data.security.policies) do
-                test.neq(grant, policy, id)
+        for _, surface in ipairs({method("kickside.mail:mailer_binding", "send"),
+            method("kickside.mail:mailer_binding", "resend"), method("kickside.mail:mailer_binding", "send_delivery_test"),
+            method("kickside.mail:library_binding", "send_test"), method("kickside.mail:mailer_binding", "delivery_status"),
+            job("outbox")}) do
+            for _, policy in ipairs(surface.data.security.policies) do
+                test.neq(grant, policy, surface.id)
             end
         end
-        local reader = assert(registry.get("kickside.mail.read:driver_selection"))
+        local reader = granted("kickside.mail.security:driver_selection_call")
         test.is_true(reader.meta.private)
         test.is_nil(reader.data.security.groups)
         test.eq(grant, reader.data.security.policies[2])
     end)
 
     test.it("publishes through Mail's own live registry library", function()
-        local publisher = assert(registry.get("kickside.mail.command:live"))
-        test.eq("kickside.mail.render:live", publisher.data.imports.live)
-        for _, id in ipairs(assert(registry.get("kickside.mail.jobs:library_sync")).data.security.policies) do
+        local worker = job("live")
+        local publisher = imported(worker, "live")
+        test.eq(jet.owner, publisher.data.imports.live)
+        for _, id in ipairs(worker.data.security.policies) do
             test.is_nil(id:match("^app[.:]"), id)
         end
     end)
 
     test.it("uses Mail's renderer directly for scratch evaluation", function()
-        local declaration = assert(registry.get("kickside.mail.render:scratch"))
-        test.eq("kickside.mail.render:render", declaration.data.imports.render)
+        local preview = imported(method("kickside.mail:library_binding", "preview"), "preview")
+        local scratch = imported(preview, "scratch")
+        test.eq(jet.draft_owner, scratch.id)
+        test.eq(preview.data.imports.render, scratch.data.imports.render)
     end)
 
     test.it("uses Mail's Threads libraries directly", function()
-        local writer = assert(registry.get("kickside.mail.command:library"))
-        local history = assert(registry.get("kickside.mail.read:history"))
-        local retention = assert(registry.get("kickside.mail.command:retention"))
-        test.eq("kickside.mail.command:threads", writer.data.imports.threads)
-        test.eq("kickside.mail.read:thread_events", history.data.imports.thread_events)
-        test.eq("kickside.mail.read:thread_events", retention.data.imports.thread_events)
+        local writer = imported(method("kickside.mail:library_binding", "create"), "writer")
+        local history = imported(method("kickside.mail:library_binding", "read_history"), "history")
+        local retention = imported(entry(fixtures.retention_id()), "retention")
+        local threads = imported(writer, "threads")
+        local reader = imported(threads, "thread_events")
+        test.eq(reader.id, history.data.imports.thread_events)
+        test.eq(reader.id, retention.data.imports.thread_events)
     end)
 
     test.it("provisions library editors solely through the installed host grant", function()
@@ -53,23 +86,22 @@ local function cases()
 
     test.it("uses Jobs' published consumer policy for Mail job producers and workers", function()
         local public = "kickside.core.jobs.security:module_access"
-        local writer = assert(registry.get("kickside.mail.binding:library_create"))
+        local writer = method("kickside.mail:library_binding", "create")
         local consumer = assert(registry.get("kickside.mail.security:jobs_consumer_composition"))
         test.eq(consumer.data.group_id, writer.data.security.groups[1])
         test.eq(public, consumer.data.policies[1])
         for _, policy in ipairs(writer.data.security.policies) do
             test.is_nil(policy:match("^kickside%.core%.jobs[.:]"), policy)
         end
-        for _, id in ipairs({"kickside.mail.binding:mailer_send", "kickside.mail.delivery:deliver"}) do
-            local entry = assert(registry.get(id))
+        for _, surface in ipairs({method("kickside.mail:mailer_binding", "send"), job("outbox")}) do
             local found = false
-            for _, policy in ipairs(entry.data.security.policies) do
+            for _, policy in ipairs(surface.data.security.policies) do
                 if policy:match("^kickside%.core%.jobs[.:]") then
-                    test.eq(public, policy, id)
+                    test.eq(public, policy, surface.id)
                     found = true
                 end
             end
-            test.is_true(found, id)
+            test.is_true(found, surface.id)
         end
     end)
 
@@ -81,7 +113,10 @@ local function cases()
         test.eq("kickside.core.security:module_access", composition.data.policies[1])
         test.is_nil(composition.data.groups)
 
-        local wait = "kickside.mail.command:catch_up"
+        local member = entry("kickside.mail.security:library_projection_wait")
+        local waiter = granted(member.id)
+        local wait = waiter.id
+        test.not_nil(waiter.data.imports.thread_events)
         local seen = 0
         for _, entry in ipairs(assert(registry.find({[".kind"] = "function.lua"}))) do
             local frame = entry.data.security
@@ -97,18 +132,17 @@ local function cases()
             end
         end
         test.eq(1, seen)
-        local member = assert(registry.get("kickside.mail.security:library_projection_wait"))
         test.eq(wait, member.data.policy.resources[1])
         test.eq(1, #member.data.policy.resources)
         test.eq(0, #(member.data.groups or {}))
     end)
 
     test.it("keeps Uploads reaping authority in its Mail-owned call frame", function()
-        local owner = assert(registry.get("kickside.mail.jobs:owner"))
+        local owner = entry(fixtures.retention_id())
         for _, policy in ipairs(owner.data.security.policies) do
             test.is_nil(policy:match("^kickside%.uploads[.:]"), policy)
         end
-        local reaper = assert(registry.get("kickside.mail.command:reap_asset"))
+        local reaper = granted("kickside.mail.security:asset_reaper")
         test.is_true(reaper.meta.private)
         test.eq("kickside.mail.security:asset_service", reaper.data.security.groups[1])
     end)
