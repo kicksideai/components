@@ -193,7 +193,16 @@ local function cases()
         test.it("declares the Mail settings block on the delivery component", function()
             local block = assert(registry.get("kickside.mail.admin:delivery_block"))
             test.eq(block.meta.type, "kickside.settings:block")
-            test.eq(block.data.namespace, "kickside.mail")
+            local namespaces = {"kickside.mail", "kickside.mail.resend", "kickside.mail.sendgrid", "kickside.mail.mailgun"}
+            local function claims_all(actual: unknown)
+                local declared = actual :: {string}
+                test.eq(#namespaces, #declared)
+                for index, namespace in ipairs(namespaces) do
+                    test.eq(namespace, declared[index])
+                end
+            end
+            claims_all(block.data.namespaces)
+            claims_all((block.data.config :: {[string]: unknown}).namespaces)
             test.eq(block.data.component_tag, "kickside-mail-delivery")
             local view = assert(registry.get("kickside.mail.admin:delivery"))
             test.eq(view.meta.tag_name, "kickside-mail-delivery")
@@ -209,10 +218,13 @@ local function cases()
                     provider = provider + 1
                     test.eq("app.fixture", item.key)
                     test.is_nil(item.component_tag)
-                elseif item.namespace == "kickside.mail" then
+                elseif item.key == "mail" then
                     count = count + 1
                     test.eq("Integrations", item.group)
                     test.eq("kickside-mail-delivery", item.component_tag)
+                    claims_all(item.namespaces)
+                else
+                    for _, namespace in ipairs(namespaces) do test.neq(namespace, item.namespace) end
                 end
             end
             test.eq(1, count)
