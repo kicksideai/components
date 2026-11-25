@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { api } from '@wippy-fe/proxy'
+import { api, on } from '@wippy-fe/proxy'
 import { ApiError, request } from '../../../admin-http'
 import type {
   Capabilities, DeliveryStatus, DraftRender, HistoryItem, Items, LibraryPage, LibraryRow, LogMessage, MessagePage, MessageStatus,
@@ -55,27 +55,36 @@ async function review(key: ResourceKey, draft: Record<string, unknown>): Promise
 
 type LibraryReceipt = { seq: number; committed: true; projected: boolean }
 
-async function projectedResource(key: ResourceKey, result: Resource | LibraryReceipt): Promise<Resource> {
-  if ('kind' in result) return result
-  for (let attempt = 0; attempt < 20; attempt++) {
-    if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 250))
-    try {
-      const item = await library.get(key)
-      if ((item.seq ?? 0) >= result.seq) return item
-    } catch (err) {
-      if (!isMissing(err)) throw err
+// A library write answers with the resource, or with a receipt while Mail's projection catches up. The resource is
+// then read again each time Mail announces a library change, until it shows the written event. The subscription
+// starts before the write, so the announcement cannot be missed.
+async function written(key: ResourceKey, send: () => Promise<Resource | LibraryReceipt>): Promise<Resource> {
+  let wake = () => {}
+  const off = on('mail.library', () => wake())
+  try {
+    const result = await send()
+    if ('kind' in result) return result
+    for (;;) {
+      const changed = new Promise<void>(resolve => { wake = resolve })
+      try {
+        const item = await library.get(key)
+        if ((item.seq ?? 0) >= result.seq) return item
+      } catch (err) {
+        if (!isMissing(err)) throw err
+      }
+      await changed
     }
+  } finally {
+    if (typeof off === 'function') off()
   }
-  throw new ApiError({ message: 'Changes were saved. Reload the resource to see the new revision.' }, 'Mail library')
 }
 
 async function createResource(body: ResourceContent | CopyRequest, note?: string): Promise<Resource> {
   const proposed = { ...body, note: note ?? ('note' in body ? body.note : undefined) }
   const preview_id = await review(body, { create: proposed })
   const command_id = crypto.randomUUID()
-  const result = await request<Resource | LibraryReceipt>(
-    () => api.post(`${BASE}/library`, { ...proposed, preview_id, command_id }), 'Create resource')
-  return projectedResource(body, result)
+  return written(body, () => request<Resource | LibraryReceipt>(
+    () => api.post(`${BASE}/library`, { ...proposed, preview_id, command_id }), 'Create resource'))
 }
 
 function libraryPage(filter: LibraryFilter = {}) {
@@ -99,25 +108,22 @@ export const library = {
     const proposed = { ...editable(content), expected_revision: expected, note }
     const preview_id = await review(content, { resources: [proposed] })
     const command_id = crypto.randomUUID()
-    const result = await request<Resource | LibraryReceipt>(
-      () => api.put(resourcePath(content), { ...proposed, preview_id, command_id }), 'Save resource')
-    return projectedResource(content, result)
+    return written(content, () => request<Resource | LibraryReceipt>(
+      () => api.put(resourcePath(content), { ...proposed, preview_id, command_id }), 'Save resource'))
   },
   async reset(key: ResourceKey, expected: number) {
     const body = { expected_revision: expected }
     const preview_id = key.kind === 'asset' ? undefined : await review(key, { reset: { ...key, ...body } })
     const command_id = crypto.randomUUID()
-    const result = await request<Resource | LibraryReceipt>(
-      () => api.post(`${resourcePath(key)}/reset`, { ...body, preview_id, command_id }), 'Reset resource')
-    return projectedResource(key, result)
+    return written(key, () => request<Resource | LibraryReceipt>(
+      () => api.post(`${resourcePath(key)}/reset`, { ...body, preview_id, command_id }), 'Reset resource'))
   },
   async restore(key: ResourceKey, seq: number, expected: number, note?: string) {
     const body = { seq, expected_revision: expected, note }
     const preview_id = key.kind === 'asset' ? undefined : await review(key, { restore: { ...key, ...body } })
     const command_id = crypto.randomUUID()
-    const result = await request<Resource | LibraryReceipt>(
-      () => api.post(`${resourcePath(key)}/restore`, { ...body, preview_id, command_id }), 'Restore revision')
-    return projectedResource(key, result)
+    return written(key, () => request<Resource | LibraryReceipt>(
+      () => api.post(`${resourcePath(key)}/restore`, { ...body, preview_id, command_id }), 'Restore revision'))
   },
   remove: (key: ResourceKey, expected: number) => {
     const command_id = crypto.randomUUID()
@@ -130,16 +136,14 @@ export const library = {
   async addAsset(body: AssetRequest) {
     const key = { kind: 'asset' as const, name: body.name }
     const command_id = crypto.randomUUID()
-    const result = await request<Resource | LibraryReceipt>(
-      () => api.post(`${BASE}/library`, { kind: key.kind, ...body, command_id }), 'Add image')
-    return projectedResource(key, result)
+    return written(key, () => request<Resource | LibraryReceipt>(
+      () => api.post(`${BASE}/library`, { kind: key.kind, ...body, command_id }), 'Add image'))
   },
   async replaceAsset(body: AssetRequest, expected: number) {
     const key = { kind: 'asset' as const, name: body.name }
     const command_id = crypto.randomUUID()
-    const result = await request<Resource | LibraryReceipt>(
-      () => api.put(resourcePath(key), { ...body, expected_revision: expected, command_id }), 'Replace image')
-    return projectedResource(key, result)
+    return written(key, () => request<Resource | LibraryReceipt>(
+      () => api.put(resourcePath(key), { ...body, expected_revision: expected, command_id }), 'Replace image'))
   },
 }
 

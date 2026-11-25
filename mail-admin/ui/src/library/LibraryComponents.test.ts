@@ -6,6 +6,7 @@ import MailAdmin from '../app/MailAdmin.vue'
 import { library as libraryApi } from '../api'
 import { calls, dana, get, ok, post, refuse, resource, revision, row, serve } from '../test/fixtures'
 import { dialogButton } from '../test/mail'
+import { notify } from '../test/setup'
 
 const logo = resource('asset', 'logo', { title: 'Mail logo', state: 'customized', revision: 3, origin_label: 'Mail',
   asset: { source: 'upload', filename: 'logo.png', content_type: 'image/png', size: 2048 }, used_by: { messages: ['notice'] } })
@@ -190,7 +191,7 @@ describe('New and duplicate', () => {
     wrapper.unmount()
   })
 
-  it('reads a committed copy after its projection appears', async () => {
+  it('reads a committed copy again when the library invalidation arrives, without polling', async () => {
     const copy = { kind: 'base' as const, name: 'standard-copy', title: 'Standard copy', description: '',
       from: { kind: 'base' as const, name: 'standard' } }
     const projected = resource('base', copy.name, { state: 'created', revision: 1, seq: 42 })
@@ -202,7 +203,12 @@ describe('New and duplicate', () => {
       post('/api/v1/mail/library', () => ok({ seq: 42, committed: true, projected: false })),
       get('/api/v1/mail/library/base/standard-copy', read),
     ])
-    await expect(libraryApi.copy(copy)).resolves.toEqual(projected)
+    const created = libraryApi.copy(copy)
+    await flushPromises()
+    await new Promise(resolve => setTimeout(resolve, 600))
+    expect(read).toHaveBeenCalledTimes(1)
+    notify('mail.library')
+    await expect(created).resolves.toEqual(projected)
     expect(read).toHaveBeenCalledTimes(2)
   })
 
