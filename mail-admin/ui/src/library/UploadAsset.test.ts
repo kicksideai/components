@@ -3,7 +3,7 @@ import { flushPromises } from '@vue/test-utils'
 import FileUpload from 'primevue/fileupload'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import UploadAsset from './UploadAsset.vue'
-import { notify } from '../test/setup'
+import { notify, subscriptions } from '../test/setup'
 import { calls, get, ok, post, refuse, resource, serve } from '../test/fixtures'
 import { dialogButton, mountWithMail } from '../test/mail'
 
@@ -69,6 +69,26 @@ describe('Upload image', () => {
     expect(document.body.textContent).not.toContain('still being processed')
     expect(vi.mocked((await import('@wippy-fe/proxy')).api.post).mock.calls.filter(([path]: unknown[]) => path === '/api/v1/mail/library').at(-1)?.[1]).toMatchObject({ kind: 'asset', name: 'brand-mark', upload_id: 'up-7', title: 'Brand mark' })
     expect(context.go).toHaveBeenCalledWith({ name: 'library', section: 'assets', asset: 'brand-mark' })
+    wrapper.unmount()
+  })
+
+  it('stops waiting for the platform as soon as the dialog closes during processing', async () => {
+    serve([
+      get('/api/v1/uploads/up-9', () => Promise.resolve({ data: { success: true, component_id: 'uploads-9', upload: { uuid: 'up-9', status: 'processing' } } })),
+    ])
+    vi.mocked((await import('@wippy-fe/proxy')).api.post).mockImplementation(((path: string) => path === '/api/v1/uploads'
+      ? Promise.resolve({ data: { success: true, uuid: 'up-9' } })
+      : refuse(409, { error: 'Upload is still processing', kind: 'CONFLICT', details: { code: 'upload_still_processing', status: 'processing', upload_id: 'up-9' } })) as never)
+    const { wrapper, props } = mountWithMail(UploadAsset, { visible: false })
+    props.visible = true
+    await flushPromises()
+    await choose(wrapper, png(2048), 'Brand mark')
+    document.body.querySelector<HTMLFormElement>('#mail-upload')!.dispatchEvent(new Event('submit'))
+    await flushPromises()
+    expect(subscriptions.has('component.uploads-9')).toBe(true)
+    props.visible = false
+    await flushPromises()
+    expect(subscriptions.has('component.uploads-9')).toBe(false)
     wrapper.unmount()
   })
 

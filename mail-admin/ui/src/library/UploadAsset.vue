@@ -27,12 +27,12 @@ const file = ref<File>()
 const title = ref(''), name = ref(''), nameEdited = ref(false)
 const busy = ref(false)
 const phase = ref<'upload' | 'process' | 'save'>()
-let signal = { cancelled: false }
+let signal = new AbortController()
 const error = ref(''), fileError = ref(''), nameError = ref('')
 
 watch(() => props.visible, open => {
-  if (!open) { signal.cancelled = true; return }
-  signal = { cancelled: false }
+  if (!open) { signal.abort(); return }
+  signal = new AbortController()
   file.value = undefined
   title.value = props.replace?.title ?? ''
   name.value = props.replace?.name ?? ''
@@ -78,7 +78,7 @@ async function submit() {
     } catch (failure) {
       if (errorCode(failure) !== 'upload_still_processing') throw failure
       phase.value = 'process'
-      await whenCompleted(upload, run)
+      await whenCompleted(upload, run.signal)
       phase.value = 'save'
       saved = await adopt()
     }
@@ -87,7 +87,7 @@ async function submit() {
     emit('close')
     if (!props.replace) go({ name: 'library', section: 'assets', asset: saved.name })
   } catch (failure) {
-    if (run.cancelled) return
+    if (run.signal.aborted) return
     if (failure instanceof UploadFailed) error.value = 'The image could not be processed. Try another file, or upload it again.'
     else if (errorCode(failure) === 'mail_revision_conflict' && !props.replace) nameError.value = `An image named ${name.value} already exists. Choose another name or replace ${name.value}.`
     else if (errorCode(failure) === 'invalid_mail_resource' && !props.replace) nameError.value = nameRule
