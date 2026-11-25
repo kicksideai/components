@@ -19,10 +19,9 @@ function M.next_due(ex: types.Executor, projected: integer): (integer?, error?)
     return first and first.due_at :: integer?, nil
 end
 
-function M.reserve(tx: types.Transaction, asset: types.Asset, now_ms: integer, deadline: integer): (boolean?, error?)
+function M.reserve(tx: types.Transaction, upload_id: string, now_ms: integer, deadline: integer): (boolean?, error?)
     local _, err = tx:execute([[INSERT INTO mail_asset_file
-        (upload_id,filename,content_type,size_bytes,reserved_at,due_at) VALUES ($1,$2,$3,$4,$5,$6)]],
-        {asset.upload_id, asset.filename, asset.content_type, asset.size, now_ms, deadline})
+        (upload_id,reserved_at,due_at) VALUES ($1,$2,$3)]], {upload_id, now_ms, deadline})
     if err then return nil, err end
     return true, nil
 end
@@ -32,6 +31,7 @@ local function unavailable(): error
         retryable = false, details = {code = "mail_asset_version_unavailable"}})
 end
 
+-- A hold protects the upload through projection of the guarded append.
 function M.hold_adoption(tx: types.Transaction, id: string, deadline: integer, now_ms: integer,
     seq: integer, token: string): (boolean?, error?)
     local result, err = tx:execute([[UPDATE mail_asset_file SET hold_seq=$1,hold_id=$2
@@ -58,7 +58,7 @@ function M.hold_restore(tx: types.Transaction, id: string, projected: integer, s
 end
 
 function M.finish_adoption(tx: types.Transaction, id: string, token: string): (boolean?, error?)
-    local _, err = tx:execute("UPDATE mail_asset_file SET due_at=NULL WHERE upload_id=$1 AND hold_id=$2",
+    local _, err = tx:execute("UPDATE mail_asset_file SET due_at=NULL WHERE upload_id=$1 AND hold_id=$2 AND state='held'",
         {id, token})
     if err then return nil, err end
     return true, nil

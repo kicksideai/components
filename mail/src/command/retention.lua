@@ -103,11 +103,7 @@ local function prune_messages(now: integer, retention_ms: integer, preview_expir
         if delete_err then return nil, delete_err end
         local deadlines, read_err = repo.next_deadlines(tx)
         if read_err then return nil, read_err end
-        local mark, mark_err = live_repo.get(tx)
-        if mark_err then return nil, mark_err end
-        local asset_due, asset_err = asset_file_repo.next_due(tx, mark.projected_seq)
-        if asset_err then return nil, asset_err end
-        local next_check = earlier(deadlines.check_at, asset_due)
+        local next_check = deadlines.check_at
         next_check = earlier(next_check, deadlines.finished_at and deadlines.finished_at + retention_ms)
         next_check = earlier(next_check, preview_expiry and preview_expiry * 1000)
         return {success = true, deleted = deleted, deadline_ms = next_check,
@@ -127,13 +123,22 @@ function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): 
         return history.prune_below(tx, seq, policy.BATCH)
     end)
     if history_err then return nil, history_err end
-    local collected, blocked, collect_err = collect(now, seq, policy.BATCH, now + policy.RECHECK_MS)
     local preview_expiry, preview_err = prune_previews(now // 1000)
     if preview_err then return nil, preview_err end
     local result, sweep_err = prune_messages(now, retention_ms, preview_expiry)
-    if sweep_err or collect_err then return nil, sweep_err or collect_err end
+    if sweep_err then return nil, sweep_err end
+    local collected, blocked, collect_err = collect(now, seq, policy.BATCH, now + policy.RECHECK_MS)
+    if collect_err then return nil, collect_err end
+    local asset_due, asset_err = database.with_db(function(ex: types.Executor): (integer?, error?)
+        local mark, mark_err = live_repo.get(ex)
+        if mark_err then return nil, mark_err end
+        return asset_file_repo.next_due(ex, mark.projected_seq :: integer)
+    end)
+    if asset_err then return nil, asset_err end
     local report = result :: types.OwnerResult
-    if history_deleted == policy.BATCH or (collected or 0) + #blocked == policy.BATCH then report.needs_continue = true end
+    report.deadline_ms = earlier(report.deadline_ms, asset_due)
+    report.needs_continue = report.needs_continue or history_deleted == policy.BATCH
+        or (collected or 0) + #blocked == policy.BATCH or (asset_due ~= nil and asset_due <= now)
     report.blocked = blocked
     report.deleted = (report.deleted or 0) + (collected or 0) + (history_deleted or 0)
     return report, nil

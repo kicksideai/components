@@ -3,8 +3,6 @@ local database = require("database")
 local funcs = require("funcs")
 local client = require("client")
 local contract = require("contract")
-local repo = require("repo")
-local files = require("files")
 local registry = require("registry")
 local time = require("time")
 local json = require("json")
@@ -70,16 +68,15 @@ local function remove(keys)
     await_sync_idle()
     assert(database.with_tx(function(tx)
         for _, key in ipairs(keys) do
+            assert(tx:execute("DELETE FROM mail_library_history WHERE kind=$1 AND name=$2", {key.kind, key.name}))
             if key.kind == "asset" then
                 local args = {key.name}
                 assert(tx:execute("DELETE FROM mail_library_asset WHERE name=$1", args))
                 assert(tx:execute("UPDATE mail_library_upload_ref SET live=FALSE WHERE asset=$1", args))
-                assert(tx:execute("DELETE FROM mail_library_revision WHERE kind='asset' AND name=$1", args))
             else
                 local args = {key.kind, key.name}
                 assert(tx:execute("DELETE FROM mail_library_reference WHERE from_kind=$1 AND from_name=$2", args))
                 assert(tx:execute("DELETE FROM mail_library WHERE kind=$1 AND name=$2", args))
-                assert(tx:execute("DELETE FROM mail_library_revision WHERE kind=$1 AND name=$2", args))
             end
         end
         return true, nil

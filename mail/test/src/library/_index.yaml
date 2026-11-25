@@ -24,8 +24,6 @@ entries:
     modules: &fixtures_modules [contract, funcs, registry, time, json]
     imports: &fixtures_imports
       database: kickside.mail.persist:db
-      repo: kickside.mail.persist:library_repo
-      files: kickside.mail.persist:asset_file_repo
       client: kickside.mail:client
   - name: invoke
     kind: function.lua
@@ -140,7 +138,6 @@ entries:
   - name: reap_fault
     kind: library.lua
     source: file://reap_fault.lua
-    modules: [ctx]
     imports:
       uploads: kickside.mail.command:uploads
       asset_interleave: app.mail_library:asset_interleave

@@ -630,7 +630,7 @@ return {run = test.run_cases(function()
                 edit.title = "Layout " .. i
                 restored = read("update", edit)
             end
-            history = read("read_history", key).items
+            history = read("read_history", {kind = key.kind, name = key.name, limit = 100}).items
             test.eq(initial_history + 29, #history)
             test.eq(initial.revision + 29, history[1].version)
             test.eq(initial.revision + 1, history[29].version)

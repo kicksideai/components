@@ -133,6 +133,7 @@ local run = test.run_cases(function()
                 kind = "asset", name = name, seq = first.seq, expected_revision = latest.revision,
             }))
             interleave.await(restore_gate)
+            if reap_first then interleave.arm_reap(source.uuid) end
             prune_through(first.seq)
 
             local function head()
@@ -145,9 +146,7 @@ local run = test.run_cases(function()
             local now = time.now():unix_nano() // 1000000
             if reap_first then
                 local before = head()
-                local owner = assert(funcs.new():with_context({
-                    mail_test_now = now, mail_test_asset_gate = "after_claim", mail_test_reap_id = source.uuid,
-                }))
+                local owner = assert(funcs.new():with_context({mail_test_now = now}))
                 local reaping = assert(owner:async("kickside.mail.jobs:owner", {}))
                 interleave.await("after_claim")
                 test.is_true(storage:exists(source.storage_path))
@@ -163,6 +162,12 @@ local run = test.run_cases(function()
                 test.eq(errors.NOT_FOUND, assert(err):kind())
                 test.eq("mail_asset_source_gone", err:details().code)
                 test.eq(latest.seq, call("get", image).seq)
+                fixtures.await(function()
+                    local db = assert(sql.get("app:db"))
+                    local rows = assert(db:query("SELECT upload_id FROM mail_asset_file WHERE upload_id=$1", {source.uuid}))
+                    assert(db:release())
+                    return #rows == 0
+                end, "Uploads did not acknowledge the reap")
                 test.is_false(storage:exists(source.storage_path))
             else
                 sweep(now)
@@ -396,7 +401,7 @@ local run = test.run_cases(function()
             local no_assets = assert(json.decode(unreferenced.provider_message_id))
             test.eq(0, #no_assets.attachments)
             local _, err = fixtures.call(editor, "delete", {kind = "asset", name = image.name, expected_revision = added.revision})
-            test.eq("mail_resource_in_use", assert(err):details().code)
+            test.eq("mail_resource_in_use", assert(err):details().code, assert(json.encode(err:details())))
             test.eq(msg.name, err:details().messages[1])
             call("delete", {kind = "message", name = msg.name, expected_revision = saved.revision})
             local blocked = select(2, fixtures.call(editor, "delete", {kind = "asset", name = image.name, expected_revision = added.revision}))
@@ -426,7 +431,7 @@ local run = test.run_cases(function()
             local result, err = fixtures.call(editor, "delete", {kind = "asset", name = image.name, expected_revision = added.revision})
             test.is_nil(result)
             test.eq(errors.CONFLICT, assert(err):kind())
-            test.eq("mail_resource_in_use", assert(err):details().code)
+            test.eq("mail_resource_in_use", assert(err):details().code, assert(json.encode(err:details())))
             test.eq(msg.name, err:details().resources[1].name)
             local used_by = call("get", image).used_by.messages
             msg.html = "{{ block body() }}Plain HTML{{ end }}"
@@ -443,8 +448,8 @@ local run = test.run_cases(function()
             local db = assert(sql.get("app:db"))
             local blocked = "invalid-" .. uuid.v4()
             local sweep_at = time.now():add(24 * time.HOUR):unix_nano() // 1000000
-            assert(db:execute([[INSERT INTO mail_asset_file (upload_id,filename,content_type,size_bytes,due_at)
-                VALUES ($1,'fixture','image/gif',1,$2)]], {blocked, sweep_at}))
+            assert(db:execute([[INSERT INTO mail_asset_file (upload_id,due_at)
+                VALUES ($1,$2)]], {blocked, sweep_at}))
             local owner = assert(funcs.new():with_context({mail_test_now = sweep_at}))
             local result = assert(owner:call("kickside.mail.jobs:owner", {}))
             assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id=$1", {blocked}))
@@ -634,11 +639,11 @@ local expiry = test.run_cases(function()
             local tx = assert(db:begin())
             for i = 1, batch do
                 assert(tx:execute([[INSERT INTO mail_asset_file
-                    (upload_id,filename,content_type,size_bytes,due_at) VALUES ($1,'fixture','image/gif',1,$2)]],
+                    (upload_id,due_at) VALUES ($1,$2)]],
                     {prefix .. "-" .. i, now - 2}))
             end
             assert(tx:execute([[INSERT INTO mail_asset_file
-                (upload_id,filename,content_type,size_bytes,due_at) VALUES ($1,'fixture','image/gif',1,$2)]], {collectable, now - 1}))
+                (upload_id,due_at) VALUES ($1,$2)]], {collectable, now - 1}))
             assert(tx:execute([[INSERT INTO mail_message
                 (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments)
                 VALUES ($1,$2,$2,'failed','fixture','{}','Expiry','mail@example.org','[]')]], {expired, now - 30 * day}))
@@ -677,7 +682,7 @@ local expiry = test.run_cases(function()
             local lease = now - 1
             local due = now + 60000
             assert(db:execute([[INSERT INTO mail_asset_file
-                (upload_id,filename,content_type,size_bytes,due_at) VALUES ($1,'fixture','image/gif',1,$2)]], {version, due}))
+                (upload_id,due_at) VALUES ($1,$2)]], {version, due}))
             local tx = assert(db:begin())
             local _, failure = asset_file_repo.hold_adoption(tx, version, lease, now, 1, "test")
             assert(tx:rollback())
@@ -693,16 +698,20 @@ local expiry = test.run_cases(function()
             local now = time.now():unix_nano() // 1000000
             local cutoff = now - 29 * day
             local first, late, version = uuid.v4(), uuid.v4(), uuid.v4()
-            assert(db:execute([[INSERT INTO mail_asset_file
-                (upload_id,filename,content_type,size_bytes) VALUES ($1,'fixture','image/gif',1)]], {version}))
+            local seed = assert(db:begin())
+            assert(seed:execute([[INSERT INTO mail_asset_file
+                (upload_id) VALUES ($1)]], {version}))
+            assert(seed:execute([[INSERT INTO mail_library_upload_ref (upload_id,asset,live,last_seq)
+                VALUES ($1,'fixture',FALSE,0)]], {version}))
             for i, id in ipairs({first, late}) do
-                assert(db:execute([[INSERT INTO mail_message
+                assert(seed:execute([[INSERT INTO mail_message
                     (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments)
                     VALUES ($1,$2,$2,'failed','fixture','{}','Expiry','mail@example.org','[]')]], {id, cutoff + i - 2}))
-                assert(db:execute([[INSERT INTO mail_message_asset
+                assert(seed:execute([[INSERT INTO mail_message_asset
                     (message_id,name,content_id,upload_id) VALUES ($1,'fixture','fixture',$2)]], {id, version}))
             end
-            assert(db:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff + 1, late}))
+            assert(seed:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff + 1, late}))
+            assert(seed:commit())
             local exec = assert(funcs.new():with_context({mail_test_now = now + day}))
             local report
             if postgres then
@@ -728,19 +737,21 @@ local expiry = test.run_cases(function()
                 assert(db:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff, late}))
             end
             local refs = assert(db:query("SELECT message_id FROM mail_message_asset WHERE upload_id=$1", {version}))
-            local schedule = assert(db:query("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {version}))
-            local next_report = assert(exec:call("kickside.mail.jobs:owner", {}))
-            local released = assert(db:query("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {version}))
-            assert(db:execute("DELETE FROM mail_message WHERE id IN ($1,$2)", {first, late}))
-            assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id=$1", {version}))
+            local held = assert(db:query("SELECT state FROM mail_asset_file WHERE upload_id=$1", {version}))
             assert(db:release())
             test.is_true(report.success, tostring(report.error))
             test.eq(1, #refs, "The next expiry pass must still be able to release the late message reference")
             test.eq(late, refs[1].message_id)
-            test.is_nil(schedule[1].due_at)
+            test.eq("held", held[1].state)
             if postgres then test.is_true(report.needs_continue) end
+            local next_report = assert(exec:call("kickside.mail.jobs:owner", {}))
             test.is_true(next_report.success, tostring(next_report.error))
-            test.eq(now + day, released[1].due_at)
+            fixtures.await(function()
+                local check = assert(sql.get("app:db"))
+                local released = assert(check:query("SELECT state FROM mail_asset_file WHERE upload_id=$1", {version}))
+                assert(check:release())
+                return #released == 0
+            end, "The owner did not reap the upload after its last delivery expired")
         end)
     end)
 end)

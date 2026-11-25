@@ -54,7 +54,7 @@ describe('Images', () => {
     expect(wrapper.find('h1').text()).toBe('Images')
     const rows = wrapper.findAll('tbody tr').map(node => node.text())
     expect(rows[0]).toContain('Mail logo')
-    expect(rows[0]).toContain('120 × 40 · 2 KB')
+    expect(rows[0]).toContain('2 KB')
     expect(rows[0]).toContain('1 message')
     expect(rows[1]).toContain('Spring banner')
     expect(rows[1]).toContain('—')

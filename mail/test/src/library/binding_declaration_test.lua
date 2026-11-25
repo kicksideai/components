@@ -7,7 +7,7 @@ local function cases()
         local binding = assert(registry.get("kickside.mail.binding:library"))
         local expected = {
             ["resource.created"] = "created", ["resource.updated"] = "edited",
-            ["resource.base_set"] = "base_changed", ["resource.reset"] = "reset",
+            ["resource.base_set"] = "base_changed", ["resource.reset"] = false,
             ["resource.restored"] = "restored", ["resource.archived"] = "archived",
             ["resource.deleted"] = "deleted", ["asset.added"] = false,
             ["asset.restored"] = "restored", ["asset.removed"] = "deleted",
@@ -22,6 +22,12 @@ local function cases()
             test.not_nil(schema.properties.key)
             test.not_nil(schema.properties.revision)
             if expected[name] then test.eq(expected[name], schema.properties.change.const) end
+            if name == "resource.reset" then
+                test.eq("reset", schema.properties.change.enum[1])
+                test.eq("restored", schema.properties.change.enum[2])
+                test.not_nil(schema.properties.from_seq)
+                test.not_nil(schema.properties.from_version)
+            end
             if name == "resource.created" or name == "resource.updated" or name == "resource.base_set"
                 or name == "resource.reset" or name == "resource.restored" then
                 local required = {}

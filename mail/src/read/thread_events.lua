@@ -4,7 +4,9 @@ local security = require("security")
 local content = require("content")
 local types = require("types")
 local json = require("json")
+local canonical = require("canonical_json")
 local events = require("events")
+local resource = require("resource")
 
 local M = {library_thread_id = content.library_component_id}
 
@@ -33,6 +35,17 @@ function M.head(threads: types.LibraryThreads, subject: string?): (types.ThreadH
     return row, nil
 end
 
+function M.versions(threads: types.LibraryThreads, edits: {types.LibraryEdit}): ({[string]: integer}?, error?)
+    local versions: {[string]: integer} = {}
+    for _, edit in ipairs(edits) do
+        local subject = resource.subject(edit.key)
+        local position, err = M.head(threads, subject)
+        if err then return nil, err end
+        versions[subject] = position.subject_version or 0
+    end
+    return versions, nil
+end
+
 function M.event_at(threads: types.LibraryThreads, seq: integer): (types.ThreadEvent?, error?)
     local page, err = threads:list_events({thread_id = M.library_thread_id(), from_seq = seq, to_seq = seq, limit = 1})
     if err then return nil, err end
@@ -50,6 +63,8 @@ function M.event_resource(event: types.ThreadEvent): (types.Resource?, error?)
     local snapshot, content_err = events.content(body)
     if content_err then return nil, content_err end
     local item = snapshot :: types.Resource
+    item.schema = canonical.normalize_schema(item.schema) :: types.VariableSchema
+    item.samples = canonical.object(item.samples) :: types.JsonObject
     local state = body.state or (body.origin and "customized" or "created")
     item.state, item.origin, item.origin_label = state, body.origin, body.origin_label
     item.revision, item.seq, item.author = event.subject_version, event.seq, body.author

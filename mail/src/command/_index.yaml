@@ -103,6 +103,7 @@ entries:
       preview_repo: kickside.mail.persist:preview_repo
       library: kickside.mail.read:library
       history: kickside.mail.read:history
+      thread_events: kickside.mail.read:thread_events
       settings: kickside.mail.read:settings
       live_preview: kickside.mail.read:preview
       scratch: kickside.mail.render:scratch

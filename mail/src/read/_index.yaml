@@ -42,6 +42,8 @@ entries:
       content: kickside.mail.read:content
       types: kickside.mail:types
       events: kickside.mail.domain:events
+      canonical_json: kickside.contract:canonical_json
+      resource: kickside.mail.domain:resource
   - name: history
     kind: library.lua
     meta: {private: true}
@@ -73,6 +75,7 @@ entries:
       reference_repo: kickside.mail.persist:reference_repo
       history_repo: kickside.mail.persist:history_repo
       history: kickside.mail.read:history
+      thread_events: kickside.mail.read:thread_events
       originals: kickside.mail.render:originals
       config: kickside.mail.domain:config
       policy: kickside.mail.domain:policy

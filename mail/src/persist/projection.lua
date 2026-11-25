@@ -71,8 +71,6 @@ local function apply(tx: types.Transaction, event: types.PrefetchedLibraryEvent)
         _, reason = uploads.activate(tx, effect.upsert_asset.upload_id, key.name, event.seq)
         if reason then return nil, reason end
     end
-    _, reason = library.snapshot_revision(tx, event, effect.history)
-    if reason then return nil, reason end
     _, reason = history.insert(tx, effect.history)
     if reason then return nil, reason end
     return effect, nil

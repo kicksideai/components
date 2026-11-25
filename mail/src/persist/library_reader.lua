@@ -34,33 +34,18 @@ local function resource(row: types.LibraryRow): (types.Resource?, error?)
     }, nil
 end
 
-local ASSET_SELECT = [[SELECT a.name,a.title,a.description,a.origin,a.origin_label,a.revision,a.author,a.created_at,a.updated_at,a.last_seq,
-    'asset' AS kind, a.upload_id AS asset_upload_id,
-    CASE WHEN a.origin IS NULL THEN 'created' ELSE 'customized' END AS state,
-    COALESCE(a.filename,f.filename) AS filename, COALESCE(a.content_type,f.content_type) AS content_type,
-    COALESCE(a.size_bytes,f.size_bytes) AS size_bytes
-    FROM mail_library_asset a LEFT JOIN mail_asset_file f ON f.upload_id=a.upload_id]]
+local ASSET_SELECT = [[SELECT name,title,description,origin,origin_label,revision,author,created_at,updated_at,last_seq,
+    'asset' AS kind, upload_id AS asset_upload_id,
+    CASE WHEN origin IS NULL THEN 'created' ELSE 'customized' END AS state, filename,content_type,size_bytes
+    FROM mail_library_asset]]
 
 function M.get(db: types.Executor, key: types.ResourceKey): (types.Resource?, error?)
     if key.kind == "asset" then
-        local assets, err = db:query(ASSET_SELECT .. " WHERE a.name=$1", {key.name})
+        local assets, err = db:query(ASSET_SELECT .. " WHERE name=$1", {key.name})
         if err then return nil, err end
-        if assets[1] then return asset_resource(assets[1] :: types.LibraryRow), nil end
-        local reset, reset_err = db:query([[SELECT * FROM mail_library_revision
-            WHERE kind='asset' AND name=$1 AND state='original' ORDER BY revision DESC LIMIT 1]], {key.name})
-        if reset_err then return nil, reset_err end
-        if not reset[1] then return nil, nil end
-        return asset_resource(reset[1] :: types.LibraryRow), nil
+        return assets[1] and asset_resource(assets[1] :: types.LibraryRow), nil
     end
-    local rows, err = db:query([[SELECT * FROM (
-        SELECT revision,kind,name,title,description,html,text,subject,base,schema_json,samples_json,state,origin,origin_label,
-            author,created_at,updated_at,archived,last_seq FROM mail_library WHERE kind=$1 AND name=$2
-        UNION ALL
-        SELECT revision,kind,name,title,description,html,text,subject,base,schema_json,samples_json,state,origin,NULL,
-            author,created_at,updated_at,FALSE,(SELECT max(h.seq) FROM mail_library_history h
-              WHERE h.kind=r.kind AND h.name=r.name AND h.version=r.revision) FROM mail_library_revision r
-            WHERE kind=$1 AND name=$2 AND state='original'
-    ) AS effective ORDER BY revision DESC LIMIT 1]], {key.kind, key.name})
+    local rows, err = db:query("SELECT * FROM mail_library WHERE kind=$1 AND name=$2", {key.kind, key.name})
     if err then return nil, err end
     if not rows[1] then return nil, nil end
     return resource(rows[1] :: types.LibraryRow)
@@ -98,9 +83,9 @@ function M.rows(db: types.Executor, filter: types.ResourceFilter, include_archiv
     local resources: {types.Resource} = {}
     if not filter.base and (not filter.kind or filter.kind == "asset") then
         local condition = ""
-        if filter.state == "created" then condition = " WHERE a.origin IS NULL" end
-        if filter.state == "customized" then condition = " WHERE a.origin IS NOT NULL" end
-        local assets, asset_err = db:query(ASSET_SELECT .. condition .. " ORDER BY a.name")
+        if filter.state == "created" then condition = " WHERE origin IS NULL" end
+        if filter.state == "customized" then condition = " WHERE origin IS NOT NULL" end
+        local assets, asset_err = db:query(ASSET_SELECT .. condition .. " ORDER BY name")
         if asset_err then return nil, asset_err end
         for _, row in ipairs(assets) do
             resources[#resources + 1] = asset_resource(row :: types.LibraryRow)
@@ -190,17 +175,13 @@ function M.summary_page(db: types.Executor, dialect: string, declarations: {type
         .. table.concat(sources, " UNION ALL ") .. "), summary AS (SELECT COUNT(*) AS total FROM matched)"
         .. ", page AS (SELECT * FROM (" .. table.concat(pages, " UNION ALL ")
         .. ") AS candidates ORDER BY kind,name LIMIT " .. page_limit .. ")"
-        .. [[ SELECT page.*,summary.total,a.upload_id,COALESCE(a.filename,f.filename) AS filename,
-        COALESCE(a.content_type,f.content_type) AS content_type, COALESCE(a.size_bytes,f.size_bytes) AS size_bytes,
+        .. [[ SELECT page.*,summary.total,a.upload_id,a.filename,a.content_type,a.size_bytes,
         CASE WHEN page.state<>'original' THEN page.revision
-            WHEN page.kind='asset' THEN COALESCE((SELECT MAX(r.revision) FROM mail_library_revision r
-                WHERE r.kind=page.kind AND r.name=page.name AND r.state='original'),0)
             ELSE COALESCE((SELECT version FROM mail_library_history h
                 WHERE h.kind=page.kind AND h.name=page.name ORDER BY seq DESC LIMIT 1),0)
         END AS effective_revision
         FROM summary LEFT JOIN page ON 1=1
         LEFT JOIN mail_library_asset a ON page.kind='asset' AND page.name=a.name AND page.state<>'original'
-        LEFT JOIN mail_asset_file f ON f.upload_id=a.upload_id
         ORDER BY page.kind,page.name]]
     local found, read_err = db:query(query, args)
     if read_err then return nil, read_err end
@@ -225,31 +206,10 @@ function M.summary_page(db: types.Executor, dialect: string, declarations: {type
     return page, nil
 end
 
-function M.original_revisions(db: types.Executor): (types.OriginalRevisions?, error?)
-    local rows, err = db:query([[SELECT kind,name,MAX(revision) AS revision
-        FROM mail_library_revision WHERE kind='asset' AND state='original' GROUP BY kind,name
-        UNION ALL
-        SELECT kind,name,MAX(version) AS revision FROM mail_library_history WHERE kind<>'asset' GROUP BY kind,name]])
-    if err then return nil, err end
-    local revisions: types.OriginalRevisions = {}
-    for _, row in ipairs(rows) do
-        local kind = row.kind :: string
-        revisions[kind] = revisions[kind] or {}
-        revisions[kind][row.name :: string] = row.revision :: integer
-    end
-    return revisions, nil
-end
-
 function M.write_result(ex: types.Executor, key: types.ResourceKey, seq: integer): (types.Resource?, error?)
     local item, err = M.get(ex, key)
     if err then return nil, err end
-    if item and item.seq == seq then return item, nil end
-    local rows, read_err = ex:query([[SELECT r.*, h.seq AS last_seq FROM mail_library_history h
-        JOIN mail_library_revision r ON r.kind=h.kind AND r.name=h.name AND r.revision=h.version
-        WHERE h.seq=$1 AND h.kind=$2 AND h.name=$3]], {seq, key.kind, key.name})
-    if read_err then return nil, read_err end
-    if not rows[1] then return nil, nil end
-    return resource(rows[1] :: types.LibraryRow)
+    return item and item.seq == seq and item or nil, nil
 end
 
 function M.live_rows(db: types.Executor): ({types.Resource}?, error?)

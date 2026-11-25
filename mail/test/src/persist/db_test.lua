@@ -32,9 +32,7 @@ return {run = test.run_cases(function()
                 if dialect ~= "sqlite" and dialect ~= "postgres" then
                     return nil, errors.new({kind = errors.INTERNAL, message = "Unexpected SQL dialect: " .. dialect})
                 end
-                local _, write_err = tx:execute([[INSERT INTO mail_asset_file
-                    (upload_id, filename, content_type, size_bytes) VALUES ($1, $2, $3, $4)]],
-                    {upload_id, "test.png", "image/png", 1})
+                local _, write_err = tx:execute("INSERT INTO mail_asset_file (upload_id) VALUES ($1)", {upload_id})
                 if write_err then return nil, write_err end
                 return nil, refused
             end)

@@ -6,6 +6,7 @@ local edit_rules = require("edit")
 local edits = require("library_edits")
 local library = require("library")
 local history = require("history")
+local thread_events = require("thread_events")
 local message = require("message")
 local vars_schema = require("vars")
 local globals = require("globals")
@@ -60,6 +61,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
     local operation: string?
     local author: string?
     local source: types.Resource?
+    local versions: {[string]: integer}?
     if bind then
         local proposed, op, shape_err = review_edits(input)
         if shape_err then return nil, shape_err end
@@ -88,6 +90,14 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         end
     end
 
+    if bind then
+        local api, open_err = thread_events.open()
+        if open_err then return nil, open_err end
+        local versions_err
+        versions, versions_err = thread_events.versions(api :: types.LibraryThreads, batch)
+        if versions_err then return nil, versions_err end
+    end
+
     local appearance, globals_err = settings.appearance()
     if globals_err then return nil, globals_err end
     local values = globals.data(appearance :: types.Appearance)
@@ -102,7 +112,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
     local rendered, render_err = database.with_tx(function(tx: types.Transaction, dialect: string): (types.Rendered | types.DraftPreview | nil, error?)
         local _, lock_err = library_repo.lock(tx, dialect)
         if lock_err then return nil, lock_err end
-        local loaded, load_err = edits.workspace(tx)
+        local loaded, load_err = edits.workspace(tx, versions)
         if load_err then return nil, load_err end
         local workspace = loaded :: types.LibraryWorkspace
         local items = workspace.items

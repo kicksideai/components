@@ -75,7 +75,7 @@ function M.adopt(input: types.AssetWrite, operation: string): (types.Resource?, 
         content_type = info.content_type, size = info.size :: integer}
     local deadline = lease:unix_nano() // 1000000
     local _, reserve_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
-        return asset_file_repo.reserve(tx, asset, now:unix_nano() // 1000000, deadline)
+        return asset_file_repo.reserve(tx, version, now:unix_nano() // 1000000, deadline)
     end)
     if reserve_err then return nil, reserve_err end
     notify.retention()

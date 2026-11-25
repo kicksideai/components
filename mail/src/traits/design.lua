@@ -91,7 +91,9 @@ function M.asset_add(input: types.AssetWrite): (unknown, error?)
     local item, err = library:add_asset(input)
     if err then return refusal(err) end
     local saved = item :: types.Resource
+    if saved.projected == false then return summary(saved), nil end
     return {kind = saved.kind, name = saved.name, state = saved.state, revision = saved.revision,
+        seq = saved.seq, committed = saved.committed, projected = saved.projected,
         messages = saved.used_by and saved.used_by.messages or {}}, nil
 end
 

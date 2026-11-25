@@ -494,6 +494,7 @@ entries:
         type: object
         anyOf:
           - {required: [kind, name, state, revision, messages]}
+          - {required: [seq, committed, projected]}
           - *refusal_required
         properties:
           <<: *summary_fields

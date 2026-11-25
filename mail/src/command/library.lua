@@ -23,9 +23,9 @@ local live_repo = require("live_repo")
 local M = {}
 
 local function asset_event(tx: types.Transaction, operation: string, edit: types.LibraryEdit, author: string,
-    signature: string, source: types.Resource?, head: integer, token: string): (types.LibraryEvent?, error?)
+    signature: string, source: types.Resource?, head: integer, token: string, versions: {[string]: integer}): (types.LibraryEvent?, error?)
     local key = edit.key
-    local workspace, load_err = edit_ops.workspace(tx)
+    local workspace, load_err = edit_ops.workspace(tx, versions)
     if load_err then return nil, load_err end
     local read_err = edit_ops.load(workspace, key)
     if read_err then return nil, read_err end
@@ -210,6 +210,8 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
         source, source_err = history.restore_source(edit.key, edit.restore :: integer, api)
         if source_err then return nil, source_err end
     end
+    local versions, versions_err = thread_events.versions(api, edits)
+    if versions_err then return nil, versions_err end
     local token = uuid.v4()
     local batch, plan_err = database.with_tx(function(tx: types.Transaction, dialect: string): ({types.LibraryEvent}?, error?)
         if asset then
@@ -219,13 +221,13 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
                 return nil, catching_up(cursor.event_count, checkpoint.projected_seq :: integer)
             end
             local event, event_err = asset_event(tx, operation, edit, author, signature :: string, source,
-                cursor.event_count, token)
+                cursor.event_count, token, versions :: {[string]: integer})
             if event_err then return nil, event_err end
             return {event :: types.LibraryEvent}, nil
         end
         local _, lock_err = library_repo.lock(tx, dialect)
         if lock_err then return nil, lock_err end
-        return edit_ops.plan(tx, operation, edits, opts, author, signature :: string, cursor.event_count, source)
+        return edit_ops.plan(tx, operation, edits, opts, author, signature :: string, cursor.event_count, source, versions :: {[string]: integer})
     end)
     if plan_err then
         if opts.command_id then
@@ -239,14 +241,15 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
     if #batch == 1 then expect.subject, expect.version = batch[1].subject, batch[1].body.revision - 1 end
     local receipt, err = threads.append(api, author, identity_op, command_id :: string, expect, batch)
     if err or receipt.duplicates > 0 then
-        if not err or errors.is(err, errors.CONFLICT) or (err:details() or {}).cause ~= nil then
+        local details = err and err:details() or {}
+        if not err or batch[1].body.asset or errors.is(err, errors.CONFLICT) or details.cause ~= nil then
             local seq, replay_err = replay()
             if replay_err then return nil, replay_err end
             if seq then return result(api, operation, edits, seq) end
         end
         if err then
             local upload = batch[1].body.asset
-            if upload then
+            if upload and details.cause == nil then
                 local _, release_err = database.with_tx(function(tx: types.Transaction): (boolean?, error?)
                     return asset_file_repo.release_hold(tx, upload.upload_id, token)
                 end)

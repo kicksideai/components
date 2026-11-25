@@ -116,6 +116,7 @@ type OriginalMap = {[string]: Original}
 type LibraryWorkspace = {
     ex: Executor, items: ResourceMap, originals: OriginalMap,
     loaded: {[string]: boolean},
+    versions: {[string]: integer},
 }
 type ResourceRevision = ResourceKey & {expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
 type ResourceEdit = ResourceContent & {expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
@@ -125,8 +126,6 @@ type AssetWrite = {name: string, upload_id: string, command_id: string?, expecte
     title: string?, description: string?}
 type ResourceBaseEdit = {name: string, base: string, expected_revision: integer, note: string?, preview_id: string?, command_id: string?}
 type ResourceRestore = ResourceRevision & {seq: integer}
-type RevisionChange = {action: string, state: string, restored_from: integer?, note: string?}
-type LibraryWrite = {item: Resource, released: {Record}}
 type HistoryItem = {seq: integer, kind: string, name: string, version: integer, action: string,
     restored_from: integer?, note: string?, author: string, created_at: integer}
 type Revision = HistoryItem & {state: string?, origin: string?, content: ResourceContent?}
@@ -136,7 +135,6 @@ type LibraryHistoryPage = {items: {HistoryItem}, next_cursor: string?, library_s
 type LibraryAssetRequest = {name: string, revision: integer?}
 type LibrarySaveResult = {items: {Resource}?, seq: integer?, projected: boolean?, committed: boolean?}
 type LibraryWriteOptions = {preview_id: string?, command_id: string?, identity_op: string?, command_hash: string?}
-type OriginalRevisions = {[string]: {[string]: integer}}
 type DraftRequest = {attachments: {AttachmentRef}?, resource: ResourceContent?, resources: {ResourceEdit}?, message: string, vars: JsonObject?}
 type ResourceSave = {resources: {ResourceEdit}, note: string?, preview_id: string?, command_id: string?}
 type EditPreview = DraftRequest & {create: ResourceCreate?, set_base: ResourceBaseEdit?, reset: ResourceRevision?, restore: ResourceRestore?}
@@ -310,11 +308,11 @@ return {
     ResourceContent = ResourceContent, Resource = Resource, ResourceFilter = ResourceFilter,
     Original = Original, OriginalMap = OriginalMap, ResourceMap = ResourceMap, LibraryWorkspace = LibraryWorkspace, ResourceRevision = ResourceRevision,
     ResourceEdit = ResourceEdit, ResourceCreate = ResourceCreate, ResourceBaseEdit = ResourceBaseEdit,
-    ResourceRestore = ResourceRestore, HistoryItem = HistoryItem, Revision = Revision, OriginalRevisions = OriginalRevisions, DraftRequest = DraftRequest,
+    ResourceRestore = ResourceRestore, HistoryItem = HistoryItem, Revision = Revision, DraftRequest = DraftRequest,
     Library = Library, LibraryHistoryRequest = LibraryHistoryRequest, LibraryRevisionRequest = LibraryRevisionRequest,
     LibraryHistoryPage = LibraryHistoryPage, LibraryAssetRequest = LibraryAssetRequest, LibrarySaveResult = LibrarySaveResult,
     ResourceSave = ResourceSave, LibraryEdit = LibraryEdit, RecentSender = RecentSender, AssetUsage = AssetUsage, UsedBy = UsedBy,
-    LibraryRow = LibraryRow, LibraryWrite = LibraryWrite, JetEntry = JetEntry,
+    LibraryRow = LibraryRow, JetEntry = JetEntry,
     LibraryEvent = LibraryEvent, LibraryEventBody = LibraryEventBody, EventContent = EventContent, EventAsset = EventAsset,
     PrefetchedLibraryEvent = PrefetchedLibraryEvent, ProjectionInput = ProjectionInput,
     ProjectedResource = ProjectedResource, ProjectedAsset = ProjectedAsset, ProjectedState = ProjectedState,

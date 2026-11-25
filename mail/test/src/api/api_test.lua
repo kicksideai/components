@@ -1,5 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local funcs = require("funcs")
+local contract = require("contract")
+local security = require("security")
 local http = require("http_client")
 local json = require("json")
 local registry = require("registry")
@@ -444,7 +446,8 @@ return {run = test.run_cases(function()
             part.preview_id = review(editor, "notice", {create = part})
             assert_maps("POST", "/library", part, 201)
             assert_maps("GET", route, nil, 200)
-            assert_maps("GET", route .. "/history", nil, 200)
+            local item = data(editor, "GET", route)
+            assert_maps("GET", route .. "/history?seq=" .. item.seq, nil, 200)
         end)
 
         test.it("records per-resource versions and the action that produced each revision", function()
@@ -480,7 +483,7 @@ return {run = test.run_cases(function()
             local reset = data(editor, "GET", "/library/base/plain/history").items[1]
             test.eq("reset", reset.action)
             test.eq("original", data(editor, "GET", "/library/base/plain/history?seq=" .. reset.seq).state)
-            test.eq(2, reset.version)
+            test.eq(original.revision + 2, reset.version)
         end)
 
         test.it("requires a reviewed draft for an HTTP edit", function()
@@ -840,20 +843,45 @@ return {run = test.run_cases(function()
             test.is_nil(result.preview_id, tool)
         end
 
-        local function seed_source(item, html, historical)
+        local function seed_source(item, html)
             local db = assert(sql.get("app:db"))
-            if historical then
-                local thread = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
-                local rows = assert(db:query("SELECT body FROM kickside_event WHERE thread_id=$1 AND seq=$2", {thread, item.seq}))
-                local body = assert(json.decode(rows[1].body))
-                body.content.html = html
-                assert(db:execute("UPDATE kickside_event SET body=$1 WHERE thread_id=$2 AND seq=$3",
-                    {assert(json.encode(body)), thread, item.seq}))
-            else
-                assert(db:execute("UPDATE mail_library SET html=$1 WHERE kind=$2 AND name=$3",
-                    {html, item.kind, item.name}))
-            end
+            assert(db:execute("UPDATE mail_library SET html=$1 WHERE kind=$2 AND name=$3",
+                {html, item.kind, item.name}))
             assert(db:release())
+        end
+
+        local function seed_history(editor, item, invalid_html)
+            local actor = assert(security.new_actor(editor.id, {user_id = editor.id, security_groups = {"app:mail_editors"}}))
+            local scope = assert(security.new_scope({
+                assert(security.policy("kickside.mail.security:library_threads")),
+                assert(security.policy("app:member_database")),
+                assert(security.policy("kickside.mail.security:library_component_read")),
+                assert(security.policy("kickside.mail.security:library_component_registry")),
+                assert(security.policy("kickside.mail.security:library_thread_config")),
+                assert(security.policy("app.mail_library:projection_editor_context")),
+                assert(security.policy("app.mail_library:projection_editor_notifications")),
+            }))
+            local definition = assert(contract.get("kickside.core:threads"))
+            local threads = assert(definition:with_actor(actor):with_scope(scope):open())
+            local thread = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
+            local function snapshot(version, html)
+                return {type = "kickside.mail.events:resource.updated", subject = item.kind .. "/" .. item.name,
+                    body = {key = {kind = item.kind, name = item.name}, revision = version, author = editor.id,
+                        change = "edited", state = "created", preview_id = uuid.v4(), base = item.base,
+                        content = {title = item.title, description = item.description, html = html, text = item.text,
+                            subject = item.subject, schema = item.schema, samples = item.samples}}}
+            end
+            local receipt, err = threads:append_events({thread_id = thread, events = {
+                snapshot(item.revision + 1, invalid_html), snapshot(item.revision + 2, item.html),
+            }})
+            assert(receipt, tostring(err))
+            local projection, catch_err = threads:catch_up_projection({thread_id = thread,
+                kind = "kickside.mail:library_tables", target_seq = receipt.max_seq,
+                deadline = time.now():add(5 * time.SECOND):format(time.RFC3339)})
+            assert(projection and projection.done, tostring(catch_err or (projection or {}).reason))
+            local published = assert(funcs.call("kickside.mail.jobs:reconcile"))
+            assert(published.status == "success", published.message)
+            return receipt.max_seq - 1, item.revision + 2
         end
 
         local graphs = {
@@ -938,7 +966,8 @@ return {run = test.run_cases(function()
                     subject = target.subject, base = target.base, schema = target.schema, samples = target.samples,
                     expected_revision = first.revision,
                 })
-                target.expected_revision = second.revision
+                local historical_seq, current_revision = seed_history(editor, second, bad_html)
+                target.expected_revision = current_revision
                 target.title = second.title
                 arm_peer(true)
                 target.html = bad_html
@@ -949,18 +978,16 @@ return {run = test.run_cases(function()
                 review_cycle(editor, preview, graph.diagnostic)
                 alive()
 
-                -- A historical event can contain a template that fails current validation.
-                seed_source(first, bad_html, true)
                 local restore = {kind = target.kind, name = target.name,
-                    seq = first.seq, expected_revision = second.revision}
+                    seq = historical_seq, expected_revision = current_revision}
                 local restore_draft = {message = message, restore = restore}
                 review_cycle(editor, restore_draft, graph.diagnostic)
                 tool_cycle(agent, "library_preview", restore_draft, graph.diagnostic)
                 arm_peer(false)
                 local stored = data(editor, "GET", route)
-                test.eq(second.revision, stored.revision)
+                test.eq(current_revision, stored.revision)
                 test.eq(good_html, stored.html)
-                test.eq(2, #data(editor, "GET", route .. "/history").items)
+                test.eq(4, #data(editor, "GET", route .. "/history").items)
                 local healthy = data(editor, "POST", "/library/preview", {message = message})
                 test.not_nil(healthy.html:find("Cycle content", 1, true))
             end)

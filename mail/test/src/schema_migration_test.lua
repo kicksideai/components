@@ -4,7 +4,7 @@ local sql = require("sql")
 local test = require("test")
 
 local tables = {
-    "mail_message", "mail_library", "mail_asset_file", "mail_library_revision",
+    "mail_message", "mail_library", "mail_asset_file",
     "mail_library_asset", "mail_message_asset",
     "mail_library_reference", "mail_library_preview",
     "mail_library_history", "mail_library_upload_ref", "mail_library_live",
@@ -15,9 +15,9 @@ local indexes = {
     "mail_message_sender_status_page", "mail_message_status_page", "mail_message_check",
     "mail_message_expiry", "mail_message_template_page", "mail_message_failed_at",
     "mail_library_state", "mail_library_base", "mail_asset_file_due",
-    "mail_library_revision_asset", "mail_library_asset_upload", "mail_message_asset_upload",
+    "mail_library_asset_upload", "mail_message_asset_upload",
     "mail_library_reference_to", "mail_library_preview_expiry",
-    "mail_library_history_page", "mail_library_upload_ref_reap",
+    "mail_library_history_page", "mail_library_history_version", "mail_library_upload_ref_reap",
 }
 
 local function inspect_schema(db_id: string)
@@ -72,6 +72,13 @@ return {run = test.run_cases(function()
                 test.is_true(names.mail_library_page == "index", "missing index mail_library_page")
                 test.is_true(names.mail_library_asset_page == "index", "missing index mail_library_asset_page")
             end
+        end)
+
+        test.it("installs History without a revision snapshot table", function()
+            local config = assert(registry.get("kickside.mail:db_config"))
+            local names = inspect_schema(config.meta.db_id)
+            test.is_nil(names.mail_library_revision)
+            test.is_nil(names.mail_library_revision_asset)
         end)
 
         test.it("advertises only current history actions", function()

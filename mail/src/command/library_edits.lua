@@ -17,10 +17,10 @@ local live_repo = require("live_repo")
 
 local M = {}
 
-function M.workspace(ex: types.Executor): (types.LibraryWorkspace?, error?)
+function M.workspace(ex: types.Executor, versions: {[string]: integer}?): (types.LibraryWorkspace?, error?)
     local originals, err = originals_reader.list()
     if err then return nil, err end
-    return {ex = ex, items = {}, originals = originals :: types.OriginalMap, loaded = {}}, nil
+    return {ex = ex, items = {}, originals = originals :: types.OriginalMap, loaded = {}, versions = versions or {}}, nil
 end
 
 function M.load(workspace: types.LibraryWorkspace, key: types.ResourceKey): error?
@@ -29,14 +29,11 @@ function M.load(workspace: types.LibraryWorkspace, key: types.ResourceKey): erro
     local row, err = library_reader.get(workspace.ex, key)
     if err then return err end
     local original = workspace.originals[id]
-    if original and (not row or row.state == "original") then
-        if row then
-            original.resource.revision, original.resource.seq = row.revision, row.seq
-        else
-            local position, position_err = library_reader.subject_position(workspace.ex, key)
-            if position_err then return position_err end
-            original.resource.revision, original.resource.seq = position.revision, position.seq
-        end
+    if original and not row then
+        local position, position_err = library_reader.subject_position(workspace.ex, key)
+        if position_err then return position_err end
+        original.resource.revision = workspace.versions[id] or position.revision
+        original.resource.seq = position.seq
         row = original.resource
     end
     workspace.items[id], workspace.loaded[id] = row, true
@@ -46,9 +43,7 @@ end
 function M.current_revision(workspace: types.LibraryWorkspace, key: types.ResourceKey): (integer?, error?)
     local item = workspace.items[resources.subject(key)]
     if item then return item.revision, nil end
-    local position, err = library_reader.subject_position(workspace.ex, key)
-    if err then return nil, err end
-    return position.revision, nil
+    return workspace.versions[resources.subject(key)] or 0, nil
 end
 
 function M.dependencies(workspace: types.LibraryWorkspace, roots: {types.ResourceContent}): error?
@@ -255,7 +250,7 @@ local function validate_templates(workspace: types.LibraryWorkspace, keys: {type
 end
 
 function M.plan(ex: types.Executor, operation: string, edits: {types.LibraryEdit}, opts: types.LibraryWriteOptions,
-    author: string, signature: string, head: integer, source: types.Resource?): ({types.LibraryEvent}?, error?)
+    author: string, signature: string, head: integer, source: types.Resource?, versions: {[string]: integer}): ({types.LibraryEvent}?, error?)
     local mark, state_err = live_repo.get(ex)
     if state_err then return nil, state_err end
     if mark.projected_seq < head then
@@ -263,7 +258,7 @@ function M.plan(ex: types.Executor, operation: string, edits: {types.LibraryEdit
             details = {code = "mail_library_catching_up"}})
     end
 
-    local loaded, err = M.workspace(ex)
+    local loaded, err = M.workspace(ex, versions)
     if err then return nil, err end
     local workspace = loaded :: types.LibraryWorkspace
     local items, originals = workspace.items, workspace.originals

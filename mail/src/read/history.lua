@@ -65,7 +65,7 @@ function M.revision(key: types.ResourceKey, seq: integer?, api: types.LibraryThr
     local item, err = thread_events.event_resource(event :: types.ThreadEvent)
     if err then return nil, err end
     detail.state, detail.origin, detail.content = item.state, item.origin, (item :: unknown) :: types.ResourceContent
-    return detail, nil
+    return (detail :: unknown) :: types.Revision, nil
 end
 
 function M.restore_source(key: types.ResourceKey, seq: integer, api: types.LibraryThreads?): (types.Resource?, error?)

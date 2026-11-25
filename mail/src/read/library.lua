@@ -8,6 +8,7 @@ local library_reader = require("library_reader")
 local reference_repo = require("reference_repo")
 local history = require("history")
 local history_repo = require("history_repo")
+local thread_events = require("thread_events")
 local references = require("references")
 local settings = require("settings")
 local policy = require("policy")
@@ -106,23 +107,12 @@ local function match_origin(item: types.Resource, declared: types.Original?): er
     return nil
 end
 
-local function merge(db: types.Executor, originals: types.OriginalMap, rows: {types.Resource}): (types.ResourceMap?, error?)
-    local revisions, err = library_reader.original_revisions(db)
-    if err then return nil, err end
-    for _, declared in pairs(originals) do
-        local item = declared.resource
-        local by_name = revisions[item.kind]
-        item.revision = by_name and by_name[item.name] or 0
-    end
-    return resource.merge(rows, originals)
-end
-
 function M.load(db: types.Executor): (types.ResourceMap?, error?, types.OriginalMap?)
     local originals, err = originals_reader.list()
     if err then return nil, err end
     local rows, read_err = library_reader.rows(db, {})
     if read_err then return nil, read_err end
-    local items, merge_err = merge(db, originals :: types.OriginalMap, rows :: {types.Resource})
+    local items, merge_err = resource.merge(rows :: {types.Resource}, originals :: types.OriginalMap)
     return items, merge_err, originals
 end
 
@@ -135,7 +125,7 @@ local function lookup_in(ex: types.Executor, key: types.ResourceKey, declared: t
     end
     if item then
         declared.resource.revision, declared.resource.seq = item.revision, item.seq
-    elseif key.kind ~= "asset" then
+    else
         local position, err = library_reader.subject_position(ex, key)
         if err then return nil, err end
         declared.resource.revision, declared.resource.seq = position.revision, position.seq
@@ -152,7 +142,15 @@ function M.lookup(key: types.ResourceKey): (types.Resource?, error?, types.Origi
     local item, read_err = database.with_db(function(ex: types.Executor): (types.Resource?, error?)
         return lookup_in(ex, key, declared)
     end)
-    return item, read_err, declared
+    if read_err then return nil, read_err, declared end
+    if item and item.state == "original" and item.revision == 0 then
+        local opened, open_err = thread_events.open()
+        if open_err then return nil, open_err, declared end
+        local position, position_err = thread_events.head(opened :: types.LibraryThreads, resource.subject(key))
+        if position_err then return nil, position_err, declared end
+        item.revision = position.subject_version or 0
+    end
+    return (item :: unknown) :: types.Resource?, nil, declared
 end
 
 local function summary_page(filter: types.ResourceFilter, after: types.ResourceKey?, limit: integer): (types.LibraryPage?, error?)
@@ -203,7 +201,7 @@ function M.resources(filter: types.ResourceFilter): ({types.Resource}?, error?)
             end
             return selected, nil
         end
-        local items, merge_err = merge(db, originals :: types.OriginalMap, rows :: {types.Resource})
+        local items, merge_err = resource.merge(rows :: {types.Resource}, originals :: types.OriginalMap)
         if merge_err then return nil, merge_err end
         local selected = {}
         for _, item in pairs(items) do
@@ -385,7 +383,18 @@ function M.page(input: types.LibraryPageRequest): (types.LibraryPage?, error?)
     local page, err = summary_page(input, after, limit :: integer)
     if err then return nil, err end
     local names: {string} = {}
+    local api: types.LibraryThreads?
     for _, row in ipairs(page.items) do
+        if row.state == "original" and row.revision == 0 then
+            if not api then
+                local open_err
+                api, open_err = thread_events.open()
+                if open_err then return nil, open_err end
+            end
+            local pos, position_err = thread_events.head(api :: types.LibraryThreads, resource.subject(row))
+            if position_err then return nil, position_err end
+            row.revision = pos.subject_version or 0
+        end
         if row.kind == "message" then names[#names + 1] = row.name end
     end
     if #names > 0 then
