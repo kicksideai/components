@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local funcs = require("funcs")
+local contract = require("contract")
 local security = require("security")
 local sql = require("sql")
 local fixtures = require("fixtures")
@@ -64,10 +65,13 @@ local function register(support)
         local restore = {kind = first.kind, name = first.name, seq = first.seq, expected_revision = newest.revision}
         local preview, preview_err = call("preview", {message = "notice", restore = restore})
 
+        local member = api_fixtures.session("editor")
+        local definition = assert(contract.get("kickside.core:threads"))
+        local threads = assert(definition:with_actor(member.actor):open())
+        local before = assert(threads:find({thread_id = THREAD}))
         local db = assert(sql.get("app:db"))
-        local before = assert(db:query("SELECT max_pruned_seq FROM kickside_thread WHERE id=$1", {THREAD}))
         local result, prune_err = prune.prune_thread(db, THREAD, {
-            cutoff = "2099-01-01T00:00:00Z", max_total = first.seq - before[1].max_pruned_seq,
+            cutoff = "2099-01-01T00:00:00Z", max_total = first.seq - before.max_pruned_seq,
         })
         assert(db:release())
         assert(result, tostring(prune_err))

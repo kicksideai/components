@@ -12,7 +12,6 @@ local function register(support)
     local TEXT = support.TEXT
     local state = support.state
     local own = support.own
-    local publication_fault = support.publication_fault
     local review = support.review
     local call = support.call
     local candidate = support.candidate
@@ -261,7 +260,7 @@ local function register(support)
         local data = {site = {title = "Example"}}
         test.eq("Customized Example", assert(value(HTML, "part/header", data)))
         test.eq("Custom text Example", assert(value(TEXT, "part/header", data)))
-        publication_fault(true)
+        fixtures.await_sync_idle()
         discard_overlay({key})
         local id = "kickside.mail.views:header"
         local snapshot = assert(registry.snapshot())
@@ -274,7 +273,6 @@ local function register(support)
         assert(changes:update(entry))
         assert(changes:update(declaration))
         assert(changes:apply())
-        publication_fault(false)
         test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
         fixtures.await_live(saved.seq)
         test.eq("Customized Example", assert(value(HTML, "part/header", data)))

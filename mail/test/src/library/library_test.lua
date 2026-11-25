@@ -3,7 +3,6 @@ local test = require("test")
 local autoinit = require("autoinit")
 local registry = require("registry")
 local templates = require("templates")
-local sql = require("sql")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
 local jet = require("jet")
@@ -71,11 +70,18 @@ return {run = test.run_cases(function()
             owned[#owned + 1] = {kind = item.kind, name = item.name}
             return item
         end
-        local publication_fault
-        local fault_enabled = false
         state.capture_configured = false
+        local function clear_publication_fault()
+            local fault = state.publication_fault
+            if not fault then return end
+            local snapshot = assert(fault.owner and registry.overlay(fault.owner) or registry.snapshot())
+            local changes = snapshot:changes()
+            assert(changes:delete(fault.id))
+            assert(changes:apply())
+            state.publication_fault = nil
+        end
         test.after_each(function()
-            if fault_enabled then publication_fault(false) end
+            clear_publication_fault()
             if state.capture_configured then
                 api_fixtures.settings("", "")
                 state.capture_configured = false
@@ -87,17 +93,12 @@ return {run = test.run_cases(function()
                 assert(changes:apply())
             end
         end)
-        publication_fault = function(enabled, hold_seq, permanent)
-            fault_enabled = enabled or hold_seq ~= nil
-            local db = assert(sql.get("app:db"))
-            assert(db:execute("DELETE FROM mail_realtime_fixture WHERE topic=$1", {"fixture.publisher_fault"}))
-            if fault_enabled then
-                local mode = type(enabled) == "number" and "exhaust"
-                    or permanent and "permanent" or enabled and "unavailable" or "hold"
-                assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
-                    {"fixture.publisher_fault", tostring(type(enabled) == "number" and enabled or hold_seq or ""), "{}", mode}))
-            end
-            assert(db:release())
+        local function publication_fault(entry, owner)
+            local snapshot = assert(owner and registry.overlay(owner) or registry.snapshot())
+            local changes = snapshot:changes()
+            assert(changes:create(entry))
+            assert(changes:apply())
+            state.publication_fault = {id = entry.id, owner = owner}
         end
 
         local cases = {
@@ -107,6 +108,7 @@ return {run = test.run_cases(function()
             state = state,
             own = own,
             publication_fault = publication_fault,
+            clear_publication_fault = clear_publication_fault,
             review = review,
             call = call,
             candidate = candidate,

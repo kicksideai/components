@@ -1,12 +1,15 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local contract = require("contract")
-local autoinit = require("autoinit")
 local funcs = require("funcs")
 local registry = require("registry")
-local sql = require("sql")
+local security = require("security")
 local uuid = require("uuid")
 local fixtures = require("fixtures")
 local api_fixtures = require("api_fixtures")
+local database = require("database")
+local reader = require("reader")
+local live = require("live")
+local originals = require("originals")
 
 local function register(support)
     local test = support.test
@@ -15,24 +18,36 @@ local function register(support)
     local state = support.state
     local own = support.own
     local publication_fault = support.publication_fault
+    local clear_publication_fault = support.clear_publication_fault
     local review = support.review
     local call = support.call
     local candidate = support.candidate
     local value = support.value
 
+    local function projection()
+        local member = api_fixtures.session("editor")
+        local definition = assert(contract.get("kickside.core:threads"))
+        local thread = assert(definition:with_actor(member.actor):open())
+        return thread, {thread_id = support.THREAD, kind = "kickside.mail:library_tables"}
+    end
+
     test.it("recovers sends through retention after all three publication attempts fail", function()
         api_fixtures.settings("app.mail_harness:capture", "mail@example.org")
         state.capture_configured = true
-        local reader = api_fixtures.session("editor_sender")
-        local sender = assert(funcs.new():with_actor(reader.actor):with_scope(reader.scope))
+        local member = api_fixtures.session("editor_sender")
+        local sender = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
         local item = own(candidate("message", "publication-check",
             "{{ block body() }}Old HTML{{ end }}", "{{ block body() }}Old text{{ end }}"))
         item.base, item.subject = "plain", "Publication check"
         local saved = assert(call("create", item))
-        if saved.seq then fixtures.await_live(saved.seq) end
+        fixtures.await_sync_idle()
         item.html, item.expected_revision = "{{ block body() }}New HTML{{ end }}", saved.revision
         item.preview_id = review({message = item.name, resources = {item}})
-        publication_fault(3)
+        local id = "kickside.mail.projection:message." .. item.name .. ".html"
+        local changes = assert(registry.overlay(OWNER)):changes()
+        assert(changes:delete(id))
+        assert(changes:apply())
+        publication_fault({id = id, kind = "registry.entry", meta = {}, data = {}}, "app.mail_library:publisher_collision")
         local result, err = fixtures.call(nil, "update", item)
         assert(result, tostring(err))
         test.eq(result.revision, assert(call("get", item)).revision)
@@ -52,9 +67,10 @@ local function register(support)
             return job and job.status == "dead" and job.attempts == 3
         end, "Library sync did not exhaust three failed publications")
         local exhausted = assert(fixtures.sync_job(result.seq))
+        clear_publication_fault()
         fixtures.await_live(result.seq)
         local next_job = assert(fixtures.sync_job(result.seq, exhausted.id))
-        test.eq(1, next_job.execution_seq)
+        test.is_true(next_job.execution_seq > 0)
         test.not_nil(assert(fixtures.render(nil, {template = item.name, vars = {}})).html:find("New HTML", 1, true))
         test.not_nil(assert(fixtures.mailer(sender, "send", {
             template = item.name, vars = {}, to = {"reader@example.org"},
@@ -66,8 +82,14 @@ local function register(support)
         local saved = assert(call("create", part))
         part.html, part.expected_revision = "Changed HTML", saved.revision
         part.preview_id = review({resources = {part}})
-        publication_fault(true, nil, true)
-        local updated = assert(fixtures.call(nil, "update", part))
+        local thread, address = projection()
+        assert(thread:pause_projection(address))
+        local updated, err = fixtures.call(nil, "update", part)
+        publication_fault({id = "app.mail_library:invalid_template", kind = "registry.entry",
+            meta = {type = "kickside.mail:template"}, data = {}})
+        assert(thread:resume_projection(address))
+        assert(updated, tostring(err))
+        test.is_false(updated.projected)
         fixtures.await(function()
             local job = fixtures.sync_job(updated.seq)
             return job and job.status == "dead"
@@ -77,7 +99,7 @@ local function register(support)
         local unrelated = assert(funcs.call("kickside.mail.jobs:owner", {}))
         test.is_true(unrelated.success, tostring(unrelated.error))
         test.is_nil(fixtures.sync_job(updated.seq, dead.id))
-        publication_fault(false)
+        clear_publication_fault()
         test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
         fixtures.await_live(updated.seq)
     end)
@@ -99,10 +121,11 @@ local function register(support)
         local rendered, fenced = fixtures.mailer(nil, "preview", {template = item.name, vars = {}})
         test.is_nil(rendered)
         test.eq("mail_library_publishing", assert(fenced):details().code)
-        local boot = assert(funcs.new():with_context({mail_test_marker_unavailable = true}))
+        local scope = assert(security.scope()):with(assert(security.policy("app.mail_library:deny_marker_read")))
+        local boot = assert(funcs.new():with_scope(scope))
         local failed = assert(boot:call("kickside.mail.jobs:reconcile"))
         test.eq(failed.status, "error")
-        test.eq(assert(failed.details).kind, errors.UNAVAILABLE)
+        test.eq(assert(failed.details).kind, errors.PERMISSION_DENIED)
         test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
         fixtures.await_live(updated.seq)
         test.not_nil(assert(fixtures.render(nil, {template = item.name, vars = {}})).html:find("New HTML", 1, true))
@@ -111,27 +134,19 @@ local function register(support)
     test.it("keeps the newer publication when a publisher is holding older rows", function()
         local part = own(candidate("part", "publisher-race", "First HTML", "First text"))
         local saved = assert(call("create", part))
-        local held = saved.seq + 1
-        local function observe(value)
-            local db = assert(sql.get("app:db"))
-            local rows = assert(db:query("SELECT observed FROM mail_realtime_fixture WHERE topic=$1 AND subject=$2 AND observed=$3",
-                {"fixture.publisher_race", tostring(held), value}))
-            assert(db:release())
-            return #rows > 0
-        end
         part.html, part.expected_revision = "Held HTML", saved.revision
         part.preview_id = review({resources = {part}})
-        publication_fault(false, held)
-        local first = assert(fixtures.call(nil, "update", part))
-        test.eq(held, first.seq)
-        fixtures.await(function() return observe("waiting") end, "First publisher never opened the overlay")
+        local first = assert(call("update", part))
+        local overlay = assert(live.open())
+        local entries = assert(overlay:entries())
+        local rows = assert(database.with_db(reader.live_rows))
+        local declared = assert(originals.list())
         part.html, part.expected_revision = "Latest HTML", first.revision
         part.preview_id = review({resources = {part}})
-        local second = assert(fixtures.call(nil, "update", part))
-        test.eq("success", assert(funcs.call("kickside.mail.jobs:reconcile")).status)
-        fixtures.await_live(second.seq)
-        publication_fault(false)
-        fixtures.await(function() return observe(tostring(errors.CONFLICT)) end, "Stale overlay did not report a conflict")
+        local second = assert(call("update", part))
+        local published, stale = live.publish(overlay, entries, rows, declared, first.seq)
+        test.is_nil(published)
+        test.eq(errors.CONFLICT, assert(stale):kind())
         test.eq(second.seq, assert(registry.get("kickside.mail.projection:marker")).data.seq)
         test.eq("Latest HTML", assert(value(HTML, "part/" .. part.name)))
     end)
@@ -193,21 +208,18 @@ local function register(support)
         draft.expected_revision = saved.revision
         local receipt = review({resources = {draft}})
         local command = {resources = {draft}, preview_id = receipt, command_id = uuid.v4()}
-        local member = api_fixtures.session("editor")
-        local definition = assert(contract.get("kickside.core:threads"))
-        local thread = assert(definition:with_actor(member.actor):open())
-        local address = {thread_id = autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library"),
-            kind = "kickside.mail:library_tables"}
+        local thread, address = projection()
         assert(thread:pause_projection(address))
         local pending, append_err = fixtures.call(nil, "save", command)
         local before = fixtures.call(nil, "get", part)
         local second, catch_err = fixtures.call(nil, "save", {resources = {draft}, preview_id = receipt})
-        local denied = assert(fixtures.editor():with_context({mail_test_catch_up_denied = true}))
+        local member = api_fixtures.session("editor")
+        local scope = member.scope:with(assert(security.policy("app.mail_library:deny_library_wait")))
+        local denied = assert(funcs.new():with_actor(member.actor):with_scope(scope))
         local denied_write, denied_err = fixtures.call(denied, "save", {resources = {draft}, preview_id = receipt})
         assert(thread:resume_projection(address))
         test.is_nil(denied_write)
         test.eq(errors.PERMISSION_DENIED, assert(denied_err):kind())
-        test.eq("fixture_catch_up_denied", denied_err:details().code)
         assert(pending, tostring(append_err))
         fixtures.await_live(pending.seq)
         test.is_true(pending.committed)

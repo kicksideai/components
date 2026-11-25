@@ -1,23 +1,23 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local ctx = require("ctx")
-local database = require("database")
+local sql = require("sql")
 local fixtures = require("fixtures")
 
 local M = {}
 
 local function signal(gate, state)
-    assert(database.with_db(function(ex)
-        return ex:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
-            {"fixture.asset_lifetime", gate, "{}", state})
-    end))
+    local db = assert(sql.get("app:db"))
+    local result, err = db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
+        {"fixture.asset_lifetime", gate, "{}", state})
+    assert(db:release())
+    assert(result, tostring(err))
 end
 
 local function signaled(gate, state)
-    local rows = assert(database.with_db(function(ex)
-        return ex:query("SELECT observed FROM mail_realtime_fixture WHERE topic=$1 AND subject=$2 AND observed=$3",
-            {"fixture.asset_lifetime", gate, state})
-    end))
-    return #rows > 0
+    local db = assert(sql.get("app:db"))
+    local rows, err = db:query("SELECT observed FROM mail_realtime_fixture WHERE topic=$1 AND subject=$2 AND observed=$3",
+        {"fixture.asset_lifetime", gate, state})
+    assert(db:release())
+    return #assert(rows, tostring(err)) > 0
 end
 
 local function await(gate, state)
@@ -28,11 +28,6 @@ end
 local function pause(gate)
     signal(gate, "waiting")
     await(gate, "released")
-end
-
-function M.pause(gate)
-    if ctx.get("mail_test_asset_gate") ~= gate then return end
-    pause(gate)
 end
 
 function M.arm_reap(id) signal("reap_id", id) end

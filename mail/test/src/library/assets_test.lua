@@ -12,8 +12,6 @@ local time = require("time")
 local json = require("json")
 local lookup = require("lookup")
 local settings = require("settings")
-local records = require("records")
-local upload_types = require("upload_types")
 local fixtures = require("fixtures")
 local asset_file_repo = require("asset_file_repo")
 local attachments = require("attachments")
@@ -27,7 +25,7 @@ local asset_delivery_cases = require("asset_delivery_cases")
 local function setup_actor(role)
     local member = settings.session(role)
     local exec = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
-    return member.id, exec, member.actor
+    return member.id, exec, member.actor, member.scope
 end
 
 local function define(kind, name, html)
@@ -39,25 +37,17 @@ local run = test.run_cases(function()
     test.describe("Mail library images", function()
         local state = {}
         test.before_each(function()
-            state.owned, state.sources, state.configured = {}, {}, false
+            state.owned, state.uploaders, state.configured = {}, {}, false
             state.storage = assert(fs.get("app:uploads"))
-            local actor
-            state.uploader, state.editor, actor = setup_actor("upload_editor_sender")
-            local owner = upload_types.component_id_for_owner(state.uploader)
-            local setup = assert(funcs.new():with_actor(actor):with_scope(assert(security.named_scope("wippy.security:process"))))
-            local registered = assert(setup:call("kickside.component.binding:register_component_func",
-                {component_id = owner, impl_id = upload_types.IMPL}))
-            assert(registered.success, registered.error)
+            state.uploader, state.editor, state.actor, state.scope = setup_actor("upload_editor_sender")
         end)
         test.after_each(function()
             fixtures.remove(state.owned)
             if state.configured then settings.settings("", "") end
-            local db = assert(sql.get("app:db"))
-            for _, id in ipairs(state.sources) do
-                assert(db:execute("DELETE FROM kickside_uploads WHERE uuid=$1", {id}))
-                assert(state.storage:remove(id))
+            for owner in pairs(state.uploaders) do
+                local result = assert(owner:call("app.mail_library:upload_fixture", {cleanup = true}))
+                assert(result.success, tostring(result.error))
             end
-            assert(db:release())
         end)
         local function call(method, input)
             local draft
@@ -77,13 +67,12 @@ local run = test.run_cases(function()
             if type(result) == "table" and input.kind ~= "asset" and method ~= "get" then fixtures.await_live(result.seq) end
             return assert(result, err and tostring(err) .. " " .. assert(json.encode(err:details() or {})))
         end
-        local function upload(mime, bytes)
-            local id = uuid.v4()
-            assert(state.storage:writefile(id, bytes))
-            assert(records.create(id, state.uploader, #bytes, mime, "app:uploads", id,
-                "kickside.uploads:types.generic", {filename = "mark"}, "completed"))
-            state.sources[#state.sources + 1] = id
-            return id
+        local function upload(mime, bytes, executor)
+            local owner = executor or state.editor
+            local source, err = owner:call("app.mail_library:upload_fixture", {mime = mime, bytes = bytes})
+            assert(source, tostring(err))
+            state.uploaders[owner] = true
+            return source
         end
         local function gif()
             return "GIF89a\1\0\1\0\128\0\0\0\0\0\255\255\255!\249\4\1\0\0\0\0,\0\0\0\0\1\0\1\0\0\2\2D\1\0;"
@@ -95,8 +84,8 @@ local run = test.run_cases(function()
             end, "25s")
         end
 
-        local function sweep(now, no_boundary)
-            local owner = assert(funcs.new():with_context({mail_test_now = now, mail_test_no_prune_boundary = no_boundary}))
+        local function sweep(now)
+            local owner = assert(funcs.new():with_context({mail_test_now = now}))
             local result = assert(owner:call("kickside.mail.jobs:owner", {}))
             assert(result.success, tostring(result.error))
             return result
@@ -104,10 +93,12 @@ local run = test.run_cases(function()
 
         local function prune_through(seq)
             local thread = content.library_component_id()
+            local definition = assert(contract.get("kickside.core:threads"))
+            local threads = assert(definition:with_actor(state.actor):open())
+            local before = assert(threads:find({thread_id = thread}))
             local db = assert(sql.get("app:db"))
-            local before = assert(db:query("SELECT max_pruned_seq FROM kickside_thread WHERE id=$1", {thread}))
             local result, err = prune.prune_thread(db, thread, {
-                cutoff = "2099-01-01T00:00:00Z", max_total = seq - before[1].max_pruned_seq,
+                cutoff = "2099-01-01T00:00:00Z", max_total = seq - before.max_pruned_seq,
             })
             assert(db:release())
             assert(result, tostring(err))

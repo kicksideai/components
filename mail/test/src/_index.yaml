@@ -191,9 +191,6 @@ entries:
       - { name: "kickside.mail:api_router", value: "app:api" }
       - { name: "kickside.mail:library_editor_grant", value: {subject_id: "app:mail_editors", subject_type: group, access_mask: 3} }
       - { name: "kickside.mail:clock", value: "app.mail_harness:owner_clock" }
-      - { name: "kickside.mail:thread_reader", value: "app.mail_library:source_fault" }
-      - { name: "kickside.mail:thread_writer", value: "app.mail_library:append_fault" }
-      - { name: "kickside.mail:live_registry", value: "app.mail_library:projection_fault" }
       - { name: "kickside.mail:http_transport", value: "app.mail_harness:http_client" }
   - name: dep.driver_example
     kind: ns.dependency

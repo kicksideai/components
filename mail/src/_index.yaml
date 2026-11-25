@@ -66,25 +66,6 @@ entries:
       - {entry: kickside.mail.command:library_edits, path: .imports.time}
       - {entry: kickside.mail.command:preview, path: .imports.time}
       - {entry: kickside.mail.jobs:owner, path: .imports.time}
-  - name: thread_reader
-    kind: ns.requirement
-    default: kickside.mail.read:thread_events
-    meta: {value_kind: library.lua, description: Adapter used to read library history events.}
-    targets:
-      - {entry: kickside.mail.read:history, path: .imports.thread_events}
-      - {entry: kickside.mail.command:retention, path: .imports.thread_events}
-  - name: thread_writer
-    kind: ns.requirement
-    default: kickside.mail.command:threads
-    meta: {value_kind: library.lua, description: Adapter used to append and catch up library events.}
-    targets:
-      - {entry: kickside.mail.command:library, path: .imports.threads}
-  - name: live_registry
-    kind: ns.requirement
-    default: kickside.mail.render:live
-    meta: {value_kind: library.lua, description: Registry adapter used to publish live template sets.}
-    targets:
-      - {entry: kickside.mail.command:live, path: .imports.live}
   - name: http_transport
     kind: ns.requirement
     default: kickside.mail.driver:http_client

@@ -10,7 +10,6 @@ local time = require("time")
 local json = require("json")
 local lookup = require("lookup")
 local settings = require("settings")
-local upload_types = require("upload_types")
 local fixtures = require("fixtures")
 local attachments = require("attachments")
 local content = require("content")
@@ -93,18 +92,10 @@ local function register(support)
         state.configured = true
         settings.settings("app.mail_harness:capture", "mail@example.org")
         local member = settings.session("upload_sender")
-        local setup = assert(funcs.new():with_actor(member.actor):with_scope(assert(security.named_scope("wippy.security:process"))))
-        local registration = assert(setup:call("kickside.component.binding:register_component_func", {
-            component_id = upload_types.component_id_for_owner(member.id), impl_id = upload_types.IMPL,
-        }))
-        assert(registration.success, registration.error)
-        local original_uploader = state.uploader
-        state.uploader = member.id
-        local ref = upload("image/gif", gif())
-        state.uploader = original_uploader
         test.neq("allow", member.scope:evaluate(member.actor, "contract.call", "get_info"))
         test.neq("allow", member.scope:evaluate(member.actor, "contract.call", "get_content"))
         local sender = assert(funcs.new():with_actor(member.actor):with_scope(member.scope))
+        local ref = upload("image/gif", gif(), sender)
         local request = {to = {"reader@example.org"}, subject = "Personal upload",
             text = "Attachment fixture", attachments = {{upload_id = ref}}}
         local sent, err = fixtures.mailer(sender, "send", request)
