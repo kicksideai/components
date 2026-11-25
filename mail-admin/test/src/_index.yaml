@@ -89,7 +89,7 @@ entries:
       effect: allow
   - name: settings_db
     kind: security.policy
-    meta: { comment: The settings writer runs under the administrator, as the application's administrator role does. }
+    meta: {comment: "The settings writer runs under the administrator, as the application's administrator role does."}
     policy:
       resources: [app:db]
       actions: [db.get]
