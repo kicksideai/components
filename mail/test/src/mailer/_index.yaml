@@ -303,4 +303,4 @@ entries:
   - name: driver_example_cases
     kind: library.lua
     source: file://driver_example_cases.lua
-    modules: [contract, json]
+    modules: [contract, json, security]
