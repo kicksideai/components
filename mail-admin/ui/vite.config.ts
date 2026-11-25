@@ -31,7 +31,7 @@ export default defineConfig({
         chunkFileNames: '[name]-[hash].js',
         assetFileNames: '[name]-[hash][extname]',
       },
-      preserveEntrySignatures: false,
+      preserveEntrySignatures: 'strict',
     },
     sourcemap: true,
   },
