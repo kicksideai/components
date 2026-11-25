@@ -10,7 +10,7 @@ function M.enqueue_sync(tx: database.Transaction, dialect: string, thread_id: st
         namespace = "kickside.mail", scope = "library", key = "library_sync:" .. seq,
         owner_locator = {kind = "mail-library", id = thread_id},
         job_type = "kickside.mail.jobs:library_sync", immutable_payload = {seq = seq},
-        -- Explicit attempts keep Jobs from opening Settings inside this transaction.
+        -- Bound transient publication attempts for each queued job.
         max_attempts = 3,
     })
     if err then return nil, err end

@@ -42,7 +42,6 @@ entries:
     imports:
       live: kickside.mail.command:live
       notify: kickside.mail.command:notify
-      error_envelope: kickside.contract:error_envelope
     security:
       actor: {id: "system:kickside.mail.library"}
       policies:

@@ -4,6 +4,7 @@ local asset_file_repo = require("asset_file_repo")
 local database = require("database")
 local content = require("content")
 local jobs = require("jobs")
+local json = require("json")
 local outbox = require("outbox")
 local policy = require("policy")
 local preview_repo = require("preview_repo")
@@ -137,16 +138,24 @@ end
 function M.sweep(now: integer, retention_ms: integer, input: types.OwnerInput): (types.OwnerResult?, error?)
     local change = input.change
     local locator = change and change.owner_locator
-    local check_library = true
     if locator and locator.kind == "mail-library" and change.kind == "lease_released" and change.job_id then
         local job, err = jobs.get_job(change.job_id)
         if err then return nil, err end
-        -- Skip early failures and completion to avoid waking on every sync lease.
-        check_library = job ~= nil and job.status == "dead" and job.attempts == job.max_attempts
-    end
-    if check_library then
-        local _, err = live.reconcile()
-        if err then return nil, err end
+        if job and job.job_type == "kickside.mail.jobs:library_sync" and job.status == "dead" then
+            local after_seq: integer?
+            if job.attempts < job.max_attempts then
+                local payload, decode_err = json.decode(job.payload :: string)
+                if decode_err then return nil, decode_err end
+                after_seq = math.tointeger(payload.seq)
+                if not after_seq then
+                    return nil, errors.new({kind = errors.INTERNAL, retryable = false,
+                        message = "The library publication job has no template sequence",
+                        details = {code = "mail_library_job_payload_invalid"}})
+                end
+            end
+            local _, reconcile_err = live.reconcile(false, after_seq)
+            if reconcile_err then return nil, reconcile_err end
+        end
     end
     local reconcile_err = reconcile(now, input)
     if reconcile_err then return nil, reconcile_err end

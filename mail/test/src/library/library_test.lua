@@ -92,9 +92,10 @@ return {run = test.run_cases(function()
             local db = assert(sql.get("app:db"))
             assert(db:execute("DELETE FROM mail_realtime_fixture WHERE topic=$1", {"fixture.publisher_fault"}))
             if fault_enabled then
-                local mode = permanent and "permanent" or enabled and "unavailable" or "hold"
+                local mode = type(enabled) == "number" and "exhaust"
+                    or permanent and "permanent" or enabled and "unavailable" or "hold"
                 assert(db:execute("INSERT INTO mail_realtime_fixture (topic,subject,data,observed) VALUES ($1,$2,$3,$4)",
-                    {"fixture.publisher_fault", tostring(hold_seq or ""), "{}", mode}))
+                    {"fixture.publisher_fault", tostring(type(enabled) == "number" and enabled or hold_seq or ""), "{}", mode}))
             end
             assert(db:release())
         end

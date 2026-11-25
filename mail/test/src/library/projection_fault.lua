@@ -23,10 +23,20 @@ end
 local function publish(overlay, entries, rows, originals, seq)
     local flag = fault()
     if flag and flag.observed == "permanent" then
-        return nil, errors.new({kind = errors.INTERNAL, retryable = false, message = "Injected permanent publication failure",
+        return nil, errors.new({kind = errors.INVALID, retryable = false, message = "Injected permanent publication failure",
             details = {code = "fixture_publication_error"}})
     end
-    if flag and flag.observed == "unavailable" then
+    if flag and flag.observed == "exhaust" then
+        local remaining = assert(tonumber(flag.subject))
+        assert(database.with_db(function(ex)
+            if remaining == 1 then
+                return ex:execute("DELETE FROM mail_realtime_fixture WHERE topic=$1", {"fixture.publisher_fault"})
+            end
+            return ex:execute("UPDATE mail_realtime_fixture SET subject=$1 WHERE topic=$2",
+                {tostring(remaining - 1), "fixture.publisher_fault"})
+        end))
+    end
+    if flag and (flag.observed == "unavailable" or flag.observed == "exhaust") then
         return nil, errors.new({kind = errors.UNAVAILABLE, retryable = true, message = "Injected publication failure",
             details = {code = "fixture_publication_error"}})
     end
@@ -38,6 +48,7 @@ local function publish(overlay, entries, rows, originals, seq)
             time.sleep("10ms")
             flag = fault()
         until not flag or tonumber(flag.subject) ~= seq or time.now():unix_nano() >= deadline
+        assert(not flag or tonumber(flag.subject) ~= seq, "Publisher gate was not released")
     end
     local value, err = live.publish(overlay, entries, rows, originals, seq)
     if held then record(seq, err and tostring(err:kind()) or "applied") end

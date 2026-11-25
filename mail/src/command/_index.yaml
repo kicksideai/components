@@ -170,6 +170,7 @@ entries:
     kind: library.lua
     meta: { private: true }
     source: file://retention.lua
+    modules: [json]
     imports:
       types: kickside.mail:types
       asset_file_repo: kickside.mail.persist:asset_file_repo

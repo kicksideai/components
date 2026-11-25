@@ -32,14 +32,14 @@ local function await_current_live()
     await_live(rows[1] and rows[1].template_seq or 0)
 end
 
-local function sync_job(seq)
+local function sync_job(seq, after_id)
     local jobs = assert(database.with_db(function(ex)
-        return ex:query("SELECT payload,attempts,last_error,status FROM kickside_job WHERE job_type=$1",
+        return ex:query("SELECT id,payload,attempts,execution_seq,last_error,status FROM kickside_job WHERE job_type=$1 ORDER BY created_at,id",
             {"kickside.mail.jobs:library_sync"})
     end))
     for _, job in ipairs(jobs) do
         local payload = assert(json.decode(job.payload))
-        if payload.seq == seq then return job end
+        if payload.seq == seq and job.id ~= after_id then return job end
     end
     return nil
 end

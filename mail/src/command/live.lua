@@ -10,18 +10,20 @@ local types = require("types")
 
 local M = {}
 
-function M.reconcile(boot: boolean?): (boolean?, error?)
+function M.reconcile(boot: boolean?, after_seq: integer?): (boolean?, error?)
     local published, marker_err = live.marker()
     if marker_err then return nil, marker_err end
     local current, read_err = database.with_db(state.get_existing)
     if read_err then return nil, read_err end
     if not current and not boot then return false, nil end
-    if published == (current and current.template_seq or 0) then return false, nil end
+    local seq = current and current.template_seq or 0
+    if published == seq or (after_seq and seq <= after_seq) then return false, nil end
     local queued, err = database.with_tx(function(tx: database.Transaction, dialect: string): (boolean?, error?)
         local mark, lock_err = state.lock_existing(tx, dialect)
         if lock_err then return nil, lock_err end
         if not mark and not boot then return false, nil end
         local seq = mark and mark.template_seq or 0
+        if after_seq and seq <= after_seq then return false, nil end
         local marker, check_err = live.marker()
         if check_err then return nil, check_err end
         if marker == seq then return false, nil end
