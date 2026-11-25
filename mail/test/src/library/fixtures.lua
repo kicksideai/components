@@ -34,14 +34,18 @@ local function async(executor, method, args)
     return executor:async(INVOKE, {method = method, args = args})
 end
 
-local function render_saved(input)
-    local mailer, err = client.open()
+local function invoke_mailer(input)
+    local mailer, err = client.mailer()
     if err then return nil, err end
-    return mailer:preview(input)
+    return mailer[input.method](mailer, input.args)
+end
+
+local function mailer(executor, method, args)
+    return (executor or funcs.new()):call("app.mail_library:invoke_mailer", {method = method, args = args})
 end
 
 local function render(executor, input)
-    return (executor or funcs.new()):call("app.mail_library:render_saved", input)
+    return mailer(executor, "preview", input)
 end
 
 local function foreign_list(input)
@@ -53,4 +57,4 @@ local function foreign_list(input)
 end
 
 return {remove = remove, invoke = invoke, call = call, async = async, foreign_list = foreign_list,
-    render = render, render_saved = render_saved}
+    render = render, mailer = mailer, invoke_mailer = invoke_mailer}

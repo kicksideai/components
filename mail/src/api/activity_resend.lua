@@ -3,7 +3,7 @@ local client = require("client")
 local request = require("request")
 
 local function handler()
-    return request.handle(client.require_send, function(req)
+    return request.handle(client.require_admin, function(req)
         return client.resend((req:param("id") :: string?) or "")
     end, 202)
 end

@@ -61,14 +61,14 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://activity.lua
-    modules: [security, time, uuid]
+    modules: [time, uuid]
     imports:
       types: kickside.mail:types
       database: kickside.mail.persist:db
       message_reader: kickside.mail.persist:message_reader
       failure: kickside.mail.domain:failure
       policy: kickside.mail.domain:policy
-      identity: kickside.execution:execution_identity
+      client: kickside.mail:client
   - name: catalog
     kind: library.lua
     meta: {private: true}
@@ -100,17 +100,10 @@ entries:
       types: kickside.mail:types
       settings: kickside.mail.read:settings
       drivers: kickside.mail:drivers_registry
+      config: kickside.mail.domain:config
       settings_types: kickside.settings:settings_types
       settings_defs: kickside.settings:settings_defs
       client: kickside.mail:client
-  - name: delivery_status
-    kind: function.lua
-    meta: {private: true}
-    source: *delivery_source
-    method: status
-    imports: *delivery_imports
-    security:
-      policies: [kickside.mail.security:settings_read, kickside.mail.security:settings_admin_read, kickside.mail.security:driver_dispatch]
   - name: driver_settings
     kind: function.lua
     meta: {private: true}

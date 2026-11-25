@@ -11,7 +11,7 @@ entries:
       includes: [kickside.mail.security:module_runtime]
     groups: []
     policy:
-      resources: [kickside.mail.ports:send_email, kickside.mail.traits:mail, kickside.mail.traits:mail_readonly, kickside.mail.traits:email_design]
+      resources: [kickside.mail.sink:send_email, kickside.mail.traits:mail, kickside.mail.traits:mail_readonly, kickside.mail.traits:email_design]
       actions: [registry.get, registry.find]
       effect: allow
   - name: module_runtime
@@ -30,14 +30,9 @@ entries:
         - list_templates
         - get_template
         - preview
+        - delivery_status
+        - send_delivery_test
         - write
-        - kickside.mail.service:send
-        - kickside.mail.service:resend
-        - kickside.mail.outbox:get_message
-        - kickside.mail.outbox:list_messages
-        - kickside.mail.service:list_templates
-        - kickside.mail.service:get_template
-        - kickside.mail.service:preview
         - kickside.mail.traits:mail_send
         - kickside.mail.traits:mail_list_templates
         - kickside.mail.traits:mail_get_template
@@ -52,7 +47,7 @@ entries:
       title: Send mail
       surface: kickside.mail
       intent: tool_access
-      includes: [kickside.mail.security:module_runtime, kickside.mail.security:send_endpoints]
+      includes: [kickside.mail.security:module_runtime]
     groups: []
     policy:
       resources: [kickside.mail:mailer]
@@ -334,13 +329,6 @@ entries:
         - kickside.mail.traits:send_test
       actions: [registry.get, registry.find, funcs.call]
       effect: allow
-  - name: library_test_dispatch
-    kind: security.policy
-    meta: { private: true, service_only: true }
-    policy:
-      resources: [kickside.mail.service:library_send_test]
-      actions: [registry.get, funcs.call]
-      effect: allow
   - name: overlay_owner
     kind: security.policy
     meta: { private: true }
@@ -475,26 +463,17 @@ entries:
         - kickside.ui.api:list_settings_tabs.endpoint
         - kickside.mail.api:activity_list.endpoint
         - kickside.mail.api:activity_get.endpoint
+        - kickside.mail.api:activity_resend.endpoint
         - kickside.mail.api:delivery_drivers.endpoint
         - kickside.mail.api:delivery_status.endpoint
         - kickside.mail.api:delivery_send_test.endpoint
-      actions: [access]
-      effect: allow
-  - name: send_endpoints
-    kind: security.policy
-    meta: { private: true }
-    policy:
-      resources:
-        - kickside.mail.api:activity_list.endpoint
-        - kickside.mail.api:activity_get.endpoint
-        - kickside.mail.api:activity_resend.endpoint
       actions: [access]
       effect: allow
   - name: delivery_calls
     kind: security.policy
     meta: { private: true }
     policy:
-      resources: [kickside.mail.settings:delivery_drivers, kickside.mail.read:delivery_status, kickside.mail.service:delivery_send_test]
+      resources: [kickside.mail.settings:delivery_drivers]
       actions: [funcs.call, registry.get]
       effect: allow
   - name: driver_settings_call

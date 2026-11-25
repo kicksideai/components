@@ -4,7 +4,7 @@ local request = require("request")
 local principals = require("principals")
 
 local function handler()
-    return request.handle(client.require_activity, function(req)
+    return request.handle(client.require_admin, function(req)
         return principals.item("sender", client.get_message((req:param("id") :: string?) or ""))
     end)
 end

@@ -6,6 +6,7 @@ local templates = require("templates")
 local security = require("security")
 local sql = require("sql")
 local fixtures = require("fixtures")
+local api_fixtures = require("api_fixtures")
 local jet = require("jet")
 
 local HTML = "kickside.mail.views:templates"
@@ -299,8 +300,10 @@ return {run = test.run_cases(function()
             local actor = assert(security.new_actor("archive-fixture-sender", {security_groups = {"app:mail_senders"}}))
             local scope = assert(security.named_scope("wippy.security:process"))
             local sender = assert(funcs.new():with_actor(actor):with_scope(scope))
-            local sent, send_err = sender:call("kickside.mail.service:send",
+            api_fixtures.settings("capture", "mail@example.org")
+            local sent, send_err = fixtures.mailer(sender, "send",
                 {template = item.name, vars = {}, to = {"reader@example.org"}})
+            api_fixtures.settings("", "")
             test.is_nil(sent)
             test.eq(errors.NOT_FOUND, assert(send_err):kind(), tostring(send_err))
             test.eq("mail_template_archived", send_err:details().code, tostring(send_err))

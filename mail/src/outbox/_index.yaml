@@ -5,39 +5,14 @@ entries:
   - name: store
     kind: library.lua
     source: file://store.lua
-    modules: [uuid, time]
+    modules: [time]
     imports:
       database: kickside.mail.persist:db
       message_reader: kickside.mail.persist:message_reader
       message_repo: kickside.mail.persist:message_repo
-      jobs: kickside.core.jobs:jobs
       asset_file_repo: kickside.mail.persist:asset_file_repo
       policy: kickside.mail.domain:policy
       types: kickside.mail:types
-  - name: log
-    kind: library.lua
-    source: &log_source file://log.lua
-    modules: &log_modules [uuid]
-    imports: &log_imports
-      database: kickside.mail.persist:db
-      activity: kickside.mail.read:activity
-      message_reader: kickside.mail.persist:message_reader
-      types: kickside.mail:types
-  - name: get_message
-    kind: function.lua
-    source: *log_source
-    method: get_message
-    modules: *log_modules
-    imports: *log_imports
-    security: &log_security
-      policies: [kickside.mail.security:outbox_db, kickside.mail.security:outbox_config]
-  - name: list_messages
-    kind: function.lua
-    source: *log_source
-    method: list_messages
-    modules: *log_modules
-    imports: *log_imports
-    security: *log_security
   - name: deliver
     kind: function.lua
     meta: { private: true }
@@ -47,12 +22,12 @@ entries:
     imports:
       database: kickside.mail.persist:db
       drivers: kickside.mail:drivers_registry
-      delivery: kickside.mail.service:delivery
+      redact: kickside.mail.domain:redact
       identity: kickside.execution:execution_identity
       jobs: kickside.core.jobs:jobs
       lease_release: kickside.core.jobs:lease_release
       message: kickside.mail.domain:message
-      attachments: kickside.mail.service:attachments
+      attachments: kickside.mail.command:attachments
       policy: kickside.mail.domain:policy
       notify: kickside.mail.command:notify
       settings: kickside.mail.read:settings
@@ -76,7 +51,7 @@ entries:
     source: file://read_attachments.lua
     method: read
     imports:
-      attachments: kickside.mail.service:attachments
+      attachments: kickside.mail.command:attachments
   - name: owner
     kind: function.lua
     meta: { private: true, type: kickside.retention.owner }

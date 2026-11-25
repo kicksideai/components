@@ -91,7 +91,7 @@ local run = test.run_cases(function()
         local function terminal(executor, id)
             local deadline = time.now():add(25 * time.SECOND):unix_nano()
             repeat
-                local entry = assert(executor:call("kickside.mail.outbox:get_message", id))
+                local entry = assert(fixtures.mailer(executor, "get_message", id))
                 if entry.status ~= "queued" then return entry end
                 time.sleep("25ms")
             until time.now():unix_nano() >= deadline
@@ -205,7 +205,7 @@ local run = test.run_cases(function()
             configured = true
             settings.settings("capture", "mail@example.org")
             local _, sender = setup_actor({"app:mail_senders"})
-            local sent = assert(sender:call("kickside.mail.service:send", {template = msg.name,
+            local sent = assert(fixtures.mailer(sender, "send", {template = msg.name,
                 vars = {}, to = {"reader@example.org"}}))
             local delivered = terminal(sender, sent.message_id)
             test.eq("sent", delivered.status, assert(json.encode(delivered.last_error)))
@@ -219,7 +219,7 @@ local run = test.run_cases(function()
             plain.text = "{{ block body() }}Plain text{{ end }}"
             owned[5] = plain
             call("create", plain)
-            local plain_send = assert(sender:call("kickside.mail.service:send", {template = plain.name,
+            local plain_send = assert(fixtures.mailer(sender, "send", {template = plain.name,
                 vars = {}, to = {"reader@example.org"}}))
             local unreferenced = terminal(sender, plain_send.message_id)
             test.eq("sent", unreferenced.status, assert(json.encode(unreferenced.last_error)))
@@ -288,7 +288,7 @@ local run = test.run_cases(function()
             local refs = {{upload_id = id, disposition = "inline", content_id = "chart"},
                 {upload_id = uuid.v4(), disposition = "inline", content_id = "unreferenced"}}
             local vars = {subject = "Fixture title", inline_content_id = "chart"}
-            local rendered = assert(editor:call("kickside.mail.service:preview", {template = "notice", vars = vars, attachments = refs}))
+            local rendered = assert(fixtures.mailer(editor, "preview", {template = "notice", vars = vars, attachments = refs}))
             local draft = call("preview", {message = "notice", vars = vars, attachments = refs})
             local uri = "data:image/gif;base64," .. assert(base64.encode(gif()))
             test.eq(uri, rendered.inline_assets.chart)
@@ -304,7 +304,7 @@ local run = test.run_cases(function()
             test.eq(rendered.inline_assets[colliding], distinct.inline_assets[colliding .. "."])
             test.not_nil(distinct.html:find('src="cid:mail-library-logo."', 1, true))
             local _, stranger = setup_actor({"app:mail_editors"})
-            local hidden, err = stranger:call("kickside.mail.service:preview",
+            local hidden, err = fixtures.mailer(stranger, "preview",
                 {template = "notice", vars = vars, attachments = {refs[1]}})
             test.is_nil(hidden)
             test.eq(errors.PERMISSION_DENIED, assert(err):kind())
@@ -316,12 +316,12 @@ local run = test.run_cases(function()
             local original = call("get", {kind = "asset", name = "logo"})
             owned[1] = original
             local request = {template = "notice", vars = {subject = "Asset size", message = "Ready"}, to = {"reader@example.org"}}
-            local active = assert(editor:call("kickside.mail.service:send", request))
+            local active = assert(fixtures.mailer(editor, "send", request))
             test.eq("queued", active.status)
             request.vars.message = string.rep("a", 9000)
             local preview = call("preview", {message = request.template, vars = request.vars})
             test.not_nil(preview.inline_assets["mail-library-logo"])
-            local oversize, budget = editor:call("kickside.mail.service:send", request)
+            local oversize, budget = fixtures.mailer(editor, "send", request)
             test.is_nil(oversize)
             local details = assert(budget):details()
             test.eq("message_too_large", details.code)
@@ -331,7 +331,7 @@ local run = test.run_cases(function()
             local _, err = fixtures.call(editor, "update", {kind = "asset", name = "logo",
                 upload_id = upload("image/gif", gif() .. string.rep("\0", 80000)), expected_revision = original.revision})
             assert(not err, tostring(err))
-            local rejected, size_err = editor:call("kickside.mail.service:send", request)
+            local rejected, size_err = fixtures.mailer(editor, "send", request)
             test.is_nil(rejected)
             test.eq("message_too_large", assert(size_err):details().code)
         end)
@@ -344,7 +344,7 @@ local run = test.run_cases(function()
             assert(db:execute("UPDATE kickside_uploads SET size=0 WHERE uuid=$1", {empty}))
             assert(db:release())
             assert(storage:writefile(empty, ""))
-            local result, failure = editor:call("kickside.mail.service:send", {
+            local result, failure = fixtures.mailer(editor, "send", {
                 to = {"reader@example.org"}, subject = "An attachment", text = "Please read",
                 attachments = {{upload_id = empty}},
             })
@@ -397,7 +397,7 @@ local run = test.run_cases(function()
             configured = true
             settings.settings("first", "mail@example.org")
             local _, sender = setup_actor({"app:mail_senders"})
-            local denied = assert(sender:call("kickside.mail.service:send", {template = message.name,
+            local denied = assert(fixtures.mailer(sender, "send", {template = message.name,
                 vars = {}, to = {"reader@example.org"}}))
             local failure = terminal(sender, denied.message_id)
             test.eq("failed", failure.status)

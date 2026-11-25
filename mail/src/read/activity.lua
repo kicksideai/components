@@ -1,7 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local database = require("database")
-local identity = require("identity")
-local security = require("security")
+local client = require("client")
 local reader = require("message_reader")
 local failure = require("failure")
 local policy = require("policy")
@@ -9,19 +8,8 @@ local time = require("time")
 local types = require("types")
 local uuid = require("uuid")
 
-local ADMIN = "kickside.mail:mailer"
-
 local function invalid(message: string): error
     return errors.new({kind = errors.INVALID, message = message, retryable = false, details = {code = "invalid_request"}})
-end
-
-local function sender_scope(): (string?, error?)
-    if security.can("mail.log.admin", ADMIN) then return nil, nil end
-    local actor, err = security.actor()
-    if err then return nil, err end
-    local principal, key_err = identity.principal_of_key(actor:id())
-    if key_err then return nil, key_err :: error end
-    return identity.actor_key(principal) :: string, nil
 end
 
 local function message(row: types.MessageRow, admin: boolean): (types.LogMessage?, error?)
@@ -51,7 +39,7 @@ local function message(row: types.MessageRow, admin: boolean): (types.LogMessage
 end
 
 local function get_message(message_id: string): (types.LogMessage?, error?)
-    local sender, err = sender_scope()
+    local sender, err = client.log_scope()
     if err then return nil, err end
     if type(message_id) ~= "string" or not uuid.validate(message_id) then
         return nil, invalid("A message ID is required")
@@ -95,7 +83,7 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
         end
         cursor_id = id
     end
-    local sender, err = sender_scope()
+    local sender, err = client.log_scope()
     if err then return nil, err end
     local now = time.now():unix_nano() // 1000000
     local day_start = (now // policy.DAY_MS) * policy.DAY_MS
@@ -119,4 +107,4 @@ local function list_messages(input: types.ListRequest): (types.ListResult?, erro
         next_cursor = page.has_more and (tostring(last.created_at) .. ":" .. last.message_id) or nil}, nil
 end
 
-return {get = get_message, list = list_messages, sender_scope = sender_scope}
+return {get = get_message, list = list_messages}

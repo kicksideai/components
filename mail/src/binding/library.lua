@@ -1,5 +1,4 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local funcs = require("funcs")
 local library = require("library")
 local types = require("types")
 local client = require("client")
@@ -59,11 +58,6 @@ function M.delete(input: types.ResourceRevision): (boolean?, error?)
     local _, err = writer.one(edits.revision(input), "delete")
     if err then return nil, err end
     return true, nil
-end
-
-function M.send_test(input: types.TestSend): (types.SendResult?, error?)
-    local result, err = funcs.call("kickside.mail.service:library_send_test", input)
-    return result :: types.SendResult?, err
 end
 
 return M

@@ -16,7 +16,7 @@ end
 
 local REQUEST_FIELDS = {
     template = true, vars = true, subject = true, text = true, html = true, to = true,
-    cc = true, bcc = true, reply_to = true, attachments = true, idempotency_key = true, origin = true,
+    cc = true, bcc = true, reply_to = true, attachments = true, idempotency_key = true, origin = true, sink_op = true,
 }
 
 local function nonempty(value: unknown): boolean
@@ -260,6 +260,10 @@ function M.validate(raw: unknown): (types.SendRequest?, error?)
     if input.origin ~= nil then
         local err = origin_error(input.origin)
         if err then return nil, err end
+    end
+    if input.sink_op ~= nil and ((input.sink_op ~= "upsert" and input.sink_op ~= "create")
+        or type(input.origin) ~= "table" or input.origin.kind ~= "automation" or input.idempotency_key == nil) then
+        return nil, invalid("invalid_mail_origin", "An automation write requires an origin, operation and idempotency key")
     end
     if input.reply_to ~= nil and not M.address(input.reply_to) then
         return nil, invalid("invalid_address", "Reply-to must be a valid email address")

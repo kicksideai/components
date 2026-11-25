@@ -99,3 +99,45 @@ entries:
       database: kickside.mail.persist:db
       content: kickside.mail.read:content
       uploads: kickside.mail.command:uploads
+  - name: send
+    kind: library.lua
+    meta: {private: true}
+    source: file://send.lua
+    modules: [security, time, uuid]
+    imports:
+      types: kickside.mail:types
+      client: kickside.mail:client
+      settings: kickside.mail.read:settings
+      config: kickside.mail.domain:config
+      drivers: kickside.mail:drivers_registry
+      message: kickside.mail.domain:message
+      live_preview: kickside.mail.read:preview
+      attachments: kickside.mail.command:attachments
+      recipients: kickside.mail.command:recipients
+      canonical_json: kickside.contract:canonical_json
+      identity: kickside.execution:execution_identity
+      database: kickside.mail.persist:db
+      jobs: kickside.core.jobs:jobs
+      policy: kickside.mail.domain:policy
+      message_reader: kickside.mail.persist:message_reader
+      message_repo: kickside.mail.persist:message_repo
+      asset_file_repo: kickside.mail.persist:asset_file_repo
+      resource: kickside.mail.domain:resource
+      library: kickside.mail.read:library
+      notify: kickside.mail.command:notify
+  - name: attachments
+    kind: library.lua
+    meta: {private: true}
+    source: file://attachments.lua
+    imports:
+      client: kickside.mail:client
+      types: kickside.mail:types
+      content: kickside.mail.read:content
+  - name: recipients
+    kind: library.lua
+    meta: {private: true}
+    source: file://recipients.lua
+    modules: [contract]
+    imports:
+      types: kickside.mail:types
+      message: kickside.mail.domain:message

@@ -2,6 +2,7 @@
 local types = require("types")
 local contract = require("contract")
 local security = require("security")
+local identity = require("identity")
 
 local M = {}
 
@@ -33,8 +34,17 @@ function M.require_admin(): error?
     return nil
 end
 
-function M.require_activity(): error?
-    return M.require_admin() and M.require_send()
+function M.log_scope(): (string?, error?)
+    if security.can("mail.log.admin", MAILER) then return nil, nil end
+    local actor, err = security.actor()
+    if err then return nil, err end
+    if not actor then
+        return nil, errors.new({kind = errors.PERMISSION_DENIED, message = "A caller is required to read mail activity",
+            retryable = false, details = {code = "mail_activity_denied"}})
+    end
+    local principal, key_err = identity.principal_of_key(actor:id())
+    if key_err then return nil, key_err :: error end
+    return identity.actor_key(principal) :: string, nil
 end
 
 function M.require_library(): error?
@@ -45,8 +55,8 @@ function M.require_library(): error?
     return nil
 end
 
-function M.open(): (types.Mailer?, error?)
-    local definition, definition_err = contract.get("kickside.mail:mailer")
+function M.mailer(): (types.Mailer?, error?)
+    local definition, definition_err = contract.get(MAILER)
     if definition_err then return nil, definition_err end
     local mailer, err = definition:open()
     return mailer :: types.Mailer?, err
@@ -62,27 +72,57 @@ function M.library(): (types.Library?, error?)
 end
 
 function M.send(request: types.SendRequest): (types.SendResult?, error?)
-    local mailer, err = M.open()
+    local mailer, err = M.mailer()
     if err then return nil, err end
     return (mailer :: types.Mailer):send(request)
 end
 
 function M.resend(message_id: string): (types.SendResult?, error?)
-    local mailer, err = M.open()
+    local mailer, err = M.mailer()
     if err then return nil, err end
     return (mailer :: types.Mailer):resend(message_id)
 end
 
 function M.get_message(message_id: string): (types.LogMessage?, error?)
-    local mailer, err = M.open()
+    local mailer, err = M.mailer()
     if err then return nil, err end
     return (mailer :: types.Mailer):get_message(message_id)
 end
 
 function M.list_messages(request: types.ListRequest): (types.ListResult?, error?)
-    local mailer, err = M.open()
+    local mailer, err = M.mailer()
     if err then return nil, err end
     return (mailer :: types.Mailer):list_messages(request)
+end
+
+function M.list_templates(): (types.TemplateList?, error?)
+    local mailer, err = M.mailer()
+    if err then return nil, err end
+    return (mailer :: types.Mailer):list_templates()
+end
+
+function M.get_template(input: types.TemplateRequest): (types.Template?, error?)
+    local mailer, err = M.mailer()
+    if err then return nil, err end
+    return (mailer :: types.Mailer):get_template(input)
+end
+
+function M.preview(input: types.PreviewRequest): (types.PreviewResult?, error?)
+    local mailer, err = M.mailer()
+    if err then return nil, err end
+    return (mailer :: types.Mailer):preview(input)
+end
+
+function M.delivery_status(): (types.DeliveryStatus?, error?)
+    local mailer, err = M.mailer()
+    if err then return nil, err end
+    return (mailer :: types.Mailer):delivery_status()
+end
+
+function M.send_delivery_test(input: types.Record): (types.SendResult?, error?)
+    local mailer, err = M.mailer()
+    if err then return nil, err end
+    return (mailer :: types.Mailer):send_delivery_test(input)
 end
 
 return M

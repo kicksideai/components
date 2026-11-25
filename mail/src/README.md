@@ -7,7 +7,7 @@ Mail queues email from an installation-managed address and delivers it through a
 
 Install KickSide Settings, Contract, Jobs, Execution, Uploads, and at least one mail driver. Bind `kickside.mail:target_db` to the SQL resource Jobs uses. User-ID recipients use the Users provisioning contract with the caller’s existing authority. Mail checks upload metadata with the caller’s permissions at admission. The worker reads the upload bytes using the sender’s current authority. Template discovery follows the caller’s registry visibility.
 
-Assign **Send mail** to groups that may send messages. **Edit mail library** grants access to list, inspect, preview, and edit library resources. Assign **Administer mail delivery** to administrators who manage the Mail settings through the platform Settings surface. The installed driver has a separate administration capability. Members can read their own delivery log. Assign **Read all mail delivery logs** to groups that need to read messages from all senders.
+Assign **Send mail** to groups that may send messages. **Edit mail library** grants access to list, inspect, preview, and edit library resources. Assign **Administer mail delivery** to administrators who manage the Mail settings through the platform Settings surface. The installed driver has a separate administration capability. Mailer contract callers can read their own delivery log. The Activity HTTP endpoints require delivery administration. Assign **Read all mail delivery logs** to groups that need to read messages from all senders.
 
 ## Settings
 
@@ -21,7 +21,7 @@ With Mail Admin installed, open **Settings → Integrations → Mail** to choose
 
 ## Contracts and tools
 
-`kickside.mail:mailer` exposes `send`, `get_message`, `list_messages`, `list_templates`, `get_template`, and `preview`. The corresponding tools are `MailSend`, `MailListTemplates`, `MailGetTemplate`, and `MailPreview`. The `kickside.mail.traits:mail` trait includes all four. The `kickside.mail.traits:mail_readonly` trait includes the three template tools.
+`kickside.mail:mailer` exposes `send`, `resend`, `get_message`, `list_messages`, `list_templates`, `get_template`, `preview`, `delivery_status`, and `send_delivery_test`. The corresponding tools are `MailSend`, `MailListTemplates`, `MailGetTemplate`, and `MailPreview`. The `kickside.mail.traits:mail` trait includes all four. The `kickside.mail.traits:mail_readonly` trait includes the three template tools.
 
 Supply a nonempty `to` list and either a `template` with its `vars`, or a `subject` with `text`, `html`, or both. `cc` and `bcc` use the same address or `{user_id}` entries as `to`. After resolving user IDs, Mail includes each address once, comparing local parts exactly and domains case-insensitively in To, Cc, then Bcc order. Mail accepts unquoted ASCII local parts and dotted ASCII domains, including domains already encoded as Punycode. Subjects allow up to 255 characters and each raw or rendered body allows up to 256 KiB. `attachments` accepts up to ten upload references with a 25 MiB raw combined limit. The configured driver’s total message limit also applies, including attachment encoding overhead. Mail uses the basename of the supplied or stored upload filename, up to 255 bytes, and uses `attachment` for an empty name. An inline reference supplies a `content_id` that the HTML can address as `cid:<content_id>`.
 
@@ -33,7 +33,7 @@ On each attempt the worker selects the active driver and checks the sender’s c
 
 The `notice` template supplies plain-text and HTML parts. Set `subject` and any combination of an opening message, headings, paragraphs, labeled details, a web action link, or an inline image. Use `MailGetTemplate` for its variable schema and `MailPreview` for the rendered parts.
 
-`MailSend` appears as a virtual Block. A Workflow can pass the message from a preceding step and fix optional fields in Block configuration. The `kickside.mail.ports:send_email` automation destination queues one message per new `upsert` delivery and returns `dest_ref.message_id`. Direct callers of its writable binding can also use `create`. The `kickside.data:writable` binding declares at-least-once delivery and reuses the automation’s per-delivery idempotency key within the log retention window. A source `delete` requires **Send mail** and succeeds without a payload, a delivery key, or a new message.
+`MailSend` appears as a virtual Block. A Workflow can pass the message from a preceding step and fix optional fields in Block configuration. The `kickside.mail.sink:send_email` automation destination queues one message per new `upsert` delivery and returns `dest_ref.message_id`. Direct callers of its writable binding can also use `create`. The `kickside.data:writable` binding declares at-least-once delivery and replays the receipt for the same sender, automation origin, operation and per-delivery idempotency key within the log retention window. A source `delete` requires **Send mail** and succeeds without a payload, a delivery key, or a new message.
 
 Drivers declare `registry.entry` with `meta.type: kickside.mail:driver` and implement `send` on `kickside.mail:transport`. The descriptor supplies `id`, `label`, `icon`, `description`, `binding`, `settings_ns`, and `available_func`. Declare `max_recipients` and `max_message_bytes` as positive integers for the provider. Mail enforces the declared limits on admission and delivery. The driver contributes its exact descriptor, binding, send, and availability function IDs to Mail’s private discovery and dispatch policies. The availability function checks configuration without contacting the provider. Return `{available: true}` when ready. Otherwise return `{available: false, code, reason}` with a stable lower-snake-case code and a sentence that tells the administrator how to configure the service.
 
@@ -52,7 +52,7 @@ The panel emits `change` with `detail: {values}` for every locally changed key. 
 
 `GET /mail/delivery/drivers` requires **Administer mail delivery**. It returns `{success: true, data: {items: [...]}}` with each installed driver’s `id`, `label`, `icon`, `description`, `settings_ns`, optional `settings_view`, `availability` and `settings`. A setting row identifies its namespace, key, type and form metadata. Non-secret rows include the effective value and declared default. Secret rows contain `is_secret: true` and `has_value`; their values and defaults stay on the server.
 
-`GET /mail/delivery` returns the active driver summary, sender, reply-to address and `configured` flag. If setup is incomplete, `code` identifies the issue and `reason` tells the administrator what to do. Sending surfaces return a general `invalid_config` error for delivery setup failures. Use delivery status for the specific setup reason.
+`GET /mail/delivery` returns the active driver summary, sender, reply-to address, readiness flags and admitted transports. If setup is incomplete, `code` identifies the issue and `reason` tells the administrator what to do. Sending surfaces return a general `invalid_config` error for delivery setup failures. Use delivery status for the specific setup reason.
 
 ## Template library
 

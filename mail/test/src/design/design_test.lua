@@ -202,7 +202,7 @@ return {run = test.run_cases(function()
             local deadline = time.now():add("5s")
             local sent
             repeat
-                sent = assert(funcs.call("kickside.mail.outbox:get_message", queued.message_id))
+                sent = assert(fixtures.mailer(nil, "get_message", queued.message_id))
                 if sent.status ~= "queued" then break end
                 time.sleep("10ms")
             until time.now():after(deadline)

@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["configured", "ready", "transports"],
+  "properties": {
+    "configured": {"type": "boolean"},
+    "ready": {"type": "boolean"},
+    "driver": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {"id": {"type": "string"}, "label": {"type": "string"}}
+    },
+    "from": {
+      "type": "object",
+      "required": ["address"],
+      "properties": {"address": {"type": "string"}, "name": {"type": "string"}}
+    },
+    "reply_to": {"type": "string"},
+    "code": {"type": "string"},
+    "reason": {"type": "string"},
+    "transports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "icon", "description", "settings_ns", "ready"],
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "icon": {"type": "string"},
+          "description": {"type": "string"},
+          "settings_ns": {"type": "string"},
+          "ready": {"type": "boolean"},
+          "code": {"type": "string"},
+          "reason": {"type": "string"},
+          "max_recipients": {"type": "integer", "minimum": 1},
+          "max_message_bytes": {"type": "integer", "minimum": 1},
+          "idempotent": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

@@ -22,7 +22,6 @@ override:
     - {subject_id: "system:kickside.mail.retention", subject_type: user, access_mask: 1}
     - {subject_id: "wippy.test:runner", subject_type: user, access_mask: 3}
     - {subject_id: "app:mail_editors", subject_type: group, access_mask: 3}
-  kickside.workflows.agent:flows_read:imports.published_catalog: kickside.mail.harness:workflow_catalog_fault
   kickside.mail.command:library:modules: [security]
   kickside.mail.command:library:imports.time: kickside.mail.harness:owner_clock
   kickside.mail.command:library:imports.live: app.mail_library:projection_fault

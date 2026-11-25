@@ -87,7 +87,9 @@ entries:
     kind: library.lua
     source: file://client.lua
     modules: [contract, security]
-    imports: { types: kickside.mail:types }
+    imports:
+      types: kickside.mail:types
+      identity: kickside.execution:execution_identity
   - name: drivers_registry
     kind: library.lua
     source: file://drivers_registry.lua
@@ -150,19 +152,34 @@ entries:
         output_schemas:
           - format: application/schema+json
             definition: file://schemas/preview.output.json
+      - name: delivery_status
+        description: Read delivery readiness and admitted services as a delivery administrator.
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/delivery_status.output.json
+      - name: send_delivery_test
+        description: Queue a test email to the acting administrator's address.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/delivery_test.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.output.json
   - name: mailer_binding
     kind: contract.binding
     contracts:
       - contract: kickside.mail:mailer
         default: true
         methods:
-          send: kickside.mail.service:send
-          resend: kickside.mail.service:resend
-          get_message: kickside.mail.outbox:get_message
-          list_messages: kickside.mail.outbox:list_messages
-          list_templates: kickside.mail.service:list_templates
-          get_template: kickside.mail.service:get_template
-          preview: kickside.mail.service:preview
+          send: kickside.mail.binding:mailer_send
+          resend: kickside.mail.binding:mailer_resend
+          get_message: kickside.mail.binding:mailer_get_message
+          list_messages: kickside.mail.binding:mailer_list_messages
+          list_templates: kickside.mail.binding:mailer_list_templates
+          get_template: kickside.mail.binding:mailer_get_template
+          preview: kickside.mail.binding:mailer_preview
+          delivery_status: kickside.mail.binding:mailer_delivery_status
+          send_delivery_test: kickside.mail.binding:mailer_send_delivery_test
   - name: library
     kind: contract.definition
     meta: { title: Mail library }

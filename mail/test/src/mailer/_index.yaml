@@ -167,7 +167,7 @@ entries:
   - name: caller
     kind: security.policy
     policy:
-      resources: [kickside.mail.harness:probe, kickside.workflows.agent:flows_read]
+      resources: [kickside.mail.harness:probe]
       actions: [funcs.call]
       effect: allow
   - name: external_template
@@ -242,9 +242,3 @@ entries:
     modules: [sql]
     imports:
       release: kickside.core.jobs:lease_release
-  - name: workflow_catalog_fault
-    kind: library.lua
-    source: file://workflow_catalog_fault.lua
-    modules: [ctx]
-    imports:
-      published_catalog: kickside.workflows.catalog:published_catalog

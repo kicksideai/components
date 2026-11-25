@@ -22,7 +22,7 @@ type Origin = {kind: string, id: string, label: string}
 type SendRequest = {
     template: string?, vars: JsonObject?, subject: string?, text: string?, html: string?,
     to: {Recipient}, cc: {Recipient}?, bcc: {Recipient}?, reply_to: string?,
-    attachments: {AttachmentRef}?, idempotency_key: string?, origin: Origin?,
+    attachments: {AttachmentRef}?, idempotency_key: string?, origin: Origin?, sink_op: string?,
 }
 type Addresses = {to: {string}, cc: {string}?, bcc: {string}?}
 type TransportRequest = Addresses & {
@@ -71,6 +71,7 @@ type Outcome = {delivered: TransportResult?, cause: MessageError?}
 type DueRow = {id: string, job_id: string, next_check_at: integer}
 type Deadlines = {check_at: integer?, finished_at: integer?}
 type MessageContent = {addresses: Addresses, attachments: {AttachmentRef}}
+type ResendSource = {row: MessageRow, content: MessageContent, assets: {AssetRef}}
 type MessagePage = {items: {MessageRow}, has_more: boolean, total: integer, total_is_lower_bound: boolean?, failed_today: integer}
 type Job = {id: string, lease_token: string, execution_seq: integer}
 type JobInput = {job: Job, payload: {message_id: string}}
@@ -189,6 +190,10 @@ type SettingsResult = {success: boolean, values: Record?, overridden: {string}?,
 type SettingsContract = {get_namespace: (self: SettingsContract, input: {namespace: string}) -> (SettingsResult?, error?)}
 type SettingInput = {value: unknown}
 type SettingValidation = {valid: boolean, error: string?}
+type TransportStatus = {id: string, title: string, icon: string, description: string, settings_ns: string,
+    ready: boolean, code: string?, reason: string?, max_recipients: integer?, max_message_bytes: integer?, idempotent: boolean?}
+type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, ready: boolean,
+    transports: {TransportStatus}, from: Mailbox?, reply_to: string?, code: string?, reason: string?}
 type Mailer = {
     send: (self: Mailer, input: SendRequest) -> (SendResult?, error?),
     resend: (self: Mailer, message_id: string) -> (SendResult?, error?),
@@ -197,6 +202,8 @@ type Mailer = {
     list_templates: (self: Mailer) -> (TemplateList?, error?),
     get_template: (self: Mailer, input: TemplateRequest) -> (Template?, error?),
     preview: (self: Mailer, input: PreviewRequest) -> (PreviewResult?, error?),
+    delivery_status: (self: Mailer) -> (DeliveryStatus?, error?),
+    send_delivery_test: (self: Mailer, input: Record) -> (SendResult?, error?),
 }
 type Transport = {send: (self: Transport, input: TransportRequest) -> (TransportResult?, error?)}
 type UserResult = {ok: boolean, user: {user_id: string, email: string}?, error: string?}
@@ -217,7 +224,6 @@ type WritableSink = {
     fail: (string, string?, boolean?, string?, Record?) -> SinkFailure,
 }
 type Realtime = {broadcast: (self: Realtime, input: {topic: string}) -> ({success: boolean, error: string?}?, error?)}
-type DeliveryStatus = {driver: {id: string, label: string}?, configured: boolean, from: Mailbox?, reply_to: string?, code: string?, reason: string?}
 type TestSend = {message: string, vars: JsonObject?}
 
 type Library = {
@@ -251,7 +257,7 @@ return {
     origin_text = origin_text,
     DB = DB, Executor = Executor, Transaction = Transaction, TransactionWork = TransactionWork, TransportResult = TransportResult,
     MessageRef = MessageRef, ListRequest = ListRequest, ListQuery = ListQuery, ListResult = ListResult, LogMessage = LogMessage,
-    MessageError = MessageError, MessageRow = MessageRow, Admission = Admission, AdmissionResult = AdmissionResult,
+    MessageError = MessageError, MessageRow = MessageRow, ResendSource = ResendSource, Admission = Admission, AdmissionResult = AdmissionResult,
     MessageInsert = MessageInsert, KeyRow = KeyRow, InsertOutcome = InsertOutcome, Outcome = Outcome,
     DueRow = DueRow, Deadlines = Deadlines, MessageContent = MessageContent, MessagePage = MessagePage, SenderPage = SenderPage,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,
@@ -275,7 +281,7 @@ return {
     Driver = Driver, Availability = Availability, DriverSetting = DriverSetting, DriverSummary = DriverSummary,
     Settings = Settings, ApiSettings = ApiSettings,
     SettingsResult = SettingsResult, SettingsContract = SettingsContract, SettingInput = SettingInput, SettingValidation = SettingValidation,
-    Mailer = Mailer, Transport = Transport, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
+    Mailer = Mailer, Transport = Transport, TransportStatus = TransportStatus, Users = Users, ContentInfo = ContentInfo, Content = Content, AttachmentInput = AttachmentInput,
     ContentFailure = ContentFailure, ContentProvider = ContentProvider, SinkRequest = SinkRequest,
     SinkResult = SinkResult, SinkFailure = SinkFailure, WritableSink = WritableSink, Realtime = Realtime, DeliveryStatus = DeliveryStatus, TestSend = TestSend, HttpAuth = HttpAuth, HttpResponse = HttpResponse,
 }

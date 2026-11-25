@@ -30,6 +30,7 @@ local function write(request: types.SinkRequest): types.SinkResult | types.SinkF
     local input = {}
     for key, value in pairs(request.input) do input[key] = value end
     input.idempotency_key = request.idempotency_key
+    input.sink_op = operation
     input.origin = {kind = "automation", id = origin, label = origin}
     local sent, err = client.send(input :: types.SendRequest)
     if err then

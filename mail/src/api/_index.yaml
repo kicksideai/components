@@ -210,7 +210,6 @@ entries:
     kind: function.lua
     source: file://activity_list.lua
     method: handler
-    modules: [funcs]
     imports:
       principals: kickside.mail.api:principals
       request: kickside.mail.api:request
@@ -225,7 +224,6 @@ entries:
     kind: function.lua
     source: file://activity_get.lua
     method: handler
-    modules: [funcs]
     imports:
       principals: kickside.mail.api:principals
       request: kickside.mail.api:request
@@ -240,7 +238,6 @@ entries:
     kind: function.lua
     source: file://activity_resend.lua
     method: handler
-    modules: [funcs]
     imports:
       request: kickside.mail.api:request
       client: kickside.mail:client
@@ -266,7 +263,6 @@ entries:
     kind: function.lua
     source: file://delivery_status.lua
     method: handler
-    modules: [funcs]
     imports:
       request: kickside.mail.api:request
       client: kickside.mail:client
@@ -279,7 +275,6 @@ entries:
     kind: function.lua
     source: file://delivery_send_test.lua
     method: handler
-    modules: [funcs]
     imports:
       request: kickside.mail.api:request
       client: kickside.mail:client

@@ -69,9 +69,6 @@ local function probe(input)
         }, {blocks = catalog}))
         return {descriptor = descriptor, plan = plan, upstream_plan = upstream_plan, compiled = compiled}
     end
-    if input.operation == "resend" then
-        return funcs.call("kickside.mail.service:resend", input.message)
-    end
     if input.operation == "raw" then
         return open("kickside.mail:transport", "kickside.mail.harness:first")
     end
@@ -578,6 +575,17 @@ return {
                 test.eq("second|mail@example.org||", sent.provider_message_id)
             end)
 
+            test.it("rejects excess recipients before calling Users", function()
+                capture_with(admin)
+                assert(change(admin, "driver", "second").success)
+                local input = body()
+                input.cc = {{user_id = "unavailable-without-users-authority"}}
+                input.bcc = {"bcc@example.org"}
+                local result, err = invoke(sender, "send", input)
+                refusal(result, err, errors.INVALID, "too_many_recipients")
+                test.eq(2, err:details().maximum)
+            end)
+
             test.it("refuses excess recipients before queuing and after a driver change", function()
                 capture_with(admin)
                 assert(change(admin, "driver", "second").success)
@@ -911,7 +919,7 @@ return {
             test.it("sends each Sync upsert once and acknowledges deletes without sending", function()
                 assert(change(admin, "driver", "first").success)
                 assert(change(admin, "from_address", "mail@example.org").success)
-                local port = assert(registry.get("kickside.mail.ports:send_email"))
+                local port = assert(registry.get("kickside.mail.sink:send_email"))
                 local request = {
                     config = {}, sink_op = "upsert", input = body(), idempotency_key = "source-item-v1",
                     identity_key = "source-item", origin = "automation",
@@ -944,6 +952,24 @@ return {
                 test.eq(2, #logged.items)
                 test.not_nil(port.data.operations.upsert)
                 test.not_nil(port.data.operations.delete)
+            end)
+
+            test.it("scopes automation receipts by origin and write operation", function()
+                capture_with(admin)
+                local request = {config = {}, sink_op = "upsert", input = body(),
+                    idempotency_key = "shared-delivery", origin = "first-source"}
+                local first = assert(invoke(sender, "write_request", request))
+                test.is_true(first.success, tostring(first.error and first.error.message))
+                local replay = assert(invoke(sender, "write_request", request))
+                test.eq(first.dest_ref.message_id, replay.dest_ref.message_id)
+                request.origin = "second-source"
+                local other = assert(invoke(sender, "write_request", request))
+                test.is_true(other.success, tostring(other.error and other.error.message))
+                test.neq(first.dest_ref.message_id, other.dest_ref.message_id)
+                request.sink_op = "create"
+                local direct = assert(invoke(sender, "write_request", request))
+                test.is_true(direct.success, tostring(direct.error and direct.error.message))
+                test.neq(other.dest_ref.message_id, direct.dest_ref.message_id)
             end)
 
             test.it("requires Send mail on delete and accepts a delete without a payload or key", function()
@@ -1000,21 +1026,17 @@ return {
                 test.eq("", without_title.origin.label)
             end)
 
-            test.it("queues workflow mail when the title catalog fails", function()
+            test.it("queues workflow mail with the run ID when no title is supplied", function()
                 assert(change(admin, "driver", "first").success)
                 assert(change(admin, "from_address", "mail@example.org").success)
                 local executor = assert(sender:with_context({
-                    mail_test_catalog_error = true,
-                    run_context = {run_id = "catalog-failure", flow_ref = {kind = "flow", id = "example-flow", version = 1}},
+                    run_context = {run_id = "workflow-without-title", flow_ref = {kind = "flow", id = "example-flow", version = 1}},
                 }))
-                local _, catalog_err = executor:call("kickside.workflows.agent:flows_read",
-                    {action = "catalog", catalog_id = "flows:example-flow"})
-                test.eq(errors.UNAVAILABLE, assert(catalog_err):kind())
                 local queued, err = executor:call(TOOL_NS .. "mail_send", body())
                 test.is_nil(err, tostring(err))
                 local delivered = terminal(sender, assert(queued))
                 test.eq("sent", delivered.status)
-                test.eq("catalog-failure", delivered.origin.id)
+                test.eq("workflow-without-title", delivered.origin.id)
                 test.eq("", delivered.origin.label)
             end)
 
@@ -1075,7 +1097,7 @@ return {
 
             test.it("returns the same configuration error through mailer and writable destination", function()
                 local missing_driver = unconfigured(sender)
-                local port = assert(registry.get("kickside.mail.ports:send_email"))
+                local port = assert(registry.get("kickside.mail.sink:send_email"))
                 test.is_nil(port.data.config_schema and port.data.config_schema.connection_id)
                 local destination = assert(invoke(sender, "write", body()))
                 test.is_false(destination.success)
@@ -1199,6 +1221,7 @@ return {
             end)
 
             test.it("names missing, mistyped and unknown variables before rendering", function()
+                capture_with(admin)
                 local input = template_request()
                 local tests = {
                     {variable = "vars"},
