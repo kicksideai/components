@@ -225,7 +225,9 @@ local function register(support)
         local input = body()
         input.subject = "Fixture ceiling"
         local queued = assert(invoke(sender, "send", input))
-        await_message(sender, queued.message_id, function(row) return row.attempts == 5 end)
+        await_message(sender, queued.message_id, function(row)
+            return row.status == "queued" and row.attempts == 4
+        end)
         local pending = persisted(queued.message_id)
         local job = await_job(pending.job_id, "dead")
         local failed = await_message(sender, queued.message_id, function(row) return row.status == "failed" end, 35)

@@ -3,20 +3,26 @@ local channel = require("channel")
 local events = require("events")
 local time = require("time")
 
-local function terminal(read, duration)
+local function until_state(read, matches, duration)
     local subscription = assert(events.subscribe("mail.fixture", "activity"))
     local changes = subscription:channel()
     local deadline = assert(time.after(duration))
     local result, err = read()
-    while result and result.status == "queued" and not err do
+    while result and not err and not matches(result) do
         local wake = channel.select({changes:case_receive(), deadline:case_receive()})
         result, err = read()
         if wake.channel == deadline then break end
     end
     subscription:close()
     assert(result, tostring(err))
-    assert(result.status == "sent" or result.status == "failed", "Mail remained queued: " .. result.message_id)
+    assert(matches(result), "Unexpected Mail status " .. result.status .. " for " .. result.message_id)
     return result
 end
 
-return {terminal = terminal}
+local function terminal(read, duration)
+    return until_state(read, function(result)
+        return result.status == "sent" or result.status == "failed"
+    end, duration)
+end
+
+return {terminal = terminal, until_state = until_state}
