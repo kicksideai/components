@@ -5,7 +5,7 @@ Mail queues email from an installation-managed address and delivers it through a
 
 ## Requirements
 
-Install KickSide Settings, Contract, Jobs, Execution, Uploads, and at least one mail driver. Bind `kickside.mail:target_db` to the SQL resource Jobs uses. User-ID recipients use the Users provisioning contract with the caller’s existing authority. Mail checks upload metadata with the caller’s permissions at admission. The worker reads the upload bytes using the sender’s current authority. Template discovery follows the caller’s registry visibility.
+Install KickSide Settings, Contract, Component, Core, Jobs, Execution, Users, Uploads, and at least one mail driver. Bind `kickside.mail:target_db` to the SQL resource Jobs uses. User-ID recipients use the Users provisioning contract with the caller’s existing authority. Mail checks upload metadata with the caller’s permissions at admission. The worker reads the upload bytes using the sender’s current authority. Template discovery follows the caller’s registry visibility.
 
 Assign **Send mail** to groups that may send messages. **Edit mail library** grants access to list, inspect, preview, and edit library resources. Assign **Administer mail delivery** to administrators who manage the Mail settings through the platform Settings surface. The installed driver has a separate administration capability. Mailer contract callers can read their own delivery log. The Activity HTTP endpoints require delivery administration. Assign **Read all mail delivery logs** to groups that need to read messages from all senders.
 
@@ -78,6 +78,10 @@ Settings, which masks secret values. When configuration is incomplete,
 
 The library stores messages, base templates, parts, and image assets. Messages, bases, and parts have HTML and text faces. A message also has a subject, a variable schema with samples, and the name of its base. A part declares its inputs. The starter library ships Standard and Plain bases and composes Notice from editable parts.
 
+Each edit appends an event to the library component’s thread. Create, update, base change, reset, and restore events carry the resulting resource snapshot. Content across both faces and the description is limited to 512 KiB per resource. The projection updates the library, reference index, and History together. The resource revision is its subject version, and `seq` is its position on the shared library thread. Unedited packaged originals start at revision zero.
+
+The `library_sync` job publishes Jet sets from the committed projection. Mail supports single-node template publishing in this release. A render checks the live registry marker against the committed template sequence and returns retryable `mail_library_publishing` while publication is pending. The job retries failed publications. Committed edits remain available through the library read model after projection.
+
 A message selects its base as data. The base provides a `body()` block and the message supplies that block's content. Include a part by its absolute Jet name and pass its inputs as the context.
 
 ```jet
@@ -89,13 +93,17 @@ A message selects its base as data. The base provides a `body()` block and the m
 
 Parts read passed inputs through the dot context. Templates can also read `site.title`, `site.url`, `sender.name`, `message.subject`, and `message.preheader` in both faces. Use `vars` for declared message variables.
 
-Lua callers with **Edit mail library** open `kickside.mail:library` through `kickside.mail:client`. Use `list` for a page of summaries, `get` for editable source, and `read_history` and `read_revision` for saved versions. Use `preview` to render a saved message or review a draft against a selected message. The HTTP preview path is `POST /mail/library/preview`. For a non-image create, update, save, base change, reset, or restore, include the proposed operation and use the returned `preview_id` on the write. Preview IDs belong to the issuing actor and expire after 15 minutes. Writes to an existing resource also require its current `expected_revision`. Reset restores the current shipped original.
+Lua callers with **Edit mail library** open `kickside.mail:library` through `kickside.mail:client`. Use `list` for summaries, `get` for editable source, `asset_content` for image bytes, and `read_history` and `read_revision` for saved versions. The write methods are `create`, `update`, `save`, `set_base`, `reset`, `restore`, `delete`, and `add_asset`. Use `send_test` to queue the selected saved message to the acting editor’s email address.
+
+Use `preview` to render a saved message or review a draft against a selected message. The HTTP preview path is `POST /mail/library/preview`. Preview the proposed non-image create, update, save, base change, reset, or restore, then send the returned `preview_id` with the write. Preview IDs belong to the issuing actor and expire after 15 minutes. Writes to an existing resource also require its current `expected_revision`. Supply a UUID `command_id` to replay the same write safely. A write can return `seq`, `committed: true`, and `projected: false` when the projection is still catching up. Refetch when the library invalidation arrives. `delete` acknowledges success with a boolean.
+
+History pages list one item per retained event in descending sequence order. Request `read_revision` or `restore` with the History item’s `seq`. Core retains library events for 365 days under the component policy. A request for a pruned event returns `mail_revision_pruned`. Restore appends a new event with the selected historical content. Reset uses the currently shipped original.
 
 Mail broadcasts topic-only `mail.library` and `mail.activity` invalidations after writes commit. Subscribers read the affected view through the API using their own access.
 
 ## Library images
 
-Add a named image from your completed Uploads file with **Edit mail library** or the `MailAssetAdd` tool. Mail supports PNG, JPEG, and GIF images up to 1 MiB. Supply pixel width and height when known. Mail gets the media type and byte size from Uploads. Only the person who uploaded the source can adopt it into the library. Bind `kickside.mail:library_editor_grant` to the host editor group with `subject_type: group` and `access_mask: 3`.
+Add a named image from your completed Uploads file with **Edit mail library** or the `MailAssetAdd` tool. Mail supports PNG, JPEG, and GIF images up to 1 MiB. Mail gets the media type and byte size from Uploads. Only the person who uploaded the source can adopt it into the library. Bind `kickside.mail:library_editor_grant` to the host editor group with `subject_type: group` and `access_mask: 3`.
 
 Use the `assets` map in any HTML message, base, or part. Use brackets for names containing a hyphen.
 
@@ -108,7 +116,7 @@ The shipped Header uses `logo`. Replace the image to change every email that use
 
 Mail attaches each library image referenced in rendered HTML once. It counts the image and transfer encoding toward the driver’s size limit. Message and draft previews expose a content-ID-to-data-URI map in `inline_assets`. Pass optional inline `attachments` to also preview caller-owned uploads referenced by the HTML. The plain-text face has no library image map.
 
-Asset list summaries include a `used_by.messages` count. Asset details return the sorted message names. Usage reflects rendered library samples under a neutral sender, including assets referenced from a base or part. Mail stores the derived names on the existing asset rows in the same transaction as library edits. The boot reconciler recomputes usage from the effective library, including packaged assets. Usage does not grow with delivery traffic.
+Asset list summaries include a `used_by.messages` count. Asset details return the sorted message names. Usage follows source references through messages, bases, and parts, including packaged originals. The projection updates the reference index from the library events.
 
 ## Error codes
 
@@ -165,12 +173,12 @@ A draft workspace conflict retains its registry diagnostics in `details` and ret
 
 ## Development
 
-Use Make and a Wippy runtime that supports `template.set.engine.escape` and registry overlay shadows. The isolated harness resolves the mail modules and uses local source replacements for sibling dependencies.
+Use Make, Python 3 with PyYAML, Node.js, and Wippy `v0.3.70a`. The isolated harness resolves the mail modules and uses local source replacements for sibling dependencies.
 
 ```sh
 make verify
 ```
 
-`make verify` refreshes the dependency graph and runs validation and the SQLite harness. For PostgreSQL, create a dedicated test database, then run the same target with
+`make verify` requires a clean structure check, refreshes the dependency graph, and runs lint, type checks, registry checks, and the SQLite harness. For PostgreSQL, create a dedicated test database and run `make test-pg` with
 `WIPPY_ARGS="--profile postgres --set vars.pg_host=$PGHOST --set vars.pg_port=$PGPORT --set vars.pg_database=$PGDATABASE"`.
 Drop the database after the run. Tests use local delivery fixtures.
