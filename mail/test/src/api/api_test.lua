@@ -719,12 +719,11 @@ return {run = test.run_cases(function()
             test.eq("invalid_request", result.code)
         end)
 
-        test.it("checks source, name, schema and note byte limits", function()
+        test.it("checks resource content, name, schema and note byte limits", function()
             local editor = session("editor")
             for _, case in ipairs({
                 {field = "name", value = string.rep("n", 129)},
-                {field = "html", value = string.rep("h", 65537)},
-                {field = "text", value = string.rep("t", 65537)},
+                {field = "html", value = string.rep("h", 512 * 1024 + 1), code = "mail_resource_too_large"},
                 {field = "schema", value = {type = "object", properties = {}, description = string.rep("s", 32768)}},
                 {field = "note", value = string.rep("n", 4097), code = "invalid_revision_note"},
             }) do
@@ -734,10 +733,9 @@ return {run = test.run_cases(function()
                 test.eq(400, status, case.field)
                 test.eq(case.code or "invalid_mail_resource", err.code)
             end
-            local exact = own(fixture("part", string.rep("p", 128), string.rep("h", 65536)))
+            local exact = own(fixture("part", string.rep("p", 128), "Accepted content"))
             exact.note = string.rep("n", 4096)
             local created = create(editor, exact)
-            test.eq(65536, #created.html)
             test.eq(128, #created.name)
             local status, err = request(editor, "POST", "/library/preview",
                 {message = "notice", vars = {message = string.rep("p", 3 * 1024 * 1024)}})

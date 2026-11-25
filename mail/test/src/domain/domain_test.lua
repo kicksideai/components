@@ -7,6 +7,17 @@ local test = require("test")
 
 return {run = test.run_cases(function()
     test.describe("Mail domain", function()
+        test.it("refuses one byte over the aggregate content limit before append", function()
+            local limit = 512 * 1024
+            local content = {kind = "part", name = "limit", html = string.rep(string.char(1), limit - 2),
+                text = string.char(1), description = string.char(1)}
+            test.is_nil(resource.check_content(content))
+            content.description = content.description .. string.char(1)
+            local err = assert(resource.check_content(content))
+            test.eq(errors.INVALID, err:kind())
+            test.eq("mail_resource_too_large", err:details().code)
+        end)
+
         test.it("collects distinct literal base, part and asset references across the faces", function()
             local refs = references.refs({
                 base = "standard",

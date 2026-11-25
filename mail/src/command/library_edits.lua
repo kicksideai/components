@@ -96,6 +96,9 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
         if current.state ~= "customized" then
             return nil, resources.error(errors.INVALID, "mail_resource_not_customized", "Only customized resources can be reset", key)
         end
+        if not original then return nil, edit_rules.missing(key) end
+        local invalid = resources.check_content(original.resource)
+        if invalid then return nil, invalid end
         return original.resource, nil
     end
     if operation == "delete" then
@@ -131,6 +134,8 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
         restored_from = history[1].version
         if content.asset and content.asset.source == "original" then
             if not original then return nil, edit_rules.missing(key) end
+            local invalid = resources.check_content(original.resource)
+            if invalid then return nil, invalid end
             return original.resource, nil, restored_from
         end
     elseif edit.base ~= nil then
@@ -140,7 +145,10 @@ function M.prepare(ex: types.Executor, edit: types.LibraryEdit, operation: strin
         content = copy :: types.ResourceContent
     end
     local normalized, err = resources.normalize(content :: types.ResourceContent)
-    return normalized, err, restored_from
+    if err then return nil, err end
+    local invalid = resources.check_content(normalized :: types.ResourceContent)
+    if invalid then return nil, invalid end
+    return normalized, nil, restored_from
 end
 
 function M.create(input: types.ResourceCreate): types.LibraryEdit

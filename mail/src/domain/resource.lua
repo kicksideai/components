@@ -6,11 +6,13 @@ local M = {}
 
 local MAX_NAME_BYTES = 128
 local MAX_DISPLAY_BYTES = 4096
-local MAX_FACE_BYTES = 64 * 1024
+local MAX_SUBJECT_BYTES = 64 * 1024
 local MAX_SCHEMA_BYTES = 32 * 1024
 local MAX_NOTE_BYTES = 4096
 M.MAX_VARIABLE_BYTES = 64 * 1024
 M.MAX_EDITS = 12
+-- Bound JSON-escaped snapshots to the Threads event row limit.
+M.MAX_CONTENT_BYTES = 512 * 1024
 
 function M.error(kind: string, code: string, message: string, key: types.ResourceKey?): error
     return errors.new({kind = kind, retryable = false, message = message,
@@ -66,8 +68,20 @@ function M.check_note(note: unknown): error?
 end
 
 function M.check_content(input: types.ResourceContent): error?
-    for name, maximum in pairs({title = MAX_DISPLAY_BYTES, description = MAX_DISPLAY_BYTES,
-        base = MAX_NAME_BYTES, subject = MAX_FACE_BYTES, html = MAX_FACE_BYTES, text = MAX_FACE_BYTES}) do
+    local content_bytes = 0
+    for _, name in ipairs({"description", "html", "text"}) do
+        local value = ((input :: unknown) :: types.Record)[name]
+        if value ~= nil then
+            if type(value) ~= "string" or not utf8.len(value) then
+                return M.error(errors.INVALID, "invalid_mail_resource", "The resource " .. name .. " must be UTF-8 text", input)
+            end
+            content_bytes = content_bytes + #value
+        end
+    end
+    if content_bytes > M.MAX_CONTENT_BYTES then
+        return M.error(errors.INVALID, "mail_resource_too_large", "HTML, text and description must total at most 512 KiB", input)
+    end
+    for name, maximum in pairs({title = MAX_DISPLAY_BYTES, base = MAX_NAME_BYTES, subject = MAX_SUBJECT_BYTES}) do
         local value = ((input :: unknown) :: types.Record)[name]
         if value ~= nil and (type(value) ~= "string" or #value > maximum or not utf8.len(value)) then
             return M.error(errors.INVALID, "invalid_mail_resource",
