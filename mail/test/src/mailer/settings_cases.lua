@@ -30,7 +30,9 @@ local function register(support)
             -- Settings validation returns a message and leaves the key revision intact.
             test.eq("Enter a valid email address", result.error)
             test.is_true(change(admin, key, "", previous.revision).success)
-            local value, err = case.read({[key] = malformed})
+            local settings = {from_address = "mail@example.org", from_name = "", reply_to = ""}
+            settings[key] = malformed
+            local value, err = case.read(settings)
             test.is_nil(value)
             test.eq(errors.INVALID, assert(err):kind())
             test.eq("invalid_config", err:details().code)
