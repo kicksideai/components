@@ -1,217 +1,98 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import { host } from '@wippy-fe/proxy'
-import { useEvents } from '@wippy-fe/webcomponent-vue'
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
+import { computed, ref, shallowRef } from 'vue'
 import { Icon } from '@iconify/vue'
 import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
-import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import Tag from 'primevue/tag'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
-import SettingsDraftActions from '@kickside/ui-kit/SettingsDraftActions.vue'
 import SettingsGroup from '@kickside/ui-kit/SettingsGroup.vue'
 import SettingsItem from '@kickside/ui-kit/SettingsItem.vue'
 import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import { activity, delivery as deliveryApi, isDenied } from '../api'
 import { deliveryFailure, describe } from '../copy'
-import { useReturnFocus } from '../focus'
 import { useMailInvalidation } from '../realtime'
 import type { DeliveryStatus, LogMessage } from '../types'
-import { save as saveSettings, sendTest, settings as readSettings, type Setting, type SettingWrite } from './api'
-import DriverRows from './DriverRows.vue'
+import { chooseService, isConflict, sendTest } from './api'
+import SettingsProvider, { type ProviderConfig } from './SettingsProvider.vue'
 
-const emit = useEvents<{ 'dirty-change': { dirty: boolean } }>()
-const MAIL = 'kickside.mail'
-const identityKeys = ['from_address', 'from_name', 'reply_to'] as const
-const identityLabels = { from_address: 'From address', from_name: 'From name', reply_to: 'Reply-to' } as const
-
+// Mail's delivery block: the admitted services from Mail's delivery status, the chosen one's own settings and Mail's
+// sender settings, each namespace through the platform settings card.
 const loading = ref(true), denied = ref(false)
 const error = ref('')
 const status = shallowRef<DeliveryStatus>()
-const drivers = computed(() => status.value?.transports ?? [])
-
-interface Identity { driver: string; from_address: string; from_name: string; reply_to: string }
-const saved = ref<Identity>({ driver: '', from_address: '', from_name: '', reply_to: '' })
-const draft = ref<Identity>({ ...saved.value })
-const driverChanges = ref<Record<string, unknown>>({})
-const driverValid = ref(true)
-const fieldErrors = ref<Record<string, string>>({})
-const busy = ref<'save' | 'test'>()
-// What the last Save did: the values it saved, the one the server refused and those it did not reach.
-const outcome = ref<{ saved: string[]; refused?: { label: string; reason: string }; pending: string[] }>()
-
-function identityOf(list: Setting[]): Identity {
-  const value = (key: string) => { const item = list.find(entry => entry.key === key); return typeof item?.value === 'string' ? item.value : '' }
-  return { driver: value('driver'), from_address: value('from_address'), from_name: value('from_name'), reply_to: value('reply_to') }
-}
-
-async function read() {
-  const [current, list] = await Promise.all([deliveryApi.status(), readSettings(MAIL)])
-  status.value = current
-  return identityOf(list)
-}
+const beginRead = latestRequest()
 
 async function load() {
-  loading.value = true
-  error.value = ''
+  const current = beginRead()
   try {
-    saved.value = await read()
-    draft.value = { ...saved.value }
+    const next = await deliveryApi.status()
+    if (!current()) return
+    status.value = next
     denied.value = false
+    error.value = ''
   } catch (failure) {
+    if (!current()) return
     denied.value = isDenied(failure)
     error.value = denied.value ? '' : describe(failure, 'Delivery settings could not be loaded.')
   } finally {
-    loading.value = false
+    if (current()) loading.value = false
   }
 }
-onMounted(load)
+useHostVisibilityRefresh(load)
 
-const active = computed(() => drivers.value.find(item => item.id === draft.value.driver))
-const driverSettings = shallowRef<Setting[]>([])
-const driverLoading = ref(false), driverError = ref('')
-watch(() => active.value?.id, async (_id, _previous, onCleanup) => {
-  const driver = active.value
-  driverSettings.value = []
-  driverChanges.value = {}
-  driverValid.value = true
-  fieldErrors.value = {}
-  driverLoading.value = !!driver
-  driverError.value = ''
-  if (!driver) return
-  let current = true
-  onCleanup(() => { current = false })
-  try {
-    const settings = await readSettings(driver.settings_ns)
-    if (current) driverSettings.value = settings
-  } catch (failure) {
-    if (current) driverError.value = describe(failure, `The ${driver.title} settings could not be loaded.`)
-  } finally {
-    if (current) driverLoading.value = false
-  }
+const transports = computed(() => status.value?.transports ?? [])
+const selected = computed(() => transports.value.find(item => item.id === status.value?.driver?.id))
+const options = computed(() => transports.value.map(item => ({
+  value: item.id, label: item.title, icon: item.icon, ready: item.ready, reason: item.reason,
+})))
+const serviceDescription = computed(() => {
+  const item = selected.value
+  if (!item) return 'Choose the service that delivers your email.'
+  return item.ready ? item.description : item.reason ?? item.description
 })
 
-const isSecret = (item: Setting) => !!item.is_secret || item.value_type === 'secret'
-
-const addressPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const identityErrors = computed(() => ({
-  from_address: draft.value.from_address && !addressPattern.test(draft.value.from_address) ? 'Enter an email address such as support@example.com.' : fieldErrors.value.from_address ?? '',
-  reply_to: draft.value.reply_to && !addressPattern.test(draft.value.reply_to) ? 'Enter an email address, or leave it empty.' : fieldErrors.value.reply_to ?? '',
-  from_name: fieldErrors.value.from_name ?? '',
-}))
-// A server refusal stays beside its value until the value changes.
-for (const key of identityKeys) watch(() => draft.value[key], () => {
-  if (fieldErrors.value[key]) { const { [key]: _gone, ...rest } = fieldErrors.value; fieldErrors.value = rest }
-})
-const settingLabel = (key: string) => `${active.value?.title}: ${driverSettings.value.find(item => item.key === key)?.title ?? key}`
-const reviewing = ref(false)
-useReturnFocus(() => reviewing.value)
-const changes = computed(() => {
-  const list: string[] = []
-  if (draft.value.driver !== saved.value.driver) list.push(`Service: ${active.value?.title ?? 'none'}`)
-  for (const key of identityKeys) if (draft.value[key] !== saved.value[key]) list.push(identityLabels[key])
-  for (const key of Object.keys(driverChanges.value)) list.push(settingLabel(key))
-  return list
-})
-const dirty = computed(() => JSON.stringify(draft.value) !== JSON.stringify(saved.value) || Object.keys(driverChanges.value).length > 0)
-watch(dirty, value => emit('dirty-change', { dirty: value }), { immediate: true })
-const invalid = computed(() => !!identityErrors.value.from_address || !!identityErrors.value.reply_to || !driverValid.value || driverLoading.value || !!driverError.value)
-
-const panelGeneration = ref(0)
-function remountPanel() {
-  panelGeneration.value++
-}
-function discard() {
-  draft.value = { ...saved.value }
-  driverChanges.value = {}
-  fieldErrors.value = {}
-  outcome.value = undefined
-  remountPanel()
-}
-
-// The draft's writes, in order: the driver's own settings, the sender, then the active service. The Settings API
-// writes them one by one and stops at the first refusal, so the service switch comes last and never lands without
-// the settings it needs.
-function writesOf(): { write: SettingWrite; label: string }[] {
-  const writes: { write: SettingWrite; label: string }[] = []
-  const namespace = active.value?.settings_ns
-  if (namespace) for (const [key, value] of Object.entries(driverChanges.value)) {
-    writes.push({ write: { namespace, key, value: value === '' ? null : value }, label: settingLabel(key) })
-  }
-  for (const key of identityKeys) {
-    if (draft.value[key] !== saved.value[key]) writes.push({ write: { namespace: MAIL, key, value: draft.value[key] || null }, label: identityLabels[key] })
-  }
-  if (draft.value.driver !== saved.value.driver) writes.push({ write: { namespace: MAIL, key: 'driver', value: draft.value.driver || null }, label: `Service: ${active.value?.title ?? 'none'}` })
-  return writes
-}
-
-// Whether a write is what the server now holds. A secret is held when it is set; its value never comes back.
-function landed(write: SettingWrite, identity: Identity, settings: Setting[]): boolean {
-  if (write.namespace === MAIL) return (identity[write.key as keyof Identity] || null) === write.value
-  const setting = settings.find(item => item.namespace === write.namespace && item.key === write.key)
-  if (!setting) return false
-  if (isSecret(setting)) return write.value === null ? !setting.has_value : !!setting.has_value
-  return (setting.value ?? setting.default ?? null) === write.value || (write.value === null && (setting.value ?? null) === (setting.default ?? null))
-}
-
-async function save() {
-  if (busy.value || invalid.value) return
-  busy.value = 'save'
-  error.value = ''
-  fieldErrors.value = {}
-  outcome.value = undefined
-  const writes = writesOf()
-  let refused: { namespace: string; key: string; error: string } | undefined
-  let failed = ''
-  try {
-    refused = await saveSettings(writes.map(entry => entry.write))
-  } catch (failure) {
-    failed = describe(failure, 'Delivery settings could not be saved.')
-  }
-  // Whatever the answer, the page shows what the server now holds and keeps only the changes that did not land.
-  try {
-    const namespace = active.value?.settings_ns
-    const [identity, settings] = await Promise.all([read(), namespace ? readSettings(namespace) : []])
-    driverSettings.value = settings
-    const kept = writes.filter(entry => !landed(entry.write, identity, settings))
-    const keptIdentity = { ...identity }
-    const keptDriver: Record<string, unknown> = {}
-    for (const { write } of kept) {
-      if (write.namespace === MAIL) keptIdentity[write.key as keyof Identity] = typeof write.value === 'string' ? write.value : ''
-      else keptDriver[write.key] = write.value ?? ''
-    }
-    saved.value = identity
-    draft.value = keptIdentity
-    driverChanges.value = keptDriver
-    const refusedEntry = refused && writes.find(entry => entry.write.namespace === refused!.namespace && entry.write.key === refused!.key)
-    if (refused) fieldErrors.value = { [refused.key]: refused.error }
-    outcome.value = {
-      saved: writes.filter(entry => !kept.includes(entry)).map(entry => entry.label),
-      refused: refusedEntry ? { label: refusedEntry.label, reason: refused!.error } : undefined,
-      pending: kept.filter(entry => entry !== refusedEntry).map(entry => entry.label),
-    }
-    if (!kept.length) reviewing.value = false
-    remountPanel()
-  } catch (failure) {
-    failed = failed || describe(failure, 'Delivery settings could not be read back.')
-  } finally {
-    if (failed) error.value = failed
-    busy.value = undefined
-  }
-}
-
-// Leaving through the block's own links asks first while there are unsaved changes.
-async function leave(path: string) {
-  if (dirty.value && !await host.confirm({
-    header: 'Discard unsaved changes?', message: 'Your changes to the mail delivery settings are not saved yet.',
-    acceptLabel: 'Discard changes', rejectLabel: 'Keep editing', acceptClass: 'p-button-danger',
+const choosing = ref(false)
+const serviceError = ref('')
+const notice = ref('')
+async function choose(id: string | undefined) {
+  const current = status.value
+  if (!id || !current || id === current.driver?.id || choosing.value) return
+  const next = transports.value.find(item => item.id === id)
+  if (!next) return
+  if (current.driver && !await host.confirm({
+    header: `Send email through ${next.title}?`,
+    message: `Email sent after this goes through ${next.title} instead of ${current.driver.label}.`,
+    acceptLabel: `Use ${next.title}`, rejectLabel: 'Cancel',
   })) return
-  host.navigate(path)
+  choosing.value = true
+  serviceError.value = notice.value = ''
+  try {
+    await chooseService(id, current.driver_revision)
+    notice.value = `Mail now sends through ${next.title}.`
+  } catch (failure) {
+    if (isConflict(failure)) notice.value = 'Someone changed the delivery service while you were here. It shows the current choice now.'
+    else serviceError.value = describe(failure, 'The delivery service could not be changed.')
+  } finally {
+    await load()
+    choosing.value = false
+  }
+}
+
+const serviceSettings = computed<ProviderConfig | undefined>(() => {
+  const item = selected.value
+  return item && { namespace: item.settings_ns, title: item.title, icon: item.icon, help: item.description }
+})
+const senderSettings: ProviderConfig = {
+  namespace: 'kickside.mail', title: 'Sender', icon: 'tabler:at',
+  help: 'Who recipients see the email from, where replies go, and how long Mail keeps the delivery log.',
 }
 
 // The test goes to the signed-in administrator through the saved settings; its outcome arrives as Activity changes.
 const test = shallowRef<LogMessage | { message_id: string; status: 'queued'; last_error?: undefined }>()
+const testing = ref(false)
 const testError = ref('')
 const beginTestRead = latestRequest()
 async function refreshTest() {
@@ -225,7 +106,7 @@ async function refreshTest() {
 }
 useMailInvalidation('mail.activity', () => { if (test.value?.status === 'queued') void refreshTest() })
 async function runTest() {
-  busy.value = 'test'
+  testing.value = true
   testError.value = ''
   test.value = undefined
   try {
@@ -235,33 +116,24 @@ async function runTest() {
   } catch (failure) {
     testError.value = describe(failure, 'The test email could not be sent.')
   } finally {
-    busy.value = undefined
+    testing.value = false
+    void load()
   }
 }
-// A refused credential or configuration is fixed here, so the test result says what to change.
 const testFailure = computed(() => {
   const failure = test.value?.last_error
   if (!failure) return undefined
   return deliveryFailure(failure.code, status.value?.driver?.label ?? 'The service', 'above')
     ?? { lead: 'The service did not accept the test.', next: failure.message }
 })
-const testBlocked = computed(() => dirty.value ? 'Save or discard your changes to send a test.'
-  : !status.value?.configured ? 'Finish setting up delivery to send a test.' : '')
-
-const serviceOptions = computed(() => drivers.value.map(item => ({ value: item.id, label: item.title, icon: item.icon, description: item.description })))
-const statusNotice = computed(() => {
-  const current = status.value
-  if (!current || current.configured) return undefined
-  return current.reason ?? 'Choose a delivery service for Mail.'
-})
+const testBlocked = computed(() => selected.value ? '' : 'Choose a service to send a test.')
 </script>
 
 <template>
   <section class="mail-delivery" aria-label="Mail delivery settings">
     <SettingsSectionHead title="Mail" description="How email leaves this workspace. Templates and their look are in System → Mail.">
       <template #actions>
-        <SettingsDraftActions v-if="dirty" :busy="busy === 'save'" :review-disabled="invalid" @discard="discard" @review="outcome = undefined; reviewing = true" />
-        <Button v-else label="Templates" severity="secondary" outlined @click="leave('/system/mail')">
+        <Button label="Templates" severity="secondary" outlined @click="host.navigate('/system/mail')">
           <template #icon><Icon icon="tabler:template" aria-hidden="true" /></template>
         </Button>
       </template>
@@ -269,73 +141,48 @@ const statusNotice = computed(() => {
 
     <p v-if="loading" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading delivery settings…</p>
     <p v-else-if="denied" class="kx-notice warn mail-block" role="alert"><Icon icon="tabler:lock" aria-hidden="true" />Ask an administrator to grant you access to mail delivery.</p>
-    <template v-else>
-      <div v-if="error" class="kx-err mail-error" role="alert"><span>{{ error }}</span><Button v-if="!drivers.length" label="Retry" severity="secondary" outlined size="small" @click="load()" /></div>
-      <div v-if="outcome && !reviewing" class="mail-outcome" role="status">
-        <p v-if="outcome.saved.length" class="kx-notice info mail-block"><Icon icon="tabler:circle-check" aria-hidden="true" /><span>Saved: {{ outcome.saved.join(', ') }}.</span></p>
-        <p v-if="outcome.refused" class="kx-notice error mail-block"><Icon icon="tabler:alert-triangle" aria-hidden="true" />
-          <span>Not saved: {{ outcome.refused.label }}. {{ outcome.refused.reason }}</span></p>
-        <p v-if="outcome.pending.length" class="kx-notice warn mail-block"><Icon icon="tabler:clock-pause" aria-hidden="true" />
-          <span>Still in your draft: {{ outcome.pending.join(', ') }}. Correct the value above and save again.</span></p>
-      </div>
-      <p v-if="statusNotice && !dirty" class="kx-notice warn mail-block" role="status">
-        <Icon icon="tabler:alert-triangle" aria-hidden="true" /><span><strong>Mail is not set up yet.</strong> {{ statusNotice }}</span>
+    <div v-else-if="error && !status" class="kx-err mail-error" role="alert"><span>{{ error }}</span><Button label="Retry" severity="secondary" outlined size="small" @click="load()" /></div>
+    <template v-else-if="status">
+      <p v-if="!status.configured && status.reason" class="kx-notice warn mail-block" role="status">
+        <Icon icon="tabler:alert-triangle" aria-hidden="true" /><span><strong>Mail is not set up yet.</strong> {{ status.reason }}</span>
       </p>
+      <p v-if="notice" class="kx-notice info mail-block" role="status"><Icon icon="tabler:circle-check" aria-hidden="true" />{{ notice }}</p>
 
-      <fieldset class="mail-fieldset mail-delivery-body" :disabled="busy === 'save'" :inert="busy === 'save' || undefined">
-        <SettingsGroup title="Delivery service">
-          <SettingsItem title="Service" :description="active?.reason || active?.description || 'Choose the service that delivers your email.'">
-            <template #actions>
-              <span class="mail-setting-control">
-                <Select v-model="draft.driver" :options="serviceOptions" option-label="label" option-value="value" append-to="self"
-                  placeholder="Choose a service…" fluid aria-label="Service" :empty-message="'No delivery service is installed'">
-                  <template #value="{ value, placeholder }">
-                    <span v-if="value" class="mail-kind"><Icon :icon="serviceOptions.find(item => item.value === value)?.icon ?? 'tabler:mail'" aria-hidden="true" />{{ serviceOptions.find(item => item.value === value)?.label ?? value }}</span>
-                    <span v-else>{{ placeholder }}</span>
-                  </template>
-                  <template #option="{ option }"><span class="mail-kind"><Icon :icon="option.icon" aria-hidden="true" />{{ option.label }}</span></template>
-                </Select>
-              </span>
-            </template>
-          </SettingsItem>
-          <p v-if="driverLoading" class="kx-loading mail-driver-state" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Loading {{ active?.title }} settings…</p>
-          <p v-else-if="driverError" class="kx-err inline mail-driver-state" role="alert">{{ driverError }}</p>
-          <DriverRows v-else-if="active" :key="active.id + ':' + panelGeneration" :settings="driverSettings" :errors="fieldErrors" :draft="driverChanges"
-            :disabled="busy === 'save'" @change="values => driverChanges = values" @validity="valid => driverValid = valid" />
-        </SettingsGroup>
+      <SettingsGroup title="Delivery service">
+        <SettingsItem title="Service" :description="serviceDescription">
+          <template #actions>
+            <span class="mail-setting-control">
+              <Select :model-value="selected?.id" :options="options" option-label="label" option-value="value" append-to="self" fluid
+                placeholder="Choose a service…" aria-label="Service" :loading="choosing" :disabled="choosing"
+                empty-message="No delivery service is installed" @update:model-value="choose">
+                <template #value="{ value, placeholder }">
+                  <span v-if="value && selected" class="mail-kind"><Icon :icon="selected.icon" aria-hidden="true" />{{ selected.title }}</span>
+                  <span v-else>{{ placeholder }}</span>
+                </template>
+                <template #option="{ option }">
+                  <span class="mail-service-option">
+                    <span class="mail-kind"><Icon :icon="option.icon" aria-hidden="true" />{{ option.label }}</span>
+                    <Tag :severity="option.ready ? 'success' : 'warn'" :value="option.ready ? 'Ready' : 'Needs setup'" class="kx-tag-sm" />
+                    <span v-if="!option.ready && option.reason" class="mail-sub">{{ option.reason }}</span>
+                  </span>
+                </template>
+              </Select>
+              <small v-if="serviceError" class="mail-field-error" role="alert">{{ serviceError }}</small>
+            </span>
+          </template>
+          <template v-if="selected" #status>
+            <Tag :severity="selected.ready ? 'success' : 'warn'" :value="selected.ready ? 'Ready' : 'Needs setup'" class="kx-tag-sm" />
+          </template>
+        </SettingsItem>
+      </SettingsGroup>
 
-        <SettingsGroup title="Sender">
-          <SettingsItem title="From address" description="The address recipients see and reply to by default. The service must accept mail from it.">
-            <template #actions>
-              <span class="mail-setting-control">
-                <InputText v-model.trim="draft.from_address" fluid placeholder="support@example.com" aria-label="From address" :invalid="!!identityErrors.from_address" />
-                <small v-if="identityErrors.from_address" class="mail-field-error" role="alert">{{ identityErrors.from_address }}</small>
-              </span>
-            </template>
-          </SettingsItem>
-          <SettingsItem title="From name" description="Shown next to the address, for example your company’s name.">
-            <template #actions>
-              <span class="mail-setting-control">
-                <InputText v-model="draft.from_name" fluid aria-label="From name" maxlength="255" :invalid="!!identityErrors.from_name" />
-                <small v-if="identityErrors.from_name" class="mail-field-error" role="alert">{{ identityErrors.from_name }}</small>
-              </span>
-            </template>
-          </SettingsItem>
-          <SettingsItem title="Reply-to" description="Where replies go when it is not the From address. Optional.">
-            <template #actions>
-              <span class="mail-setting-control">
-                <InputText v-model.trim="draft.reply_to" fluid aria-label="Reply-to" :invalid="!!identityErrors.reply_to" />
-                <small v-if="identityErrors.reply_to" class="mail-field-error" role="alert">{{ identityErrors.reply_to }}</small>
-              </span>
-            </template>
-          </SettingsItem>
-        </SettingsGroup>
-      </fieldset>
+      <SettingsProvider v-if="serviceSettings" :key="serviceSettings.namespace" :config="serviceSettings" />
+      <SettingsProvider :config="senderSettings" />
 
       <SettingsGroup title="Test">
         <SettingsItem title="Send a test email" :description="testBlocked || 'Sends a short message to you with the saved settings.'">
           <template #actions>
-            <Button label="Send test email" severity="secondary" outlined :loading="busy === 'test'" :disabled="!!testBlocked || !!busy" @click="runTest">
+            <Button label="Send test email" severity="secondary" outlined :loading="testing" :disabled="!!testBlocked || testing" @click="runTest">
               <template #icon><Icon icon="tabler:send" aria-hidden="true" /></template>
             </Button>
           </template>
@@ -349,32 +196,11 @@ const statusNotice = computed(() => {
             <div class="mail-failure-body">
               <strong>{{ testFailure.lead }}</strong>
               <span>{{ testFailure.next }}</span>
-              <Button link size="small" class="mail-inline-link" label="Open it in Activity" @click="leave('/system/mail/activity/' + test.message_id)" />
+              <Button link size="small" class="mail-inline-link" label="Open it in Activity" @click="host.navigate('/system/mail/activity/' + test.message_id)" />
             </div>
           </div>
         </div>
       </SettingsGroup>
     </template>
-    <Dialog :visible="reviewing" modal :draggable="false" :closable="busy !== 'save'" class="mail-dialog" aria-label="Review changes"
-      :pt="{ header: { class: 'mail-dialog-header' }, footer: { class: 'mail-dialog-footer' } }" @update:visible="value => { if (!value) reviewing = false }">
-      <template #header>
-        <span class="kx-modal-head-icon"><Icon icon="tabler:checklist" aria-hidden="true" /></span>
-        <span class="kx-modal-head-text"><span class="kx-modal-head-title">Review changes</span><span class="kx-modal-head-sub">Mail delivery</span></span>
-      </template>
-      <ul class="mail-change-list"><li v-for="change in changes" :key="change">{{ change }}</li></ul>
-      <p class="mail-muted mail-review-note">Email sent after you save uses these settings.</p>
-      <div v-if="outcome" class="mail-outcome" role="status">
-        <p v-if="outcome.saved.length" class="kx-notice info mail-block"><Icon icon="tabler:circle-check" aria-hidden="true" /><span>Saved: {{ outcome.saved.join(', ') }}.</span></p>
-        <p v-if="outcome.refused" class="kx-notice error mail-block"><Icon icon="tabler:alert-triangle" aria-hidden="true" />
-          <span>Not saved: {{ outcome.refused.label }}. {{ outcome.refused.reason }}</span></p>
-        <p v-if="outcome.pending.length" class="kx-notice warn mail-block"><Icon icon="tabler:clock-pause" aria-hidden="true" />
-          <span>Still in your draft: {{ outcome.pending.join(', ') }}.</span></p>
-      </div>
-      <p v-if="error" class="kx-err inline" role="alert">{{ error }}</p>
-      <template #footer>
-        <Button :label="outcome ? 'Back to the settings' : 'Keep editing'" severity="secondary" outlined :disabled="busy === 'save'" @click="reviewing = false" />
-        <Button v-if="!outcome" label="Save" :loading="busy === 'save'" @click="save" />
-      </template>
-    </Dialog>
   </section>
 </template>

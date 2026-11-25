@@ -255,3 +255,6 @@ h1, h2, h3, p, dl, dd, ol, ul { margin: 0; }
 .mail-preview-warning svg { color: var(--p-warn-500); }
 .mail-gallery-warning { display: flex; gap: 6px; align-items: flex-start; padding: 8px 12px; font-size: 12px; border-bottom: 1px solid var(--p-content-border-color); background: color-mix(in srgb, var(--p-warn-500) 12%, transparent); }
 .mail-gallery-warning svg { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--p-warn-500); }
+.mail-service-option { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.mail-service-option .mail-sub { flex-basis: 100%; }
+.mail-provider { display: block; }

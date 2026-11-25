@@ -78,19 +78,27 @@ entries:
     group_id: app:settings_admin
     policies:
       - app:settings_admin_access
-      - app:settings_list_call
+      - app:settings_calls
+      - app:settings_db
       - kickside.settings.security:module_runtime
-  - name: settings_list_call
+  - name: settings_calls
     kind: security.policy
     policy:
-      resources: [list]
+      resources: [list, set, unset]
       actions: [contract.call]
+      effect: allow
+  - name: settings_db
+    kind: security.policy
+    meta: { comment: The settings writer runs under the administrator, as the application's administrator role does. }
+    policy:
+      resources: [app:db]
+      actions: [db.get]
       effect: allow
   - name: settings_admin_access
     kind: security.policy
     groups: [app:settings_admin]
     policy:
-      resources: [kickside.settings.api:list_blocks.endpoint, kickside.settings.api:list_settings.endpoint]
+      resources: [kickside.settings.api:list_blocks.endpoint, kickside.settings.api:list_settings.endpoint, kickside.settings.api:put_settings.endpoint]
       actions: [access]
       effect: allow
   - name: fixture_key

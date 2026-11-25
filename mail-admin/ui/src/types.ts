@@ -171,5 +171,8 @@ export interface DeliveryStatus {
   driver?: { id: string; label: string }
   from?: { address: string; name?: string }
   reply_to?: string
+  code?: string
   reason?: string
+  // Revision of the stored driver setting; a write of the driver applies only at this revision.
+  driver_revision: number
 }

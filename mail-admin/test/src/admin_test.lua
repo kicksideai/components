@@ -11,7 +11,7 @@ local system = require("system")
 local uuid = require("uuid")
 local test = require("test")
 
-local TAB_ACCESS = "kickside.mail.api:library_list.endpoint"
+local TAB_ACCESS = "kickside.mail:library"
 
 local function gateway(path: string): string
     local state = assert(system.supervisor.state("app:gateway"))
@@ -50,6 +50,13 @@ local function get(token: string, path: string): (integer, {[string]: unknown})
     return math.tointeger(res.status_code) or 0, body :: {[string]: unknown}
 end
 
+local function put(token: string, path: string, body: {[string]: unknown}): (integer, {[string]: unknown})
+    local res = assert(http_client.request("PUT", gateway("/api" .. path), {
+        headers = {Authorization = "Bearer " .. token, ["Content-Type"] = "application/json"}, body = json.encode(body)}))
+    local decoded = res.body ~= "" and json.decode(res.body) or {}
+    return math.tointeger(res.status_code) or 0, decoded :: {[string]: unknown}
+end
+
 local function allows(actor: security.Actor, scope: security.Scope, action: string, resource: string): boolean
     return scope:evaluate(actor, action, resource) == "allow"
 end
@@ -64,7 +71,7 @@ local function cases()
             test.eq(tab.data.render, "component")
             test.eq(tab.data.component_tag, "kickside-mail-admin")
             test.eq(tab.data.access, TAB_ACCESS)
-            test.not_nil(registry.get(TAB_ACCESS), "the tab access names a real Mail endpoint")
+            test.eq("contract.definition", assert(registry.get(TAB_ACCESS)).kind, "the tab access names Mail's public library contract")
 
             local view = assert(registry.get("kickside.mail.admin:admin"))
             test.eq(view.meta.type, "view.component")
@@ -140,6 +147,38 @@ local function cases()
             test.eq(403, denied, "an editor without delivery administration never learns the services")
         end)
 
+        test.it("lists Mail's sender settings for the settings card and never the driver ID", function()
+            local status, body = get(signed_in({"app:settings_admin", "app:user"}), "/settings?namespace=kickside.mail")
+            test.eq(200, status, json.encode(body))
+            local keys = {}
+            for _, row in ipairs(body.settings :: {{[string]: unknown}}) do keys[row.key :: string] = true end
+            test.is_true(keys.from_address and keys.from_name and keys.reply_to)
+            test.is_nil(keys.driver, "the service is chosen from Mail's admitted transports, not typed")
+        end)
+
+        test.it("switches the delivery service only at the revision Mail reported", function()
+            local token = signed_in({"app:settings_admin", "app:delivery", "app:user"})
+            local _, before = get(token, "/mail/delivery")
+            local read = (before.data :: {[string]: unknown}).driver_revision :: integer
+            local chosen_status, chosen = put(token, "/settings", {namespace = "kickside.mail", key = "driver",
+                value = "app:fixture_binding", expected_revision = read})
+            local _, after = get(token, "/mail/delivery")
+            local stale_status, stale = put(token, "/settings", {namespace = "kickside.mail", key = "driver",
+                value = "app:fixture_binding", expected_revision = read})
+            local settings_contract = assert(assert(contract.get("kickside.settings:settings")):open())
+            local cleared = assert(settings_contract:unset({namespace = "kickside.mail", key = "driver"}))
+            assert(cleared.success, tostring(cleared.error))
+
+            test.eq(0, read)
+            test.eq(200, chosen_status, json.encode(chosen))
+            local written = (chosen.updated :: {{[string]: unknown}})[1]
+            local current = after.data :: {[string]: unknown}
+            test.eq(written.revision, current.driver_revision)
+            test.eq("app:fixture_binding", (current.driver :: {[string]: unknown}).id)
+            test.eq(409, stale_status, json.encode(stale))
+            test.is_true(stale.conflict)
+        end)
+
         test.it("declares the Mail settings block on the delivery component", function()
             local block = assert(registry.get("kickside.mail.admin:delivery_block"))
             test.eq(block.meta.type, "kickside.settings:block")
@@ -147,6 +186,9 @@ local function cases()
             test.eq(block.data.component_tag, "kickside-mail-delivery")
             local view = assert(registry.get("kickside.mail.admin:delivery"))
             test.eq(view.meta.tag_name, "kickside-mail-delivery")
+            test.is_false(view.meta.auto_register, "the Settings page registers the block editor when it opens")
+            local exists = assert(fs.get("kickside.mail.admin:ui_fs")):exists(view.meta.entry_point :: string)
+            test.is_true(exists)
             local status, body = get(signed_in({"app:settings_admin", "app:user"}), "/settings/blocks")
             test.eq(status, 200, json.encode(body))
             local count = 0

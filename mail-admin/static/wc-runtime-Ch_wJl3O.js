@@ -1,4 +1,4 @@
-import { ref as E, createApp as pt, inject as z, onMounted as dt, onUnmounted as ft, watch as mt, renderSlot as U, createCommentVNode as yt, h as _t, Teleport as bt } from "vue";
+import { ref as E, createApp as pt, onMounted as dt, onUnmounted as ft, watch as mt, inject as z, renderSlot as U, createCommentVNode as yt, h as _t, Teleport as bt } from "vue";
 import { addCollection as vt } from "@iconify/vue";
 import { config as D, addIcons as gt, on as Ct, applyThemeMode as P, host as wt, hostCss as St, loadCss as Et } from "@wippy-fe/proxy";
 import { getActivePinia as Pt, createPinia as Lt, setActivePinia as Tt } from "pinia";
@@ -849,4 +849,4 @@ export {
   Te as c,
   Ae as u
 };
-//# sourceMappingURL=wc-runtime-CYKoUhqs.js.map
+//# sourceMappingURL=wc-runtime-Ch_wJl3O.js.map
