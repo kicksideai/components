@@ -127,14 +127,20 @@ local function with_draft<T>(id: string, selected: {types.ResourceContent}, chec
     return value, nil
 end
 
-local function invalid(err: error): error
-    local details = err:details() or {}
+local function diagnostic_details(err: error): types.Record
+    local details: types.Record = {}
+    for key, value in pairs(err:details() or {}) do details[key] = value end
     details.cause = error_envelope.encode(err)
-    return errors.new({kind = errors.INVALID, retryable = false, message = err:message(), details = details})
+    return details
+end
+
+local function invalid(err: error): error
+    return errors.new({kind = errors.INVALID, retryable = false, message = err:message(),
+        details = diagnostic_details(err)})
 end
 
 local function diagnostic(err: error, item: types.ResourceContent, changed: {types.ResourceContent}): error
-    local details = err:details() or {}
+    local details = diagnostic_details(err)
     local candidates: {types.ResourceKey} = {}
     local seen: {[string]: boolean} = {}
     local function add(key: types.ResourceKey)
@@ -147,7 +153,7 @@ local function diagnostic(err: error, item: types.ResourceContent, changed: {typ
     if item.base then add({kind = "base", name = item.base}) end
     for _, candidate in ipairs(changed) do add(candidate) end
     details.candidate_resources = candidates
-    return error_envelope.wrap(err, "Cannot validate the Mail draft", details)
+    return errors.new({kind = err:kind(), retryable = false, message = err:message(), details = details})
 end
 
 local function render_message(item: types.ResourceContent, vars: types.JsonObject, values: types.RenderGlobals,
