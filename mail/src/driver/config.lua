@@ -62,19 +62,46 @@ function M.status_error(err: error?): (types.TransportReadiness?, error?)
     return {ready = false, code = details.reason_code :: string?, reason = err:message()}, nil
 end
 
-function M.endpoint(id: string, region: string): (string?, error?)
+local function valid_authority(authority: string): boolean
+    local host, port = authority:match("^([%w.%-]+):(%d+)$")
+    if not host then host = authority:match("^[%w.%-]+$") end
+    if not host then
+        host, port = authority:match("^(%[[%x:.]+%]):(%d+)$")
+        if not host then host = authority:match("^%[[%x:.]+%]$") end
+    end
+    local number = port and tonumber(port)
+    return host ~= nil and (not port or (number ~= nil and number > 0 and number <= 65535))
+end
+
+local function valid_path(path: string): boolean
+    if path:find("[^%w/%-._~!$&'()+,;=:%@%%]") or path:find("//", 1, true) then return false end
+    if path:gsub("%%%x%x", ""):find("%%") then return false end
+    for segment in path:gmatch("[^/]+") do
+        local decoded = segment:gsub("%%(%x%x)", function(hex) return string.char(tonumber(hex, 16) :: integer) end)
+        if decoded == "." or decoded == ".." or decoded:find("[%c/\\]") then return false end
+    end
+    return true
+end
+
+function M.endpoint(id: string, region: string, mode: string?): (string?, error?)
     local entry, err = registry.get(id)
     if err then return nil, err end
-    local url: unknown = entry.data.endpoints[region]
-    local scheme, authority
-    if type(url) == "string" and not url:find("[%c%s#@\\?]") then
-        scheme, authority = url:match("^(https?)://([^/]+)/*$")
+    local endpoints = entry.data.endpoints :: types.Record?
+    local url = type(endpoints) == "table" and endpoints[region]
+    if type(url) == "string" then
+        local authority, path = url:match("^https://([^/]+)(.*)$")
+        if authority and valid_authority(authority) then
+            if mode == nil or mode == "origin" then
+                if path == "" or path == "/" then return "https://" .. authority, nil end
+            elseif mode == "exact" then
+                if path:sub(1, 1) == "/" and valid_path(path) then return url, nil end
+            elseif mode == "prefix" and path:sub(-2) == "/*" then
+                local base = path:sub(1, -2)
+                if valid_path(base) then return url:sub(1, -3), nil end
+            end
+        end
     end
-    local host = authority and authority:match("^[^:]+")
-    if scheme == "https" or (scheme == "http" and (host == "127.0.0.1" or host == "localhost")) then
-        return ((url :: string):gsub("/+$", "")), nil
-    end
-    return nil, errors.new({kind = errors.INVALID, message = "Mail driver API base URL is invalid",
+    return nil, errors.new({kind = errors.INVALID, message = "Mail driver HTTPS endpoint is invalid",
         retryable = false, details = {code = "provider_endpoint_invalid"}})
 end
 

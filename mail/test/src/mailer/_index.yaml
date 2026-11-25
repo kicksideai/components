@@ -102,6 +102,18 @@ entries:
     modules: [contract, funcs, registry, security]
     imports:
       test: wippy.test:test
+      config: kickside.mail.driver:config
+  - name: endpoints
+    kind: registry.entry
+    endpoints:
+      origin: https://example.org:443/
+      exact: https://example.org/v3/mail/send
+      prefix: https://example.org/v3/*
+      local_http: http://localhost:9000/
+      other_http: http://example.org/
+      traversal: https://example.org/v3/%2e%2e/send
+      userinfo: https://someone@example.org/path
+      malformed_port: https://example.org:65536/path
   - name: probe
     kind: function.lua
     source: file://mailer_test.lua

@@ -15,6 +15,7 @@ local function from_name(input: types.SettingInput): types.SettingValidation
 end
 
 local function driver(args: types.SettingInput): (types.SettingValidation?, error?)
+    if args.value == "" then return {valid = true}, nil end
     local _, err = transports.status(args.value :: string?)
     if err then
         local details = err:details()

@@ -4,6 +4,7 @@ local funcs = require("funcs")
 local registry = require("registry")
 local security = require("security")
 local test = require("test")
+local config = require("config")
 
 local CONTRACT = "kickside.mail:transport"
 local ADMITTED = "kickside.mail.harness:admitted"
@@ -77,6 +78,28 @@ local function change_driver(value)
 end
 
 local function define_tests()
+    test.describe("Driver endpoint URLs", function()
+        local endpoints = "kickside.mail.harness:endpoints"
+
+        test.it("accepts HTTPS origins, exact delivery URLs, and policy prefixes", function()
+            test.eq("https://example.org:443", assert(config.endpoint(endpoints, "origin")))
+            test.eq("https://example.org/v3/mail/send", assert(config.endpoint(endpoints, "exact", "exact")))
+            test.eq("https://example.org/v3", assert(config.endpoint(endpoints, "prefix", "prefix")))
+        end)
+
+        test.it("rejects insecure or ambiguous URLs and mixed modes", function()
+            for _, region in ipairs({"local_http", "other_http", "traversal", "userinfo", "malformed_port", "prefix", "missing"}) do
+                local value, err = config.endpoint(endpoints, region, "exact")
+                test.is_nil(value)
+                test.eq(errors.INVALID, assert(err):kind())
+                test.eq("provider_endpoint_invalid", err:details().code)
+            end
+            local value, err = config.endpoint(endpoints, "local_http")
+            test.is_nil(value)
+            test.eq("provider_endpoint_invalid", assert(err):details().code)
+        end)
+    end)
+
     test.describe("Transport catalog", function()
         test.it("lists admitted binding IDs with status display data", function()
             local status = assert(catalog()[ADMITTED], "admitted binding missing from Mail catalog")
@@ -121,6 +144,17 @@ local function define_tests()
             local result = change_driver(REFUSED)
             test.is_false(result.success)
             test.eq("The active mail driver is not admitted", result.error)
+        end)
+
+        test.it("accepts the empty default to clear the driver selection", function()
+            assert(change_driver(ADMITTED).success)
+            local cleared = change_driver("")
+            local status = invoke("delivery_status", nil, {
+                "kickside.mail.security:module_runtime", "kickside.mail.security:log_admin",
+            })
+            assert(change_driver().success)
+            test.is_true(cleared.success, cleared.error :: string?)
+            test.is_false(status.ready)
         end)
 
         test.it("refuses sends after an active binding loses admission", function()
