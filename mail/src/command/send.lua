@@ -23,19 +23,45 @@ local live_preview = require("live_preview")
 local attachments = require("attachments")
 local recipients = require("recipients")
 
-local function result(row: types.KeyRow, content_hash: string): (types.SendResult?, error?)
-    if row.content_hash ~= content_hash then
-        return nil, errors.new({kind = errors.CONFLICT, message = "This key already identifies a different message",
-            retryable = false, details = {code = "idempotency_conflict"}})
-    end
-    return {message_id = row.id, status = row.status}, nil
+local function idempotency_conflict(): error
+    return errors.new({kind = errors.CONFLICT, message = "This key already identifies a different message",
+        retryable = false, details = {code = "idempotency_conflict"}})
 end
 
-local function find_key(scope: string, key: string, content_hash: string): (types.SendResult?, error?)
+local function result(row: types.KeyRow, content_hash: string, automation: boolean): (types.SendResult?, error?)
+    local changed = row.content_hash ~= content_hash
+    if changed and not automation then return nil, idempotency_conflict() end
+    return {message_id = row.id, status = row.status, content_changed = changed or nil}, nil
+end
+
+local function record_delivery(tx: database.Transaction, scope: string, delivery_key: string, row: types.KeyRow,
+    content_hash: string): (types.SendResult?, error?)
+    local matches, err = repo.record_delivery(tx, scope, delivery_key, row.id, content_hash)
+    if err then return nil, err end
+    if not matches then return nil, idempotency_conflict() end
+    return result(row, content_hash, true)
+end
+
+local function find_replay(scope: string, key: string, content_hash: string, delivery_key: string?): (types.SendResult?, error?)
+    if delivery_key then
+        return database.with_tx(function(tx: database.Transaction): (types.SendResult?, error?)
+            local receipt, err = reader.find_delivery(tx, scope, delivery_key)
+            if err then return nil, err end
+            if receipt then
+                if receipt.message_key ~= key or receipt.delivery_hash ~= content_hash then
+                    return nil, idempotency_conflict()
+                end
+                return result(receipt, content_hash, true)
+            end
+            local row, lookup_err = reader.find_key(tx, scope, key)
+            if lookup_err or not row then return nil, lookup_err end
+            return record_delivery(tx, scope, delivery_key, row, content_hash)
+        end)
+    end
     return database.with_db(function(ex: database.Executor): (types.SendResult?, error?)
         local row, err = reader.find_key(ex, scope, key)
         if err or not row then return nil, err end
-        return result(row, content_hash)
+        return result(row, content_hash, false)
     end)
 end
 
@@ -53,9 +79,15 @@ local function insert(input: types.Admission): (types.AdmissionResult?, error?)
     return database.with_tx(function(tx: database.Transaction, dialect: string): (types.AdmissionResult?, error?)
         local stored, err = repo.insert(tx, row)
         if err then return nil, err end
+        local existing, existing_err
+        if input.delivery_key then
+            existing, existing_err = record_delivery(tx, row.idempotency_scope :: string,
+                input.delivery_key, stored, row.content_hash :: string)
+        elseif not stored.inserted then
+            existing, existing_err = result(stored, row.content_hash :: string, false)
+        end
+        if existing_err then return nil, existing_err end
         if not stored.inserted then
-            local existing, existing_err = result(stored, row.content_hash :: string)
-            if existing_err then return nil, existing_err end
             return {message = existing :: types.SendResult, inserted = false}, nil
         end
 
@@ -94,16 +126,21 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
     if actor_err then return nil, actor_err :: error end
     local actor = actor_row :: types.ActorRow
     local key = input.idempotency_key
-    local hash, scope: string?
+    local hash, scope, delivery_key: string?
     if key then
         scope = "sender:" .. actor.actor_id
         if input.sink_op then
             local origin = input.origin :: types.Origin
             scope = "automation:" .. origin.id
-            local receipt = input.identity_key and {"identity", input.identity_key} or {"delivery", input.sink_op, key}
-            local digest, key_err = canonical_json.hash(receipt)
+            local digest, key_err = canonical_json.hash({"delivery", input.sink_op, key})
             if key_err then return nil, key_err :: error end
             key = digest :: string
+            delivery_key = key
+            if input.identity_key then
+                local identity_hash, identity_err = canonical_json.hash({"identity", input.identity_key})
+                if identity_err then return nil, identity_err :: error end
+                key = identity_hash :: string
+            end
         end
         local content: types.Record = {}
         for field, value in pairs(input) do
@@ -114,7 +151,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
         local hash_err
         hash, hash_err = canonical_json.hash(content)
         if hash_err then return nil, hash_err :: error end
-        local existing, replay_err = find_key(scope, key, hash :: string)
+        local existing, replay_err = find_replay(scope, key, hash :: string, delivery_key)
         if existing or replay_err then return existing, replay_err end
     end
 
@@ -174,7 +211,7 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
         to = addresses.to, cc = addresses.cc, bcc = addresses.bcc, reply_to = reply_to,
         subject = parts.subject, html = parts.html, text = parts.text, attachments = input.attachments,
         library_assets = parts.library_assets, idempotency_key = key, idempotency_scope = scope,
-        content_hash = hash, origin = origin, resend_of = resend_of,
+        content_hash = hash, origin = origin, resend_of = resend_of, delivery_key = delivery_key,
     })
     if save_err then return nil, save_err end
     if saved.inserted then

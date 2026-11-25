@@ -6,6 +6,9 @@
       "type": "string",
       "format": "uuid"
     },
+    "content_changed": {
+      "type": "boolean"
+    },
     "status": {
       "enum": [
         "queued",

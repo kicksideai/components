@@ -47,6 +47,13 @@ local tables: {string} = {
         CHECK ((status = 'sent') = (sent_at IS NOT NULL)),
         CHECK (status = 'sent' OR provider_message_id IS NULL)
     )]],
+    [[CREATE TABLE mail_automation_receipt (
+        scope TEXT NOT NULL,
+        delivery_key TEXT NOT NULL,
+        message_id TEXT NOT NULL REFERENCES mail_message(id) ON DELETE CASCADE,
+        content_hash TEXT NOT NULL,
+        PRIMARY KEY (scope, delivery_key)
+    )]],
     [[CREATE TABLE mail_library (
         revision BIGINT NOT NULL DEFAULT 0,
         kind TEXT NOT NULL CHECK (kind IN ('base', 'message', 'part')),
@@ -156,6 +163,7 @@ local tables: {string} = {
 local indexes: {string} = {
     [[CREATE UNIQUE INDEX mail_message_idempotency ON mail_message(idempotency_scope, idempotency_key)
         WHERE idempotency_key IS NOT NULL]],
+    [[CREATE INDEX mail_automation_receipt_message ON mail_automation_receipt(message_id)]],
     [[CREATE INDEX mail_message_sender_page ON mail_message(sender, created_at DESC, id DESC)]],
     [[CREATE INDEX mail_message_page ON mail_message(created_at DESC, id DESC)]],
     [[CREATE INDEX mail_message_sender_status_page ON mail_message(sender, status, created_at DESC, id DESC)]],
@@ -204,7 +212,7 @@ local function drop(db: sql.DB | sql.Transaction)
     for _, name in ipairs({
         "mail_library_live", "mail_library_upload_ref", "mail_library_history",
         "mail_library_preview", "mail_library_reference", "mail_message_asset", "mail_library_asset",
-        "mail_asset_file", "mail_library", "mail_message",
+        "mail_asset_file", "mail_library", "mail_automation_receipt", "mail_message",
     }) do
         execute(db, "DROP TABLE " .. name)
     end

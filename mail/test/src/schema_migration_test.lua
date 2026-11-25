@@ -4,7 +4,7 @@ local sql = require("sql")
 local test = require("test")
 
 local tables = {
-    "mail_message", "mail_library", "mail_asset_file",
+    "mail_message", "mail_automation_receipt", "mail_library", "mail_asset_file",
     "mail_library_asset", "mail_message_asset",
     "mail_library_reference", "mail_library_preview",
     "mail_library_history", "mail_library_upload_ref", "mail_library_live",
@@ -18,6 +18,7 @@ local access_paths = {
     mail_asset_file = {"due_at,upload_id", "restore_check_at,upload_id"},
     mail_library_asset = {"upload_id"},
     mail_message_asset = {"upload_id"},
+    mail_automation_receipt = {"message_id"},
     mail_library_reference = {"to_kind,to_name,from_kind,from_name"},
     mail_library_preview = {"expires_at,id"},
     mail_library_history = {"kind,name,seq desc", "kind,name,version"},

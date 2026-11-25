@@ -37,6 +37,14 @@ function M.set_job(tx: sql.Transaction, id: string, job_id: string): (boolean?, 
     return result.rows_affected == 1, nil
 end
 
+function M.record_delivery(tx: sql.Transaction, scope: string, key: string, id: string, hash: string): (boolean?, error?)
+    local rows, err = tx:query([[INSERT INTO mail_automation_receipt (scope,delivery_key,message_id,content_hash)
+        VALUES ($1,$2,$3,$4) ON CONFLICT (scope,delivery_key) DO UPDATE SET delivery_key=excluded.delivery_key
+        RETURNING message_id,content_hash]], {scope, key, id, hash})
+    if err then return nil, err end
+    return rows[1].message_id == id and rows[1].content_hash == hash, nil
+end
+
 function M.start(ex: database.Executor, id: string, job_id: string, binding_id: string?): (types.MessageRow?, error?)
     local rows, err = ex:query([[UPDATE mail_message SET attempts=attempts+1, driver_id=COALESCE(driver_id,$1)
         WHERE id=$2 AND job_id=$3 AND status='queued' RETURNING *]], {binding_id or sql.NULL, id, job_id})

@@ -24,7 +24,7 @@ type DeliveryMessage = Addresses & {
 }
 type TransportRequest = DeliveryMessage & {attachments: {Attachment}?, idempotency_key: string?, deadline: string}
 type TransportResult = {provider_message_id: string?}
-type SendResult = {message_id: string, status: string}
+type SendResult = {message_id: string, status: string, content_changed: boolean?}
 type MessageRef = {message_id: string}
 type PrincipalLabel = {kind: string, id: string, label: string}
 type PrincipalRef = {type: string, id: string}
@@ -56,11 +56,12 @@ type Admission = Addresses & {
     sender: string, actor_context: string, template: string?, subject: string,
     html: string?, text: string?, from: Mailbox, reply_to: string?, attachments: {AttachmentRef}?,
     library_assets: {AssetRef}?, idempotency_key: string?, idempotency_scope: string?, content_hash: string?,
-    origin: Origin?, resend_of: string?,
+    origin: Origin?, resend_of: string?, delivery_key: string?,
 }
 type AdmissionResult = {message: SendResult, inserted: boolean}
 type MessageInsert = Admission & {id: string, created_at: integer, next_check_at: integer}
 type KeyRow = {id: string, status: string, content_hash: string?}
+type DeliveryReceipt = KeyRow & {message_key: string, delivery_hash: string}
 type InsertOutcome = KeyRow & {inserted: boolean}
 type Outcome = {delivered: TransportResult?, cause: MessageError?}
 type DueRow = {id: string, job_id: string, next_check_at: integer}
@@ -254,7 +255,7 @@ type ContentProvider = {
 }
 type SinkRequest = {sink_op: string, input: Record, idempotency_key: string, identity_key: string?,
     origin: string, automation_ref: {id: string}?}
-type SinkResult = {success: true, result: string, dest_ref: MessageRef?}
+type SinkResult = {success: true, result: string, dest_ref: {message_id: string, content_changed: boolean?}?}
 type SinkFailure = {success: false, error: {code: string, message: string, retriable: boolean, scope: string, details: Record?}}
 type WritableSink = {
     origin: (SinkRequest) -> (string?, SinkFailure?),
@@ -295,7 +296,7 @@ return {
     TransportResult = TransportResult, DeliveryTestRequest = DeliveryTestRequest,
     MessageRef = MessageRef, ListRequest = ListRequest, ListQuery = ListQuery, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, ResendSource = ResendSource, Admission = Admission, AdmissionResult = AdmissionResult,
-    MessageInsert = MessageInsert, KeyRow = KeyRow, InsertOutcome = InsertOutcome, Outcome = Outcome,
+    MessageInsert = MessageInsert, KeyRow = KeyRow, DeliveryReceipt = DeliveryReceipt, InsertOutcome = InsertOutcome, Outcome = Outcome,
     DueRow = DueRow, Deadlines = Deadlines, MessageContent = MessageContent, DeliveryContent = DeliveryContent,
     MessagePage = MessagePage, SenderPage = SenderPage,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,

@@ -18,6 +18,15 @@ function M.find_key(ex: database.Executor, scope: string, key: string): (types.K
     return rows[1] :: types.KeyRow?, nil
 end
 
+function M.find_delivery(ex: database.Executor, scope: string, key: string): (types.DeliveryReceipt?, error?)
+    local rows, err = ex:query([[SELECT message.id, message.status, message.idempotency_key AS message_key,
+        message.content_hash, receipt.content_hash AS delivery_hash
+        FROM mail_automation_receipt receipt JOIN mail_message message ON message.id=receipt.message_id
+        WHERE receipt.scope=$1 AND receipt.delivery_key=$2]], {scope, key})
+    if err then return nil, err end
+    return rows[1] :: types.DeliveryReceipt?, nil
+end
+
 local function read_message(ex: database.Executor, id: string, sender: string?, columns: string): (types.MessageRow?, error?)
     local query = "SELECT " .. columns .. " FROM mail_message WHERE id=$1"
     local params = {id}

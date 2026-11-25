@@ -46,7 +46,8 @@ local function write(request: types.SinkRequest): types.SinkResult | types.SinkF
         return sink.fail(err:message(), classification.code, err:retryable(), classification.scope, details)
     end
     local message = sent :: types.SendResult
-    return {success = true, result = "created", dest_ref = {message_id = message.message_id}}
+    return {success = true, result = "created",
+        dest_ref = {message_id = message.message_id, content_changed = message.content_changed}}
 end
 
 return { write = write }

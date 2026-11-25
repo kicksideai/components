@@ -87,9 +87,19 @@ local function register(support)
         request.idempotency_key = "source-item-v3"
         request.input.subject = "Changed source item"
         local changed = assert(invoke(sender, "write_request", request))
-        test.is_false(changed.success)
-        test.eq("idempotency_conflict", changed.error.code)
-        test.is_false(changed.error.retriable)
+        test.is_true(changed.success)
+        test.eq(first.result, changed.result)
+        test.eq(first.dest_ref.message_id, changed.dest_ref.message_id)
+        test.is_true(changed.dest_ref.content_changed)
+        local changed_replay = assert(invoke(sender, "write_request", request))
+        test.eq(changed.dest_ref.message_id, changed_replay.dest_ref.message_id)
+        test.is_true(changed_replay.dest_ref.content_changed)
+
+        request.input.subject = "Different content for the same delivery"
+        local conflict = assert(invoke(sender, "write_request", request))
+        test.is_false(conflict.success)
+        test.eq("idempotency_conflict", conflict.error.code)
+        test.is_false(conflict.error.retriable)
 
         request.input = assert(json.decode("{}"))
         request.idempotency_key = "source-item-v4"
