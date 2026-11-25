@@ -5,7 +5,7 @@ SHELL := bash
 ENCRYPTION_KEY ?= 0000000000000000000000000000000000000000000000000000000000000000
 export ENCRYPTION_KEY
 
-.PHONY: lockrefresh lint typecheck check-module structure test test-pg verify publish
+.PHONY: lockrefresh lint typecheck check-module structure test-docs test test-pg verify publish
 lockrefresh:
 	cd test && $(WIPPY) update
 
@@ -27,7 +27,10 @@ check-module:
 structure:
 	node scripts/check-module.mjs --structure-only
 
-verify: structure lockrefresh
+test-docs:
+	python3 -B scripts/check-error-codes.py
+
+verify: structure test-docs lockrefresh
 	$(MAKE) lint typecheck check-module test
 
 publish:
