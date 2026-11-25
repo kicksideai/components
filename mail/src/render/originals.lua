@@ -34,36 +34,18 @@ local function original(id: string, data: types.Record): (types.Original?, error
     end
     local packaged = item :: types.Resource
     packaged.state, packaged.revision, packaged.origin = "original", 0, id
+    local label = fields.origin_label
+    packaged.origin_label = type(label) == "string" and label:find("%S") and label or "Installed module"
     return {resource = packaged, entries = entry_ids}, nil
-end
-
-local function module_title(id: string, titles: {[string]: string}): string
-    local namespace = id:match("^([^:]+):")
-    while namespace do
-        if titles[namespace] then return titles[namespace] end
-        namespace = namespace:match("^(.*)%.[^.]+$")
-    end
-    return "Installed module"
 end
 
 function M.list(): (types.OriginalMap?, error?)
     local entries, err = registry.find({[".kind"] = "registry.entry", ["meta.type"] = "kickside.mail:template"})
     if err then return nil, err end
-    local definitions, definitions_err = registry.find({[".kind"] = "ns.definition"})
-    if definitions_err then return nil, definitions_err end
-    local titles: {[string]: string} = {}
-    for _, definition in ipairs(definitions) do
-        local namespace = definition.id:match("^([^:]+):")
-        local title = definition.meta.title
-        if namespace and type(title) == "string" and title:find("%S") then
-            titles[namespace] = title
-        end
-    end
     local items: types.OriginalMap = {}
     for _, entry in ipairs(entries) do
         local declared, declaration_err = original(entry.id, entry.data :: types.Record)
         if declaration_err then return nil, declaration_err end
-        declared.resource.origin_label = module_title(entry.id, titles)
         local key = resource.subject(declared.resource)
         if items[key] then
             return nil, resource.error(errors.CONFLICT, "duplicate_template_name", "Multiple modules declare " .. key, declared.resource)

@@ -24,6 +24,7 @@ entries:
     kind: registry.entry
     meta: { type: "kickside.mail:template" }
     template:
+      origin_label: Workspace notifications
       kind: message
       name: reminder
       title: Reminder

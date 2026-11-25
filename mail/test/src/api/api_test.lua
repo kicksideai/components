@@ -376,7 +376,7 @@ return {run = test.run_cases(function()
             test.is_nil(data(editor, "GET", "/library/part/" .. part.name).original)
         end)
 
-        test.it("labels shipped resources with their owning module title", function()
+        test.it("labels packaged resources with their declared source", function()
             local editor = session("editor")
             local list = data(editor, "GET", "/library?kind=message&state=original")
             local notice, reminder
@@ -386,7 +386,7 @@ return {run = test.run_cases(function()
             end
             test.eq("kickside.mail.views:notice_template", notice.origin)
             test.eq("Mail", notice.origin_label)
-            test.eq("KickSide", reminder.origin_label)
+            test.eq("Workspace notifications", reminder.origin_label)
             test.eq(notice.origin_label, data(editor, "GET", "/library/message/notice").origin_label)
         end)
 
