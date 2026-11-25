@@ -87,7 +87,8 @@ function M.settle(row: types.MessageRow, lease: types.Lease, delivered: types.Tr
         return done :: types.JobCompletion, nil
     end)
     if commit_err then return nil, commit_err end
-    if next_at then notify.nudge() else notify.activity() end
+    notify.activity()
+    if next_at then notify.nudge() end
     return completion, nil
 end
 
