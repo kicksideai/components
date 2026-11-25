@@ -17,6 +17,7 @@ local function register(support)
     local upload = support.upload
     local gif = support.gif
     local terminal = support.terminal
+    local sweep = support.sweep
     local prune_through = support.prune_through
     local define = support.define
     local setup_actor = support.setup_actor
@@ -119,17 +120,12 @@ local function register(support)
         local retained = assert(funcs.call("kickside.mail.jobs:owner", {}))
         test.is_true(retained.success, tostring(retained.error))
         test.is_true(state.storage:exists(record.storage_path), "The failed delivery keeps the adopted bytes")
-        local db = assert(sql.get("app:db"))
-        assert(db:execute("UPDATE mail_message SET finished_at=1 WHERE id=$1", {denied.message_id}))
-        assert(db:release())
-        local expiry = assert(funcs.call("kickside.mail.jobs:owner", {}))
-        test.is_true(expiry.success, tostring(expiry.error))
-        local check = assert(sql.get("app:db"))
-        local links = assert(check:query("SELECT 1 FROM mail_message_asset WHERE message_id=$1", {denied.message_id}))
-        assert(check:release())
-        test.eq(0, #links)
-        local outcome = assert(funcs.call("kickside.mail.jobs:owner", {}))
-        test.is_true(outcome.success, tostring(outcome.error))
+        local expires = assert(failure.finished_at) + 30 * 24 * 60 * 60 * 1000 + 1
+        sweep(expires)
+        local expired, expired_err = fixtures.mailer(sender, "get_message", denied.message_id)
+        test.is_nil(expired)
+        test.eq("message_not_found", assert(expired_err):details().code)
+        sweep(expires)
         test.is_false(state.storage:exists(record.storage_path))
         local missing, err = lookup.get(version)
         test.is_nil(missing)
