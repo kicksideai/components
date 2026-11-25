@@ -4,12 +4,6 @@
   "specification": "wippy-component-1.0",
   "title": "KickSide Mail administration",
   "description": "The mail template library and delivery activity for KickSide Mail.",
-  "browser": "dist/admin.js",
-  "files": [
-    "dist/",
-    "src/",
-    "package.json"
-  ],
   "type": "module",
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -28,6 +22,7 @@
   },
   "devDependencies": {
     "@iconify/vue": "^5.0.0",
+    "@kickside/components-admin-runtime": "file:../../packages/admin-runtime",
     "@types/node": "^22.0.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/test-utils": "^2.5.1",

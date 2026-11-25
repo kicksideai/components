@@ -12,7 +12,7 @@ import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { errorCode, isDenied, isMissing, library as libraryApi } from '../api'
 import { draftOf, sameDraft } from '../content'
 import { useMail } from '../context'
-import { describe, fullDate, kindLabels, kindPlurals, onDate, originText, personLabel, plural } from '../copy'
+import { describe, fullDate, kindLabels, kindPlurals, personLabel, plural } from '../copy'
 import PreviewPane from '../editor/PreviewPane.vue'
 import ReviewDialog from '../editor/ReviewDialog.vue'
 import SourceEditor from '../editor/SourceEditor.vue'
@@ -23,6 +23,8 @@ import { useMailInvalidation } from '../realtime'
 import { sectionOf, type ResourceSection } from '../route'
 import type { HistoryItem, Resource, ResourceContent, Revision, TemplateKind } from '../types'
 import HistoryList from './HistoryList.vue'
+import { customizationText, originalRevision, resourceHeadings } from './resourceHeadings'
+import { useResourceHistory } from './useResourceHistory'
 import RefusalDialog, { type Refusal } from './RefusalDialog.vue'
 import UsedBy from './UsedBy.vue'
 
@@ -34,7 +36,6 @@ const resource = shallowRef<Resource>()
 const draft = ref<ResourceContent>()
 const loading = ref(true), gone = ref(false), denied = ref(false)
 const error = ref('')
-// A newer revision saved by someone else while this draft has changes.
 const stale = ref<{ revision: number; by: string }>()
 const beginRead = latestRequest()
 
@@ -74,45 +75,7 @@ async function load(options: { keepDraft?: boolean } = {}) {
 
 // The version loaded into the draft by Restore; saving the draft restores it.
 const restoring = ref<Revision>()
-const revisions = shallowRef<HistoryItem[]>([])
-const historyLoading = ref(false), historyError = ref(''), historyMoreError = ref('')
-const historyCursor = ref<string>()
-const beginHistory = latestRequest()
-// The newest page of History; older pages follow on request.
-async function loadHistory() {
-  const current = beginHistory()
-  historyLoading.value = true
-  try {
-    const page = await libraryApi.history(key.value)
-    if (!current()) return
-    revisions.value = page.items
-    historyCursor.value = page.next_cursor
-    historyError.value = historyMoreError.value = ''
-  } catch (failure) {
-    if (!current()) return
-    historyError.value = isMissing(failure) ? '' : describe(failure, 'History could not be loaded.')
-  } finally {
-    if (current()) historyLoading.value = false
-  }
-}
-async function loadOlderHistory() {
-  const cursor = historyCursor.value
-  if (!cursor || historyLoading.value) return
-  const current = beginHistory()
-  historyLoading.value = true
-  try {
-    const page = await libraryApi.history(key.value, cursor)
-    if (!current()) return
-    const known = new Set(revisions.value.map(item => item.seq))
-    revisions.value = [...revisions.value, ...page.items.filter(item => !known.has(item.seq))]
-    historyCursor.value = page.next_cursor
-    historyMoreError.value = ''
-  } catch (failure) {
-    if (current()) historyMoreError.value = describe(failure, 'Older versions could not be loaded.')
-  } finally {
-    if (current()) historyLoading.value = false
-  }
-}
+const { revisions, historyLoading, historyError, historyMoreError, historyCursor, loadHistory, loadOlderHistory } = useResourceHistory(key)
 
 async function refresh() {
   await Promise.all([load({ keepDraft: true }), loadHistory()])
@@ -127,43 +90,10 @@ const notice = ref('')
 const refusal = ref<Refusal>()
 
 const title = computed(() => resource.value?.title ?? props.name)
-const headings = computed(() => {
-  const item = resource.value
-  const name = title.value
-  const users = item?.used_by?.messages?.length ?? 0
-  const sender = item?.used_by?.recent_senders?.find(entry => entry.origin)
-  const content: Record<TemplateKind, { title: string; description: string }> = {
-    message: { title: 'Message', description: 'What recipients read.' + (sender?.origin ? ` Sent recently by “${originText(sender.origin)}”.` : '') },
-    base: { title: 'Layout', description: users ? `The frame around the ${plural(users, 'message')} that ${users === 1 ? 'uses' : 'use'} ${name}.` : `The frame around messages that use ${name}.` },
-    part: { title: 'Content', description: `Shown wherever ${name} is included.` },
-  }
-  const sections: Record<ResourceSection, { title: string; description: string }> = {
-    content: content[props.kind],
-    variables: props.kind === 'message'
-      ? { title: 'Variables', description: 'The values a sender provides, with the samples used for previews and tests.' }
-      : { title: 'Inputs', description: `The values passed to ${name} where it is included, with their defaults.` },
-    'used-by': {
-      title: 'Used by',
-      description: props.kind === 'message' ? `Who sends ${name}.` : props.kind === 'base' ? `Messages that use ${name}.` : `Templates that include ${name}.`,
-    },
-    history: { title: 'History', description: `Every saved version of ${name}, newest first.` },
-  }
-  return sections[props.section]
-})
+const headings = computed(() => resourceHeadings(props.kind, props.section, title.value, resource.value))
 
-const customizedNotice = computed(() => {
-  const item = resource.value
-  if (item?.state !== 'customized') return ''
-  return `Customized by ${personLabel(item.author_label, item.author)} ${onDate(item.updated_at)} from the version included with ${item.origin_label}.`
-})
-// The version the module ships, as Mail reports it on a customized resource.
-const originalVersion = computed<Revision | undefined>(() => {
-  const item = resource.value
-  if (!item?.original) return undefined
-  const { kind, name, title, description } = item
-  return { kind, name, seq: 0, version: 0, action: 'reset', state: 'original', author: '', created_at: 0,
-    content: { kind, name, title, description, ...item.original } }
-})
+const customizedNotice = computed(() => customizationText(resource.value))
+const originalVersion = computed(() => originalRevision(resource.value))
 
 // Problems: the live preview's, then the last refused save's. Save is blocked while one stands.
 const previewProblem = ref<Problem>()
@@ -175,7 +105,6 @@ const blocked = computed(() => !!problem.value || variablesInvalid.value || !!st
 const blockedReason = computed(() => stale.value ? 'Discard your changes to load the newer version first.'
   : variablesInvalid.value ? 'Fix the variables first.' : problem.value ? 'Fix the error first.' : '')
 
-// Sending refused because delivery needs setup; an administrator can go straight to the settings.
 const setupFailure = ref(false)
 function fail(failure: unknown, fallback: string) {
   setupFailure.value = ['invalid_config', 'from_name_invalid'].includes(errorCode(failure) ?? '')

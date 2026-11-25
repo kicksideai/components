@@ -43,7 +43,7 @@ pack:
 	cd test && $(WIPPY) pack --module kickside/mail-admin --embed kickside.mail.admin:ui_fs .wippy/mail-admin.wapp
 	mkdir -p .wippy/pack
 	TMPDIR="$(CURDIR)/.wippy/pack" $(WIPPY) publish --config . --version $(VERSION) --dry-run --create --module-visibility private --module-type plugin --embed kickside.mail.admin:ui_fs
-verify: lockrefresh ui-setup build typecheck ui-test lint strict check test pack
+verify: setup build typecheck ui-test lint strict check test pack
 publish:
 	@echo "Releases use the repository's Release Please workflow." >&2
 	@exit 1

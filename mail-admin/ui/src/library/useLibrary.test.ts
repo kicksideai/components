@@ -2,7 +2,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { calls, get, ok, resource, row, serve } from '../test/fixtures'
+import { calls, get, ok, refuse, resource, row, serve } from '../test/fixtures'
 import { useLibrary } from './useLibrary'
 
 const notice = row(resource('message', 'notice', { title: 'Notice' }))
@@ -31,6 +31,24 @@ describe('Library references', () => {
     const page = await library().search('message', 'no')
     expect(page.next_cursor).toBe('message/notice')
     expect(calls('get')).toEqual([['/api/v1/mail/library', { params: { kind: 'message', q: 'no', limit: '50' } }]])
+    wrapper.unmount()
+  })
+
+  it('leaves a failed reference unresolved until a successful refresh', async () => {
+    let ready = false
+    serve([get('/api/v1/mail/library', () => ready
+      ? ok({ items: [notice], total: 1 })
+      : refuse(503, { error: 'Library temporarily unavailable' }))])
+    const { wrapper, library } = withLibrary(state => state.title('message', 'notice') ?? '…')
+    await flushPromises()
+    expect(wrapper.text()).toBe('…')
+    expect(library().exists('message', 'notice')).toBeUndefined()
+    expect(library().lookupError.value).toContain('Library references could not be loaded.')
+    ready = true
+    library().refresh()
+    await flushPromises()
+    expect(wrapper.text()).toBe('Notice')
+    expect(library().lookupError.value).toBe('')
     wrapper.unmount()
   })
 })

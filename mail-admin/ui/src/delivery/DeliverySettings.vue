@@ -15,7 +15,7 @@ import { activity, delivery as deliveryApi, isDenied } from '../api'
 import { deliveryFailure, describe } from '../copy'
 import { useMailInvalidation } from '../realtime'
 import type { DeliveryStatus, LogMessage } from '../types'
-import { chooseService, isConflict, sendTest } from './api'
+import { chooseService, isConflict } from './api'
 import SettingsProvider, { type ProviderConfig } from './SettingsProvider.vue'
 
 // Mail's delivery block: the admitted services from Mail's delivery status, the chosen one's own settings and Mail's
@@ -23,6 +23,7 @@ import SettingsProvider, { type ProviderConfig } from './SettingsProvider.vue'
 const loading = ref(true), denied = ref(false)
 const error = ref('')
 const status = shallowRef<DeliveryStatus>()
+const root = ref<HTMLElement>()
 const beginRead = latestRequest()
 
 async function load() {
@@ -41,7 +42,11 @@ async function load() {
     if (current()) loading.value = false
   }
 }
-useHostVisibilityRefresh(load)
+function openMail(path = '') {
+  root.value?.dispatchEvent(new CustomEvent('navigate', {
+    detail: { path: '/system/mail' + path }, bubbles: true, composed: true,
+  }))
+}
 
 const transports = computed(() => status.value?.transports ?? [])
 const selected = computed(() => transports.value.find(item => item.id === status.value?.driver?.id))
@@ -94,6 +99,7 @@ const senderSettings: ProviderConfig = {
 const test = shallowRef<LogMessage | { message_id: string; status: 'queued'; last_error?: undefined }>()
 const testing = ref(false)
 const testError = ref('')
+const outcomeError = ref('')
 const beginTestRead = latestRequest()
 async function refreshTest() {
   const id = test.value?.message_id
@@ -101,16 +107,27 @@ async function refreshTest() {
   const current = beginTestRead()
   try {
     const item = await activity.get(id)
-    if (current() && test.value?.message_id === id) test.value = item
-  } catch { /* the receipt stays until the next change */ }
+    if (current() && test.value?.message_id === id) {
+      test.value = item
+      outcomeError.value = ''
+    }
+  } catch (failure) {
+    if (current() && test.value?.message_id === id) {
+      outcomeError.value = describe(failure, 'The test email status could not be loaded.')
+    }
+  }
 }
+useHostVisibilityRefresh(async () => {
+  await load()
+  if (test.value?.status === 'queued') await refreshTest()
+})
 useMailInvalidation('mail.activity', () => { if (test.value?.status === 'queued') void refreshTest() })
 async function runTest() {
   testing.value = true
-  testError.value = ''
+  testError.value = outcomeError.value = ''
   test.value = undefined
   try {
-    const receipt = await sendTest()
+    const receipt = await deliveryApi.sendTest()
     test.value = { message_id: receipt.message_id, status: 'queued' }
     await refreshTest()
   } catch (failure) {
@@ -130,10 +147,10 @@ const testBlocked = computed(() => selected.value ? '' : 'Choose a service to se
 </script>
 
 <template>
-  <section class="mail-delivery" aria-label="Mail delivery settings">
+  <section ref="root" class="mail-delivery" aria-label="Mail delivery settings">
     <SettingsSectionHead title="Mail" description="How email leaves this workspace. Templates and their look are in System → Mail.">
       <template #actions>
-        <Button label="Templates" severity="secondary" outlined @click="host.navigate('/system/mail')">
+        <Button label="Templates" severity="secondary" outlined @click="openMail()">
           <template #icon><Icon icon="tabler:template" aria-hidden="true" /></template>
         </Button>
       </template>
@@ -143,6 +160,7 @@ const testBlocked = computed(() => selected.value ? '' : 'Choose a service to se
     <p v-else-if="denied" class="kx-notice warn mail-block" role="alert"><Icon icon="tabler:lock" aria-hidden="true" />Ask an administrator to grant you access to mail delivery.</p>
     <div v-else-if="error && !status" class="kx-err mail-error" role="alert"><span>{{ error }}</span><Button label="Retry" severity="secondary" outlined size="small" @click="load()" /></div>
     <template v-else-if="status">
+      <p v-if="error" class="kx-notice warn mail-block" role="alert">{{ error }}</p>
       <p v-if="!status.configured && status.reason" class="kx-notice warn mail-block" role="status">
         <Icon icon="tabler:alert-triangle" aria-hidden="true" /><span><strong>Mail is not set up yet.</strong> {{ status.reason }}</span>
       </p>
@@ -196,9 +214,10 @@ const testBlocked = computed(() => selected.value ? '' : 'Choose a service to se
             <div class="mail-failure-body">
               <strong>{{ testFailure.lead }}</strong>
               <span>{{ testFailure.next }}</span>
-              <Button link size="small" class="mail-inline-link" label="Open it in Activity" @click="host.navigate('/system/mail/activity/' + test.message_id)" />
+              <Button link size="small" class="mail-inline-link" label="Open it in Activity" @click="openMail('/activity/' + encodeURIComponent(test.message_id))" />
             </div>
           </div>
+          <p v-if="outcomeError" class="kx-notice warn mail-block" role="alert">{{ outcomeError }}</p>
         </div>
       </SettingsGroup>
     </template>

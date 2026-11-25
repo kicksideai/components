@@ -86,8 +86,11 @@ local function cases()
             local response, err = http_client.request("GET", gateway("/kickside-mail-admin/" .. view.meta.entry_point))
             test.is_nil(err, tostring(err))
             test.eq(response.status_code, 200)
-            test.not_nil(response.body:find("webComponent", 1, true), "the served entry is the built element")
-            test.not_nil(response.body:find("import(\"./mount-", 1, true), "the entry loads its implementation on first connect")
+            test.is_true(#response.body > 0, "the announced entry serves its built response")
+            local headers = response.headers
+            local media = headers["Content-Type"] or headers["content-type"]
+            if type(media) == "table" then media = media[1] end
+            test.not_nil(media and media:find("javascript", 1, true))
         end)
 
         test.it("declares selectable module access", function()

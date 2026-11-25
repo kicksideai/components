@@ -203,13 +203,17 @@ describe('New and duplicate', () => {
       post('/api/v1/mail/library', () => ok({ seq: 42, committed: true, projected: false })),
       get('/api/v1/mail/library/base/standard-copy', read),
     ])
-    const created = libraryApi.copy(copy)
-    await flushPromises()
-    await new Promise(resolve => setTimeout(resolve, 600))
-    expect(read).toHaveBeenCalledTimes(1)
-    notify('mail.library')
-    await expect(created).resolves.toEqual(projected)
-    expect(read).toHaveBeenCalledTimes(2)
+    vi.useFakeTimers()
+    try {
+      const created = libraryApi.copy(copy)
+      await vi.advanceTimersByTimeAsync(600)
+      expect(read).toHaveBeenCalledTimes(1)
+      notify('mail.library')
+      await expect(created).resolves.toEqual(projected)
+      expect(read).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('shows the server refusal of a reference that already exists beside the field', async () => {

@@ -1,6 +1,6 @@
 import { defineComponent as F, openBlock as $, createElementBlock as b, createElementVNode as g, toDisplayString as k, renderSlot as B, createCommentVNode as E, onBeforeUnmount as q } from "vue";
 import { api as s, on as A } from "@wippy-fe/proxy";
-const N = { class: "system-section-head" }, P = { class: "system-section-head-text" }, j = {
+const L = { class: "system-section-head" }, P = { class: "system-section-head-text" }, j = {
   key: 0,
   class: "kx-head-actions"
 }, Z = /* @__PURE__ */ F({
@@ -10,7 +10,7 @@ const N = { class: "system-section-head" }, P = { class: "system-section-head-te
     description: {}
   },
   setup(e) {
-    return (t, a) => ($(), b("header", N, [
+    return (t, a) => ($(), b("header", L, [
       g("div", P, [
         g("h1", null, k(e.title), 1),
         g("p", null, k(e.description), 1)
@@ -21,6 +21,13 @@ const N = { class: "system-section-head" }, P = { class: "system-section-head-te
     ]));
   }
 });
+function ee() {
+  let e = 0;
+  return () => {
+    const t = ++e;
+    return () => t === e;
+  };
+}
 class c extends Error {
   constructor(t, a, n) {
     super(t.message ?? t.error ?? `${a} failed`), this.name = "ApiError", this.kind = t.kind, this.details = t.details, this.retryable = t.retryable, this.status = n;
@@ -38,7 +45,7 @@ function I(e, t, a) {
     retryable: typeof e.retryable == "boolean" ? e.retryable : void 0
   }, t, a);
 }
-function L(e, t) {
+function K(e, t) {
   if (e instanceof c) return e;
   if (p(e) && p(e.response) && p(e.response.data)) {
     const { data: a, status: n } = e.response;
@@ -51,25 +58,25 @@ async function i(e, t) {
   try {
     a = (await e()).data;
   } catch (n) {
-    throw L(n, t);
+    throw K(n, t);
   }
   if (a?.success === !0 && a.data !== void 0) return a.data;
   throw a?.success === !1 ? I(a, t) : new c({ kind: "INTERNAL", message: `${t}: invalid response envelope`, details: { code: "response_envelope_invalid" } }, t);
 }
-const d = "/api/v1/mail", u = (e) => `${d}/library/${e.kind}/${encodeURIComponent(e.name)}`;
+const o = "/api/v1/mail", u = (e) => `${o}/library/${e.kind}/${encodeURIComponent(e.name)}`;
 function f(e) {
   const t = {};
   for (const [a, n] of Object.entries(e)) n !== void 0 && n !== "" && (t[a] = String(n));
   return t;
 }
 function _(e) {
-  const { kind: t, name: a, title: n, description: r, html: l, text: o, base: U, subject: C, schema: v, samples: w } = e;
-  return t === "message" ? { kind: t, name: a, title: n, description: r, html: l, text: o, base: U, subject: C, schema: v, samples: w } : { kind: t, name: a, title: n, description: r, html: l, text: o, schema: v, samples: w };
+  const { kind: t, name: a, title: n, description: r, html: l, text: d, base: C, subject: U, schema: v, samples: w } = e;
+  return t === "message" ? { kind: t, name: a, title: n, description: r, html: l, text: d, base: C, subject: U, schema: v, samples: w } : { kind: t, name: a, title: n, description: r, html: l, text: d, schema: v, samples: w };
 }
-const H = (e) => e.kind === "message" ? e.name : "notice";
+const N = (e) => e.kind === "message" ? e.name : "notice";
 async function h(e, t) {
   const a = await i(
-    () => s.post(`${d}/library/preview`, { message: H(e), ...t }),
+    () => s.post(`${o}/library/preview`, { message: N(e), ...t }),
     "Review changes"
   ), n = a.errors?.[0];
   if (n)
@@ -89,14 +96,14 @@ async function m(e, t) {
     const r = await t();
     if ("kind" in r) return r;
     for (; ; ) {
-      const l = new Promise((o) => {
-        a = o;
+      const l = new Promise((d) => {
+        a = d;
       });
       try {
-        const o = await Y.get(e);
-        if ((o.seq ?? 0) >= r.seq) return o;
-      } catch (o) {
-        if (!O(o)) throw o;
+        const d = await Y.get(e);
+        if ((d.seq ?? 0) >= r.seq) return d;
+      } catch (d) {
+        if (!V(d)) throw d;
       }
       await l;
     }
@@ -107,19 +114,19 @@ async function m(e, t) {
 async function T(e, t) {
   const a = { ...e, note: t ?? ("note" in e ? e.note : void 0) }, n = await h(e, { create: a }), r = crypto.randomUUID();
   return m(e, () => i(
-    () => s.post(`${d}/library`, { ...a, preview_id: n, command_id: r }),
+    () => s.post(`${o}/library`, { ...a, preview_id: n, command_id: r }),
     "Create resource"
   ));
 }
-function K(e = {}) {
+function H(e = {}) {
   const { names: t, ...a } = e;
   return i(
-    () => s.get(`${d}/library`, { params: f({ limit: 100, ...a, names: t?.join(",") }) }),
+    () => s.get(`${o}/library`, { params: f({ limit: 100, ...a, names: t?.join(",") }) }),
     "Mail library"
   );
 }
 const Y = {
-  page: K,
+  page: H,
   get: (e) => i(() => s.get(u(e)), "Mail resource"),
   history: (e, t) => i(
     () => s.get(`${u(e)}/history`, { params: f({ cursor: t }) }),
@@ -146,9 +153,9 @@ const Y = {
     ));
   },
   async restore(e, t, a, n) {
-    const r = { seq: t, expected_revision: a, note: n }, l = e.kind === "asset" ? void 0 : await h(e, { restore: { ...e, ...r } }), o = crypto.randomUUID();
+    const r = { seq: t, expected_revision: a, note: n }, l = e.kind === "asset" ? void 0 : await h(e, { restore: { ...e, ...r } }), d = crypto.randomUUID();
     return m(e, () => i(
-      () => s.post(`${u(e)}/restore`, { ...r, preview_id: l, command_id: o }),
+      () => s.post(`${u(e)}/restore`, { ...r, preview_id: l, command_id: d }),
       "Restore revision"
     ));
   },
@@ -159,12 +166,12 @@ const Y = {
       "Delete resource"
     );
   },
-  preview: (e, t) => i(() => s.post(`${d}/library/preview`, t.length ? { message: e, resources: t.map(_) } : { message: e }), "Preview"),
-  sendTest: (e) => i(() => s.post(`${d}/library/send-test`, { message: e }), "Send test"),
+  preview: (e, t) => i(() => s.post(`${o}/library/preview`, t.length ? { message: e, resources: t.map(_) } : { message: e }), "Preview"),
+  sendTest: (e) => i(() => s.post(`${o}/library/send-test`, { message: e }), "Send test"),
   async addAsset(e) {
     const t = { kind: "asset", name: e.name }, a = crypto.randomUUID();
     return m(t, () => i(
-      () => s.post(`${d}/library`, { kind: t.kind, ...e, command_id: a }),
+      () => s.post(`${o}/library`, { kind: t.kind, ...e, command_id: a }),
       "Add image"
     ));
   },
@@ -175,7 +182,7 @@ const Y = {
       "Replace image"
     ));
   }
-}, ee = {
+}, te = {
   // The platform upload flow: the file becomes the caller's upload, which Mail adopts as an asset once the platform
   // reports it completed.
   async add(e) {
@@ -192,27 +199,28 @@ const Y = {
       return a?.success && a.upload && a.component_id ? { data: { success: !0, data: { component_id: a.component_id, status: String(a.upload.status ?? ""), error: a.upload.error } } } : { data: { success: !1, error: a?.error } };
     }, "Upload");
   }
-}, te = {
-  capabilities: () => i(() => s.get(`${d}/capabilities`), "Mail access")
 }, ae = {
-  list: (e) => i(() => s.get(`${d}/activity`, { params: f({ limit: 50, ...e }) }), "Mail activity"),
-  get: (e) => i(() => s.get(`${d}/activity/${encodeURIComponent(e)}`), "Mail message"),
-  resend: (e) => i(() => s.post(`${d}/activity/${encodeURIComponent(e)}/resend`, {}), "Send again")
+  capabilities: () => i(() => s.get(`${o}/capabilities`), "Mail access")
 }, ne = {
-  status: () => i(() => s.get(`${d}/delivery`), "Delivery status")
+  list: (e) => i(() => s.get(`${o}/activity`, { params: f({ limit: 50, ...e }) }), "Mail activity"),
+  get: (e) => i(() => s.get(`${o}/activity/${encodeURIComponent(e)}`), "Mail message"),
+  resend: (e) => i(() => s.post(`${o}/activity/${encodeURIComponent(e)}/resend`, {}), "Send again")
+}, se = {
+  status: () => i(() => s.get(`${o}/delivery`), "Delivery status"),
+  sendTest: () => i(() => s.post(`${o}/delivery/send-test`, {}), "Send test email")
 };
 function G(e) {
   if (!(e instanceof c)) return;
   const t = e.details?.code;
   return typeof t == "string" ? t : void 0;
 }
-function se(e) {
+function ie(e) {
   return e instanceof c && (e.status === 403 || e.kind === "PERMISSION_DENIED");
 }
-function O(e) {
-  return e instanceof c && (e.status === 404 || e.kind === "NOT_FOUND" || e.kind === "NotFound");
+function V(e) {
+  return e instanceof c && (e.status === 404 || e.kind?.replaceAll("_", "").toLowerCase() === "notfound");
 }
-const ie = { message: "Message", base: "Base template", part: "Part", asset: "Image" }, re = { message: "Messages", base: "Base templates", part: "Parts", asset: "Images" }, oe = { message: "tabler:mail", base: "tabler:layout", part: "tabler:puzzle", asset: "tabler:photo" }, de = {
+const re = { message: "Message", base: "Base template", part: "Part", asset: "Image" }, oe = { message: "Messages", base: "Base templates", part: "Parts", asset: "Images" }, de = { message: "tabler:mail", base: "tabler:layout", part: "tabler:puzzle", asset: "tabler:photo" }, ce = {
   created: "Created",
   edited: "Edited",
   base_changed: "Base template changed",
@@ -221,24 +229,24 @@ const ie = { message: "Message", base: "Base template", part: "Part", asset: "Im
   archived: "Archived",
   deleted: "Deleted"
 };
-function ce(e) {
+function le(e) {
   return e.action !== "archived" && e.action !== "deleted";
 }
-function le(e, t) {
+function ue(e, t) {
   return e?.label ?? t ?? "";
 }
 function D(e) {
   return e === void 0 ? "" : e < 1024 ? `${e} B` : e < 1024 * 1024 ? `${Math.round(e / 1024)} KB` : `${(e / 1024 / 1024).toFixed(1)} MB`;
 }
-const ue = { queued: "Pending", sent: "Sent", failed: "Failed" }, me = { queued: "secondary", sent: "success", failed: "danger" }, V = {
+const me = { queued: "Pending", sent: "Sent", failed: "Failed" }, pe = { queued: "secondary", sent: "success", failed: "danger" }, O = {
   workflow: "Workflow",
   automation: "Automation",
   test: "Test send",
   resend: "Sent again"
 };
-function pe(e) {
+function he(e) {
   if (!e) return "";
-  const t = V[e.kind];
+  const t = O[e.kind];
   return t ? e.kind === "test" || e.kind === "resend" ? t : e.label ? `${t} · ${e.label}` : t : e.label;
 }
 const M = 1440 * 60 * 1e3, R = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric" }), x = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric", year: "numeric" }), z = new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }), J = new Intl.DateTimeFormat(void 0, { dateStyle: "medium", timeStyle: "short" });
@@ -251,21 +259,21 @@ function W(e, t = Date.now()) {
   const a = S(t);
   return e >= a ? "Today" : e >= a - M ? "Yesterday" : new Date(e).getFullYear() === new Date(t).getFullYear() ? R.format(e) : x.format(e);
 }
-function he(e, t = Date.now()) {
+function fe(e, t = Date.now()) {
   const a = W(e, t);
   return a === "Today" || a === "Yesterday" ? a.toLowerCase() : "on " + a;
 }
-function fe(e, t = Date.now()) {
+function ge(e, t = Date.now()) {
   const a = S(t);
   return e >= a ? z.format(e) : e >= a - M ? "Yesterday" : new Date(e).getFullYear() === new Date(t).getFullYear() ? R.format(e) : x.format(e);
 }
-function ge(e) {
+function _e(e) {
   return e ? J.format(e) : "—";
 }
-function _e(e) {
+function ye(e) {
   return e.length ? e.length === 1 ? `To ${e[0]}` : `To ${e[0]} +${e.length - 1}` : "";
 }
-function ye(e, t, a = t + "s") {
+function ve(e, t, a = t + "s") {
   return `${e} ${e === 1 ? t : a}`;
 }
 const y = {
@@ -303,7 +311,7 @@ const y = {
   message_too_large: "The message with its attachments is larger than the delivery service accepts.",
   upload_still_processing: "The image is still being processed. Mail adds it as soon as it is ready."
 };
-function ve(e, t, a = "in Settings → Mail") {
+function we(e, t, a = "in Settings → Mail") {
   switch (e) {
     case "credentials_invalid":
       return { lead: `${t} refused the credentials.`, next: `Check the API key ${a}, save, and send again.` };
@@ -331,66 +339,57 @@ function ve(e, t, a = "in Settings → Mail") {
       return;
   }
 }
-function we(e, t) {
+function $e(e, t) {
   if (!(e instanceof c) || e.status === void 0) return `${t} Check your connection and try again.`;
   const a = G(e);
   return a && y[a] ? y[a] : e.status === 403 ? y.mail_library_denied : e.status >= 500 ? `${t} Try again in a moment.` : e.message || t;
 }
-function $e(e) {
+function be(e) {
   return e.code === "gmail_html_clipping" && e.bytes && e.threshold_bytes ? `Gmail may clip this email: its HTML is ${D(e.bytes)}, above Gmail’s ${D(e.threshold_bytes)}. Readers then see only the start until they open the rest.` : e.message;
 }
-function be(e) {
+function ke(e) {
   return e.trim().toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
 }
-const ke = "Use lower-case letters, digits, hyphens and underscores, starting with a letter or digit.";
-function Te(e, t) {
+const Te = "Use lower-case letters, digits, hyphens and underscores, starting with a letter or digit.";
+function De(e, t) {
   const a = A(e, t);
   q(() => {
     typeof a == "function" && a();
   });
 }
-function De() {
-  let e = 0;
-  return () => {
-    const t = ++e;
-    return () => t === e;
-  };
-}
 export {
   c as A,
-  ae as B,
-  _e as C,
-  fe as D,
-  te as E,
-  ne as F,
-  L as G,
-  i as H,
+  ne as B,
+  ye as C,
+  ge as D,
+  ae as E,
+  se as F,
+  K as G,
   Z as _,
-  le as a,
+  ue as a,
   D as b,
-  re as c,
-  we as d,
+  oe as c,
+  $e as d,
   G as e,
-  oe as f,
-  De as g,
-  de as h,
-  se as i,
-  ge as j,
-  ie as k,
+  de as f,
+  ee as g,
+  ce as h,
+  ie as i,
+  _e as j,
+  re as k,
   Y as l,
-  ce as m,
-  he as n,
-  pe as o,
-  ye as p,
-  O as q,
-  ee as r,
+  le as m,
+  fe as n,
+  he as o,
+  ve as p,
+  V as q,
+  te as r,
   W as s,
-  be as t,
-  Te as u,
-  ke as v,
-  $e as w,
-  ve as x,
-  ue as y,
-  me as z
+  ke as t,
+  De as u,
+  Te as v,
+  be as w,
+  we as x,
+  me as y,
+  pe as z
 };
-//# sourceMappingURL=latestRequest-9-3hn826.js.map

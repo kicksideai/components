@@ -1,13 +1,14 @@
 <!-- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0 -->
 <script setup lang="ts">
 import { host } from '@wippy-fe/proxy'
-import { useHostVisibility } from '@wippy-fe/webcomponent-vue'
+import { useHostVisibilityRefresh } from '@wippy-fe/webcomponent-vue'
 import { computed, provide, ref, shallowRef, watch } from 'vue'
 import SettingsRail, { type SettingsRailGroup, type SettingsRailItem } from '@kickside/ui-kit/SettingsRail.vue'
 import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
+import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import { access, delivery as deliveryApi } from '../api'
 import { mailContextKey, type CreateIntent } from '../context'
-import { kindIcons, kindPlurals } from '../copy'
+import { describe, kindIcons, kindPlurals } from '../copy'
 import { useLibrary } from '../library/useLibrary'
 import LibraryPage from '../library/LibraryPage.vue'
 import ResourcePage from '../library/ResourcePage.vue'
@@ -71,21 +72,32 @@ watch(() => props.route, async (path, previous) => {
 })
 
 const library = useLibrary()
-const visible = useHostVisibility()
-watch(visible, (now, before) => { if (before === false && now === true) library.refresh() })
+const { lookupError } = library
 const capabilities = ref<Capabilities>()
 const delivery = ref<DeliveryStatus>()
+const accessError = ref('')
+const beginAccess = latestRequest()
 async function loadAccess() {
+  const current = beginAccess()
+  accessError.value = ''
   try {
-    capabilities.value = await access.capabilities()
-  } catch {
-    capabilities.value = undefined
-  }
-  if (capabilities.value?.administer_delivery) {
-    try { delivery.value = await deliveryApi.status() } catch { delivery.value = undefined }
+    const allowed = await access.capabilities()
+    if (!current()) return
+    capabilities.value = allowed
+    if (!allowed.administer_delivery) {
+      delivery.value = undefined
+      return
+    }
+    const status = await deliveryApi.status()
+    if (current()) delivery.value = status
+  } catch (failure) {
+    if (current()) accessError.value = describe(failure, 'Mail access and delivery settings could not be loaded.')
   }
 }
-void loadAccess()
+useHostVisibilityRefresh(async () => {
+  library.refresh()
+  await loadAccess()
+})
 
 const creating = ref(false), uploading = ref(false)
 const createIntent = ref<CreateIntent>({})
@@ -168,6 +180,8 @@ watch(() => pathOf(current.value), () => { main.value?.scrollTo({ top: 0 }) })
     </SettingsRail>
     <div class="kx-main">
       <div ref="main" class="kx-main-scroll mail-main" :class="{ 'mail-main-wide': current.name === 'resource' && current.section === 'content' }">
+        <p v-if="accessError" class="kx-notice warn mail-block" role="alert">{{ accessError }}</p>
+        <p v-if="lookupError" class="kx-notice warn mail-block" role="alert">{{ lookupError }}</p>
         <ResourcePage v-if="current.name === 'resource'" :key="current.kind + '/' + current.resource"
           :kind="current.kind" :name="current.resource" :section="current.section" />
         <template v-else-if="current.name === 'activity'">

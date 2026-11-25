@@ -67,7 +67,7 @@ the Liquid grammar over HTML highlights template expressions inside markup.
 Integrations, rendered by `kickside-mail-delivery`. It lists the transports
 Mail admits from `GET /api/v1/mail/delivery`, each with its readiness and setup
 issue, and switches the service from a dropdown: the block writes
-`kickside.mail:driver` through `PUT /api/v1/settings` with the
+the `driver` key in the `kickside.mail` namespace through `PUT /api/v1/settings` with the
 `driver_revision` Mail reported, so a concurrent change is refused and read
 again. The chosen service's settings namespace and Mail's own `kickside.mail`
 settings (From address, From name, Reply-to, log retention) render through the
@@ -86,7 +86,7 @@ Bind `kickside.mail.admin:ui_server` to the host HTTP service and install
 `kickside/mail` with its authenticated API router. The
 `ui.settings_tab` entry `kickside.mail.admin:settings_tab` appears only for
 callers with `access` on `kickside.mail.api:library_list.endpoint`, which
-Mail grants with **Edit mail library**. The page reads `GET /mail/capabilities`:
+Mail grants with **Edit mail library**. The page reads `GET /api/v1/mail/capabilities`:
 Activity requires **Administer mail delivery**. Send again and Send test to me
 also require **Send mail**. Uploading and replacing images requires the Mail library
 component grant the host composes through `kickside.mail:library_editor_grant`.

@@ -1,10 +1,10 @@
 import "vue";
-import "./wc-runtime-Ch_wJl3O.js";
+import "./wc-runtime-UUwuoPn6.js";
 import "pinia";
-import { e as o } from "./element-cQ96lpFr.js";
+import { e as o } from "./element-lUbWx5OY.js";
 import { define as r } from "@wippy-fe/proxy";
 const e = o(
-  () => import("./mount-U9TJUqQO.js").then((t) => t.config),
+  () => import("./mount-C4M7oAhx.js").then((t) => t.config),
   { type: "object", properties: { config: { type: "object" } } }
 );
 async function f() {
@@ -14,4 +14,3 @@ r(import.meta.url, e);
 export {
   f as webComponent
 };
-//# sourceMappingURL=delivery.js.map

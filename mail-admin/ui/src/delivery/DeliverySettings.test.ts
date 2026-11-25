@@ -81,6 +81,36 @@ describe('Mail delivery settings block', () => {
     wrapper.unmount()
   })
 
+  it('emits a composed navigation event to the host', async () => {
+    serve(server({ driver: mailgun }).routes)
+    const wrapper = await open()
+    const navigate = vi.fn()
+    document.body.addEventListener('navigate', navigate, { once: true })
+    try {
+      await button(wrapper, 'Templates')!.trigger('click')
+      expect(navigate).toHaveBeenCalledWith(expect.objectContaining({
+        detail: { path: '/system/mail' }, bubbles: true, composed: true,
+      }))
+    } finally {
+      document.body.removeEventListener('navigate', navigate)
+      wrapper.unmount()
+    }
+  })
+
+  it('shows an Activity read failure while keeping the send receipt', async () => {
+    serve([
+      post('/api/v1/mail/delivery/send-test', () => ok({ message_id: 'm-test', status: 'queued' })),
+      get('/api/v1/mail/activity/m-test', () => refuse(503, { error: 'Activity temporarily unavailable' })),
+      ...server({ driver: mailgun }).routes,
+    ])
+    const wrapper = await open()
+    await button(wrapper, 'Send test email')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('The test email status could not be loaded.')
+    expect(wrapper.text()).toContain('Sending the test…')
+    wrapper.unmount()
+  })
+
   it('switches the service from the revision it read, then shows that service settings', async () => {
     vi.mocked(host.confirm).mockResolvedValueOnce(true)
     const { state, routes } = server({ driver: mailgun, revision: 7 })

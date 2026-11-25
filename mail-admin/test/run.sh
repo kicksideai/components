@@ -9,12 +9,13 @@ mkdir -p .wippy
 exec 9>.wippy/harness.lock
 flock -n 9 || { echo "A Mail admin harness is already running" >&2; exit 1; }
 rm -f .wippy/mail-admin-test.sqlite .wippy/mail-admin-test.sqlite-wal .wippy/mail-admin-test.sqlite-shm
+export TMPDIR="${TMPDIR:-$PWD/.wippy/tmp}"
+mkdir -p "$TMPDIR"
 LOG="${WIPPY_TEST_LOG:-.wippy/last-test-run.log}"
-set +e
-WIPPY_TEST_REQUIRE_CASES=1 "${WIPPY:-wippy}" test "$@" 2>&1 | tee "$LOG"
-status=${PIPESTATUS[0]}
-set -e
-if [ "$status" -ne 0 ] || grep -Eq 'FAILED|No tests found|No tests match' "$LOG" || ! grep -q 'PASSED' "$LOG"; then
-  echo "${WIPPY:-wippy} test did not report a passing suite" >&2
-  exit 1
-fi
+WIPPY_TEST_REQUIRE_CASES=1 "${WIPPY:-wippy}" test "$@" 2>&1 | tee -- "$LOG"
+LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' "$LOG" | tr '\r' '\n' | awk '
+  /No tests found|No tests match/ { empty = 1 }
+  /^[[:space:]]*FAILED([[:space:]]|$)/ { failed = 1 }
+  /^[[:space:]]*PASSED([[:space:]]|$)/ { passed = 1 }
+  END { exit(empty || failed || !passed) }
+'

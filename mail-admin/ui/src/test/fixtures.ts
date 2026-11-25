@@ -49,6 +49,7 @@ type Route = { method: 'get' | 'post' | 'delete' | 'put'; match: (path: string) 
 export function serve(routes: Route[]) {
   const answer = (method: Route['method']) => (path: string, second?: unknown) => {
     if (path === '/api/v1/mail/capabilities' && !routes.some(candidate => candidate.match(path))) return Promise.resolve({ data: { success: true, data: { send: true, edit_library: true, administer_delivery: true } } })
+    if (path === '/api/v1/mail/delivery' && !routes.some(candidate => candidate.match(path))) return ok({ transports: [], driver_revision: 0, configured: false, ready: false })
     const route = routes.find(candidate => candidate.method === method && candidate.match(path))
     return route ? route.reply(path, second) : refuse(404, { error: 'unrouted ' + method + ' ' + path })
   }

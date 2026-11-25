@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { api, on } from '@wippy-fe/proxy'
-import { ApiError, request } from '../../../admin-http'
+import { ApiError, failure, request } from '@kickside/components-admin-runtime/http'
 import type {
   Capabilities, DeliveryStatus, DraftRender, HistoryItem, Items, LibraryPage, LibraryRow, LogMessage, MessagePage, MessageStatus,
   Resource, ResourceContent, ResourceKey, ResourceKind, ResourceState, Revision, SendReceipt,
 } from './types'
 
-export { ApiError }
+export { ApiError, failure }
 
 const BASE = '/api/v1/mail'
 const resourcePath = (key: ResourceKey) => `${BASE}/library/${key.kind}/${encodeURIComponent(key.name)}`
@@ -187,6 +187,7 @@ export const activity = {
 
 export const delivery = {
   status: () => request<DeliveryStatus>(() => api.get(`${BASE}/delivery`), 'Delivery status'),
+  sendTest: () => request<SendReceipt>(() => api.post(`${BASE}/delivery/send-test`, {}), 'Send test email'),
 }
 
 export function errorCode(error: unknown): string | undefined {
@@ -200,5 +201,5 @@ export function isDenied(error: unknown): boolean {
 }
 
 export function isMissing(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 404 || error.kind === 'NOT_FOUND' || error.kind === 'NotFound')
+  return error instanceof ApiError && (error.status === 404 || error.kind?.replaceAll('_', '').toLowerCase() === 'notfound')
 }

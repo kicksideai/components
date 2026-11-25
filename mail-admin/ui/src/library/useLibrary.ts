@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { library } from '../api'
+import { describe } from '../copy'
 import { useMailInvalidation } from '../realtime'
 import type { LibraryPage, LibraryRow, Resource, ResourceKind } from '../types'
 
@@ -25,6 +26,9 @@ export function useLibrary() {
   const rows = reactive(new Map<string, LibraryRow | null>())
   const pending = new Map<ResourceKind, Set<string>>()
   const requested = new Set<string>()
+  const failed = new Map<string, number>()
+  const lookupError = ref('')
+  const generation = ref(0)
   let scheduled = false
   const id = (kind: ResourceKind, name: string) => `${kind}/${name}`
 
@@ -33,18 +37,23 @@ export function useLibrary() {
   }
 
   async function lookup(kind: ResourceKind, names: string[]) {
+    const current = generation.value
     for (let start = 0; start < names.length; start += LOOKUP_LIMIT) {
       const chunk = names.slice(start, start + LOOKUP_LIMIT)
       try {
         const page = await library.page({ kind, names: chunk, limit: LOOKUP_LIMIT })
-        remember(page.items)
-      } catch {
-        // A failed lookup leaves the reference itself as the label; the next invalidation asks again.
-      } finally {
+        if (current !== generation.value) return
+        const found = new Map(page.items.map(item => [item.name, item]))
         for (const name of chunk) {
-          requested.delete(id(kind, name))
-          if (!rows.has(id(kind, name))) rows.set(id(kind, name), null)
+          const key = id(kind, name)
+          if (!rows.has(key)) rows.set(key, found.get(name) ?? null)
         }
+      } catch (failure) {
+        if (current !== generation.value) return
+        for (const name of chunk) failed.set(id(kind, name), current)
+        lookupError.value = describe(failure, 'Library references could not be loaded.')
+      } finally {
+        if (current === generation.value) for (const name of chunk) requested.delete(id(kind, name))
       }
     }
   }
@@ -58,7 +67,7 @@ export function useLibrary() {
 
   function request(kind: ResourceKind, name: string) {
     const key = id(kind, name)
-    if (rows.has(key) || requested.has(key)) return
+    if (failed.get(key) === generation.value || rows.has(key) || requested.has(key)) return
     requested.add(key)
     const names = pending.get(kind) ?? new Set<string>()
     names.add(name)
@@ -100,9 +109,14 @@ export function useLibrary() {
   }
 
   function refresh() {
+    generation.value++
+    pending.clear()
+    requested.clear()
+    failed.clear()
     rows.clear()
+    lookupError.value = ''
   }
   useMailInvalidation('mail.library', refresh)
 
-  return { find, exists, title, search, remember, patch, refresh }
+  return { find, exists, title, search, remember, patch, refresh, lookupError }
 }
