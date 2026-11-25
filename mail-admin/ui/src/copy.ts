@@ -145,7 +145,6 @@ export function describe(error: unknown, fallback: string): string {
   if (!(error instanceof ApiError) || error.status === undefined) return `${fallback} Check your connection and try again.`
   const code = errorCode(error)
   if (code && errorCopy[code]) return errorCopy[code]
-  if (error.status === 403) return errorCopy.mail_library_denied
   if (error.status >= 500) return `${fallback} Try again in a moment.`
   return error.message || fallback
 }

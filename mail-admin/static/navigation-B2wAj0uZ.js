@@ -1,6 +1,6 @@
-import { defineComponent as F, openBlock as $, createElementBlock as b, createElementVNode as g, toDisplayString as k, renderSlot as B, createCommentVNode as E, onBeforeUnmount as q } from "vue";
-import { api as s, on as A } from "@wippy-fe/proxy";
-const L = { class: "system-section-head" }, P = { class: "system-section-head-text" }, j = {
+import { defineComponent as F, openBlock as w, createElementBlock as b, createElementVNode as f, toDisplayString as $, renderSlot as E, createCommentVNode as B, onBeforeUnmount as q } from "vue";
+import { api as n, on as I } from "@wippy-fe/proxy";
+const P = { class: "system-section-head" }, j = { class: "system-section-head-text" }, L = {
   key: 0,
   class: "kx-head-actions"
 }, Z = /* @__PURE__ */ F({
@@ -10,14 +10,14 @@ const L = { class: "system-section-head" }, P = { class: "system-section-head-te
     description: {}
   },
   setup(e) {
-    return (t, a) => ($(), b("header", L, [
-      g("div", P, [
-        g("h1", null, k(e.title), 1),
-        g("p", null, k(e.description), 1)
+    return (t, a) => (w(), b("header", P, [
+      f("div", j, [
+        f("h1", null, $(e.title), 1),
+        f("p", null, $(e.description), 1)
       ]),
-      t.$slots.actions ? ($(), b("div", j, [
-        B(t.$slots, "actions")
-      ])) : E("", !0)
+      t.$slots.actions ? (w(), b("div", L, [
+        E(t.$slots, "actions")
+      ])) : B("", !0)
     ]));
   }
 });
@@ -29,27 +29,32 @@ function ee() {
   };
 }
 class c extends Error {
-  constructor(t, a, n) {
-    super(t.message ?? t.error ?? `${a} failed`), this.name = "ApiError", this.kind = t.kind, this.details = t.details, this.retryable = t.retryable, this.status = n;
+  kind;
+  details;
+  retryable;
+  status;
+  constructor(t, a, s) {
+    super(t.message ?? t.error ?? `${a} failed`), this.name = "ApiError", this.kind = t.kind, this.details = t.details, this.retryable = t.retryable, this.status = s;
   }
 }
 function p(e) {
   return typeof e == "object" && e !== null && !Array.isArray(e);
 }
-function I(e, t, a) {
+function A(e, t, a) {
+  const s = p(e) ? e : {};
   return new c({
-    message: typeof e.message == "string" ? e.message : void 0,
-    error: typeof e.error == "string" ? e.error : void 0,
-    kind: typeof e.kind == "string" ? e.kind : void 0,
-    details: p(e.details) ? e.details : void 0,
-    retryable: typeof e.retryable == "boolean" ? e.retryable : void 0
+    message: typeof s.message == "string" ? s.message : void 0,
+    error: typeof s.error == "string" ? s.error : void 0,
+    kind: typeof s.kind == "string" ? s.kind : void 0,
+    details: p(s.details) ? s.details : void 0,
+    retryable: typeof s.retryable == "boolean" ? s.retryable : void 0
   }, t, a);
 }
-function K(e, t) {
+function N(e, t) {
   if (e instanceof c) return e;
   if (p(e) && p(e.response) && p(e.response.data)) {
-    const { data: a, status: n } = e.response;
-    return I(a, t, typeof n == "number" ? n : void 0);
+    const { data: a, status: s } = e.response;
+    return A(a, t, typeof s == "number" ? s : void 0);
   }
   return e instanceof Error ? e : new c({ kind: "UNAVAILABLE" }, t);
 }
@@ -57,31 +62,31 @@ async function i(e, t) {
   let a;
   try {
     a = (await e()).data;
-  } catch (n) {
-    throw K(n, t);
+  } catch (s) {
+    throw N(s, t);
   }
   if (a?.success === !0 && a.data !== void 0) return a.data;
-  throw a?.success === !1 ? I(a, t) : new c({ kind: "INTERNAL", message: `${t}: invalid response envelope`, details: { code: "response_envelope_invalid" } }, t);
+  throw a?.success === !1 ? A(a, t) : new c({ kind: "INTERNAL", message: `${t}: invalid response envelope`, details: { code: "response_envelope_invalid" } }, t);
 }
 const o = "/api/v1/mail", u = (e) => `${o}/library/${e.kind}/${encodeURIComponent(e.name)}`;
-function f(e) {
+function g(e) {
   const t = {};
-  for (const [a, n] of Object.entries(e)) n !== void 0 && n !== "" && (t[a] = String(n));
+  for (const [a, s] of Object.entries(e)) s !== void 0 && s !== "" && (t[a] = String(s));
   return t;
 }
 function _(e) {
-  const { kind: t, name: a, title: n, description: r, html: l, text: d, base: C, subject: U, schema: v, samples: w } = e;
-  return t === "message" ? { kind: t, name: a, title: n, description: r, html: l, text: d, base: C, subject: U, schema: v, samples: w } : { kind: t, name: a, title: n, description: r, html: l, text: d, schema: v, samples: w };
+  const { kind: t, name: a, title: s, description: r, html: l, text: d, base: C, subject: U, schema: y, samples: v } = e;
+  return t === "message" ? { kind: t, name: a, title: s, description: r, html: l, text: d, base: C, subject: U, schema: y, samples: v } : { kind: t, name: a, title: s, description: r, html: l, text: d, schema: y, samples: v };
 }
-const N = (e) => e.kind === "message" ? e.name : "notice";
+const H = (e) => e.kind === "message" ? e.name : "notice";
 async function h(e, t) {
   const a = await i(
-    () => s.post(`${o}/library/preview`, { message: N(e), ...t }),
+    () => n.post(`${o}/library/preview`, { message: H(e), ...t }),
     "Review changes"
-  ), n = a.errors?.[0];
-  if (n)
-    throw new c({ kind: "INVALID", message: n.message, details: {
-      ...n,
+  ), s = a.errors?.[0];
+  if (s)
+    throw new c({ kind: "INVALID", message: s.message, details: {
+      ...s,
       errors: a.errors,
       dependent_messages: a.dependent_messages
     } }, "Review changes");
@@ -91,7 +96,7 @@ async function h(e, t) {
 async function m(e, t) {
   let a = () => {
   };
-  const n = A("mail.library", () => a());
+  const s = I("mail.library", () => a());
   try {
     const r = await t();
     if ("kind" in r) return r;
@@ -103,82 +108,82 @@ async function m(e, t) {
         const d = await Y.get(e);
         if ((d.seq ?? 0) >= r.seq) return d;
       } catch (d) {
-        if (!V(d)) throw d;
+        if (!O(d)) throw d;
       }
       await l;
     }
   } finally {
-    typeof n == "function" && n();
+    s();
   }
 }
-async function T(e, t) {
-  const a = { ...e, note: t ?? ("note" in e ? e.note : void 0) }, n = await h(e, { create: a }), r = crypto.randomUUID();
+async function k(e, t) {
+  const a = { ...e, note: t ?? ("note" in e ? e.note : void 0) }, s = await h(e, { create: a }), r = crypto.randomUUID();
   return m(e, () => i(
-    () => s.post(`${o}/library`, { ...a, preview_id: n, command_id: r }),
+    () => n.post(`${o}/library`, { ...a, preview_id: s, command_id: r }),
     "Create resource"
   ));
 }
-function H(e = {}) {
+function K(e = {}) {
   const { names: t, ...a } = e;
   return i(
-    () => s.get(`${o}/library`, { params: f({ limit: 100, ...a, names: t?.join(",") }) }),
+    () => n.get(`${o}/library`, { params: g({ limit: 100, ...a, names: t?.join(",") }) }),
     "Mail library"
   );
 }
 const Y = {
-  page: H,
-  get: (e) => i(() => s.get(u(e)), "Mail resource"),
+  page: K,
+  get: (e) => i(() => n.get(u(e)), "Mail resource"),
   history: (e, t) => i(
-    () => s.get(`${u(e)}/history`, { params: f({ cursor: t }) }),
+    () => n.get(`${u(e)}/history`, { params: g({ cursor: t }) }),
     "Resource history"
   ),
   revision: (e, t) => i(
-    () => s.get(`${u(e)}/history`, { params: f({ seq: t }) }),
+    () => n.get(`${u(e)}/history`, { params: g({ seq: t }) }),
     "Resource version"
   ),
-  copy: (e) => T(e),
-  create: (e, t) => T(_(e), t),
+  copy: (e) => k(e),
+  create: (e, t) => k(_(e), t),
   async update(e, t, a) {
-    const n = { ..._(e), expected_revision: t, note: a }, r = await h(e, { resources: [n] }), l = crypto.randomUUID();
+    const s = { ..._(e), expected_revision: t, note: a }, r = await h(e, { resources: [s] }), l = crypto.randomUUID();
     return m(e, () => i(
-      () => s.put(u(e), { ...n, preview_id: r, command_id: l }),
+      () => n.put(u(e), { ...s, preview_id: r, command_id: l }),
       "Save resource"
     ));
   },
   async reset(e, t) {
-    const a = { expected_revision: t }, n = e.kind === "asset" ? void 0 : await h(e, { reset: { ...e, ...a } }), r = crypto.randomUUID();
+    const a = { expected_revision: t }, s = e.kind === "asset" ? void 0 : await h(e, { reset: { ...e, ...a } }), r = crypto.randomUUID();
     return m(e, () => i(
-      () => s.post(`${u(e)}/reset`, { ...a, preview_id: n, command_id: r }),
+      () => n.post(`${u(e)}/reset`, { ...a, preview_id: s, command_id: r }),
       "Reset resource"
     ));
   },
-  async restore(e, t, a, n) {
-    const r = { seq: t, expected_revision: a, note: n }, l = e.kind === "asset" ? void 0 : await h(e, { restore: { ...e, ...r } }), d = crypto.randomUUID();
+  async restore(e, t, a, s) {
+    const r = { seq: t, expected_revision: a, note: s }, l = e.kind === "asset" ? void 0 : await h(e, { restore: { ...e, ...r } }), d = crypto.randomUUID();
     return m(e, () => i(
-      () => s.post(`${u(e)}/restore`, { ...r, preview_id: l, command_id: d }),
+      () => n.post(`${u(e)}/restore`, { ...r, preview_id: l, command_id: d }),
       "Restore revision"
     ));
   },
   remove: (e, t) => {
     const a = crypto.randomUUID();
     return i(
-      () => s.delete(u(e), { data: { expected_revision: t, command_id: a } }),
+      () => n.delete(u(e), { data: { expected_revision: t, command_id: a } }),
       "Delete resource"
     );
   },
-  preview: (e, t) => i(() => s.post(`${o}/library/preview`, t.length ? { message: e, resources: t.map(_) } : { message: e }), "Preview"),
-  sendTest: (e) => i(() => s.post(`${o}/library/send-test`, { message: e }), "Send test"),
+  preview: (e, t) => i(() => n.post(`${o}/library/preview`, t.length ? { message: e, resources: t.map(_) } : { message: e }), "Preview"),
+  sendTest: (e) => i(() => n.post(`${o}/library/send-test`, { message: e }), "Send test"),
   async addAsset(e) {
     const t = { kind: "asset", name: e.name }, a = crypto.randomUUID();
     return m(t, () => i(
-      () => s.post(`${o}/library`, { kind: t.kind, ...e, command_id: a }),
+      () => n.post(`${o}/library`, { kind: t.kind, ...e, command_id: a }),
       "Add image"
     ));
   },
   async replaceAsset(e, t) {
-    const a = { kind: "asset", name: e.name }, n = crypto.randomUUID();
+    const a = { kind: "asset", name: e.name }, s = crypto.randomUUID();
     return m(a, () => i(
-      () => s.put(u(a), { ...e, expected_revision: t, command_id: n }),
+      () => n.put(u(a), { ...e, expected_revision: t, command_id: s }),
       "Replace image"
     ));
   }
@@ -188,26 +193,26 @@ const Y = {
   async add(e) {
     const t = new FormData();
     return t.append("file", e), t.append("metadata", JSON.stringify({ filename: e.name })), i(async () => {
-      const n = (await s.post("/api/v1/uploads", t, { headers: { "Content-Type": "multipart/form-data" } })).data;
-      return { data: n?.success && n.uuid ? { success: !0, data: { uuid: n.uuid } } : { success: !1, error: n?.error } };
+      const s = (await n.post("/api/v1/uploads", t, { headers: { "Content-Type": "multipart/form-data" } })).data;
+      return { data: s?.success && s.uuid ? { success: !0, data: { uuid: s.uuid } } : { success: !1, error: s?.error } };
     }, "Upload").then((a) => a.uuid);
   },
   // The upload's processing status and the component whose public meta changes at each upload milestone.
   async state(e) {
     return i(async () => {
-      const a = (await s.get(`/api/v1/uploads/${encodeURIComponent(e)}`)).data;
+      const a = (await n.get(`/api/v1/uploads/${encodeURIComponent(e)}`)).data;
       return a?.success && a.upload && a.component_id ? { data: { success: !0, data: { component_id: a.component_id, status: String(a.upload.status ?? ""), error: a.upload.error } } } : { data: { success: !1, error: a?.error } };
     }, "Upload");
   }
 }, ae = {
-  capabilities: () => i(() => s.get(`${o}/capabilities`), "Mail access")
-}, ne = {
-  list: (e) => i(() => s.get(`${o}/activity`, { params: f({ limit: 50, ...e }) }), "Mail activity"),
-  get: (e) => i(() => s.get(`${o}/activity/${encodeURIComponent(e)}`), "Mail message"),
-  resend: (e) => i(() => s.post(`${o}/activity/${encodeURIComponent(e)}/resend`, {}), "Send again")
+  capabilities: () => i(() => n.get(`${o}/capabilities`), "Mail access")
 }, se = {
-  status: () => i(() => s.get(`${o}/delivery`), "Delivery status"),
-  sendTest: () => i(() => s.post(`${o}/delivery/send-test`, {}), "Send test email")
+  list: (e) => i(() => n.get(`${o}/activity`, { params: g({ limit: 50, ...e }) }), "Mail activity"),
+  get: (e) => i(() => n.get(`${o}/activity/${encodeURIComponent(e)}`), "Mail message"),
+  resend: (e) => i(() => n.post(`${o}/activity/${encodeURIComponent(e)}/resend`, {}), "Send again")
+}, ne = {
+  status: () => i(() => n.get(`${o}/delivery`), "Delivery status"),
+  sendTest: () => i(() => n.post(`${o}/delivery/send-test`, {}), "Send test email")
 };
 function G(e) {
   if (!(e instanceof c)) return;
@@ -217,8 +222,8 @@ function G(e) {
 function ie(e) {
   return e instanceof c && (e.status === 403 || e.kind === "PERMISSION_DENIED");
 }
-function V(e) {
-  return e instanceof c && (e.status === 404 || e.kind?.replaceAll("_", "").toLowerCase() === "notfound");
+function O(e) {
+  return e instanceof c && (e.status === 404 || e.kind === "NOT_FOUND");
 }
 const re = { message: "Message", base: "Base template", part: "Part", asset: "Image" }, oe = { message: "Messages", base: "Base templates", part: "Parts", asset: "Images" }, de = { message: "tabler:mail", base: "tabler:layout", part: "tabler:puzzle", asset: "tabler:photo" }, ce = {
   created: "Created",
@@ -235,10 +240,10 @@ function le(e) {
 function ue(e, t) {
   return e?.label ?? t ?? "";
 }
-function D(e) {
+function T(e) {
   return e === void 0 ? "" : e < 1024 ? `${e} B` : e < 1024 * 1024 ? `${Math.round(e / 1024)} KB` : `${(e / 1024 / 1024).toFixed(1)} MB`;
 }
-const me = { queued: "Pending", sent: "Sent", failed: "Failed" }, pe = { queued: "secondary", sent: "success", failed: "danger" }, O = {
+const me = { queued: "Pending", sent: "Sent", failed: "Failed" }, pe = { queued: "secondary", sent: "success", failed: "danger" }, V = {
   workflow: "Workflow",
   automation: "Automation",
   test: "Test send",
@@ -246,7 +251,7 @@ const me = { queued: "Pending", sent: "Sent", failed: "Failed" }, pe = { queued:
 };
 function he(e) {
   if (!e) return "";
-  const t = O[e.kind];
+  const t = V[e.kind];
   return t ? e.kind === "test" || e.kind === "resend" ? t : e.label ? `${t} · ${e.label}` : t : e.label;
 }
 const M = 1440 * 60 * 1e3, R = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric" }), x = new Intl.DateTimeFormat(void 0, { month: "short", day: "numeric", year: "numeric" }), z = new Intl.DateTimeFormat(void 0, { hour: "2-digit", minute: "2-digit" }), J = new Intl.DateTimeFormat(void 0, { dateStyle: "medium", timeStyle: "short" });
@@ -259,11 +264,11 @@ function W(e, t = Date.now()) {
   const a = S(t);
   return e >= a ? "Today" : e >= a - M ? "Yesterday" : new Date(e).getFullYear() === new Date(t).getFullYear() ? R.format(e) : x.format(e);
 }
-function fe(e, t = Date.now()) {
+function ge(e, t = Date.now()) {
   const a = W(e, t);
   return a === "Today" || a === "Yesterday" ? a.toLowerCase() : "on " + a;
 }
-function ge(e, t = Date.now()) {
+function fe(e, t = Date.now()) {
   const a = S(t);
   return e >= a ? z.format(e) : e >= a - M ? "Yesterday" : new Date(e).getFullYear() === new Date(t).getFullYear() ? R.format(e) : x.format(e);
 }
@@ -276,7 +281,7 @@ function ye(e) {
 function ve(e, t, a = t + "s") {
   return `${e} ${e === 1 ? t : a}`;
 }
-const y = {
+const D = {
   mail_revision_conflict: "Someone saved this resource while you were looking at it. The latest version is shown now; review it and try again.",
   mail_resource_not_found: "This resource no longer exists.",
   mail_revision_not_found: "That version is no longer in History.",
@@ -339,37 +344,40 @@ function we(e, t, a = "in Settings → Mail") {
       return;
   }
 }
-function $e(e, t) {
+function be(e, t) {
   if (!(e instanceof c) || e.status === void 0) return `${t} Check your connection and try again.`;
   const a = G(e);
-  return a && y[a] ? y[a] : e.status === 403 ? y.mail_library_denied : e.status >= 500 ? `${t} Try again in a moment.` : e.message || t;
+  return a && D[a] ? D[a] : e.status >= 500 ? `${t} Try again in a moment.` : e.message || t;
 }
-function be(e) {
-  return e.code === "gmail_html_clipping" && e.bytes && e.threshold_bytes ? `Gmail may clip this email: its HTML is ${D(e.bytes)}, above Gmail’s ${D(e.threshold_bytes)}. Readers then see only the start until they open the rest.` : e.message;
+function $e(e) {
+  return e.code === "gmail_html_clipping" && e.bytes && e.threshold_bytes ? `Gmail may clip this email: its HTML is ${T(e.bytes)}, above Gmail’s ${T(e.threshold_bytes)}. Readers then see only the start until they open the rest.` : e.message;
 }
 function ke(e) {
   return e.trim().toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
 }
 const Te = "Use lower-case letters, digits, hyphens and underscores, starting with a letter or digit.";
 function De(e, t) {
-  const a = A(e, t);
-  q(() => {
-    typeof a == "function" && a();
-  });
+  const a = I(e, t);
+  q(a);
+}
+function Ie(e, t) {
+  e?.dispatchEvent(new CustomEvent("navigate", { detail: { path: t }, bubbles: !0, composed: !0 }));
 }
 export {
   c as A,
-  ne as B,
-  ye as C,
-  ge as D,
-  ae as E,
-  se as F,
-  K as G,
+  pe as B,
+  se as C,
+  ye as D,
+  fe as E,
+  ae as F,
+  ne as G,
+  A as H,
+  N as I,
   Z as _,
   ue as a,
-  D as b,
+  T as b,
   oe as c,
-  $e as d,
+  be as d,
   G as e,
   de as f,
   ee as g,
@@ -379,17 +387,17 @@ export {
   re as k,
   Y as l,
   le as m,
-  fe as n,
+  ge as n,
   he as o,
   ve as p,
-  V as q,
-  te as r,
+  O as q,
+  Ie as r,
   W as s,
-  ke as t,
+  te as t,
   De as u,
-  Te as v,
-  be as w,
-  we as x,
-  me as y,
-  pe as z
+  ke as v,
+  $e as w,
+  Te as x,
+  we as y,
+  me as z
 };

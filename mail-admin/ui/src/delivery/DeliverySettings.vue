@@ -14,6 +14,7 @@ import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
 import { activity, delivery as deliveryApi, isDenied } from '../api'
 import { deliveryFailure, describe } from '../copy'
 import { useMailInvalidation } from '../realtime'
+import { navigate } from '../navigation'
 import type { DeliveryStatus, LogMessage } from '../types'
 import { chooseService, isConflict } from './api'
 import SettingsProvider, { type ProviderConfig } from './SettingsProvider.vue'
@@ -43,9 +44,7 @@ async function load() {
   }
 }
 function openMail(path = '') {
-  root.value?.dispatchEvent(new CustomEvent('navigate', {
-    detail: { path: '/system/mail' + path }, bubbles: true, composed: true,
-  }))
+  navigate(root.value, '/system/mail' + path)
 }
 
 const transports = computed(() => status.value?.transports ?? [])

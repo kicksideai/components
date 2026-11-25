@@ -67,6 +67,8 @@ describe('Images', () => {
     routes()
     const writeText = vi.fn(() => Promise.resolve())
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const previousUrl = window.location.href
+    window.history.replaceState(null, '', '/workspace/system/mail/assets/logo')
     const wrapper = await open('assets/logo')
     const drawer = document.body.querySelector<HTMLElement>('.mail-drawer-body')!
     expect(drawer.contains(document.activeElement)).toBe(true)
@@ -75,8 +77,9 @@ describe('Images', () => {
     expect(drawer.textContent).toContain('Notice')
     dialogButton('Copy link')!.click()
     await flushPromises()
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/system/mail/assets/logo`)
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/workspace/system/mail/assets/logo`)
     wrapper.unmount()
+    window.history.replaceState(null, '', previousUrl)
   })
 
   it('refuses to delete an image that a message shows, without asking first or calling the server', async () => {

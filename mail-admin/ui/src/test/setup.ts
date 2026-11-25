@@ -19,13 +19,14 @@ vi.mock('@wippy-fe/proxy', () => ({
   }),
 }))
 vi.mock('@wippy-fe/webcomponent-vue', async () => {
-  const { onMounted, onUnmounted } = await import('vue')
+  const { onMounted, onUnmounted, watch } = await import('vue')
   return {
     useProps: () => hostProps,
     useEvents: () => hostEmit,
     useHostVisibility: () => hostVisible,
     useHostVisibilityRefresh: (task: () => Promise<void>) => {
       visibility.add(task); onMounted(task); onUnmounted(() => visibility.delete(task))
+      watch(hostVisible, (visible, previous) => { if (visible === true && previous === false) void task() })
     },
   }
 })

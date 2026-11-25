@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-export type ComponentProps = Record<string, unknown>
 
 export type TemplateKind = 'message' | 'base' | 'part'
 export type ResourceKind = TemplateKind | 'asset'

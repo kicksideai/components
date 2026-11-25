@@ -13,9 +13,12 @@ export TMPDIR="${TMPDIR:-$PWD/.wippy/tmp}"
 mkdir -p "$TMPDIR"
 LOG="${WIPPY_TEST_LOG:-.wippy/last-test-run.log}"
 WIPPY_TEST_REQUIRE_CASES=1 "${WIPPY:-wippy}" test "$@" 2>&1 | tee -- "$LOG"
-LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' "$LOG" | tr '\r' '\n' | awk '
+if ! LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' "$LOG" | tr '\r' '\n' | awk '
   /No tests found|No tests match/ { empty = 1 }
   /^[[:space:]]*FAILED([[:space:]]|$)/ { failed = 1 }
   /^[[:space:]]*PASSED([[:space:]]|$)/ { passed = 1 }
   END { exit(empty || failed || !passed) }
-'
+'; then
+  echo "Mail Admin harness did not report a passing suite. See $LOG." >&2
+  exit 1
+fi

@@ -102,11 +102,29 @@ describe('Mail administration shell', () => {
     await flushPromises()
     hostVisible.value = true
     await flushPromises()
-    expect(libraryParams().filter(params => !params.cursor)).toHaveLength(1)
+    expect(libraryParams().filter(params => !params.cursor)).toHaveLength(2)
     await wrapper.findAll('.mail-more button').at(-1)!.trigger('click')
     await flushPromises()
     expect(libraryParams().at(-1)?.cursor).toBe('c1')
     expect(rowNames(wrapper)).toHaveLength(6)
+    wrapper.unmount()
+  })
+
+  it('reports a capabilities error and clears it when the host reveals the page again', async () => {
+    const capabilities = '/api/v1/mail/capabilities'
+    serve([
+      get('/api/v1/mail/library', () => ok({ items: [] })),
+      get(capabilities, () => refuse(503, { error: 'Unavailable' })),
+    ])
+    const wrapper = await open()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Mail access and delivery settings could not be loaded.')
+    hostVisible.value = false
+    await flushPromises()
+    serveLibrary()
+    hostVisible.value = true
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(railLabels(wrapper)).toContain('Activity')
     wrapper.unmount()
   })
 

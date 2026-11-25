@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { wippyComponentPlugin } from '@wippy-fe/vite-plugin'
 import { defineConfig } from 'vite'
-import { wcRuntimeChunk } from '@kickside/components-admin-runtime/build'
+import { wcRuntimeChunk } from './wc-build.mjs'
 import hostImportMap from './web-host.import-map.snapshot.json'
 
 const moduleRoot = fileURLToPath(new URL('.', import.meta.url))

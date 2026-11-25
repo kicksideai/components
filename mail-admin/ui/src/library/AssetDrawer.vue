@@ -93,7 +93,7 @@ async function copyLink() {
   const item = asset.value
   if (!item) return
   try {
-    await navigator.clipboard.writeText(`${window.location.origin}/system/mail/assets/${encodeURIComponent(item.name)}`)
+    await navigator.clipboard.writeText(window.location.href)
     linkCopied.value = true
   } catch {
     linkCopied.value = false

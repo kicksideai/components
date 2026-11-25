@@ -51,4 +51,20 @@ describe('Library references', () => {
     expect(library().lookupError.value).toBe('')
     wrapper.unmount()
   })
+
+  it('does not cache search results from before a library refresh', async () => {
+    let finish!: (value: Awaited<ReturnType<typeof ok>>) => void
+    const pending = new Promise<Awaited<ReturnType<typeof ok>>>(resolve => { finish = resolve })
+    serve([get('/api/v1/mail/library', () => pending)])
+    const { wrapper, library } = withLibrary(() => '')
+    const search = library().search('message', 'notice')
+    library().refresh()
+    finish(await ok({ items: [notice] }))
+    await search
+    serve([get('/api/v1/mail/library', () => ok({ items: [] }))])
+    expect(library().exists('message', 'notice')).toBeUndefined()
+    await flushPromises()
+    expect(library().exists('message', 'notice')).toBe(false)
+    wrapper.unmount()
+  })
 })

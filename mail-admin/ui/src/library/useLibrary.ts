@@ -99,8 +99,9 @@ export function useLibrary() {
 
   // One page of a kind matching a search, in Mail's order, optionally among exact names.
   async function search(kind: ResourceKind, q?: string, names?: string[]): Promise<LibraryPage> {
+    const current = generation.value
     const page = await library.page({ kind, q: q || undefined, names, limit: SEARCH_LIMIT })
-    remember(page.items)
+    if (current === generation.value) remember(page.items)
     return page
   }
 

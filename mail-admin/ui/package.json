@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "@iconify/vue": "^5.0.0",
-    "@kickside/components-admin-runtime": "file:../../packages/admin-runtime",
     "@types/node": "^22.0.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/test-utils": "^2.5.1",

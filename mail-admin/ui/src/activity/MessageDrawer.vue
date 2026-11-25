@@ -6,7 +6,6 @@ import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
 import Skeleton from 'primevue/skeleton'
 import Tag from 'primevue/tag'
-import { host } from '@wippy-fe/proxy'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import Disclosure from '@kickside/ui-kit/Disclosure.vue'
 import { activity, isDenied, isMissing } from '../api'
@@ -14,6 +13,7 @@ import { useMail } from '../context'
 import { useReturnFocus } from '../focus'
 import { deliveryFailure, describe, fullDate, originText, personLabel, statusLabels, statusSeverity } from '../copy'
 import { useMailInvalidation } from '../realtime'
+import { navigate } from '../navigation'
 import type { LogMessage, SendReceipt } from '../types'
 
 const props = defineProps<{ messageId?: string }>()
@@ -88,7 +88,7 @@ async function copyLink() {
   const item = message.value
   if (!item) return
   try {
-    await navigator.clipboard.writeText(`${window.location.origin}/system/mail/activity/${encodeURIComponent(item.message_id)}`)
+    await navigator.clipboard.writeText(window.location.href)
     copied.value = true
   } catch {
     copied.value = false
@@ -166,7 +166,7 @@ const technical = computed(() => {
               <Button v-if="capabilities?.send && message.can_resend" label="Send again" :loading="sending" @click="sendAgain">
                 <template #icon><Icon icon="tabler:send" aria-hidden="true" /></template>
               </Button>
-              <Button v-if="capabilities?.administer_delivery" label="Open delivery settings" severity="secondary" outlined @click="host.navigate('/system/settings/mail')" />
+              <Button v-if="capabilities?.administer_delivery" label="Open delivery settings" severity="secondary" outlined @click="navigate($event.currentTarget, '/system/settings/mail')" />
             </div>
           </div>
         </div>

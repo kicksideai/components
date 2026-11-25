@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 import { api, on } from '@wippy-fe/proxy'
-import { ApiError, failure, request } from '@kickside/components-admin-runtime/http'
+import { ApiError, failure, request } from './http'
 import type {
   Capabilities, DeliveryStatus, DraftRender, HistoryItem, Items, LibraryPage, LibraryRow, LogMessage, MessagePage, MessageStatus,
   Resource, ResourceContent, ResourceKey, ResourceKind, ResourceState, Revision, SendReceipt,
@@ -75,7 +75,7 @@ async function written(key: ResourceKey, send: () => Promise<Resource | LibraryR
       await changed
     }
   } finally {
-    if (typeof off === 'function') off()
+    off()
   }
 }
 
@@ -201,5 +201,5 @@ export function isDenied(error: unknown): boolean {
 }
 
 export function isMissing(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 404 || error.kind?.replaceAll('_', '').toLowerCase() === 'notfound')
+  return error instanceof ApiError && (error.status === 404 || error.kind === 'NOT_FOUND')
 }

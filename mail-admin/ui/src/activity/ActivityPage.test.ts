@@ -103,7 +103,12 @@ describe('Mail activity', () => {
     const text = wrapper.find('.mail-failure').text()
     expect(text).toContain('Acme Mail refused to send for this account.')
     expect(wrapper.findAll('button').some(node => node.text() === 'Send again')).toBe(true)
-    expect(wrapper.findAll('button').some(node => node.text() === 'Open delivery settings')).toBe(true)
+    const navigate = vi.fn()
+    wrapper.element.addEventListener('navigate', navigate)
+    await wrapper.findAll('button').find(node => node.text() === 'Open delivery settings')!.trigger('click')
+    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({
+      detail: { path: '/system/settings/mail' }, bubbles: true, composed: true,
+    }))
     wrapper.unmount()
   })
 

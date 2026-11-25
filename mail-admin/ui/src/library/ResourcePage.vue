@@ -21,6 +21,7 @@ import VersionDialog from '../editor/VersionDialog.vue'
 import { problemOf, type Problem } from '../editor/problems'
 import { useMailInvalidation } from '../realtime'
 import { sectionOf, type ResourceSection } from '../route'
+import { navigate } from '../navigation'
 import type { HistoryItem, Resource, ResourceContent, Revision, TemplateKind } from '../types'
 import HistoryList from './HistoryList.vue'
 import { customizationText, originalRevision, resourceHeadings } from './resourceHeadings'
@@ -362,11 +363,11 @@ watch(() => props.section, () => { notice.value = carried; carried = ''; actionE
       <p v-if="dirty && blockedReason && !stale" class="mail-muted mail-blocked" role="status">{{ blockedReason }}</p>
       <p v-else-if="kind === 'message' && !dirty && testDisabled" class="mail-muted mail-blocked" role="status">{{ testDisabled }}
         <Button v-if="capabilities?.administer_delivery && delivery && !delivery.configured" link size="small" class="mail-inline-link" label="Open delivery settings"
-          @click="host.navigate('/system/settings/mail')" /></p>
+          @click="navigate($event.currentTarget, '/system/settings/mail')" /></p>
       <p v-if="actionError && conflict" class="kx-notice warn mail-block" role="alert"><Icon icon="tabler:alert-triangle" aria-hidden="true" />{{ actionError }}</p>
       <p v-else-if="actionError" class="kx-err mail-error" role="alert"><span>{{ actionError }}</span>
         <Button v-if="setupFailure && capabilities?.administer_delivery" label="Open delivery settings" severity="secondary" outlined size="small"
-          @click="host.navigate('/system/settings/mail')" /></p>
+          @click="navigate($event.currentTarget, '/system/settings/mail')" /></p>
       <p v-if="notice" class="kx-notice info mail-block" role="status"><Icon icon="tabler:circle-check" aria-hidden="true" />{{ notice }}</p>
       <div v-if="customizedNotice && section === 'content'" class="kx-notice mail-customized">
         <Icon icon="tabler:pencil" aria-hidden="true" />

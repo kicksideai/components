@@ -37,7 +37,6 @@ entries:
     mime_types:
       .js: application/javascript
       .css: text/css
-      .map: application/json
 - name: admin
   kind: registry.entry
   meta:
@@ -67,7 +66,11 @@ entries:
       properties:
         route:
           type: string
-      required: [route]
+        path:
+          type: string
+      oneOf:
+        - required: [route]
+        - required: [path]
     dirty-change:
       type: object
       properties:
@@ -106,6 +109,13 @@ entries:
       config:
         type: object
         description: Settings block configuration from the Settings page.
+  events:
+    navigate:
+      type: object
+      properties:
+        path:
+          type: string
+      required: [path]
 - name: delivery_block
   kind: registry.entry
   meta:
