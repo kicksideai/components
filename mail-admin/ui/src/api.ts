@@ -40,7 +40,7 @@ const reviewMessage = (key: ResourceKey) => key.kind === 'message' ? key.name : 
 
 async function review(key: ResourceKey, draft: Record<string, unknown>): Promise<string> {
   const result = await request<ReviewedDraft>(
-    () => api.post(`${BASE}/library/preview`, { message: reviewMessage(key), ...draft }, { params: { review: 'true' } }),
+    () => api.post(`${BASE}/library/preview`, { message: reviewMessage(key), ...draft }),
     'Review changes',
   )
   const issue = result.errors?.[0]
@@ -59,15 +59,29 @@ async function createResource(body: ResourceContent | CopyRequest, note?: string
   return request<Resource>(() => api.post(`${BASE}/library`, { ...proposed, preview_id }), 'Create resource')
 }
 
+function libraryPage(filter: LibraryFilter = {}) {
+  return request<LibraryPage>(
+    () => api.get(`${BASE}/library`, { params: params({ limit: 100, ...filter }) }), 'Mail library')
+}
+
+async function allPages<T>(load: (cursor?: string) => Promise<Items<T> & { next_cursor?: string }>): Promise<T[]> {
+  const items: T[] = []
+  let cursor: string | undefined
+  do {
+    const page = await load(cursor)
+    items.push(...page.items)
+    cursor = page.next_cursor
+  } while (cursor)
+  return items
+}
+
 export const library = {
-  page: (filter: LibraryFilter = {}) =>
-    request<LibraryPage>(() => api.get(`${BASE}/library`, { params: params({ view: 'summary', limit: 100, ...filter }) }), 'Mail library'),
-  // Images carry no template source, so their full rows are small enough to list whole.
-  assets: (q?: string) =>
-    request<Items<Resource>>(() => api.get(`${BASE}/library`, { params: params({ kind: 'asset', q }) }), 'Assets').then(r => r.items),
+  page: libraryPage,
+  assets: (q?: string) => allPages(cursor => libraryPage({ kind: 'asset', q, cursor })),
   get: (key: ResourceKey) => request<Resource>(() => api.get(resourcePath(key)), 'Mail resource'),
-  history: (key: ResourceKey) =>
-    request<Items<Revision>>(() => api.get(`${resourcePath(key)}/history`), 'Resource history').then(r => r.items),
+  history: (key: ResourceKey) => allPages(cursor =>
+    request<Items<Revision> & { next_cursor?: string }>(
+      () => api.get(`${resourcePath(key)}/history`, { params: params({ cursor }) }), 'Resource history')),
   copy: (body: CopyRequest) => createResource(body),
   create: (content: ResourceContent, note?: string) => createResource(editable(content), note),
   async update(content: ResourceContent, expected: number, note?: string) {

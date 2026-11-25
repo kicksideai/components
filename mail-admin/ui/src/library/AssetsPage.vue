@@ -8,7 +8,6 @@ import DataTable from 'primevue/datatable'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
-import Skeleton from 'primevue/skeleton'
 import { latestRequest } from '@kickside/ui-kit/latestRequest'
 import EmptyState from '@kickside/ui-kit/EmptyState.vue'
 import SettingsSectionHead from '@kickside/ui-kit/SettingsSectionHead.vue'
@@ -17,20 +16,19 @@ import { isDenied, library as libraryApi } from '../api'
 import { useMail } from '../context'
 import { bytes, describe, plural, shortDate } from '../copy'
 import { useMailInvalidation } from '../realtime'
-import type { Resource } from '../types'
+import type { LibraryRow } from '../types'
 import AssetDrawer from './AssetDrawer.vue'
 import AssetTile from './AssetTile.vue'
 import ResourceSource from './ResourceSource.vue'
 
 const props = defineProps<{ asset?: string }>()
-const { go, upload, library } = useMail()
-library.use('asset')
+const { go, upload } = useMail()
 
 const query = ref(''), search = ref('')
 let timer: ReturnType<typeof setTimeout> | undefined
 watch(query, value => { clearTimeout(timer); timer = setTimeout(() => { search.value = value.trim() }, 250) })
 
-const rows = shallowRef<Resource[]>([])
+const rows = shallowRef<LibraryRow[]>([])
 const loading = ref(true), loaded = ref(false), denied = ref(false)
 const error = ref(''), refreshError = ref('')
 const begin = latestRequest()
@@ -58,21 +56,20 @@ watch(search, () => { void load() })
 useHostVisibilityRefresh(() => load(loaded.value))
 useMailInvalidation('mail.library', () => { void load(loaded.value) })
 
-function usedBy(row: Resource): string | undefined {
-  const count = library.find('asset', row.name)?.used_by?.messages
-  if (count === undefined) return library.ready('asset') ? '—' : undefined
+function usedBy(row: LibraryRow): string {
+  const count = row.used_by?.messages
   return count ? plural(count, 'message') : '—'
 }
 
 const total = computed(() => rows.value.reduce((sum, row) => sum + (row.asset?.size ?? 0), 0))
 const countLabel = computed(() => `${plural(rows.value.length, 'image')} · ${bytes(total.value)}`)
-function size(row: Resource): string {
+function size(row: LibraryRow): string {
   const asset = row.asset
   if (!asset) return ''
   const box = asset.width && asset.height ? `${asset.width} × ${asset.height} · ` : ''
   return box + bytes(asset.size)
 }
-function open(row: Resource) { go({ name: 'library', section: 'assets', asset: row.name }) }
+function open(row: LibraryRow) { go({ name: 'library', section: 'assets', asset: row.name }) }
 </script>
 
 <template>
@@ -122,8 +119,7 @@ function open(row: Resource) { go({ name: 'library', section: 'assets', asset: r
       </Column>
       <Column header="Used by" header-class="mail-col-used" body-class="mail-col-used">
         <template #body="{ data }">
-          <Skeleton v-if="usedBy(data) === undefined" width="5rem" height="1rem" />
-          <span v-else>{{ usedBy(data) }}</span>
+          <span>{{ usedBy(data) }}</span>
         </template>
       </Column>
       <Column header="Source" header-class="mail-col-source" body-class="mail-col-source">

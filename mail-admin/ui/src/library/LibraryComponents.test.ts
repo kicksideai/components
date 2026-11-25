@@ -20,8 +20,7 @@ function routes(extra: Parameters<typeof serve>[0] = []) {
     ...extra,
     get('/api/v1/mail/library', (_path, options) => {
       const params = (options as { params: Record<string, string> }).params
-      if (params.kind === 'asset' && params.view !== 'summary') return ok({ items: [logo, banner] })
-      if (params.kind === 'asset') return ok({ items: [row(logo, { used_by: { messages: 1 } }), row(banner, { used_by: { messages: 0 } })] })
+      if (params.kind === 'asset') return ok({ items: [row(logo, { asset: logo.asset, used_by: { messages: 1 } }), row(banner, { asset: banner.asset, used_by: { messages: 0 } })] })
       if (params.kind === 'message') return ok({ items: [row(notice)] })
       if (params.kind === 'base') return ok({ items: [row(standard)] })
       return ok({ items: [row(standard), row(notice)] })

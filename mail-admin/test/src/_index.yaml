@@ -50,7 +50,7 @@ entries:
     group_id: app:editor
     policies:
       - kickside.mail.security:library_access
-      - kickside.mail.security:library_calls
+      - kickside.mail.security:library_runtime
       - kickside.mail.security:library_endpoints
       - kickside.mail.security:module_runtime
       - kickside.mail.security:member_endpoints

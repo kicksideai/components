@@ -41,7 +41,7 @@ describe('Mail administration shell', () => {
     serveLibrary()
     const wrapper = await open()
     expect(railLabels(wrapper)).toEqual(['All resources', 'Messages', 'Base templates', 'Parts', 'Images', 'Activity'])
-    expect(libraryParams().every(params => params.view === 'summary')).toBe(true)
+    expect(libraryParams()).toEqual([{ limit: '100' }])
     // The server's order, as it pages.
     expect(rowNames(wrapper)).toEqual(['Standard', 'Newsletter', 'Footer', 'Notice', 'Weekly report', 'Mail logo'])
     const text = wrapper.findAll('tbody tr').map(node => node.text())
@@ -64,7 +64,7 @@ describe('Mail administration shell', () => {
     await wrapper.find('input[type="search"]').setValue('#183b60')
     vi.advanceTimersByTime(300)
     await flushPromises()
-    expect(libraryParams().at(-1)).toMatchObject({ q: '#183b60', state: 'customized', view: 'summary' })
+    expect(libraryParams().at(-1)).toMatchObject({ q: '#183b60', state: 'customized' })
     vi.useRealTimers()
     wrapper.unmount()
   })

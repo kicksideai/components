@@ -62,7 +62,7 @@ export interface Resource extends ResourceContent {
   original?: OriginalSource
 }
 
-// A body-free library row from `view=summary`.
+// A library row without template source.
 export interface LibraryRow {
   kind: ResourceKind
   name: string
@@ -76,6 +76,7 @@ export interface LibraryRow {
   author?: string
   author_label?: PrincipalLabel
   updated_at?: number
+  asset?: Asset
   used_by?: { messages?: number; recent_sources?: number }
 }
 
