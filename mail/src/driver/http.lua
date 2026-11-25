@@ -103,6 +103,7 @@ function M.post(url: string, body: string, headers: {[string]: string}, deadline
     })
     if err then
         if not response and err:retryable() then
+            -- The runtime wrapper preserves the cause's kind.
             return nil, errors.wrap(errors.new({kind = errors.UNAVAILABLE, message = err:message(), retryable = true,
                 details = {code = "provider_transport_failed", cause = error_envelope.encode(err)}}),
                 "Mail delivery request failed")

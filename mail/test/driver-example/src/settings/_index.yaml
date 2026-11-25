@@ -20,20 +20,3 @@ entries:
     source: file://validate.lua
     method: api_key
     imports: {config: kickside.mail.driver:config}
-  - name: settings_block
-    kind: registry.entry
-    meta:
-      type: kickside.settings:block
-      comment: The Example Relay entry in System Settings, beside Mail; the shared settings card edits this namespace.
-    key: mail-driver-example
-    title: Example Relay
-    icon: lucide:mail
-    group: Integrations
-    order: 40
-    component_tag: kickside-settings-provider
-    namespace: example.mail.relay
-    config:
-      namespace: example.mail.relay
-      title: Example Relay
-      icon: lucide:mail
-      help: Example Relay API key for Mail delivery.

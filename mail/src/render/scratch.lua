@@ -115,6 +115,7 @@ local function diagnostic_details(err: error): types.Record
 end
 
 local function invalid(err: error): error
+    -- The runtime wrapper preserves the cause's kind.
     return errors.new({kind = errors.INVALID, retryable = false, message = err:message(),
         details = diagnostic_details(err)})
 end

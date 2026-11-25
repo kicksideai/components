@@ -43,6 +43,7 @@ function M.append(threads: types.LibraryThreads, author: string, op: string, com
 end
 
 function M.wait_deadline(): string
+    -- The pinned runtime does not expose the caller's deadline.
     return time.now():add(5 * time.SECOND):format(time.RFC3339)
 end
 
