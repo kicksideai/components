@@ -14,7 +14,10 @@ const emit = defineEmits<{ close: []; created: [id: string] }>()
 const title = ref(''), error = ref<ReturnType<typeof presentError>>(), busy = ref(false)
 let idempotencyKey: string
 watch(() => props.visible, visible => {
-  if (visible) idempotencyKey = crypto.randomUUID()
+  if (visible) {
+    const words = crypto.getRandomValues(new Uint32Array(4))
+    idempotencyKey = Array.from(words, word => word.toString(16).padStart(8, '0')).join('')
+  }
 }, { immediate: true })
 
 async function create() {
