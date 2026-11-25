@@ -15,11 +15,12 @@ const rows: LibraryRow[] = [
   row(resource('message', 'weekly', { title: 'Weekly report', base: 'standard', state: 'created', author: 'user-1', revision: 2 })),
   row(resource('asset', 'logo', { title: 'Mail logo' }), { used_by: { messages: 2 } }),
 ]
+const capabilities = { send: true, edit_library: true, administer_delivery: true }
 
-function serveLibrary(capabilities = { send: true, edit_library: true, administer_delivery: true }, items = rows) {
+function serveLibrary(access = capabilities, items = rows) {
   serve([
     get('/api/v1/mail/library', () => ok({ items: [...items] })),
-    get('/api/v1/mail/capabilities', () => ok(capabilities)),
+    get('/api/v1/mail/capabilities', () => ok(access)),
     get('/api/v1/mail/delivery', () => ok({ configured: true })),
   ])
 }
@@ -89,6 +90,7 @@ describe('Mail administration shell', () => {
 
   it('reads one page of the library on mount and on return to the page, and shows more on request', async () => {
     serve([
+      get('/api/v1/mail/capabilities', () => ok(capabilities)),
       get('/api/v1/mail/library', (_path, options) => {
         const cursor = (options as { params: Record<string, string> }).params.cursor
         return ok(cursor ? { items: rows.slice(3), total: 6 } : { items: rows.slice(0, 3), next_cursor: 'c1', total: 6 })
@@ -130,6 +132,7 @@ describe('Mail administration shell', () => {
 
   it('keeps the rows when Show more fails and offers Retry beside them', async () => {
     serve([
+      get('/api/v1/mail/capabilities', () => ok(capabilities)),
       get('/api/v1/mail/library', (_path, options) => (options as { params: Record<string, string> }).params.cursor
         ? refuse(500, { error: 'down', kind: 'INTERNAL' }) : ok({ items: rows.slice(0, 3), next_cursor: 'c1' })),
       get('/api/v1/mail/delivery', () => ok({ configured: true })),
@@ -151,12 +154,16 @@ describe('Mail administration shell', () => {
   })
 
   it('shows the no-permission notice and the error with Retry', async () => {
-    serve([get('/api/v1/mail/library', () => refuse(403, { error: 'Edit mail library access is required', kind: 'PERMISSION_DENIED', details: { code: 'mail_library_denied' } }))])
+    const status = [
+      get('/api/v1/mail/capabilities', () => ok(capabilities)),
+      get('/api/v1/mail/delivery', () => ok({ configured: true })),
+    ]
+    serve([...status, get('/api/v1/mail/library', () => refuse(403, { error: 'Edit mail library access is required', kind: 'PERMISSION_DENIED', details: { code: 'mail_library_denied' } }))])
     let wrapper = await open()
     expect(wrapper.find('[role="alert"]').text()).toBe('Ask an administrator to grant you access to the mail library.')
     wrapper.unmount()
 
-    serve([get('/api/v1/mail/library', () => refuse(500, { error: 'database unavailable', kind: 'INTERNAL' }))])
+    serve([...status, get('/api/v1/mail/library', () => refuse(500, { error: 'database unavailable', kind: 'INTERNAL' }))])
     wrapper = await open()
     expect(wrapper.find('.kx-err').text()).toContain('The mail library could not be loaded. Try again in a moment.')
     serveLibrary()

@@ -20,6 +20,7 @@ const standard = resource('base', 'standard', { title: 'Standard', state: 'custo
 function routes(extra: Parameters<typeof serve>[0] = []) {
   serve([
     ...extra,
+    get('/api/v1/mail/capabilities', () => ok({ send: true, edit_library: true, administer_delivery: false })),
     get('/api/v1/mail/library', (_path, options) => {
       const params = (options as { params: Record<string, string> }).params
       if (params.kind === 'asset') return ok({ items: [row(logo, { asset: logo.asset, used_by: { messages: 1 } }), row(banner, { asset: banner.asset, used_by: { messages: 0 } })] })

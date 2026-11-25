@@ -24,11 +24,15 @@ function historyRoute(item: Resource, entries: ReturnType<typeof revision>[]) {
   })
 }
 
+const editorCapabilities = get('/api/v1/mail/capabilities', () => ok({ send: true, edit_library: true, administer_delivery: true }))
+const deliveryStatus = get('/api/v1/mail/delivery', () => ok({ configured: true }))
+
 function routes(item: Resource, extra: Parameters<typeof serve>[0] = []) {
   serve([
+    editorCapabilities,
     ...extra,
     get('/api/v1/mail/library', () => ok({ items: [...library] })),
-    get('/api/v1/mail/delivery', () => ok({ configured: true })),
+    deliveryStatus,
     get(`/api/v1/mail/library/${item.kind}/${item.name}`, () => ok(item)),
     historyRoute(item, [revision(item, item.revision), revision(item, item.revision - 1, { note: 'Brand refresh' })]),
     post('/api/v1/mail/library/preview', () => ok({ preview_id: 'review-id', subject: 'Hello', html: '<html><body><img src="cid:mail-library-logo"> Preview</body></html>', text: 'Preview', inline_assets: { 'mail-library-logo': 'data:image/png;base64,AAAA' } })),
@@ -173,6 +177,7 @@ describe('Library resource editor', () => {
 
   it('holds Send test while delivery is not set up and says why in the page', async () => {
     serve([
+      editorCapabilities,
       get('/api/v1/mail/library', () => ok({ items: library })),
       get('/api/v1/mail/delivery', () => ok({ configured: false, reason: 'Choose a delivery service for Mail.' })),
       get('/api/v1/mail/library/message/notice', () => ok(notice)),
@@ -190,6 +195,8 @@ describe('Library resource editor', () => {
   it('keeps the draft and blocks saving when someone else saves the resource meanwhile', async () => {
     let current: Resource = welcome
     serve([
+      editorCapabilities,
+      deliveryStatus,
       get('/api/v1/mail/library', () => ok({ items: [...library] })),
       get('/api/v1/mail/library/message/welcome', () => ok(current)),
       get('/api/v1/mail/library/message/welcome/history', () => ok({ items: [] })),
@@ -328,6 +335,8 @@ describe('Library resource editor', () => {
   it('shows the gone state when the resource is deleted elsewhere', async () => {
     let gone = false
     serve([
+      editorCapabilities,
+      deliveryStatus,
       get('/api/v1/mail/library', () => ok({ items: [...library] })),
       get('/api/v1/mail/library/message/welcome', () => gone
         ? refuse(404, { error: 'Mail library resource was not found', kind: 'NOT_FOUND', details: { code: 'mail_resource_not_found' } })

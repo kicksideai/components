@@ -14,8 +14,12 @@ const failed = message(failedId, {
 })
 const sent = message('1b9f1c2e-1111-4222-8333-444455556666', { subject: 'Weekly report', to: ['team@example.org', 'lead@example.org'], sent_at: Date.now() })
 
+const activityCapabilities = get('/api/v1/mail/capabilities', () => ok({ send: true, edit_library: true, administer_delivery: true }))
+const deliveryStatus = get('/api/v1/mail/delivery', () => ok({ configured: true }))
+
 function routes(extra: Parameters<typeof serve>[0] = []) {
   serve([
+    activityCapabilities,
     get('/api/v1/mail/library', () => ok({ items: [resource('message', 'notice', { title: 'Notice' })] })),
     get('/api/v1/mail/delivery', () => ok({ configured: true })),
     get('/api/v1/mail/activity', (_path, options) => {
@@ -94,6 +98,7 @@ describe('Mail activity', () => {
   it('offers Send again whenever Mail says the message can be resent, beside the delivery settings', async () => {
     const refused = { ...failed, last_error: { kind: 'INVALID', code: 'authorization_refused', message: 'Ask a mail administrator to check why the message was refused.' } }
     serve([
+      activityCapabilities,
       get('/api/v1/mail/library', () => ok({ items: [] })),
       get('/api/v1/mail/delivery', () => ok({ configured: true, driver: { id: 'fixture', label: 'Acme Mail' } })),
       get('/api/v1/mail/activity', () => ok({ items: [refused], has_more: false, total: 1, failed_today: 1 })),
@@ -114,6 +119,7 @@ describe('Mail activity', () => {
 
   it('says when the count is a minimum, and what a search covers', async () => {
     serve([
+      activityCapabilities,
       get('/api/v1/mail/library', () => ok({ items: [] })),
       get('/api/v1/mail/delivery', () => ok({ configured: true })),
       get('/api/v1/mail/activity', (_path, options) => ok({ items: [sent], has_more: true, next_cursor: 'x', total: 10000, total_is_lower_bound: true, failed_today: 0,
@@ -133,6 +139,7 @@ describe('Mail activity', () => {
 
   it('keeps a direct Activity link private for a sender without delivery administration', async () => {
     serve([
+      deliveryStatus,
       get('/api/v1/mail/library', () => ok({ items: [] })),
       get('/api/v1/mail/capabilities', () => ok({ send: true, edit_library: true, administer_delivery: false })),
     ])
@@ -151,6 +158,8 @@ describe('Mail activity', () => {
     expect(wrapper.find('.kx-notice.error').text()).toContain('1 message failed today.')
     const resolved = { ...failed, status: 'sent', subject: 'Invoice reminder (sent)', last_error: undefined }
     serve([
+      activityCapabilities,
+      deliveryStatus,
       get('/api/v1/mail/activity', () => ok({ items: [], has_more: false, total: 0, failed_today: 0 })),
       get(`/api/v1/mail/activity/${failedId}`, () => ok(resolved)),
       get('/api/v1/mail/library', () => ok({ items: [] })),
