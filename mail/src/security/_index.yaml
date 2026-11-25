@@ -223,27 +223,28 @@ entries:
       effect: allow
       conditions:
         - {field: meta.impl_id, operator: eq, value: "kickside.mail.binding:library"}
-  - name: adopted_asset_content
+  - name: asset_service
+    kind: security.scope
+  - name: asset_service_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: kickside.mail.security:asset_service
+    policies:
+      - kickside.contract.security:module_access
+      - kickside.component.security:module_access
+      - kickside.uploads.security:module_access
+  - name: asset_provider_calls
     kind: security.policy
     meta: {private: true, service_only: true}
     policy:
       resources:
-        - kickside.contract:content_provider
-        - kickside.uploads:content_provider
         - kickside.mail.binding:library
-        - kickside.uploads:uploads_component
-        - kickside.uploads.binding:get_info_func
-        - kickside.uploads.binding:get_content_func
+        - kickside.execution:maintenance_actor
+        - get_access_context
         - get_info
         - get_content
-        - kickside.component:component_service
-        - kickside.component.binding:component_service_impl
-        - kickside.component.binding:get_access_context_func
-        - kickside.component:db_config
-        - get_access_context
-        - kickside.execution:maintenance_actor
         - security
-      actions: [registry.get, contract.get, contract.open, contract.call, contract.security, funcs.call, funcs.security]
+      actions: [registry.get, contract.call, contract.security, funcs.call, funcs.security]
       effect: allow
   - name: mail_retention_actor
     kind: registry.entry

@@ -96,13 +96,12 @@ local run = test.run_cases(function()
             test.eq(original.origin, replaced.origin)
             test.eq(1, replaced.asset.width)
             test.neq(source, replaced.asset.upload_id)
-            local draft = call("render_draft", {message = "notice"})
-            test.not_nil(draft.inline_assets["mail-library-logo"]:match("^data:image/gif;base64,"))
             local person = settings.session("editor")
             local preview_client = assert(funcs.new():with_actor(person.actor):with_scope(person.scope))
             local scoped, scoped_err = preview_client:call(LIBRARY .. "render_draft", {message = "notice"})
             assert(scoped, tostring(scoped_err))
-            test.eq(draft.inline_assets["mail-library-logo"], scoped.inline_assets["mail-library-logo"])
+            local uri = "data:image/gif;base64," .. assert(base64.encode(gif()))
+            test.eq(uri, scoped.inline_assets["mail-library-logo"])
             local restored_package = call("reset", {kind = "asset", name = "logo", expected_revision = replaced.revision})
             test.eq("original", restored_package.state)
             local history = call("history", {kind = "asset", name = "logo"})
@@ -141,6 +140,32 @@ local run = test.run_cases(function()
             test.eq(replaced.revision, current.revision)
             test.neq(initial.revision, current.revision)
             test.eq(next_bytes, current.bytes)
+        end)
+
+        test.it("serves adopted images to a library editor without Uploads access", function()
+            local image = {kind = "asset", name = "restricted-editor-image", upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            call("create", image)
+            local person = settings.session("editor")
+            test.neq("allow", person.scope:evaluate(person.actor, "contract.open", "kickside.uploads:content_provider"))
+            test.neq("allow", person.scope:evaluate(person.actor, "fs.get", "app:uploads"))
+            local reader = assert(funcs.new():with_actor(person.actor):with_scope(person.scope))
+            local result, read_err = reader:call(LIBRARY .. "asset_content", image.name)
+            assert(result, tostring(read_err))
+            test.eq("image/gif", result.content_type)
+            test.eq(gif(), result.bytes)
+        end)
+
+        test.it("reads adopted bytes as Mail with the public Uploads capability", function()
+            local image = {kind = "asset", name = "service-reader-image", upload_id = upload("image/gif", gif())}
+            owned[1] = image
+            local adopted = call("create", image)
+            local person = settings.session("editor")
+            local reader = assert(funcs.new():with_actor(person.actor):with_scope(person.scope))
+            local result, read_err = reader:call("app.mail_library:service_content", adopted.asset.upload_id)
+            assert(result, tostring(read_err))
+            test.eq(asset_store.component_id(), result.component_id)
+            test.eq(gif(), result.bytes)
         end)
 
         test.it("finds references in base, part and message output once and guards deletion", function()
@@ -536,4 +561,13 @@ local expiry = test.run_cases(function()
     end)
 end)
 
-return {run = run, expiry = expiry}
+local function service_content(upload_id)
+    assert(security.actor():id() == "system:kickside.mail.retention")
+    local provider, info, err = attachments.upload_info(upload_id)
+    if err then return nil, err end
+    local content, read_err = attachments.upload_bytes(provider, info.size, 1024)
+    if read_err then return nil, read_err end
+    return {component_id = info.source_ref.component_id, bytes = content.content}
+end
+
+return {run = run, expiry = expiry, service_content = service_content}

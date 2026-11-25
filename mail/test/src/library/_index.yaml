@@ -71,3 +71,22 @@ entries:
     imports:
       projection: kickside.mail.library:projection
       types: kickside.mail:types
+  - name: service_content
+    kind: function.lua
+    source: *assets_source
+    method: service_content
+    modules: *assets_modules
+    imports: *assets_imports
+    security:
+      actor: {id: "system:kickside.mail.retention"}
+      groups: [kickside.mail.security:asset_service]
+      policies:
+        - kickside.mail.security:asset_provider_calls
+        - kickside.mail.security:outbox_db
+  - name: service_content_call
+    kind: security.policy
+    groups: [app.mail_api:editor]
+    policy:
+      resources: [app.mail_library:service_content]
+      actions: [funcs.call]
+      effect: allow

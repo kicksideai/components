@@ -19,10 +19,10 @@ entries:
       attachments: kickside.mail.service:attachments
     security:
       actor: { id: system:kickside.mail.retention }
+      groups: [kickside.mail.security:asset_service]
       policies:
         - kickside.mail.security:packaged_assets
-        - kickside.mail.security:adopted_asset_content
-        - kickside.uploads.security:uploads_resource_access
+        - kickside.mail.security:asset_provider_calls
         - kickside.mail.security:outbox_db
   - name: jet
     kind: library.lua
@@ -237,7 +237,6 @@ entries:
         - kickside.settings:reader_secrets
         - &asset_adopt kickside.mail.security:asset_adoption
         - &asset_adopt_action kickside.mail.security:asset_adoption_action
-        - &asset_content kickside.mail.security:adopted_asset_content
         - &asset_notify kickside.core.retention:notify_access
   - name: history
     kind: function.lua
@@ -267,7 +266,6 @@ entries:
         - *overlay_drafts
         - *asset_adopt
         - *asset_adopt_action
-        - *asset_content
         - *asset_notify
   - name: asset_add
     kind: function.lua
