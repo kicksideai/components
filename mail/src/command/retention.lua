@@ -43,6 +43,8 @@ local function collect(now_ms: integer, boundary: integer, limit: integer, retry
         local mark, lock_err = live_repo.lock_existing(tx, dialect)
         if lock_err then return nil, lock_err end
         local projected = mark and mark.projected_seq or 0
+        local _, settle_err = asset_file_repo.settle_adoptions(tx, now_ms, projected, limit)
+        if settle_err then return nil, settle_err end
         local rows, err = asset_file_repo.claim_due(tx, projected, now_ms, limit, retry_at)
         if err or #rows == limit then return rows, err end
         local retired, retired_err = asset_file_repo.claim_retired(tx, projected, boundary, limit - #rows, retry_at)

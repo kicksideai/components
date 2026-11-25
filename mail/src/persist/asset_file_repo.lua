@@ -5,6 +5,11 @@ local sql = require("sql")
 
 local M = {}
 
+local function adopted(projected: string): string
+    return "(state='held' AND hold_seq<=" .. projected .. [[
+    AND EXISTS (SELECT 1 FROM mail_library_upload_ref r WHERE r.upload_id=mail_asset_file.upload_id))]]
+end
+
 local function eligible(projected: string): string
     return [[(state='reaping' OR (
     (hold_seq IS NULL OR hold_seq<=]] .. projected .. [[)
@@ -13,7 +18,8 @@ local function eligible(projected: string): string
 end
 
 function M.next_due(ex: database.Executor, projected: integer): (integer?, error?)
-    local rows, err = ex:query("SELECT due_at FROM mail_asset_file WHERE due_at IS NOT NULL AND " .. eligible("$1")
+    local rows, err = ex:query("SELECT due_at FROM mail_asset_file WHERE due_at IS NOT NULL AND ("
+        .. eligible("$1") .. " OR " .. adopted("$1") .. ")"
         .. " ORDER BY due_at,upload_id LIMIT 1", {projected})
     if err then return nil, err end
     local first = rows[1]
@@ -61,9 +67,11 @@ function M.hold_restore(tx: database.Transaction, id: string, projected: integer
         details = {code = "mail_library_changed"}})
 end
 
-function M.finish_adoption(tx: database.Transaction, id: string, token: string): (boolean?, error?)
-    local _, err = tx:execute("UPDATE mail_asset_file SET due_at=NULL WHERE upload_id=$1 AND hold_id=$2 AND state='held'",
-        {id, token})
+function M.settle_adoptions(tx: database.Transaction, now: integer, projected: integer, limit: integer): (boolean?, error?)
+    local condition = adopted("$2")
+    local _, err = tx:execute([[UPDATE mail_asset_file SET due_at=NULL WHERE upload_id IN (
+        SELECT upload_id FROM mail_asset_file WHERE due_at <= $1 AND ]] .. condition .. [[
+        ORDER BY due_at,upload_id LIMIT $3) AND due_at <= $1 AND ]] .. condition, {now, projected, limit})
     if err then return nil, err end
     return true, nil
 end

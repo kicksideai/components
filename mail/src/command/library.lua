@@ -275,13 +275,6 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
             return nil, conflict(api, err, edits, batch)
         end
     end
-    local adopted = asset and operation ~= "restore" and batch[1].body.asset
-    if adopted then
-        local _, settle_err = database.with_tx(function(tx: database.Transaction): (boolean?, error?)
-            return asset_file_repo.finish_adoption(tx, adopted.upload_id, token)
-        end)
-        if settle_err then logger:warn("Mail asset adoption is committed", {error = tostring(settle_err)}) end
-    end
     return result(api, operation, edits, receipt.max_seq :: integer)
 end
 
