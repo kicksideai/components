@@ -3,6 +3,28 @@ local registry = require("registry")
 local test = require("test")
 
 local function cases()
+    test.it("uses Jobs' published consumer policy for Mail job producers and workers", function()
+        local public = "kickside.core.jobs.security:module_access"
+        local writer = assert(registry.get("kickside.mail.binding:library_create"))
+        local consumer = assert(registry.get("kickside.mail.security:jobs_consumer_composition"))
+        test.eq(consumer.data.group_id, writer.data.security.groups[1])
+        test.eq(public, consumer.data.policies[1])
+        for _, policy in ipairs(writer.data.security.policies) do
+            test.is_nil(policy:match("^kickside%.core%.jobs[.:]"), policy)
+        end
+        for _, id in ipairs({"kickside.mail.binding:mailer_send", "kickside.mail.delivery:deliver"}) do
+            local entry = assert(registry.get(id))
+            local found = false
+            for _, policy in ipairs(entry.data.security.policies) do
+                if policy:match("^kickside%.core%.jobs[.:]") then
+                    test.eq(public, policy, id)
+                    found = true
+                end
+            end
+            test.is_true(found, id)
+        end
+    end)
+
     test.it("declares closed schemas for every library input event and a component-owned fold", function()
         local binding = assert(registry.get("kickside.mail.binding:library"))
         local expected = {

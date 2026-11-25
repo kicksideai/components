@@ -172,16 +172,14 @@ entries:
         - kickside.mail.security:library_threads
         - kickside.mail.security:library_threads_caller
         - kickside.core.security:module_runtime
-        - kickside.core.jobs.security:module_access
-        - kickside.core.jobs.security:module_runtime
         - kickside.mail.security:job_notify
-        - kickside.core.jobs.persist:pool_nudge_access
         - kickside.core.security:module_access
         - kickside.mail.security:overlay_originals
         - kickside.mail.security:scratch_entries
         - kickside.mail.security:asset_adoption
         - kickside.mail.security:asset_adoption_action
         - kickside.core.retention:notify_access
+      groups: [kickside.mail.security:jobs_consumer]
   - name: library_update
     kind: function.lua
     source: *library_source
@@ -257,7 +255,6 @@ entries:
         - kickside.mail.security:deferred_delivery
         - kickside.mail.security:job_notify
         - kickside.core.jobs.security:module_access
-        - kickside.core.jobs.security:module_runtime
         - kickside.core.retention:notify_access
       groups: [kickside.mail.security:transports]
   - name: mailer_resend

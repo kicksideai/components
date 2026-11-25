@@ -153,6 +153,13 @@ entries:
       resources: [kickside.core.jobs:nudge_workers]
       actions: [funcs.call]
       effect: allow
+  - name: jobs_consumer
+    kind: security.scope
+  - name: jobs_consumer_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: kickside.mail.security:jobs_consumer
+    policies: [kickside.core.jobs.security:module_access]
   - name: deferred_delivery
     kind: security.policy
     meta: { private: true }
