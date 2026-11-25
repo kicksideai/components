@@ -96,7 +96,6 @@ entries:
       - { name: "kickside.uploads:database_resource", value: "app:db" }
       - { name: "kickside.uploads:storage_id", value: "app:uploads" }
       - { name: "kickside.uploads:storage_runtime_policy", value: "app:uploads_storage_access" }
-      - { name: "kickside.uploads:storage_adapter", value: "app.mail_library:upload_storage" }
       - { name: "kickside.uploads:env_storage", value: "app:env_storage" }
       - { name: "kickside.uploads:api_router", value: "app:api" }
       - { name: "kickside.uploads:ui_server", value: "app:gateway" }

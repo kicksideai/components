@@ -29,9 +29,12 @@ local function define(kind, name, html)
         schema = {type = "object", properties = {}}, samples = {}}
 end
 
-local run = test.run_cases(function()
+local function cases(race_only)
     test.describe("Mail library images", function()
         local state = {}
+        if race_only then
+            test.before_all(function() fixtures.await_live(0) end)
+        end
         test.before_each(function()
             state.owned, state.uploaders, state.configured = {}, {}, false
             state.storage = assert(fs.get("app:uploads"))
@@ -105,6 +108,23 @@ local run = test.run_cases(function()
             test.eq(seq, result.max_pruned_seq)
         end
 
+
+        local cases = {
+            test = test,
+            state = state,
+            call = call,
+            upload = upload,
+            gif = gif,
+            sweep = sweep,
+            prune_through = prune_through,
+            terminal = terminal,
+            define = define,
+            setup_actor = setup_actor,
+        }
+        if race_only then
+            asset_lifetime_cases.register(cases, true)
+            return
+        end
         test.it("refuses to append an adoption after its lease expires", function()
             local name = "expired-adoption-lease"
             local source = upload("image/gif", gif())
@@ -119,24 +139,12 @@ local run = test.run_cases(function()
             sweep(now)
         end)
 
-        local cases = {
-            test = test,
-            state = state,
-            call = call,
-            upload = upload,
-            gif = gif,
-            sweep = sweep,
-            prune_through = prune_through,
-            terminal = terminal,
-            define = define,
-            setup_actor = setup_actor,
-        }
         asset_lifetime_cases.register(cases)
         asset_content_cases.register(cases)
         asset_delivery_cases.register(cases)
 
     end)
-end)
+end
 
 local expiry = test.run_cases(function()
     test.describe("Mail asset expiry", function()
@@ -254,4 +262,8 @@ local expiry = test.run_cases(function()
     end)
 end)
 
-return {run = run, expiry = expiry}
+return {
+    run = test.run_cases(function() cases(false) end),
+    race = test.run_cases(function() cases(true) end),
+    expiry = expiry,
+}

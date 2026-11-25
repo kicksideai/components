@@ -170,6 +170,13 @@ entries:
       asset_lifetime_cases: app.mail_library:asset_lifetime_cases
       asset_content_cases: app.mail_library:asset_content_cases
       asset_delivery_cases: app.mail_library:asset_delivery_cases
+  - name: asset_race_test
+    kind: function.lua
+    meta: { type: harness.fixture, suite: mail_asset_race }
+    source: *assets_source
+    method: race
+    modules: *assets_modules
+    imports: *assets_imports
   - name: threads_fixture
     kind: library.lua
     source: &threads_fixture_source file://threads_fixture.lua

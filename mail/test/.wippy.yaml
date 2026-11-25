@@ -25,6 +25,10 @@ vars:
   pg_username: kickside
   pg_password: kickside
 profiles:
+  upload-race:
+    override:
+      kickside.uploads:storage_adapter:default: app.mail_library:upload_storage
+      app.mail_library:asset_race_test:meta.type: test
   postgres:
     override:
       app:db:kind: db.sql.postgres

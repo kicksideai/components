@@ -5,7 +5,7 @@ SHELL := bash
 ENCRYPTION_KEY ?= 0000000000000000000000000000000000000000000000000000000000000000
 export ENCRYPTION_KEY
 
-.PHONY: lockrefresh lint typecheck check-module structure test-docs test test-pg verify publish
+.PHONY: lockrefresh lint typecheck check-module structure test-docs test test-pg test-faults test-faults-pg verify publish
 lockrefresh:
 	cd test && $(WIPPY) update
 
@@ -21,6 +21,12 @@ test:
 test-pg:
 	WIPPY="$(WIPPY)" ./test/run.sh --profile postgres $(WIPPY_ARGS)
 
+test-faults:
+	WIPPY="$(WIPPY)" ./test/run.sh $(WIPPY_ARGS) --profile upload-race -- app.mail_library:asset_race_test
+
+test-faults-pg:
+	WIPPY="$(WIPPY)" ./test/run.sh --profile postgres $(WIPPY_ARGS) --profile upload-race -- app.mail_library:asset_race_test
+
 check-module:
 	WIPPY="$(WIPPY)" node scripts/check-module.mjs
 
@@ -31,7 +37,7 @@ test-docs:
 	python3 -B scripts/check-error-codes.py
 
 verify: structure test-docs lockrefresh
-	$(MAKE) lint typecheck check-module test
+	$(MAKE) lint typecheck check-module test test-faults
 
 publish:
 	@echo "Releases use GitHub Release Please (.github/workflows/release.yml)." >&2
