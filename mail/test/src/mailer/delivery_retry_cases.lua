@@ -21,9 +21,8 @@ local function register(support)
     local refusal = support.refusal
 
     test.it("stores provider details on retry and failure for log administrators only", function()
-        local admin, sender, log_admin = actors.admin, actors.sender, actors.log_admin
+        local admin, sender, admin_view = actors.admin, actors.sender, actors.log_admin
         capture_with(admin)
-        local admin_view = caller({"kickside.mail.security:log_admin"})
         local input = body()
         input.subject = "Fixture detail"
         local admitted = assert(invoke(sender, "send", input))
@@ -32,6 +31,7 @@ local function register(support)
         test.is_nil(retry.last_error.provider_detail)
         local pending = assert(invoke(admin_view, "get_message", admitted.message_id))
         test.eq("Upstream retry diagnostic", pending.last_error.provider_detail)
+        test.is_true(assert(jobs.wake_job(persisted(admitted.message_id).job_id, {control = true})).woken)
         local failed = terminal(sender, admitted)
         test.eq("failed", failed.status)
         test.is_nil(failed.last_error.provider_detail)

@@ -24,7 +24,7 @@ local function register(support)
     local change = support.change
     local body = support.body
     local capture_with = support.capture_with
-    local ceiling = support.ceiling
+    local set_ceiling = support.set_ceiling
 
     test.it("settles jobs that are cancelled or no longer stored", function()
         local sender, sender_id = actors.sender, actors.sender_id
@@ -223,16 +223,25 @@ local function register(support)
 
     test.it("settles a delivery killed on the final execution on the lease-release hint", function()
         local admin, sender = actors.admin, actors.sender
+        set_ceiling("200ms")
         capture_with(admin)
         local input = body()
         input.subject = "Fixture ceiling"
         local queued = assert(invoke(sender, "send", input))
-        await_message(sender, queued.message_id, function(row)
-            return row.status == "queued" and row.attempts == 4
-        end)
-        local pending = persisted(queued.message_id)
-        local job = await_job(pending.job_id, "dead")
+        local previous = 0
+        local pending
+        for attempt = 1, 4 do
+            local retry = await_message(sender, queued.message_id, function(row)
+                return row.status == "queued" and row.last_error ~= nil and row.next_attempt_at > previous
+            end)
+            test.eq(attempt, retry.attempts)
+            previous = retry.next_attempt_at
+            pending = persisted(queued.message_id)
+            test.is_true(assert(jobs.wake_job(pending.job_id, {control = true})).woken)
+        end
         local failed = await_message(sender, queued.message_id, function(row) return row.status == "failed" end, 35)
+        local job = assert(jobs.get_job(pending.job_id))
+        test.eq("dead", job.status)
         test.eq(5, job.execution_seq)
         test.eq("delivery_interrupted", failed.last_error.code)
         test.eq(5, failed.attempts)

@@ -225,10 +225,18 @@ return {
             local actors = {}
             local state = {settlement_rows = {}}
             local ceiling = {namespace = "kickside.core.jobs", key = "proc.max_execution"}
-            test.before_all(function()
+            local function set_ceiling(value)
                 local settings = assert(open("kickside.settings:settings"))
-                local configured = assert(settings:set({namespace = ceiling.namespace, key = ceiling.key, value = "3s"}))
+                local configured = assert(settings:set({namespace = ceiling.namespace, key = ceiling.key, value = value}))
                 assert(configured.success, tostring(configured.error))
+                state.custom_ceiling = value ~= "3s"
+            end
+            test.before_all(function()
+                set_ceiling("3s")
+                actors.admin = caller({}, nil, "app.mail_harness:settings_editor")
+                actors.log_admin = caller({"kickside.mail.security:log_admin"})
+                actors.denied = caller({})
+                actors.editor = caller(READER_POLICIES)
             end)
             test.after_all(function()
                 local settings = assert(open("kickside.settings:settings"))
@@ -236,21 +244,14 @@ return {
                 assert(reset.success, tostring(reset.error))
             end)
             test.before_each(function()
-                actors.admin = caller({}, nil, "app.mail_harness:settings_editor")
-                actors.log_admin = caller({"kickside.mail.security:log_admin"})
-                actors.denied = caller({})
-                actors.editor = caller(READER_POLICIES)
-                actors.sender, actors.sender_id = caller({
-
-
-                    "kickside.mail.security:send_access",
-                })
+                actors.sender, actors.sender_id = caller({"kickside.mail.security:send_access"})
                 for _, key in ipairs({"driver", "from_address", "from_name", "reply_to"}) do
                     local result = change(actors.admin, key)
                     test.is_true(result.success, result.error :: string?)
                 end
             end)
             test.after_each(function()
+                if state.custom_ceiling then set_ceiling("3s") end
                 if #state.settlement_rows == 0 then return end
                 assert(database.with_tx(function(tx)
                     for _, row in ipairs(state.settlement_rows) do
@@ -281,7 +282,7 @@ return {
                 refusal = refusal,
                 unconfigured = unconfigured,
                 state = state,
-                ceiling = ceiling,
+                set_ceiling = set_ceiling,
                 TOOL_NS = TOOL_NS,
                 READER_POLICIES = READER_POLICIES,
             }
