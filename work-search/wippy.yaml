@@ -7,6 +7,8 @@ license: LicenseRef-KickSide-Community-1.0
 repository: https://github.com/kicksideai/components
 homepage: https://wippy.ai
 keywords: [kickside, work, search]
+exclude_meta:
+  type: [test, test_helper, test_support]
 exclude:
 - wippy.lock
 - app:**
