@@ -12,7 +12,6 @@ local time = require("time")
 local scratch = require("scratch")
 local globals = require("globals")
 local settings = require("settings")
-local digest = require("digest")
 local preview_repo = require("preview_repo")
 local live_repo = require("live_repo")
 
@@ -193,7 +192,7 @@ function M.candidates(workspace: LibraryWorkspace, operation: string, edits: {ty
 end
 
 function M.preview_digest(operation: string, set: CandidateSet, edits: {types.LibraryEdit}): (string?, error?)
-    return digest.preview(operation, set.items, set.expected, edits[1].restore)
+    return edit_rules.preview_digest(operation, set.items, set.expected, edits[1].restore)
 end
 
 function M.create(input: types.ResourceCreate): types.LibraryEdit

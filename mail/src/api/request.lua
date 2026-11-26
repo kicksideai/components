@@ -98,9 +98,4 @@ function M.resource(req: http.Request): (types.Record?, error?)
     return body, nil
 end
 
-function M.items(items: unknown, err: error?): (types.Record?, error?)
-    if err then return nil, err end
-    return {items = items}, nil
-end
-
 return M

@@ -94,9 +94,9 @@ local function result(threads_api: types.LibraryThreads, operation: string, requ
     local items, read_err = database.with_db(function(ex: database.Executor): ({[integer]: types.Resource}?, error?)
         local rows: {[integer]: types.Resource} = {}
         for i, edit in ipairs(requested) do
-            local row, row_err = library_reader.write_result(ex, edit.key, seq - #requested + i)
+            local row, row_err = library_reader.get(ex, edit.key)
             if row_err then return nil, row_err end
-            rows[i] = row
+            if row and row.seq == seq - #requested + i then rows[i] = row end
         end
         return rows, nil
     end)
@@ -104,7 +104,9 @@ local function result(threads_api: types.LibraryThreads, operation: string, requ
     for i = 1, #requested do
         local item = items and items[i]
         if not item then
-            item, read_err = thread_events.resource_at(threads_api, seq - #requested + i)
+            local event
+            event, read_err = thread_events.event_at(threads_api, seq - #requested + i)
+            if event then item, read_err = thread_events.event_resource(event) end
             if read_err then
                 if not errors.is(read_err, errors.NOT_FOUND) then return nil, read_err end
                 logger:warn("Mail library write is committed and its result is unavailable", {seq = seq, error = tostring(read_err)})

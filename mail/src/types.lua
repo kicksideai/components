@@ -25,7 +25,6 @@ type DeliveryMessage = Addresses & {
 type TransportRequest = DeliveryMessage & {attachments: {Attachment}?, idempotency_key: string?, deadline: string}
 type TransportResult = {provider_message_id: string?}
 type SendResult = {message_id: string, status: string, content_changed: boolean?}
-type MessageRef = {message_id: string}
 type PrincipalLabel = {kind: string, id: string, label: string}
 type PrincipalRef = {type: string, id: string}
 type DirectoryPrincipal = PrincipalRef & {label: string}
@@ -294,7 +293,7 @@ end
 return {
     origin_text = origin_text,
     TransportResult = TransportResult, DeliveryTestRequest = DeliveryTestRequest,
-    MessageRef = MessageRef, ListRequest = ListRequest, ListQuery = ListQuery, ListResult = ListResult, LogMessage = LogMessage,
+    ListRequest = ListRequest, ListQuery = ListQuery, ListResult = ListResult, LogMessage = LogMessage,
     MessageError = MessageError, MessageRow = MessageRow, ResendSource = ResendSource, Admission = Admission, AdmissionResult = AdmissionResult,
     MessageInsert = MessageInsert, KeyRow = KeyRow, DeliveryReceipt = DeliveryReceipt, InsertOutcome = InsertOutcome, Outcome = Outcome,
     DueRow = DueRow, Deadlines = Deadlines, MessageContent = MessageContent, DeliveryContent = DeliveryContent,

@@ -47,13 +47,6 @@ entries:
     kind: library.lua
     source: file://references.lua
     imports: { types: kickside.mail:types }
-  - name: digest
-    kind: library.lua
-    source: file://digest.lua
-    imports:
-      types: kickside.mail:types
-      error_envelope: kickside.contract:error_envelope
-      canonical_json: kickside.contract:canonical_json
   - name: jet
     kind: library.lua
     source: file://jet.lua
@@ -62,7 +55,8 @@ entries:
     kind: library.lua
     source: file://edit.lua
     modules: [uuid]
-    imports: {events: kickside.mail.domain:events, types: kickside.mail:types, resource: kickside.mail.domain:resource}
+    imports: {events: kickside.mail.domain:events, types: kickside.mail:types, resource: kickside.mail.domain:resource,
+      error_envelope: kickside.contract:error_envelope, canonical_json: kickside.contract:canonical_json}
   - name: events
     kind: library.lua
     meta: {private: true}

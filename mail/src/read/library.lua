@@ -32,26 +32,10 @@ local function summary(db: database.Executor, dialect: string, declarations: {ty
     return page, nil
 end
 
-local function match_origin(item: types.Resource, declared: types.Original?): error?
-    local err = resource.match_origin(item, declared)
-    if err then return err end
-    item.origin_label = declared and declared.resource.origin_label or nil
-    return nil
-end
-
-function M.load(db: database.Executor): (types.ResourceMap?, error?, types.OriginalMap?)
-    local originals, err = originals_reader.list()
-    if err then return nil, err end
-    local rows, read_err = library_reader.rows(db, {})
-    if read_err then return nil, read_err end
-    local items, merge_err = resource.merge(rows :: {types.Resource}, originals :: types.OriginalMap)
-    return items, merge_err, originals
-end
-
 local function lookup_in(ex: database.Executor, key: types.ResourceKey, declared: types.Original?): (types.Resource?, error?)
     local item, read_err = library_reader.get(ex, key)
     if read_err then return nil, read_err end
-    if item and item.state ~= "original" then return item, match_origin(item, declared) end
+    if item and item.state ~= "original" then return item, resource.match_origin(item, declared) end
     if not declared then
         return nil, resource.error(errors.NOT_FOUND, "mail_resource_not_found", "Mail library resource was not found", key)
     end
@@ -113,7 +97,7 @@ local function summary_page(filter: types.ResourceFilter, after: types.ResourceK
                 row.title, row.description, row.origin = item.title, item.description, item.origin
                 row.origin_label, row.asset = item.origin_label, item.asset
             else
-                local origin_err = match_origin((row :: unknown) :: types.Resource, original)
+                local origin_err = resource.match_origin((row :: unknown) :: types.Resource, original)
                 if origin_err then return nil, origin_err end
             end
         end
@@ -138,7 +122,7 @@ function M.resources(filter: types.ResourceFilter, originals: types.OriginalMap?
         if stored_only then
             local selected: {types.Resource} = {}
             for _, row in ipairs(rows) do
-                local origin_err = match_origin(row, catalog[resource.subject(row)])
+                local origin_err = resource.match_origin(row, catalog[resource.subject(row)])
                 if origin_err then return nil, origin_err end
                 if resource.matches(row, q) then selected[#selected + 1] = row end
             end

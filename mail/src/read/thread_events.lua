@@ -71,12 +71,6 @@ function M.event_resource(event: types.ThreadEvent): (types.Resource?, error?)
     return item, nil
 end
 
-function M.resource_at(threads: types.LibraryThreads, seq: integer): (types.Resource?, error?)
-    local event, err = M.event_at(threads, seq)
-    if err then return nil, err end
-    return M.event_resource(event :: types.ThreadEvent)
-end
-
 function M.retained_boundary(threads: types.LibraryThreads): (integer?, error?)
     local page, err = threads:list_events({thread_id = M.library_thread_id(), limit = 1})
     if err then return nil, err end

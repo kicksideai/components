@@ -86,7 +86,6 @@ entries:
       scratch: kickside.mail.render:scratch
       globals: kickside.mail.render:globals
       settings: kickside.mail.read:settings
-      digest: kickside.mail.domain:digest
       preview_repo: kickside.mail.persist:preview_repo
       live_repo: kickside.mail.persist:live_repo
   - name: assets

@@ -215,12 +215,6 @@ function M.summary_page(db: database.Executor, dialect: string, declarations: {t
     return page, nil
 end
 
-function M.write_result(ex: database.Executor, key: types.ResourceKey, seq: integer): (types.Resource?, error?)
-    local item, err = M.get(ex, key)
-    if err then return nil, err end
-    return item and item.seq == seq and item or nil, nil
-end
-
 function M.live_rows(db: database.Executor): ({types.Resource}?, error?)
     local rows, err = db:query("SELECT * FROM mail_library ORDER BY kind,name")
     if err then return nil, err end

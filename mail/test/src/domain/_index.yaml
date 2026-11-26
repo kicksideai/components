@@ -9,7 +9,7 @@ entries:
     method: run
     imports:
       test: wippy.test:test
-      digest: kickside.mail.domain:digest
+      edit: kickside.mail.domain:edit
       jet: kickside.mail.domain:jet
       references: kickside.mail.domain:references
       resource: kickside.mail.domain:resource

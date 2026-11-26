@@ -3,6 +3,8 @@ local types = require("types")
 local resources = require("resource")
 local events = require("events")
 local uuid = require("uuid")
+local canonical_json = require("canonical_json")
+local error_envelope = require("error_envelope")
 
 local M = {}
 
@@ -139,6 +141,16 @@ function M.plan(operation: string, edits: {types.LibraryEdit}, revisions: {[stri
         batch[i] = event :: types.LibraryEvent
     end
     return batch, nil
+end
+
+function M.preview_digest(operation: string, candidates: {types.ResourceContent}, expected: {[string]: integer},
+    restore_seq: integer?): (string?, error?)
+    local digest, err = canonical_json.hash({operation = operation, resources = candidates,
+        expected = canonical_json.object(expected), restore_seq = restore_seq})
+    if err then
+        return nil, error_envelope.wrap(err, "Cannot digest the Mail preview", {code = "mail_preview_digest_failed"})
+    end
+    return digest, nil
 end
 
 return M

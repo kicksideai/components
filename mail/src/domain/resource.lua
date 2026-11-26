@@ -162,6 +162,7 @@ function M.match_origin(item: types.Resource, declared: types.Original?): error?
     if item.state == "customized" and (not declared or declared.resource.origin ~= item.origin) then
         return M.error(errors.CONFLICT, "mail_original_changed", "The shipped resource declaration has changed identity", item)
     end
+    item.origin_label = declared and declared.resource.origin_label or nil
     return nil
 end
 
@@ -178,11 +179,9 @@ function M.merge(rows: {types.Resource}, originals: types.OriginalMap): (types.R
     end
     for _, row in ipairs(rows) do
         local key = M.subject(row)
-        local original = originals[key]
-        local err = M.match_origin(row, original)
-        if err then return nil, err end
         local item = copy(row)
-        item.origin_label = original and original.resource.origin_label or nil
+        local err = M.match_origin(item, originals[key])
+        if err then return nil, err end
         effective[key] = item
     end
     return effective, nil

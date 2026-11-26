@@ -23,7 +23,7 @@ local function remove(overlay: registry.Snapshot, ids: {string}): (boolean?, err
     return true, nil
 end
 
-local function clear_workspace(previews: {[string]: boolean}?): (boolean?, error?)
+function M.clear_workspace(previews: {[string]: boolean}?): (boolean?, error?)
     local overlay, err = registry.overlay(jet.draft_owner)
     if err then return nil, err end
     local entries, list_err = overlay:entries()
@@ -38,15 +38,11 @@ local function clear_workspace(previews: {[string]: boolean}?): (boolean?, error
     return remove(overlay, ids)
 end
 
-function M.clear_workspace(): (boolean?, error?)
-    return clear_workspace(nil)
-end
-
 function M.clear_expired(ids: {string}): (boolean?, error?)
     if #ids == 0 then return true, nil end
     local previews: {[string]: boolean} = {}
     for _, id in ipairs(ids) do previews[jet.scratch_namespace(id)] = true end
-    return clear_workspace(previews)
+    return M.clear_workspace(previews)
 end
 
 local function open(selected: {types.ResourceContent}, checked: {types.ResourceContent},

@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local digest = require("digest")
+local edit = require("edit")
 local jet = require("jet")
 local references = require("references")
 local resource = require("resource")
@@ -43,10 +43,10 @@ return {run = test.run_cases(function()
         test.it("hashes preview inputs independently of object key order", function()
             local first = {{kind = "part", name = "intro", samples = {name = "Ada", count = 1}}}
             local second = {{name = "intro", samples = {count = 1, name = "Ada"}, kind = "part"}}
-            local original = assert(digest.preview("restore", first, {["part/intro"] = 2}, 1))
-            test.eq(original, assert(digest.preview("restore", second, {["part/intro"] = 2}, 1)))
-            test.is_true(original ~= assert(digest.preview("restore", second, {["part/intro"] = 3}, 1)))
-            test.is_true(original ~= assert(digest.preview("restore", second, {["part/intro"] = 2}, 2)))
+            local original = assert(edit.preview_digest("restore", first, {["part/intro"] = 2}, 1))
+            test.eq(original, assert(edit.preview_digest("restore", second, {["part/intro"] = 2}, 1)))
+            test.is_true(original ~= assert(edit.preview_digest("restore", second, {["part/intro"] = 3}, 1)))
+            test.is_true(original ~= assert(edit.preview_digest("restore", second, {["part/intro"] = 2}, 2)))
         end)
 
         test.it("builds Jet faces with a base and a separate subject entry", function()
