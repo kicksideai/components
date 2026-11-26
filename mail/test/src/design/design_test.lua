@@ -74,11 +74,15 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail design tools", function()
-        local owned, configured
+        local owned, configured, restore_retention
         test.before_each(function()
             owned, configured = {}, false
         end)
         test.after_each(function()
+            if restore_retention then
+                restore_retention()
+                restore_retention = nil
+            end
             fixtures.remove(owned)
             if configured then
                 api_fixtures.settings("", "")
@@ -297,6 +301,8 @@ return {run = test.run_cases(function()
         end)
 
         test.it("rejects a stored preview after its expiry", function()
+            local owner
+            owner, restore_retention = fixtures.manual_retention()
             local editor, candidate = draft_button()
             local resources = {candidate}
             local preview = ok(editor, "library_preview", {message = "notice", resources = resources})
@@ -309,7 +315,7 @@ return {run = test.run_cases(function()
             test.eq(errors.INVALID, err:kind())
             test.eq("mail_preview_expired", err:details().code)
 
-            local swept = assert(funcs.call(fixtures.retention_id(), {}))
+            local swept = assert(funcs.call(owner, {}))
             test.is_true(swept.success)
             db = assert(sql.get("app:db"))
             local rows = assert(db:query("SELECT id FROM mail_library_preview WHERE id=$1", {preview.preview_id}))

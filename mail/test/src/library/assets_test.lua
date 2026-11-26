@@ -10,7 +10,6 @@ local base64 = require("base64")
 local contract = require("contract")
 local time = require("time")
 local json = require("json")
-local registry = require("registry")
 local lookup = require("lookup")
 local settings = require("settings")
 local fixtures = require("fixtures")
@@ -170,21 +169,12 @@ end
 
 local expiry = test.run_cases(function()
     test.describe("Mail asset expiry", function()
-        local owner
+        local owner, restore_owner
         test.before_each(function()
-            local id = fixtures.retention_id()
-            owner = assert(registry.get(id))
-            local manual = assert(registry.get(id))
-            -- Manual sweeps own these fixture rows.
-            manual.meta.type = "harness.fixture"
-            local changes = assert(registry.snapshot()):changes()
-            assert(changes:update(manual))
-            assert(changes:apply())
+            owner, restore_owner = fixtures.manual_retention()
         end)
         test.after_each(function()
-            local changes = assert(registry.snapshot()):changes()
-            assert(changes:update(owner))
-            assert(changes:apply())
+            restore_owner()
         end)
 
         test.it("reports blocked assets while expiring messages and progressing beyond a failed batch", function()
@@ -208,7 +198,7 @@ local expiry = test.run_cases(function()
             assert(tx:commit())
 
             local function sweep()
-                return assert(funcs.call(owner.id, {}))
+                return assert(funcs.call(owner, {}))
             end
             local first = sweep()
             local second = sweep()
@@ -260,7 +250,7 @@ local expiry = test.run_cases(function()
                 local lock = assert(db:begin())
                 local blocker = assert(lock:query("SELECT pg_backend_pid() AS pid"))[1].pid
                 assert(lock:query("SELECT message_id FROM mail_message_asset WHERE message_id=$1 FOR UPDATE", {first}))
-                local sweep = assert(exec:async(owner.id, {}))
+                local sweep = assert(exec:async(owner, {}))
                 local deadline = time.now():add(25 * time.SECOND):unix_nano()
                 local waiting = {}
                 repeat
@@ -278,7 +268,7 @@ local expiry = test.run_cases(function()
                 report = assert(assert(sweep:result()):data())
                 test.eq(1, #waiting, "The expiry unlink waits on the first message")
             else
-                report = assert(exec:call(owner.id, {}))
+                report = assert(exec:call(owner, {}))
                 assert(db:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff, late}))
             end
             local refs = assert(db:query("SELECT message_id FROM mail_message_asset WHERE upload_id=$1", {version}))
@@ -289,7 +279,7 @@ local expiry = test.run_cases(function()
             test.eq(late, refs[1].message_id)
             test.eq("held", held[1].state)
             if postgres then test.is_true(report.needs_continue) end
-            local next_report = assert(exec:call(owner.id, {}))
+            local next_report = assert(exec:call(owner, {}))
             test.is_true(next_report.success, tostring(next_report.error))
             fixtures.await(function()
                 local check = assert(sql.get("app:db"))

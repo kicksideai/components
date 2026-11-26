@@ -16,7 +16,6 @@ entries:
       component: kickside.component:component
       jobs: kickside.core.jobs:jobs
       jet: kickside.mail.domain:jet
-      database: app:database_fixture
   - name: site_url_storage
     kind: env.storage.static
     values: {PUBLIC_API_URL: "https://example.org"}
@@ -168,7 +167,7 @@ entries:
     meta: { type: test, suite: mail_assets }
     source: &assets_source file://assets_test.lua
     method: run
-    modules: &assets_modules [contract, fs, funcs, security, sql, uuid, base64, time, json, registry]
+    modules: &assets_modules [contract, fs, funcs, security, sql, uuid, base64, time, json]
     imports: &assets_imports
       delivery_wait: app.mail_harness:delivery_wait
       test: wippy.test:test

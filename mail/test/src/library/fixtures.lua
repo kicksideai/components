@@ -31,6 +31,21 @@ local function retention_id()
     return mail_hook("kickside.retention.owner")
 end
 
+local function manual_retention()
+    local id = retention_id()
+    local owner = assert(registry.get(id))
+    local manual = assert(registry.get(id))
+    -- Manual sweeps own the fixture rows.
+    manual.meta.type = "harness.fixture"
+    local function publish(entry)
+        local changes = assert(registry.snapshot()):changes()
+        assert(changes:update(entry))
+        assert(changes:apply())
+    end
+    publish(manual)
+    return id, function() publish(owner) end
+end
+
 local function boot(executor)
     return (executor or funcs.new()):call(mail_hook("bootloader"))
 end
@@ -172,4 +187,4 @@ end
 
 return {sync_job = sync_job, await_current_live = await_current_live, await_sync_idle = await_sync_idle, await_live = await_live, await_sync_failure = await_sync_failure, await = await, remove = remove, invoke = invoke, call = call, async = async, editor = editor, foreign_list = foreign_list,
     render = render, mailer = mailer, invoke_mailer = invoke_mailer,
-    library_component_id = library_component_id, retention_id = retention_id, boot = boot}
+    library_component_id = library_component_id, retention_id = retention_id, manual_retention = manual_retention, boot = boot}

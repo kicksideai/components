@@ -13,7 +13,6 @@ local api_fixtures = require("api_fixtures")
 local component = require("component")
 local jobs = require("jobs")
 local jet = require("jet")
-local database = require("database")
 
 local KIND = "kickside.mail.binding:library"
 
@@ -31,10 +30,16 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail library teardown", function()
-        local lifecycle, lifecycle_scope
+        local lifecycle, lifecycle_scope, restore_retention
         test.before_all(function()
             lifecycle = assert(security.new_actor("system:lifecycle", {system = true, groups = {"system", "lifecycle"}}))
             lifecycle_scope = assert(security.named_scope("wippy.security:process"))
+        end)
+        test.after_each(function()
+            if restore_retention then
+                restore_retention()
+                restore_retention = nil
+            end
         end)
 
         test.it("describes the library through its component status binding", function()
@@ -45,6 +50,8 @@ return {run = test.run_cases(function()
         end)
 
         test.it("clears library state twice and leaves uploaded bytes for retention", function()
+            local mail_owner
+            mail_owner, restore_retention = fixtures.manual_retention()
             local component_id = fixtures.library_component_id()
             local teardown = open("kickside.contract:deletable", component_id)
             local who = api_fixtures.session("upload_editor")
@@ -62,15 +69,6 @@ return {run = test.run_cases(function()
             local saved = assert(fixtures.call(editor, "create", message))
             fixtures.await_live(saved.seq)
             fixtures.await_sync_idle()
-            local pinned_message = "teardown-delivery"
-            local now = time.now():unix_nano() // 1000000
-            assert(database.with_tx(function(tx)
-                assert(tx:execute([[INSERT INTO mail_message
-                    (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments)
-                    VALUES ($1,$2,$2,'failed','fixture','{}','Teardown','mail@example.org','[]')]], {pinned_message, now}))
-                return tx:execute([[INSERT INTO mail_message_asset (message_id,name,content_id,upload_id)
-                    VALUES ($1,'fixture','fixture',$2)]], {pinned_message, upload.uuid})
-            end))
             local original_due = assert(rows("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {upload.uuid})[1]).due_at
             local expected_due
             for _ = 1, 2 do
@@ -81,7 +79,7 @@ return {run = test.run_cases(function()
                     "mail_library_preview", "mail_library_live", "mail_library_upload_ref"}) do
                     test.eq(0, #rows("SELECT 1 FROM " .. name .. " LIMIT 1"), name)
                 end
-                test.eq(0, #assert(assert(registry.overlay(jet.owner)):entries()))
+                test.eq(0, #assert(assert(registry.overlay(jet.owner)):entries()), "Live overlay entries after teardown")
                 local ledger = rows("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {upload.uuid})
                 local due = assert(ledger[1]).due_at
                 if expected_due then
@@ -118,14 +116,11 @@ return {run = test.run_cases(function()
                 if err then assert(errors.is(err, errors.NOT_FOUND), tostring(err)) end
                 return boundary == nil and err ~= nil
             end, "Component deletion did not purge the library and its thread")
-            assert(database.with_db(function(db)
-                return db:execute("DELETE FROM mail_message WHERE id=$1", {pinned_message})
-            end))
-            local swept = assert(funcs.call(fixtures.retention_id(), {}))
+            local swept = assert(funcs.call(mail_owner, {}))
             test.is_true(swept.success, tostring(swept.error))
             test.is_false(storage:exists(upload.storage_path))
-            test.eq(0, #rows("SELECT 1 FROM mail_asset_file WHERE upload_id=$1", {upload.uuid}))
-            test.eq(0, #rows("SELECT 1 FROM mail_library_live"))
+            test.eq(0, #rows("SELECT 1 FROM mail_asset_file WHERE upload_id=$1", {upload.uuid}), "Asset ledger after reaping")
+            test.eq(0, #rows("SELECT 1 FROM mail_library_live"), "Live marker after reaping")
             lookup.cleanup(who.actor)
         end)
     end)
