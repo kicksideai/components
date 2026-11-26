@@ -331,3 +331,4 @@ entries:
       resource: kickside.mail.domain:resource
       fixtures: app.mail_library:fixtures
       jet: kickside.mail.domain:jet
+      client: kickside.mail:client

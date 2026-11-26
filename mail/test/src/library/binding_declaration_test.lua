@@ -4,6 +4,7 @@ local test = require("test")
 local resource = require("resource")
 local fixtures = require("fixtures")
 local jet = require("jet")
+local client = require("client")
 
 local function entry(id)
     return assert(registry.get(id))
@@ -32,6 +33,22 @@ local function job(import_alias)
 end
 
 local function cases()
+    test.it("uses runtime time and HTTP without host overrides", function()
+        for _, id in ipairs({"kickside.mail:clock", "kickside.mail:http_transport",
+            "kickside.mail.command:clock", "kickside.mail.driver:http_client"}) do
+            local declaration = registry.get(id)
+            test.is_nil(declaration, id)
+        end
+    end)
+
+    test.it("exposes Mail operations through contract handles", function()
+        test.not_nil(client.mailer)
+        test.not_nil(client.library)
+        for _, method in ipairs(entry("kickside.mail:mailer").data.methods) do
+            test.is_nil(client[method.name], method.name)
+        end
+    end)
+
     test.it("keeps Settings list access inside the Mail driver selection reader", function()
         local grant = "kickside.mail.security:settings_admin_read"
         for _, surface in ipairs({method("kickside.mail:mailer_binding", "send"),
