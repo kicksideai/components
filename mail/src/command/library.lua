@@ -19,10 +19,6 @@ local threads = require("threads")
 local canonical = require("canonical_json")
 local logger = require("logger")
 local live_repo = require("live_repo")
-local asset_refs = require("upload_ref_repo")
-local history_repo = require("history_repo")
-local reference_repo = require("reference_repo")
-local preview_repo = require("preview_repo")
 local live = require("live")
 
 local M = {}
@@ -284,12 +280,7 @@ function M.teardown(component_id: string?): (boolean?, error?)
         if library_lock_err then return nil, library_lock_err end
         local _, release_err = asset_file_repo.release_library(tx, now)
         if release_err then return nil, release_err end
-        for _, delete in ipairs({library_repo.delete_all, history_repo.delete_all, reference_repo.delete_all,
-            preview_repo.delete_all, asset_refs.delete_all, live_repo.delete}) do
-            local _, delete_err = delete(tx)
-            if delete_err then return nil, delete_err end
-        end
-        return true, nil
+        return library_repo.teardown(tx)
     end)
     if err then return nil, err end
     local cleared, clear_err = live.clear()

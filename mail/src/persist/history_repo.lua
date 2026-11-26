@@ -49,10 +49,4 @@ function M.prune_below(tx: database.Transaction, boundary: integer, limit: integ
     return result.rows_affected, nil
 end
 
-function M.delete_all(tx: database.Transaction): (integer?, error?)
-    local result, err = tx:execute("DELETE FROM mail_library_history")
-    if err then return nil, err end
-    return result.rows_affected, nil
-end
-
 return M

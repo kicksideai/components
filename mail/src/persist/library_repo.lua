@@ -77,12 +77,20 @@ function M.delete_asset(tx: database.Transaction, name: string, seq: integer): (
     return true, nil
 end
 
-function M.delete_all(tx: database.Transaction): (integer?, error?)
-    local resources, err = tx:execute("DELETE FROM mail_library")
-    if err then return nil, err end
-    local assets, asset_err = tx:execute("DELETE FROM mail_library_asset")
-    if asset_err then return nil, asset_err end
-    return resources.rows_affected + assets.rows_affected, nil
+function M.teardown(tx: database.Transaction): (boolean?, error?)
+    for _, statement in ipairs({
+        "DELETE FROM mail_library",
+        "DELETE FROM mail_library_asset",
+        "DELETE FROM mail_library_history",
+        "DELETE FROM mail_library_reference",
+        "DELETE FROM mail_library_preview",
+        "DELETE FROM mail_library_upload_ref",
+        "DELETE FROM mail_library_live WHERE id=1",
+    }) do
+        local _, err = tx:execute(statement)
+        if err then return nil, err end
+    end
+    return true, nil
 end
 
 return M

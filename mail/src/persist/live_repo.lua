@@ -54,10 +54,4 @@ function M.advance(tx: database.Transaction, projected_seq: integer, template_se
     return true, nil
 end
 
-function M.delete(tx: database.Transaction): (integer?, error?)
-    local result, err = tx:execute("DELETE FROM mail_library_live WHERE id=1")
-    if err then return nil, err end
-    return result.rows_affected, nil
-end
-
 return M

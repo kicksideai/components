@@ -37,10 +37,4 @@ function M.referrers(ex: database.Executor, to: types.ResourceKey, limit: intege
     return rows :: {types.ResourceKey}?, err
 end
 
-function M.delete_all(tx: database.Transaction): (integer?, error?)
-    local result, err = tx:execute("DELETE FROM mail_library_reference")
-    if err then return nil, err end
-    return result.rows_affected, nil
-end
-
 return M

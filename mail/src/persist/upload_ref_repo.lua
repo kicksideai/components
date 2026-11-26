@@ -25,10 +25,4 @@ function M.forget_retired(tx: database.Transaction, id: string): (boolean?, erro
     return true, nil
 end
 
-function M.delete_all(tx: database.Transaction): (integer?, error?)
-    local result, err = tx:execute("DELETE FROM mail_library_upload_ref")
-    if err then return nil, err end
-    return result.rows_affected, nil
-end
-
 return M
