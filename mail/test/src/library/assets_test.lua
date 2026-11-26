@@ -182,11 +182,22 @@ end
 
 local expiry = test.run_cases(function()
     test.describe("Mail asset expiry", function()
-        local owner, restore_owner
+        local owner, restore_owner, gate, barrier, barrier_reached
+        local function hold_pass(id)
+            local paused = threads_fixture.observe_pause(id)
+            assert(funcs.call("kickside.core.retention:notify", {
+                kind = "fixture_hold_retention", owner_locator = {kind = "fixture", id = id},
+            }))
+            return paused
+        end
         test.before_each(function()
+            gate, barrier = uuid.v4(), uuid.v4()
+            hold_pass(gate)()
             owner, restore_owner = fixtures.manual_retention()
         end)
         test.after_each(function()
+            threads_fixture.resume(gate)
+            threads_fixture.resume(barrier)
             restore_owner()
         end)
 
@@ -209,6 +220,9 @@ local expiry = test.run_cases(function()
                 (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments)
                 VALUES ($1,$2,$2,'failed','fixture','{}','Expiry','mail@example.org','[]')]], {expired, now - 31 * day}))
             assert(tx:commit())
+            barrier_reached = hold_pass(barrier)
+            threads_fixture.resume(gate)
+            barrier_reached()
 
             local function sweep()
                 return assert(funcs.call(owner, {}))
@@ -223,6 +237,7 @@ local expiry = test.run_cases(function()
             assert(db:execute("DELETE FROM mail_message WHERE id=$1", {expired}))
             assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id LIKE $1 OR upload_id=$2", {prefix .. "%", collectable}))
             assert(db:release())
+            threads_fixture.resume(barrier)
 
             test.eq(0, #messages, "Asset failures cannot prevent delivery log expiry")
             test.eq(batch, #assets, "The collectable row beyond the failed page is removed")

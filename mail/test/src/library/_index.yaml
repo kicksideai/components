@@ -265,6 +265,12 @@ entries:
     method: expiry
     modules: *assets_modules
     imports: *assets_imports
+  - name: retention_gate
+    kind: function.lua
+    meta: { type: kickside.retention.owner }
+    source: file://threads_fixture.lua
+    method: hold_retention
+    modules: [channel, contract, ctx, events, registry, time]
   - name: upload_storage
     kind: library.lua
     source: file://upload_storage.lua

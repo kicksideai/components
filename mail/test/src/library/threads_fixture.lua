@@ -67,6 +67,12 @@ function M.resume(gate)
     assert(events.send(SYSTEM, gate .. ".resume", gate))
 end
 
+function M.hold_retention(input)
+    local change = input.change
+    if change and change.kind == "fixture_hold_retention" then M.pause(change.owner_locator.id) end
+    return {success = true, deleted = 0}
+end
+
 function M.append(input)
     local fault = ctx.get("mail_fixture_threads")
     if fault and fault.append == "lost" and input.events[1].type == "kickside.mail.events:asset.restored" then
