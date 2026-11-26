@@ -124,48 +124,21 @@ function M.origin(row: types.MessageRow): types.Origin?
     return {kind = row.origin_kind, id = row.origin_id :: string, label = row.origin_label :: string}
 end
 
-function M.recent_senders(ex: database.Executor, template: string, since: integer, limit: integer?,
-    cursor: string?): (types.SenderPage?, error?)
-    local args: {unknown} = {template, since}
-    local after = ""
-    if cursor then
-        local key, err = json.decode(cursor)
-        if err or type(key) ~= "table" or #key ~= 5 or type(key[1]) ~= "number" or not math.tointeger(key[1])
-            or type(key[2]) ~= "string" or type(key[3]) ~= "string" or type(key[4]) ~= "string"
-            or type(key[5]) ~= "string" then
-            return nil, errors.new({kind = errors.INVALID, message = "Use the next cursor from a recent senders page",
-                retryable = false, details = {code = "invalid_recent_senders_cursor"}})
-        end
-        for _, value in ipairs(key) do args[#args + 1] = value end
-        after = " WHERE (-count,sender,kind_key,id_key,label_key)>($3,$4,$5,$6,$7)"
-    end
-    local bound = ""
-    if limit then
-        args[#args + 1] = limit + 1
-        bound = " LIMIT $" .. tostring(#args)
-    end
+function M.recent_senders(ex: database.Executor, template: string, since: integer, limit: integer): ({types.RecentSender}?, error?)
     local rows, err = ex:query([[WITH sources AS (
         SELECT sender,origin_kind,origin_id,origin_label,COUNT(*) AS count,
             COALESCE(origin_kind,'') AS kind_key,COALESCE(origin_id,'') AS id_key,COALESCE(origin_label,'') AS label_key
         FROM mail_message WHERE template=$1 AND created_at>=$2 AND status='sent'
         GROUP BY sender,origin_kind,origin_id,origin_label
-    ) SELECT sender,origin_kind,origin_id,origin_label,count,kind_key,id_key,label_key FROM sources]]
-        .. after .. " ORDER BY count DESC,sender,kind_key,id_key,label_key" .. bound, args)
+    ) SELECT sender,origin_kind,origin_id,origin_label,count FROM sources
+        ORDER BY count DESC,sender,kind_key,id_key,label_key LIMIT $3]], {template, since, limit})
     if err then return nil, err end
 
-    local next_cursor: string?
-    if limit and #rows > limit then
-        rows[#rows] = nil
-        local last = rows[#rows]
-        local encode_err
-        next_cursor, encode_err = json.encode({-(last.count :: integer), last.sender, last.kind_key, last.id_key, last.label_key})
-        if encode_err then return nil, encode_err end
-    end
     local items: {types.RecentSender} = {}
     for index, row in ipairs(rows) do
         items[index] = {sender = row.sender :: string, origin = M.origin(row :: types.MessageRow), count = row.count :: integer}
     end
-    return {items = items, next_cursor = next_cursor}, nil
+    return items, nil
 end
 
 function M.recent_sender_counts(ex: database.Executor, templates: {string}, since: integer): ({[string]: integer}?, error?)

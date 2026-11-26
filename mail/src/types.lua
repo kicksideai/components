@@ -102,7 +102,6 @@ type Resource = {
 }
 type ResourceFilter = {kind: string?, state: string?, base: string?, q: string?, names: {string}?}
 type RecentSender = {sender: string, origin: Origin?, count: integer}
-type SenderPage = {items: {RecentSender}, next_cursor: string?}
 type UsedBy = {messages: {string}?, recent_senders: {RecentSender}?}
 type Original = {resource: Resource, entries: {[string]: string}}
 type ResourceMap = {[string]: Resource}
@@ -299,7 +298,7 @@ return {
     MessageError = MessageError, MessageRow = MessageRow, ResendSource = ResendSource, Admission = Admission, AdmissionResult = AdmissionResult,
     MessageInsert = MessageInsert, KeyRow = KeyRow, DeliveryReceipt = DeliveryReceipt, InsertOutcome = InsertOutcome, Outcome = Outcome,
     DueRow = DueRow, Deadlines = Deadlines, MessageContent = MessageContent, DeliveryContent = DeliveryContent,
-    MessagePage = MessagePage, SenderPage = SenderPage,
+    MessagePage = MessagePage,
     Job = Job, JobInput = JobInput, Lease = Lease, ActorRow = ActorRow, OwnerInput = OwnerInput, JobCompletion = JobCompletion,
     OwnerResult = OwnerResult, BlockedAsset = BlockedAsset, ComponentAccessContract = ComponentAccessContract,
     ResourceKey = ResourceKey, ResourceReferences = ResourceReferences, PreviewRow = PreviewRow,

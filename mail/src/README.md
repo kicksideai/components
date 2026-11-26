@@ -260,7 +260,6 @@ invalid_mail_resources                 Provide a valid batch of resource edits.
 invalid_mail_revision                  Provide a valid resource revision or event sequence.
 invalid_mail_test                      Send-test input must name a template or use the documented delivery test fields.
 invalid_message                        The send request contains unsupported fields or values.
-invalid_recent_senders_cursor          Restart paging with a valid recent-senders cursor.
 invalid_request                        Correct the operation's input and retry.
 invalid_revision_note                  Keep revision notes to 500 characters.
 invalid_subject                        Use a subject suitable for a mail header.

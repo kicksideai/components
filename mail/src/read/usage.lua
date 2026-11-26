@@ -109,9 +109,9 @@ function M.used_by(item: types.Resource): (types.UsedBy?, error?)
         local since, since_err = recent_since()
         if since_err then return nil, since_err end
         return database.with_db(function(ex: database.Executor): (types.UsedBy?, error?)
-            local page, read_err = messages.recent_senders(ex, item.name, since :: integer, RECENT_SENDER_LIMIT)
+            local senders, read_err = messages.recent_senders(ex, item.name, since :: integer, RECENT_SENDER_LIMIT)
             if read_err then return nil, read_err end
-            return {recent_senders = page.items}, nil
+            return {recent_senders = senders}, nil
         end)
     end
     return nil, nil
