@@ -266,6 +266,10 @@ local function register(support)
         base.expected_revision = saved_base.revision
         local batch = {resources = {draft, base}, note = "Save both"}
         batch.preview_id = review(editor, msg.name, {resources = batch.resources})
+        local reversed_status, reversed = request(editor, "POST", "/library/save",
+            {resources = {base, draft}, preview_id = batch.preview_id})
+        test.eq(400, reversed_status)
+        test.eq("mail_preview_mismatch", reversed.code)
         local result = data(editor, "POST", "/library/save", batch)
         library_fixtures.await_live(result.seq)
         test.eq(2, #result.items)

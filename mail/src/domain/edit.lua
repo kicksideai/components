@@ -103,9 +103,9 @@ function M.event_type(operation: string, key: types.ResourceKey): string
     return event_types[operation] :: string
 end
 
-function M.plan(operation: string, edits: {types.LibraryEdit}, revisions: {integer}, previous: types.ResourceMap,
-    candidates: {types.ResourceContent}, originals: types.OriginalMap, restored: {[integer]: integer},
-    restore_seq: integer?, author: string, receipt: string?, signature: string): ({types.LibraryEvent}?, error?)
+function M.plan(operation: string, edits: {types.LibraryEdit}, revisions: {[string]: integer}, previous: types.ResourceMap,
+    candidates: {types.ResourceContent}, originals: types.OriginalMap, source: types.Resource?,
+    author: string, receipt: string?, signature: string): ({types.LibraryEvent}?, error?)
     local batch: {types.LibraryEvent} = {}
     for i, edit in ipairs(edits) do
         local key = {kind = edit.key.kind, name = edit.key.name}
@@ -113,7 +113,7 @@ function M.plan(operation: string, edits: {types.LibraryEdit}, revisions: {integ
         local original, current = originals[id], previous[id]
         local item = candidates[i]
         local event_type = M.event_type(operation, key)
-        local body: types.LibraryEventBody = {key = key, revision = revisions[i] + 1, author = author,
+        local body: types.LibraryEventBody = {key = key, revision = (revisions[id] :: integer) + 1, author = author,
             note = edit.note, command_hash = signature, change = "edited"}
         if operation == "delete" then
             body.change = key.kind == "message" and "archived" or "deleted"
@@ -131,7 +131,7 @@ function M.plan(operation: string, edits: {types.LibraryEdit}, revisions: {integ
             elseif operation == "set_base" then
                 body.change, body.previous_base = "base_changed", current.base
             elseif operation == "restore" then
-                body.change, body.from_seq, body.from_version = "restored", restore_seq, restored[i]
+                body.change, body.from_seq, body.from_version = "restored", source and source.seq, source and source.revision
             end
         end
         local event, err = events.build(event_type, body)

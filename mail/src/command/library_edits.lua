@@ -21,7 +21,12 @@ type LibraryWorkspace = {
     loaded: {[string]: boolean}, versions: {[string]: integer},
 }
 
-local M = {LibraryWorkspace = LibraryWorkspace}
+type CandidateSet = {
+    items: {types.ResourceContent}, keys: {types.ResourceKey},
+    previous: types.ResourceMap, expected: {[string]: integer},
+}
+
+local M = {LibraryWorkspace = LibraryWorkspace, CandidateSet = CandidateSet}
 
 function M.workspace(ex: database.Executor, versions: {[string]: integer}?): (LibraryWorkspace?, error?)
     local originals, err = originals_reader.list()
@@ -46,13 +51,21 @@ function M.load(workspace: LibraryWorkspace, key: types.ResourceKey): error?
     return nil
 end
 
-function M.current_revision(workspace: LibraryWorkspace, key: types.ResourceKey): (integer?, error?)
-    local item = workspace.items[resources.subject(key)]
-    if item then return item.revision, nil end
-    return workspace.versions[resources.subject(key)] or 0, nil
+function M.current_revision(workspace: LibraryWorkspace, key: types.ResourceKey): integer
+    local id = resources.subject(key)
+    local item = workspace.items[id]
+    if item then return item.revision end
+    return workspace.versions[id] or 0
 end
 
-function M.dependencies(workspace: LibraryWorkspace, roots: {types.ResourceContent}): error?
+local function load_edit(workspace: LibraryWorkspace, edit: types.LibraryEdit): error?
+    local err = M.load(workspace, edit.key)
+    if err then return err end
+    if edit.from then return M.load(workspace, edit.from) end
+    return nil
+end
+
+local function dependencies(workspace: LibraryWorkspace, roots: {types.ResourceContent}): error?
     local visited: {[string]: boolean} = {}
     for _, item in ipairs(roots) do visited[resources.subject(item)] = true end
     for _, item in ipairs(roots) do
@@ -72,15 +85,15 @@ function M.dependencies(workspace: LibraryWorkspace, roots: {types.ResourceConte
     return nil
 end
 
-function M.dependants(workspace: LibraryWorkspace, keys: {types.ResourceKey}, changed: {[string]: boolean}): ({types.Resource}?, error?)
+local function linked_messages(workspace: LibraryWorkspace, set: CandidateSet): ({types.Resource}?, error?)
     local selected: {types.Resource} = {}
     local seen: {[string]: boolean} = {}
-    for _, key in ipairs(keys) do
+    for _, key in ipairs(set.keys) do
         local sources, err = usage_reader.referrers(workspace.ex, key, workspace.originals)
         if err then return nil, err end
         for _, source in ipairs(sources) do
             local id = resources.subject(source)
-            if source.kind == "message" and not changed[id] and not seen[id] then
+            if source.kind == "message" and set.expected[id] == nil and not seen[id] then
                 local read_err = M.load(workspace, source)
                 if read_err then return nil, read_err end
                 local item = workspace.items[id]
@@ -154,6 +167,35 @@ function M.prepare(edit: types.LibraryEdit, operation: string, items: types.Reso
     return normalized, nil
 end
 
+function M.candidates(workspace: LibraryWorkspace, operation: string, edits: {types.LibraryEdit},
+    source: types.Resource?, review: boolean): (CandidateSet?, error?)
+    local set: CandidateSet = {items = {}, keys = {}, previous = {}, expected = {}}
+    for i, edit in ipairs(edits) do
+        local key = edit.key
+        if review then
+            if key.kind == "asset" then
+                return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Assets are added from an upload", key)
+            end
+            local err = load_edit(workspace, edit)
+            if err then return nil, err end
+        end
+        local candidate, err = M.prepare(edit, operation, workspace.items, workspace.originals, source)
+        if err then return nil, err end
+        local id = resources.subject(key)
+        local revision = M.current_revision(workspace, key)
+        if review and candidate.kind == "asset" then
+            return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Assets are added from an upload", candidate)
+        end
+        set.expected[id], set.items[i], set.keys[i] = revision, candidate, key
+        set.previous[id], workspace.items[id] = workspace.items[id], candidate :: types.Resource
+    end
+    return set, nil
+end
+
+function M.preview_digest(operation: string, set: CandidateSet, edits: {types.LibraryEdit}): (string?, error?)
+    return digest.preview(operation, set.items, set.expected, edits[1].restore)
+end
+
 function M.create(input: types.ResourceCreate): types.LibraryEdit
     local fields = type(input) == "table" and input or {} :: types.ResourceCreate
     return {key = input, content = input :: types.ResourceContent, note = fields.note, from = fields.from}
@@ -221,8 +263,7 @@ local function bound_preview(workspace: LibraryWorkspace, id: string?, author: s
         local subject = resources.subject(edit.key)
         local expected = row.expected[subject]
         if expected == nil or (operation ~= "create" and expected ~= edit.expected) then return nil, mismatch() end
-        local revision, revision_err = M.current_revision(workspace, edit.key)
-        if revision_err then return nil, revision_err end
+        local revision = M.current_revision(workspace, edit.key)
         if expected ~= revision or (operation ~= "create" and not workspace.items[subject]) then
             return nil, errors.new({kind = errors.CONFLICT, retryable = false,
                 message = "The library changed after this preview. Review the changes again.",
@@ -232,26 +273,37 @@ local function bound_preview(workspace: LibraryWorkspace, id: string?, author: s
     return row, nil
 end
 
-local function validate_templates(workspace: LibraryWorkspace, keys: {types.ResourceKey},
-    candidates: {types.ResourceContent}, changed: {[string]: boolean}): error?
-    local dependent, err = M.dependants(workspace, keys, changed)
-    if err then return err end
+function M.complete(workspace: LibraryWorkspace, candidates: {types.ResourceContent},
+    set: CandidateSet?, primary: types.Resource?): ({types.Resource}?, error?)
+    local dependants: {types.Resource} = {}
+    if set then
+        local found, err = linked_messages(workspace, set)
+        if err then return nil, err end
+        dependants = found :: {types.Resource}
+    end
     local roots: {types.ResourceContent} = {}
+    if primary then roots[1] = primary end
     for _, candidate in ipairs(candidates) do roots[#roots + 1] = candidate end
-    for _, item in ipairs(dependent) do roots[#roots + 1] = item end
-    local dependency_err = M.dependencies(workspace, roots)
-    if dependency_err then return dependency_err end
+    for _, dependant in ipairs(dependants) do roots[#roots + 1] = dependant end
+    local dependency_err = dependencies(workspace, roots)
+    if dependency_err then return nil, dependency_err end
     for _, candidate in ipairs(candidates) do
         local base_err = edit_rules.base_exists(workspace.items, candidate)
-        if base_err then return base_err end
+        if base_err then return nil, base_err end
     end
+    return dependants, nil
+end
+
+local function validate_templates(workspace: LibraryWorkspace, set: CandidateSet): error?
+    local dependants, err = M.complete(workspace, set.items, set)
+    if err then return err end
     local appearance, globals_err = settings.appearance()
     if globals_err then return globals_err end
     local values = globals.data(appearance :: types.Appearance)
     values.sender.name = ""
     local _, clear_err = scratch.clear_workspace()
     if clear_err then return clear_err end
-    local _, validation_err = scratch.validate(workspace.items, keys[1], candidates, dependent :: {types.Resource}, values)
+    local _, validation_err = scratch.validate(workspace.items, set.keys[1], set.items, dependants :: {types.Resource}, values)
     return validation_err
 end
 
@@ -266,58 +318,42 @@ function M.plan(ex: database.Executor, operation: string, edits: {types.LibraryE
     local loaded, err = M.workspace(ex, versions)
     if err then return nil, err end
     local workspace = loaded :: LibraryWorkspace
-    local items, originals = workspace.items, workspace.originals
-    local keys, revisions, changed = {}, {}, {}
-    for i, edit in ipairs(edits) do
-        keys[i], changed[resources.subject(edit.key)] = edit.key, true
-        local load_err = M.load(workspace, edit.key)
+    for _, edit in ipairs(edits) do
+        local load_err = load_edit(workspace, edit)
         if load_err then return nil, load_err end
-        if edit.from then
-            local source_err = M.load(workspace, edit.from)
-            if source_err then return nil, source_err end
-        end
-        local revision, revision_err = M.current_revision(workspace, edit.key)
-        if revision_err then return nil, revision_err end
-        revisions[i] = revision
     end
     local binding: types.PreviewRow?
-    local key = keys[1]
+    local key = edits[1].key
     if operation ~= "delete" then
         local binding_err
         binding, binding_err = bound_preview(workspace, opts.preview_id, author, operation, edits)
         if binding_err then
             if opts.identity_op == "save" and opts.command_id and (binding_err:details() or {}).code == "mail_preview_stale" then
-                for i, edit in ipairs(edits) do
-                    if edit.expected ~= revisions[i] then return nil, edit_rules.conflict(edit.key, revisions[i]) end
+                for _, edit in ipairs(edits) do
+                    local revision = M.current_revision(workspace, edit.key)
+                    if edit.expected ~= revision then return nil, edit_rules.conflict(edit.key, revision) end
                 end
             end
             return nil, binding_err
         end
     end
-    local previous: types.ResourceMap = {}
-    local candidates: {types.ResourceContent} = {}
-    local restored: {[integer]: integer} = {}
-    for i, edit in ipairs(edits) do
-        local id = resources.subject(edit.key)
-        local candidate, prepare_err = M.prepare(edit, operation, items, originals, source)
-        if prepare_err then return nil, prepare_err end
-        previous[id], items[id] = items[id], candidate :: types.Resource
-        candidates[i], restored[i] = candidate, source and source.revision
-    end
+    local prepared, prepare_err = M.candidates(workspace, operation, edits, source, false)
+    if prepare_err then return nil, prepare_err end
+    local set = prepared :: CandidateSet
     if binding then
-        local digest_value, digest_err = digest.preview(operation, candidates, binding.expected, edits[1].restore)
+        local digest_value, digest_err = M.preview_digest(operation, set, edits)
         if digest_err then return nil, digest_err end
         if digest_value ~= binding.digest then return nil, mismatch() end
     end
     if operation == "delete" and key.kind ~= "message" then
-        local in_use = usage_reader.require_unused(ex, {kind = key.kind, name = key.name}, originals)
+        local in_use = usage_reader.require_unused(ex, {kind = key.kind, name = key.name}, workspace.originals)
         if in_use then return nil, in_use end
     end
     if operation ~= "delete" or key.kind ~= "message" then
-        local validation_err = validate_templates(workspace, keys, candidates, changed)
+        local validation_err = validate_templates(workspace, set)
         if validation_err then return nil, validation_err end
     end
-    return edit_rules.plan(operation, edits, revisions, previous, candidates, originals, restored, source and source.seq,
+    return edit_rules.plan(operation, edits, set.expected, set.previous, set.items, workspace.originals, source,
         author, opts.preview_id, signature)
 end
 

@@ -14,7 +14,6 @@ local settings = require("settings")
 local database = require("database")
 local library_repo = require("library_repo")
 local preview_repo = require("preview_repo")
-local digest = require("digest")
 local notify = require("notify")
 local scratch = require("scratch")
 local time = require("time")
@@ -115,71 +114,37 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         local workspace = loaded :: edits.LibraryWorkspace
         local items = workspace.items
         local candidates: {types.ResourceContent} = {}
-        local keys: {types.ResourceKey} = {}
-        local changed: {[string]: boolean} = {}
-        local expected: {[string]: integer} = {}
-        local function add(candidate: types.ResourceContent): error?
-            if candidate.kind == "asset" then
-                return resources.error(errors.INVALID, "invalid_mail_asset", "Assets are added from an upload", candidate)
-            end
-            local id = resources.subject(candidate)
-            if changed[id] then
-                return resources.error(errors.INVALID, "duplicate_mail_resource", "A resource can appear only once per draft", candidate)
-            end
-            changed[id], items[id], workspace.loaded[id] = true, candidate :: types.Resource, true
-            candidates[#candidates + 1], keys[#keys + 1] = candidate, candidate
-            return nil
-        end
-
+        local set: edits.CandidateSet?
         if bind then
-            for _, edit in ipairs(batch) do
-                if edit.key.kind == "asset" then
-                    return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Assets are added from an upload", edit.key)
-                end
-                local err = edits.load(workspace, edit.key)
-                if err then return nil, err end
-                if edit.from then
-                    local source_err = edits.load(workspace, edit.from)
-                    if source_err then return nil, source_err end
-                end
-                local candidate, invalid = edits.prepare(edit, operation :: string, items, workspace.originals, source)
-                if invalid then return nil, invalid end
-                local revision, revision_err = edits.current_revision(workspace, edit.key)
-                if revision_err then return nil, revision_err end
-                expected[resources.subject(edit.key)] = revision :: integer
-                local add_err = add(candidate :: types.ResourceContent)
-                if add_err then return nil, add_err end
-            end
+            local candidate_err
+            set, candidate_err = edits.candidates(workspace, operation :: string, batch, source, true)
+            if candidate_err then return nil, candidate_err end
+            candidates = set.items
         else
+            local changed: {[string]: boolean} = {}
             local draft: {types.ResourceContent} = input.resource and {input.resource} or (input.resources :: {types.ResourceContent}?) or {}
             for _, input_resource in ipairs(draft) do
                 local invalid = resources.check_content(input_resource)
                 if invalid then return nil, invalid end
                 local candidate, normalize_err = resources.normalize(input_resource)
                 if normalize_err then return nil, normalize_err end
-                local add_err = add(candidate :: types.ResourceContent)
-                if add_err then return nil, add_err end
+                if candidate.kind == "asset" then
+                    return nil, resources.error(errors.INVALID, "invalid_mail_asset", "Assets are added from an upload", candidate)
+                end
+                local subject = resources.subject(candidate)
+                if changed[subject] then
+                    return nil, resources.error(errors.INVALID, "duplicate_mail_resource", "A resource can appear only once per draft", candidate)
+                end
+                changed[subject], items[subject], workspace.loaded[subject] = true, candidate :: types.Resource, true
+                candidates[#candidates + 1] = candidate
             end
         end
         local read_err = edits.load(workspace, key)
         if read_err then return nil, read_err end
         local item = items[resources.subject(key)]
         if not item or item.archived then return nil, edit_rules.missing(key) end
-        local dependants: {types.Resource} = {}
-        if bind then
-            local found, dependants_err = edits.dependants(workspace, keys, changed)
-            if dependants_err then return nil, dependants_err end
-            dependants = found :: {types.Resource}
-        end
-        local roots: {types.ResourceContent} = {item}
-        for _, candidate in ipairs(candidates) do roots[#roots + 1] = candidate end
-        for _, dependant in ipairs(dependants) do roots[#roots + 1] = dependant end
-        local dependency_err = edits.dependencies(workspace, roots)
+        local dependants, dependency_err = edits.complete(workspace, candidates, set, item)
         if dependency_err then return nil, dependency_err end
-        for _, candidate in ipairs(candidates) do
-            local base_err = edit_rules.base_exists(items, candidate)
-            if base_err then return nil, base_err end
-        end
 
         local vars = input.vars or item.samples
         local reserved, expiry_err = preview_repo.get(tx, id)
@@ -203,10 +168,10 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
             if discard_err then return nil, discard_err end
             return result, nil
         end
-        local hash, hash_err = digest.preview(operation :: string, candidates, expected, batch[1].restore)
+        local hash, hash_err = edits.preview_digest(operation :: string, set :: edits.CandidateSet, batch)
         if hash_err then return nil, hash_err end
         local completed, complete_err = preview_repo.complete(tx, {id = id, actor = author :: string,
-            operation = operation :: string, digest = hash :: string, expected = expected, expires_at = expires_at})
+            operation = operation :: string, digest = hash :: string, expected = set.expected, expires_at = expires_at})
         if complete_err then return nil, complete_err end
         if not completed then
             return nil, resources.error(errors.CONFLICT, "mail_preview_expired", "Start a new preview")

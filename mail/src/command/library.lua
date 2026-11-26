@@ -40,10 +40,9 @@ local function asset_event(tx: database.Transaction, operation: string, edit: ty
     if invalid then return nil, invalid end
     local id = resources.subject(key)
     local current, original = workspace.items[id], workspace.originals[id]
-    local revision, revision_err = edit_ops.current_revision(workspace, key)
-    if revision_err then return nil, revision_err end
+    local revision = edit_ops.current_revision(workspace, key)
     local body: types.LibraryEventBody = {key = {kind = key.kind, name = key.name}, author = author,
-        revision = (revision :: integer) + 1, command_hash = signature, note = edit.note,
+        revision = revision + 1, command_hash = signature, note = edit.note,
         change = current and "edited" or "created"}
     local event_type = edit_rules.event_type(operation, key)
     if operation == "delete" then

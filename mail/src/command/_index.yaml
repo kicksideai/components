@@ -141,7 +141,6 @@ entries:
       client: kickside.mail:client
       resource: kickside.mail.domain:resource
       edit: kickside.mail.domain:edit
-      digest: kickside.mail.domain:digest
       message: kickside.mail.domain:message
       vars: kickside.mail.domain:vars
       library_edits: kickside.mail.command:library_edits
