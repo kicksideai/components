@@ -57,21 +57,6 @@ entries:
       comment: Structured component READ and WRITE grant for the host's Mail library editors.
     targets:
       - {entry: kickside.mail.binding:library, path: ".meta.provision.grants +="}
-  - name: clock
-    kind: ns.requirement
-    default: kickside.mail.command:clock
-    meta: {value_kind: library.lua, description: Clock used for library edits and retention deadlines.}
-    targets:
-      - {entry: kickside.mail.command:library, path: .imports.time}
-      - {entry: kickside.mail.command:library_edits, path: .imports.time}
-      - {entry: kickside.mail.command:preview, path: .imports.time}
-      - {entry: kickside.mail.jobs:owner, path: .imports.time}
-  - name: http_transport
-    kind: ns.requirement
-    default: kickside.mail.driver:http_client
-    meta: {value_kind: library.lua, description: HTTP client adapter used by Mail transport helpers.}
-    targets:
-      - {entry: kickside.mail.driver:http, path: .imports.http_client}
   - name: realtime_binding
     kind: ns.requirement
     default: kickside.realtime:realtime_binding

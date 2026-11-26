@@ -36,6 +36,10 @@ function M.retry_at(err: error, attempts: integer, now: integer, idempotent: boo
     return now + math.ceil(delay)
 end
 
+function M.expired(deadline: integer, now: integer): boolean
+    return deadline <= now
+end
+
 function M.retention_days(value: unknown): integer?
     if type(value) ~= "number" or value < 1 or value > M.MAX_RETENTION_DAYS then return nil end
     return math.tointeger(value)

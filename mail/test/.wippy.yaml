@@ -18,7 +18,19 @@ workspace:
     kickside/uploads: ../../../kickside/platform/uploads
     kickside/users: ../../../kickside/platform/users
     kickside/doc2md: ../../../converters/doc2md
+override:
+  app:dep.driver_example:parameters:
+    - {name: "example.mail.relay.security:user_security_scope", value: "app:user"}
+    - {name: "example.mail.relay:api_base_url", value: "https://127.0.0.1:${relay_port}/messages"}
+  app.mail_harness:relay_gateway:addr: "127.0.0.1:${relay_port}"
+  example.mail.relay.transport:send:security.policies:
+    - example.mail.relay.security:settings_read
+    - example.mail.relay.security:settings_admin_read
+    - example.mail.relay.security:provider_reads
+    - example.mail.relay.security:http_access
+    - app.mail_harness:relay_loopback
 vars:
+  relay_port: 0
   pg_host: localhost
   pg_port: 5433
   pg_database: kickside_test_mail

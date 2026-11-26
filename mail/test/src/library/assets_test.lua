@@ -14,6 +14,7 @@ local lookup = require("lookup")
 local settings = require("settings")
 local fixtures = require("fixtures")
 local prune = require("prune")
+local threads_fixture = require("threads_fixture")
 local asset_lifetime_cases = require("asset_lifetime_cases")
 local asset_content_cases = require("asset_content_cases")
 local asset_delivery_cases = require("asset_delivery_cases")
@@ -91,9 +92,8 @@ local function cases(race_only)
             end, "25s")
         end
 
-        local function sweep(now)
-            local owner = assert(funcs.new():with_context({mail_test_now = now}))
-            local result = assert(owner:call(fixtures.retention_id(), {}))
+        local function sweep()
+            local result = assert(funcs.call(fixtures.retention_id(), {}))
             assert(result.success, tostring(result.error))
             return result
         end
@@ -132,15 +132,32 @@ local function cases(race_only)
         test.it("refuses to append an adoption after its lease expires", function()
             local name = "expired-adoption-lease"
             local source = upload("image/gif", gif())
-            local now = time.now():add(time.HOUR):unix_nano() // 1000000
-            local late = assert(state.editor:with_context({mail_test_now = now}))
-            local result, failure = fixtures.call(late, "add_asset", {kind = "asset", name = name, upload_id = source})
+            state.restore_threads = threads_fixture.select()
+            local policy = assert(security.policy("app.mail_library:threads_fixture_dispatch"))
+            local gate = uuid.v4()
+            local paused = threads_fixture.observe_pause(gate)
+            local writer = assert(state.editor:with_scope(assert(state.scope:with(policy))))
+            writer = assert(writer:with_context({mail_fixture_threads = {subject = "asset/" .. name, gate = gate}}))
+            local started = time.now():unix_nano() // 1000000
+            local call = assert(fixtures.async(writer, "add_asset", {kind = "asset", name = name, upload_id = source}))
+            paused()
+            local db = assert(sql.get("app:db"))
+            local expired = assert(db:execute([[UPDATE mail_asset_file SET reserved_at=$1,due_at=$2
+                WHERE reserved_at>=$3 AND due_at>$3 AND hold_seq IS NULL]],
+                {started - 16 * 60000, started - 60000, started}))
+            assert(db:release())
+            threads_fixture.resume(gate)
+            call:response():receive()
+            local result, failure = call:result()
+            state.restore_threads()
+            state.restore_threads = nil
+            test.eq(1, expired.rows_affected)
             test.is_nil(result)
             test.eq("mail_asset_version_unavailable", assert(failure):details().code)
             local item, missing = fixtures.call(state.editor, "get", {kind = "asset", name = name})
             test.is_nil(item)
             test.eq(errors.NOT_FOUND, assert(missing):kind())
-            sweep(now)
+            sweep()
         end)
 
         asset_lifetime_cases.register(cases)
@@ -155,7 +172,7 @@ local expiry = test.run_cases(function()
         test.it("reports blocked assets while expiring messages and progressing beyond a failed batch", function()
             local db = assert(sql.get("app:db"))
             local day = 86400000
-            local now = time.now():unix_nano() // 1000000 + day
+            local now = time.now():unix_nano() // 1000000
             local expired, collectable = uuid.v4(), uuid.v4()
             local prefix = "invalid-" .. uuid.v4()
             local batch = 200
@@ -169,19 +186,19 @@ local expiry = test.run_cases(function()
                 (upload_id,due_at) VALUES ($1,$2)]], {collectable, now - 1}))
             assert(tx:execute([[INSERT INTO mail_message
                 (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments)
-                VALUES ($1,$2,$2,'failed','fixture','{}','Expiry','mail@example.org','[]')]], {expired, now - 30 * day}))
+                VALUES ($1,$2,$2,'failed','fixture','{}','Expiry','mail@example.org','[]')]], {expired, now - 31 * day}))
             assert(tx:commit())
 
-            local function sweep(at)
-                local exec = assert(funcs.new():with_context({mail_test_now = at}))
-                return assert(exec:call(fixtures.retention_id(), {}))
+            local function sweep()
+                return assert(funcs.call(fixtures.retention_id(), {}))
             end
-            local first = sweep(now)
-            local second = sweep(now)
+            local first = sweep()
+            local second = sweep()
             local messages = assert(db:query("SELECT id FROM mail_message WHERE id=$1", {expired}))
             local assets = assert(db:query("SELECT upload_id, due_at FROM mail_asset_file WHERE upload_id LIKE $1 OR upload_id=$2",
                 {prefix .. "%", collectable}))
-            local at_deadline = second.deadline_ms and sweep(second.deadline_ms)
+            assert(db:execute("UPDATE mail_asset_file SET due_at=$1 WHERE upload_id LIKE $2", {now - 1, prefix .. "%"}))
+            local at_deadline = sweep()
             assert(db:execute("DELETE FROM mail_message WHERE id=$1", {expired}))
             assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id LIKE $1 OR upload_id=$2", {prefix .. "%", collectable}))
             assert(db:release())
@@ -203,7 +220,7 @@ local expiry = test.run_cases(function()
             local postgres = assert(db:type()) == "postgres"
             local day = 86400000
             local now = time.now():unix_nano() // 1000000
-            local cutoff = now - 29 * day
+            local cutoff = now - 30 * day - 60000
             local first, late, version = uuid.v4(), uuid.v4(), uuid.v4()
             local seed = assert(db:begin())
             assert(seed:execute([[INSERT INTO mail_asset_file
@@ -217,9 +234,9 @@ local expiry = test.run_cases(function()
                 assert(seed:execute([[INSERT INTO mail_message_asset
                     (message_id,name,content_id,upload_id) VALUES ($1,'fixture','fixture',$2)]], {id, version}))
             end
-            assert(seed:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff + 1, late}))
+            assert(seed:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff + 120000, late}))
             assert(seed:commit())
-            local exec = assert(funcs.new():with_context({mail_test_now = now + day}))
+            local exec = funcs.new()
             local report
             if postgres then
                 local lock = assert(db:begin())

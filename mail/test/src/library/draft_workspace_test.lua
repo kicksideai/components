@@ -161,14 +161,17 @@ return {run = test.run_cases(function()
                 return rows[1] and rows[1].expires_at
             end
             local expires = assert(reserved())
-            local function sweep(at)
-                local executor = assert(funcs.new():with_context({mail_test_now = at * 1000}))
-                local report = assert(executor:call(fixtures.retention_id(), {}))
+            local function sweep()
+                local report = assert(funcs.call(fixtures.retention_id(), {}))
                 assert(report.success, tostring(report.error))
             end
-            sweep(expires - 1)
+            sweep()
             test.eq(expires, reserved())
-            sweep(expires)
+            assert(database.with_db(function(db)
+                return db:execute("UPDATE mail_library_preview SET expires_at=$1 WHERE id=$2",
+                    {time.now():unix() - 1, receipt})
+            end))
+            sweep()
             test.is_nil(reserved())
             local result, err = fixtures.call(editor, "save", {resources = {draft}, preview_id = receipt})
             test.is_nil(result)

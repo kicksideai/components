@@ -3,13 +3,37 @@ local json = require("json")
 local sql = require("sql")
 local channel = require("channel")
 local base64 = require("base64")
-local delivery = require("delivery")
+local time = require("time")
 local types = require("types")
 
 local function result(id, message)
     return {provider_message_id = table.concat({
         id, message.from.address, message.from.name or "", message.reply_to or "",
     }, "|")}
+end
+
+local http_failures = {
+    refused = "dial tcp: connect: connection refused",
+    dns = "lookup provider.example.org: no such host",
+    tls = "tls: failed to verify certificate",
+    connect_timeout = "dial tcp: i/o timeout",
+    response_timeout = "context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+    response_reset = "read tcp: connection reset by peer",
+}
+
+local function http_outcome(fault, attempts, deadline)
+    local remaining = assert(time.parse(time.RFC3339, deadline)):sub(time.now()):nanoseconds()
+    assert(remaining > 0 and remaining <= 3 * time.SECOND)
+    if fault == "denied" then
+        return nil, errors.new({kind = errors.PERMISSION_DENIED, retryable = false,
+            message = "Fixture HTTP policy denied the request", details = {code = "provider_request_failed"}})
+    end
+    local message = assert(http_failures[fault])
+    if attempts == 1 then
+        return nil, errors.new({kind = errors.UNAVAILABLE, retryable = true, message = message,
+            details = {code = "provider_transport_failed"}})
+    end
+    return {provider_message_id = "fixture-http-delivery"}, nil
 end
 
 local function capture(message: types.TransportRequest)
@@ -21,10 +45,7 @@ local function capture(message: types.TransportRequest)
         local attempts = rows[1].attempts
         local fault = behavior:match("^http_(.+)$")
         if fault then
-            local response, err = delivery.post("https://provider.example.org/messages",
-                assert(json.encode({fault = fault, attempts = attempts})), {}, message.deadline)
-            if err then return nil, err end
-            return delivery.message_id(response)
+            return http_outcome(fault, attempts, message.deadline)
         end
         if behavior == "ceiling" and attempts == 5 then
             channel.new():receive()

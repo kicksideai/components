@@ -5,7 +5,7 @@ A driver translates one rendered Mail message into a provider request. It owns i
 
 ## Build the package
 
-Start with this complete Example Relay package. Copy it into a new module, replace the package and registry namespace throughout, and adapt the transport to the provider API. The sample's default host is a reserved domain. The Mail harness installs the example and intercepts its HTTP requests at Mail's documented `http_transport` requirement.
+Start with this complete Example Relay package. Copy it into a new module, replace the package and registry namespace throughout, and adapt the transport to the provider API. The sample's default host is a reserved domain. The Mail harness installs the example and uses its `api_base_url` requirement to point it at a loopback HTTPS fixture.
 
 - [wippy.yaml](https://github.com/kicksideai/components/blob/main/mail/test/driver-example/wippy.yaml) — Plugin manifest and publication exclusions
 - [src/_index.yaml](https://github.com/kicksideai/components/blob/main/mail/test/driver-example/src/_index.yaml) — Module definition, Mail and Settings dependencies, endpoint requirement, and transport binding
@@ -121,6 +121,6 @@ Mail can also show shared codes directly, including `invalid_config`, `message_r
 
 Mail classifies failures using the native error kind and `retryable` flag. A retryable failure normally receives up to 32 delivery attempts with backoff from one second to five minutes. Mail caps a provider retry hint at 15 minutes. A request that may already have reached a non-idempotent driver settles as `delivery_uncertain` instead of risking another send.
 
-In a standalone driver harness, override the URL requirement to a loopback TLS listener. Generate a per-run certificate and set `SSL_CERT_FILE` only on the harness process. Grant `http_client.private_ip` in the harness only, on the loopback fixture URL. The providers repository's `test-support/mail-driver-run.sh` implements this pattern. Test admission, setup, attachment encoding, the supplied deadline, success and refusal classification, and egress denial. Build caller identities from the public Mail capability selections.
+In a standalone driver harness, override the URL requirement to a loopback TLS listener. Generate a per-run certificate and set `SSL_CERT_FILE` only on the harness process. Grant `http_client.private_ip` in the harness only, on the loopback fixture URL. The providers repository's `test-support/mail-driver-run.sh` implements this pattern. Test admission, setup, attachment encoding, the supplied deadline, success and refusal classification, and egress denial. Build caller identities from the public Mail capability selections. Use `client.mailer()` from `kickside.mail:client` to open the Mail contract under the caller's identity.
 
 The [Mail reference](https://github.com/kicksideai/components/blob/main/mail/src/README.md#transport-drivers) describes the contract, operator permissions, and settings editor. The [example tests](https://github.com/kicksideai/components/blob/main/mail/test/src/mailer/driver_example_cases.lua) use the example transport through Mail's harness.

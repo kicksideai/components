@@ -13,12 +13,13 @@ local api_fixtures = require("api_fixtures")
 local component = require("component")
 local jobs = require("jobs")
 local jet = require("jet")
+local database = require("database")
 
 local KIND = "kickside.mail.binding:library"
 
-local function open(contract_id, component_id, now)
+local function open(contract_id, component_id)
     local definition = assert(contract.get(contract_id))
-    return assert(definition:open(KIND, {component_id = component_id, mail_test_now = now}))
+    return assert(definition:open(KIND, {component_id = component_id}))
 end
 
 local function rows(statement, args)
@@ -45,8 +46,7 @@ return {run = test.run_cases(function()
 
         test.it("clears library state twice and leaves uploaded bytes for retention", function()
             local component_id = fixtures.library_component_id()
-            local now = time.now():add(time.HOUR):unix_nano() // 1000000
-            local teardown = open("kickside.contract:deletable", component_id, now)
+            local teardown = open("kickside.contract:deletable", component_id)
             local who = api_fixtures.session("upload_editor")
             local storage = assert(fs.get("app:uploads"))
             local gif = "GIF89a\1\0\1\0\128\0\0\0\0\0\255\255\255!\249\4\1\0\0\0\0,\0\0\0\0\1\0\1\0\0\2\2D\1\0;"
@@ -62,17 +62,35 @@ return {run = test.run_cases(function()
             local saved = assert(fixtures.call(editor, "create", message))
             fixtures.await_live(saved.seq)
             fixtures.await_sync_idle()
+            local pinned_message = "teardown-delivery"
+            local now = time.now():unix_nano() // 1000000
+            assert(database.with_tx(function(tx)
+                assert(tx:execute([[INSERT INTO mail_message
+                    (id,created_at,finished_at,status,sender,recipients,subject,from_address,attachments)
+                    VALUES ($1,$2,$2,'failed','fixture','{}','Teardown','mail@example.org','[]')]], {pinned_message, now}))
+                return tx:execute([[INSERT INTO mail_message_asset (message_id,name,content_id,upload_id)
+                    VALUES ($1,'fixture','fixture',$2)]], {pinned_message, upload.uuid})
+            end))
             local original_due = assert(rows("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {upload.uuid})[1]).due_at
-            local expected_due = math.min(original_due or now, now)
+            local expected_due
             for _ = 1, 2 do
+                local started = time.now():unix_nano() // 1000000
                 test.is_true(assert(teardown:delete({})).success)
+                local finished = time.now():unix_nano() // 1000000
                 for _, name in ipairs({"mail_library", "mail_library_asset", "mail_library_history", "mail_library_reference",
                     "mail_library_preview", "mail_library_live", "mail_library_upload_ref"}) do
                     test.eq(0, #rows("SELECT 1 FROM " .. name .. " LIMIT 1"), name)
                 end
                 test.eq(0, #assert(assert(registry.overlay(jet.owner)):entries()))
                 local ledger = rows("SELECT due_at FROM mail_asset_file WHERE upload_id=$1", {upload.uuid})
-                test.eq(expected_due, assert(ledger[1]).due_at)
+                local due = assert(ledger[1]).due_at
+                if expected_due then
+                    test.eq(expected_due, due)
+                else
+                    test.is_true(due >= math.min(original_due or started, started))
+                    test.is_true(due <= math.min(original_due or finished, finished))
+                end
+                expected_due = due
             end
             test.is_true(storage:exists(upload.storage_path))
             local definition = assert(contract.get("kickside.component:component_service"))
@@ -100,8 +118,10 @@ return {run = test.run_cases(function()
                 if err then assert(errors.is(err, errors.NOT_FOUND), tostring(err)) end
                 return boundary == nil and err ~= nil
             end, "Component deletion did not purge the library and its thread")
-            local retention = assert(funcs.new():with_context({mail_test_now = now}))
-            local swept = assert(retention:call(fixtures.retention_id(), {}))
+            assert(database.with_db(function(db)
+                return db:execute("DELETE FROM mail_message WHERE id=$1", {pinned_message})
+            end))
+            local swept = assert(funcs.call(fixtures.retention_id(), {}))
             test.is_true(swept.success, tostring(swept.error))
             test.is_false(storage:exists(upload.storage_path))
             test.eq(0, #rows("SELECT 1 FROM mail_asset_file WHERE upload_id=$1", {upload.uuid}))

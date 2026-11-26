@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local database = require("database")
 local types = require("types")
+local policy = require("policy")
 local sql = require("sql")
 
 local M = {}
@@ -41,9 +42,10 @@ end
 -- A hold protects the upload through projection of the guarded append.
 function M.hold_adoption(tx: database.Transaction, id: string, deadline: integer, now_ms: integer,
     seq: integer, token: string): (boolean?, error?)
+    if policy.expired(deadline, now_ms) then return nil, unavailable() end
     local result, err = tx:execute([[UPDATE mail_asset_file SET hold_seq=$1,hold_id=$2
-        WHERE upload_id=$3 AND state='held' AND due_at=$4 AND due_at>$5 AND hold_seq IS NULL]],
-        {seq, token, id, deadline, now_ms})
+        WHERE upload_id=$3 AND state='held' AND due_at=$4 AND hold_seq IS NULL]],
+        {seq, token, id, deadline})
     if err then return nil, err end
     if result.rows_affected ~= 1 then return nil, unavailable() end
     return true, nil

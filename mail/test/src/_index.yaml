@@ -193,15 +193,11 @@ entries:
       - { name: "kickside.mail:target_db", value: "app:db" }
       - { name: "kickside.mail:api_router", value: "app:api" }
       - { name: "kickside.mail:library_editor_grant", value: {subject_id: "app:mail_editors", subject_type: group, access_mask: 3} }
-      - { name: "kickside.mail:clock", value: "app.mail_harness:owner_clock" }
-      - { name: "kickside.mail:http_transport", value: "app.mail_harness:http_client" }
       - { name: "kickside.mail:realtime_binding", value: "app.mail_realtime:realtime_binding" }
   - name: dep.driver_example
     kind: ns.dependency
     component: example/mail-relay
     version: "*"
-    parameters:
-      - {name: "example.mail.relay.security:user_security_scope", value: "app:user"}
   - name: dep.workflows
     kind: ns.dependency
     component: kickside/workflows

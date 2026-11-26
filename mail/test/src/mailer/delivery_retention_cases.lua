@@ -28,7 +28,7 @@ local function register(support)
 
     test.it("settles jobs that are cancelled or no longer stored", function()
         local sender, sender_id = actors.sender, actors.sender_id
-        local admitted_at = now_ms() + 3600000
+        local admitted_at = now_ms()
         local recheck_at = admitted_at + policy.RECHECK_MS
         local hinted, cancelled, missing = {id = uuid.v7()}, {id = uuid.v7()}, {id = uuid.v7()}
         state.settlement_rows = {hinted, cancelled, missing}
@@ -62,33 +62,39 @@ local function register(support)
             test.eq("cancelled", assert(jobs.get_job(row.job_id)).status)
         end
 
-        local function owner(now, change)
-            local executor = assert(funcs.new():with_context({mail_test_now = now}))
-            local result = assert(executor:call(library_fixtures.retention_id(), {change = change}))
+        local function owner(change)
+            local result = assert(funcs.call(library_fixtures.retention_id(), {change = change}))
             assert(result.success, tostring(result.error))
             return result
         end
-        local function interrupted(row, at, label)
+        local function interrupted(row, started, label)
             local message = assert(invoke(sender, "get_message", row.id))
             test.eq("failed", message.status, label)
             test.eq("delivery_interrupted", message.last_error.code)
-            test.eq(at, persisted(row.id).finished_at)
+            local finished = persisted(row.id).finished_at
+            test.is_true(finished >= started and finished <= now_ms(), label)
             no_body(row.id)
         end
 
-        local hinted_at = admitted_at + 1
-        owner(hinted_at, {kind = "lease_released", job_id = hinted.job_id,
+        local hinted_at = now_ms()
+        test.is_true(hinted_at < recheck_at)
+        owner({kind = "lease_released", job_id = hinted.job_id,
             owner_locator = {kind = "mail-message", id = hinted.id}})
         interrupted(hinted, hinted_at, "cancelled job with a lease-release hint")
-        owner(recheck_at - 1)
+        owner()
         for _, row in ipairs({cancelled, missing}) do
             local before_recheck = persisted(row.id)
             test.eq("queued", before_recheck.status)
             test.eq(recheck_at, before_recheck.next_check_at)
         end
-        owner(recheck_at)
-        interrupted(cancelled, recheck_at, "cancelled job at the scheduled check")
-        interrupted(missing, recheck_at, "missing job at the scheduled check")
+        local started = now_ms()
+        assert(database.with_db(function(db)
+            return db:execute("UPDATE mail_message SET next_check_at=$1 WHERE id IN ($2,$3)",
+                {started - 1, cancelled.id, missing.id})
+        end))
+        owner()
+        interrupted(cancelled, started, "cancelled job at the scheduled check")
+        interrupted(missing, started, "missing job at the scheduled check")
     end)
 
     test.it("settles a dead final execution when the lease-release hint is missed", function()
@@ -101,7 +107,7 @@ local function register(support)
         }))
         local dead = await_job(job.id, "dead")
         test.eq(1, dead.attempts)
-        local admitted_at = now_ms() + 3600000
+        local admitted_at = now_ms()
         local recheck_at = admitted_at + policy.RECHECK_MS
         state.settlement_rows = {{id = id, job_id = job.id}}
         assert(database.with_db(function(db)
@@ -113,27 +119,32 @@ local function register(support)
                 {id, admitted_at, recheck_at, sender_id, job.id})
         end))
 
-        local function sweep(at)
-            local executor = assert(funcs.new():with_context({mail_test_now = at}))
-            local report = assert(executor:call(library_fixtures.retention_id(), {}))
+        local function sweep()
+            local report = assert(funcs.call(library_fixtures.retention_id(), {}))
             assert(report.success, tostring(report.error))
         end
-        sweep(recheck_at - 1)
+        sweep()
         test.eq("queued", persisted(id).status)
-        sweep(recheck_at)
+        local started = now_ms()
+        assert(database.with_db(function(db)
+            return db:execute("UPDATE mail_message SET next_check_at=$1 WHERE id=$2", {started - 1, id})
+        end))
+        sweep()
         local message = assert(invoke(sender, "get_message", id))
         test.eq("failed", message.status)
         test.eq("delivery_interrupted", message.last_error.code)
-        test.eq(recheck_at, persisted(id).finished_at)
+        local finished = persisted(id).finished_at
+        test.is_true(finished >= started and finished <= now_ms())
         no_body(id)
     end)
 
     test.it("prunes preview rows in pages and schedules the earliest remaining expiry", function()
-        local now = (now_ms() // 1000 + 300) * 1000
+        local now = now_ms() // 1000
+        local due, future = now - 1, now + 120
         local fixture = "retention-preview-" .. uuid.v4()
         assert(database.with_tx(function(tx)
             for i = 1, policy.BATCH + 2 do
-                local expiry = now // 1000 + (i > policy.BATCH + 1 and 1 or 0)
+                local expiry = i > policy.BATCH + 1 and future or due
                 local _, err = tx:execute([[INSERT INTO mail_library_preview (id,actor,operation,digest,expected_json,expires_at)
                     VALUES ($1,$2,'update','fixture','{}',$3)]], {uuid.v4(), fixture, expiry})
                 if err then return nil, err end
@@ -143,21 +154,23 @@ local function register(support)
         local function count()
             return query("SELECT COUNT(*) AS n FROM mail_library_preview WHERE actor=$1", {fixture})[1].n
         end
-        local function sweep(at)
-            local executor = assert(funcs.new():with_context({mail_test_now = at}))
-            local report = assert(executor:call(library_fixtures.retention_id(), {}))
+        local function sweep()
+            local report = assert(funcs.call(library_fixtures.retention_id(), {}))
             assert(report.success, tostring(report.error))
             return report
         end
-        local page = sweep(now)
+        local page = sweep()
         test.eq(2, count(), "rows left after the first page")
-        test.eq(now, page.deadline_ms, "remaining expired row")
+        test.eq(due * 1000, page.deadline_ms, "remaining expired row")
         test.is_true(page.needs_continue)
-        local next_page = sweep(now)
+        local next_page = sweep()
         test.eq(1, count(), "rows left after the second page")
-        test.eq(now + 1000, next_page.deadline_ms, "remaining future row")
+        test.eq(future * 1000, next_page.deadline_ms, "remaining future row")
         test.is_false(next_page.needs_continue)
-        sweep(now + 1000)
+        assert(database.with_db(function(db)
+            return db:execute("UPDATE mail_library_preview SET expires_at=$1 WHERE actor=$2", {due, fixture})
+        end))
+        sweep()
         test.eq(0, count())
     end)
 

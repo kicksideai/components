@@ -17,6 +17,7 @@ local preview_repo = require("preview_repo")
 local notify = require("notify")
 local scratch = require("scratch")
 local time = require("time")
+local policy = require("policy")
 local uuid = require("uuid")
 local renderer = require("render")
 local live_preview = require("live_preview")
@@ -149,7 +150,7 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         local vars = input.vars or item.samples
         local reserved, expiry_err = preview_repo.get(tx, id)
         if expiry_err then return nil, expiry_err end
-        if not reserved or reserved.expires_at <= time.now():unix() then
+        if not reserved or policy.expired(reserved.expires_at, time.now():unix()) then
             return nil, resources.error(errors.INVALID, "mail_preview_expired", "Start a new preview")
         end
         local _, clear_err = scratch.clear_workspace()

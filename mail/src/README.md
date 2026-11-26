@@ -23,7 +23,7 @@ With Mail Admin installed, open **Settings → Integrations → Mail** to choose
 
 ## Contracts and tools
 
-`kickside.mail:mailer` exposes `send`, `resend`, `get_message`, `list_messages`, `list_templates`, `get_template`, `preview`, `delivery_status`, and `send_delivery_test`. The corresponding tools are `MailSend`, `MailListTemplates`, `MailGetTemplate`, and `MailPreview`. The `kickside.mail.traits:mail` trait includes all four. The `kickside.mail.traits:mail_readonly` trait includes the three template tools.
+Lua callers open the mailer with `client.mailer()` from `kickside.mail:client` and invoke its methods on the returned handle. The contract exposes `send`, `resend`, `get_message`, `list_messages`, `list_templates`, `get_template`, `preview`, `delivery_status`, and `send_delivery_test`. The corresponding tools are `MailSend`, `MailListTemplates`, `MailGetTemplate`, and `MailPreview`. The `kickside.mail.traits:mail` trait includes all four. The `kickside.mail.traits:mail_readonly` trait includes the three template tools.
 
 Supply a nonempty `to` list and either a `template` with its `vars`, or a `subject` with `text`, `html`, or both. `cc` and `bcc` use the same address or `{user_id}` entries as `to`. After resolving user IDs, Mail includes each address once, comparing local parts exactly and domains case-insensitively in To, Cc, then Bcc order. Mail accepts unquoted ASCII local parts and dotted ASCII domains, including domains already encoded as Punycode. Subjects allow up to 255 characters and each raw or rendered body allows up to 256 KiB. `attachments` accepts up to ten upload references with a 25 MiB raw combined limit. The configured driver’s total message limit also applies, including attachment encoding overhead. Mail uses the basename of the supplied or stored upload filename, up to 255 bytes, and uses `attachment` for an empty name. An inline reference supplies a `content_id` that the HTML can address as `cid:<content_id>`.
 
@@ -153,8 +153,6 @@ stored `driver` setting (0 while it holds its default); pass it as
 
 ### Host requirements
 
-- `clock` provides the `now()` clock for library writes, preview expiry, and the retention owner. It defaults to Wippy's runtime clock.
-- `http_transport` provides the `request(method, url, options)` function used by Mail's public HTTP driver helper. It defaults to Wippy's HTTP client, which enforces the driver's outbound policy.
 
 ## Template library
 
@@ -175,7 +173,7 @@ A message selects its base as data. The base provides a `body()` block and the m
 
 Parts read passed inputs through the dot context. Templates can also read `site.title`, `site.url`, `sender.name`, `message.subject`, and `message.preheader` in both faces. Use `vars` for declared message variables.
 
-Lua callers with **Edit mail library** open `kickside.mail:library` through `kickside.mail:client`. Use `list` for summaries (filter by `kind`, `state`, `base`, a search `q`, or up to 100 exact `names`; HTTP takes `names` comma-separated), `get` for editable source, `asset_content` for image bytes, and `read_history` and `read_revision` for saved versions. The write methods are `create`, `update`, `save`, `set_base`, `reset`, `restore`, `delete`, and `add_asset`. Use `send_test` to queue the selected saved message to the acting editor’s email address. Use `add_asset` for uploads. Omit `expected_revision` to create an image or provide the current revision to replace it. The existing HTTP POST and PUT paths dispatch uploads to this method.
+Lua callers with **Edit mail library** open `kickside.mail:library` with `client.library()`. Use `list` for summaries (filter by `kind`, `state`, `base`, a search `q`, or up to 100 exact `names`; HTTP takes `names` comma-separated), `get` for editable source, `asset_content` for image bytes, and `read_history` and `read_revision` for saved versions. The write methods are `create`, `update`, `save`, `set_base`, `reset`, `restore`, `delete`, and `add_asset`. Use `send_test` to queue the selected saved message to the acting editor’s email address. Use `add_asset` for uploads. Omit `expected_revision` to create an image or provide the current revision to replace it. The existing HTTP POST and PUT paths dispatch uploads to this method.
 
 Use `preview` to render a saved message or review a draft against a selected message. The HTTP preview path is `POST /mail/library/preview`. Preview the proposed non-image create, update, save, base change, reset, or restore, then send the returned `preview_id` with the write. Preview IDs belong to the issuing actor and expire after 15 minutes. Writes to an existing resource also require its current `expected_revision`. Supply a UUID `command_id` to replay the same write safely. A write can return `seq`, `committed: true`, and `projected: false` when the projection is still catching up. Refetch when the library invalidation arrives. `delete` acknowledges success with a boolean.
 

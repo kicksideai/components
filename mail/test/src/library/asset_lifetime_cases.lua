@@ -45,8 +45,8 @@ local function register(support, race_only)
         return assert(state.editor:with_scope(assert(state.scope:with(policy))))
     end
 
-    local function fixture_retention(now, fault, upload_pause)
-        return assert(funcs.new():with_context({mail_test_now = now, mail_fixture_threads = fault,
+    local function fixture_retention(fault, upload_pause)
+        return assert(funcs.new():with_context({mail_fixture_threads = fault,
             mail_fixture_upload_pause = upload_pause}))
     end
 
@@ -55,7 +55,6 @@ local function register(support, race_only)
             local source, first, latest, restore = restore_history("reap-before-restore")
             local threads = library_thread()
             local id = fixtures.library_component_id()
-            local now = time.now():add(time.HOUR):unix_nano() // 1000000
             local before = assert(threads:find({thread_id = id})).event_count
             local writer = fixture_threads()
             local source_gate, reap_gate = uuid.v4(), uuid.v4()
@@ -64,7 +63,7 @@ local function register(support, race_only)
             writer = assert(writer:with_context({mail_fixture_threads = {source_seq = first.seq, gate = source_gate}}))
             local restoring = assert(fixtures.async(writer, "restore", restore))
             source_read()
-            local owner = fixture_retention(now, {pruned = first.seq}, {path = source.storage_path, gate = reap_gate})
+            local owner = fixture_retention({pruned = first.seq}, {path = source.storage_path, gate = reap_gate})
             local reaping = assert(owner:async(fixtures.retention_id(), {}))
             reap_claimed()
             local kept = state.storage:exists(source.storage_path)
@@ -102,7 +101,7 @@ local function register(support, race_only)
         local restoring = assert(fixtures.async(writer, "restore", restore))
         paused()
         prune_through(first.seq)
-        sweep(time.now():unix_nano() // 1000000)
+        sweep()
         local kept = state.storage:exists(source.storage_path)
         threads_fixture.resume(gate)
         restoring:response():receive()
@@ -126,44 +125,56 @@ local function register(support, race_only)
 
     local function reserve_restore(name, strand)
         local source, first, _, restore = restore_history(name)
-        local now = time.now():unix_nano() // 1000000
         local executor = strand and fixture_threads() or state.editor
-        local writer = assert(executor:with_context({mail_test_now = now,
-            mail_fixture_threads = strand and {append = "lost"} or nil}))
+        local writer = strand and assert(executor:with_context({mail_fixture_threads = {append = "lost"}})) or executor
         local restored, err = fixtures.call(writer, "restore", restore)
         if strand then
             test.is_nil(restored)
             test.eq(errors.UNAVAILABLE, assert(err):kind())
             test.eq("fixture_lost_append", err:details().code)
-            return source, first.seq, now
+            return source, first.seq
         end
-        return source, first.seq, now, restored, err
+        return source, first.seq, restored, err
     end
 
     local function hold(id)
         local db = assert(sql.get("app:db"))
-        local rows = assert(db:query("SELECT hold_id,restore_check_at FROM mail_asset_file WHERE upload_id=$1", {id}))
+        local rows = assert(db:query("SELECT hold_id,restore_check_at,restore_reserved_at FROM mail_asset_file WHERE upload_id=$1", {id}))
         assert(db:release())
         local row = rows[1]
-        return row and row.hold_id, row and row.restore_check_at
+        return row and row.hold_id, row and row.restore_check_at, row and row.restore_reserved_at
+    end
+
+    local grace = 15 * 60 * 1000
+
+    local function expire_hold(id)
+        local db = assert(sql.get("app:db"))
+        local due = time.now():unix_nano() // 1000000 - 1000
+        assert(db:execute("UPDATE mail_asset_file SET restore_reserved_at=$1,restore_check_at=$2 WHERE upload_id=$3",
+            {due - grace, due, id}))
+        assert(db:release())
     end
 
     test.it("releases a stranded restore reservation after its grace period and reaps the upload", function()
-        local source, original_seq, now = reserve_restore("stranded-restore", true)
-        local reserved = assert(hold(source.uuid))
+        local source, original_seq = reserve_restore("stranded-restore", true)
+        local reserved, due, reserved_at = hold(source.uuid)
+        test.not_nil(reserved)
+        test.eq(grace, due - reserved_at)
         prune_through(original_seq)
-        sweep(now + 15 * 60 * 1000 - 1)
+        sweep()
         test.eq(reserved, hold(source.uuid))
         test.is_true(state.storage:exists(source.storage_path))
-        sweep(now + 15 * 60 * 1000 + 1)
+        expire_hold(source.uuid)
+        sweep()
         test.is_nil(hold(source.uuid))
         test.is_false(state.storage:exists(source.storage_path))
     end)
 
     test.it("releases a stranded restore reservation while History retains the upload", function()
-        local source, _, now = reserve_restore("restore-with-unpruned-source", true)
+        local source = reserve_restore("restore-with-unpruned-source", true)
         test.not_nil(hold(source.uuid))
-        local owner = fixture_retention(now + 15 * 60 * 1000 + 1, {missing_boundary = true})
+        expire_hold(source.uuid)
+        local owner = fixture_retention({missing_boundary = true})
         local report = assert(owner:call(fixtures.retention_id(), {}))
         test.is_true(report.success, tostring(report.error))
         test.is_nil(hold(source.uuid))
@@ -171,12 +182,13 @@ local function register(support, race_only)
     end)
 
     test.it("keeps an expired restore reservation whose event exists", function()
-        local source, _, now, restored, err = reserve_restore("appended-restore", false)
+        local source, _, restored, err = reserve_restore("appended-restore", false)
         assert(restored, tostring(err))
-        local reserved, deadline = hold(source.uuid)
+        local reserved, deadline, reserved_at = hold(source.uuid)
         test.not_nil(reserved)
-        test.eq(now + 15 * 60 * 1000, deadline)
-        sweep(now + 15 * 60 * 1000 + 1)
+        test.eq(grace, deadline - reserved_at)
+        expire_hold(source.uuid)
+        sweep()
         local kept, next_check = hold(source.uuid)
         test.eq(reserved, kept)
         test.is_nil(next_check)
@@ -209,17 +221,16 @@ local function register(support, race_only)
 
         image.upload_id, image.expected_revision = upload("image/gif", gif() .. "next"), first.revision
         local latest = call("add_asset", image)
-        local now = time.now():add(24 * time.HOUR):unix_nano() // 1000000
-        sweep(now)
+        sweep()
         test.is_true(state.storage:exists(version.storage_path))
         prune_through(first.seq)
-        sweep(now)
+        sweep()
         test.is_true(state.storage:exists(version.storage_path))
         local pending = assert(jobs.list_owner_jobs({kind = "mail-message", id = queued.message_id}))
         test.eq(1, #pending)
         test.is_true(assert(jobs.wake_job(pending[1].id, {control = true})).woken)
         test.eq("sent", support.terminal(state.editor, queued.message_id).status)
-        sweep(now)
+        sweep()
         test.is_false(state.storage:exists(version.storage_path))
         test.eq(latest.asset.upload_id, call("get", image).asset.upload_id)
     end)
@@ -229,7 +240,7 @@ local function register(support, race_only)
         state.owned[1] = image
         local function reservations()
             local db = assert(sql.get("app:db"))
-            local rows, err = db:query("SELECT upload_id,due_at FROM mail_asset_file WHERE due_at IS NOT NULL")
+            local rows, err = db:query("SELECT upload_id,due_at,reserved_at FROM mail_asset_file WHERE due_at IS NOT NULL")
             assert(db:release())
             return assert(rows, tostring(err))
         end
@@ -245,13 +256,20 @@ local function register(support, race_only)
             if not existing[row.upload_id] then
                 test.is_nil(reservation)
                 local file = assert(lookup.get(row.upload_id))
-                reservation = {path = file.storage_path, due_at = row.due_at}
+                reservation = {id = row.upload_id, path = file.storage_path,
+                    reserved_at = row.reserved_at, due_at = row.due_at}
             end
         end
         assert(reservation, "The adopted file has a ledger reservation")
-        sweep(reservation.due_at - 1)
+        test.eq(grace, reservation.due_at - reservation.reserved_at)
+        sweep()
         test.is_true(state.storage:exists(reservation.path))
-        sweep(reservation.due_at)
+        local db = assert(sql.get("app:db"))
+        local due = time.now():unix_nano() // 1000000 - 1000
+        assert(db:execute("UPDATE mail_asset_file SET reserved_at=$1,due_at=$2 WHERE upload_id=$3",
+            {due - grace, due, reservation.id}))
+        assert(db:release())
+        sweep()
         test.is_false(state.storage:exists(reservation.path))
     end)
 

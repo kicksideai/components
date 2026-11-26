@@ -1,12 +1,20 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local edit = require("edit")
 local jet = require("jet")
+local policy = require("policy")
 local references = require("references")
 local resource = require("resource")
 local test = require("test")
 
 return {run = test.run_cases(function()
     test.describe("Mail domain", function()
+        test.it("expires preview and asset deadlines at the inclusive boundary", function()
+            local deadline = 1000
+            test.is_false(policy.expired(deadline, deadline - 1))
+            test.is_true(policy.expired(deadline, deadline))
+            test.is_true(policy.expired(deadline, deadline + 1))
+        end)
+
         test.it("refuses one byte over the aggregate content limit before append", function()
             local limit = 512 * 1024
             local content = {kind = "part", name = "limit", html = string.rep(string.char(1), limit - 2),

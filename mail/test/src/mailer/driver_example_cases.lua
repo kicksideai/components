@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local contract = require("contract")
 local json = require("json")
+local registry = require("registry")
 local security = require("security")
 
 local SETTINGS = "example.mail.relay"
@@ -12,8 +13,10 @@ local function register(support)
         local policy = assert(security.policy(SETTINGS .. ".security:http_access"))
         local scope = assert(security.new_scope({policy}))
         local actor = assert(security.actor())
-        test.eq("allow", scope:evaluate(actor, "http_client.request", "https://delivery.example.invalid/messages"))
-        test.neq("allow", scope:evaluate(actor, "http_client.request", "https://delivery.example.invalid/unlisted"))
+        local url = assert(registry.get(SETTINGS .. ":endpoints")).data.endpoints.api
+        test.not_nil(url:match("^https://127%.0%.0%.1:[1-9]%d*/messages$"))
+        test.eq("allow", scope:evaluate(actor, "http_client.request", url))
+        test.neq("allow", scope:evaluate(actor, "http_client.request", (url:gsub("/messages$", "/unlisted"))))
     end)
 
     test.it("runs the authoring example through Mail and Settings", function()

@@ -33,9 +33,8 @@ entries:
     kind: function.lua
     source: file://transport.lua
     method: first
-    modules: &transport_modules [json, sql, channel, base64]
+    modules: &transport_modules [json, sql, channel, base64, time]
     imports: &transport_imports
-      delivery: kickside.mail.driver:http
       types: kickside.mail:types
   - name: send_second
     kind: function.lua
@@ -69,10 +68,6 @@ entries:
     method: status_capture
     modules: *transport_modules
     imports: *transport_imports
-  - name: http_client
-    kind: library.lua
-    source: file://http_client.lua
-    modules: [json, security]
   - name: transport_probe_call
     kind: security.policy
     policy:
@@ -302,10 +297,6 @@ entries:
     imports:
       test: wippy.test:test
       binding_validation: kickside.automation:binding_validation
-  - name: owner_clock
-    kind: library.lua
-    source: file://owner_clock.lua
-    modules: [ctx, time]
   - name: delivery_signal_test
     kind: function.lua
     meta: {type: test, suite: mail_delivery_signal}
@@ -326,4 +317,29 @@ entries:
   - name: driver_example_cases
     kind: library.lua
     source: file://driver_example_cases.lua
-    modules: [contract, json, security]
+    modules: [contract, json, registry, security]
+  - name: relay_gateway
+    kind: http.service
+    addr: "127.0.0.1:0"
+    lifecycle: {auto_start: true}
+  - name: relay_router
+    kind: http.router
+    meta: {server: "app.mail_harness:relay_gateway"}
+    prefix: /
+  - name: relay_messages
+    kind: http.endpoint
+    meta: {router: "app.mail_harness:relay_router"}
+    method: POST
+    path: /messages
+    func: app.mail_harness:relay_stub
+  - name: relay_stub
+    kind: function.lua
+    source: file://relay_stub.lua
+    method: handle
+    modules: [http, json]
+  - name: relay_loopback
+    kind: security.policy
+    policy:
+      resources: ["127.0.0.1"]
+      actions: [http_client.private_ip]
+      effect: allow

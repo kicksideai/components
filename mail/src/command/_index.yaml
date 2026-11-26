@@ -2,19 +2,13 @@
 version: "1.0"
 namespace: kickside.mail.command
 entries:
-  - name: clock
-    kind: library.lua
-    meta: {private: true}
-    source: file://clock.lua
-    modules: [time]
   - name: library
     kind: library.lua
     meta: {private: true}
     source: file://library.lua
-    modules: [logger, uuid]
+    modules: [logger, uuid, time]
     imports:
       usage: kickside.mail.read:usage
-      time: kickside.mail.command:clock
       types: kickside.mail:types
       resource: kickside.mail.domain:resource
       edit: kickside.mail.domain:edit
@@ -72,9 +66,10 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://library_edits.lua
+    modules: [time]
     imports:
+      policy: kickside.mail.domain:policy
       usage: kickside.mail.read:usage
-      time: kickside.mail.command:clock
       database: kickside.mail.persist:db
       types: kickside.mail:types
       resource: kickside.mail.domain:resource
@@ -123,9 +118,9 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://preview.lua
-    modules: [uuid]
+    modules: [uuid, time]
     imports:
-      time: kickside.mail.command:clock
+      policy: kickside.mail.domain:policy
       types: kickside.mail:types
       client: kickside.mail:client
       resource: kickside.mail.domain:resource

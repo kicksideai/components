@@ -9,6 +9,7 @@ local references = require("references")
 local originals_reader = require("originals")
 local live = require("live")
 local time = require("time")
+local policy = require("policy")
 local scratch = require("scratch")
 local globals = require("globals")
 local settings = require("settings")
@@ -252,7 +253,7 @@ local function bound_preview(workspace: LibraryWorkspace, id: string?, author: s
     local row, err = preview_repo.get(workspace.ex, id)
     if err then return nil, err end
     if not row or row.actor ~= author or row.operation ~= operation then return nil, mismatch() end
-    if row.expires_at <= time.now():unix() then
+    if policy.expired(row.expires_at, time.now():unix()) then
         return nil, resources.error(errors.INVALID, "mail_preview_expired", "Preview the changes again to obtain a new preview_id")
     end
     local count = 0

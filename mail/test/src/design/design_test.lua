@@ -301,18 +301,15 @@ return {run = test.run_cases(function()
             local resources = {candidate}
             local preview = ok(editor, "library_preview", {message = "notice", resources = resources})
             local db = assert(sql.get("app:db"))
-            local stored = assert(db:query("SELECT expires_at FROM mail_library_preview WHERE id=$1", {preview.preview_id}))
+            assert(db:execute("UPDATE mail_library_preview SET expires_at=$1 WHERE id=$2",
+                {time.now():unix() - 1, preview.preview_id}))
             assert(db:release())
-            local after_expiry = {mail_test_now = assert(stored[1]).expires_at * 1000}
-
-            local expired_editor = assert(editor:with_context(after_expiry))
-            local result, err = fixtures.call(expired_editor, "save", {resources = resources, preview_id = preview.preview_id})
+            local result, err = fixtures.call(editor, "save", {resources = resources, preview_id = preview.preview_id})
             test.is_nil(result)
             test.eq(errors.INVALID, err:kind())
             test.eq("mail_preview_expired", err:details().code)
 
-            local owner = assert(funcs.new():with_context(after_expiry))
-            local swept = assert(owner:call(fixtures.retention_id(), {}))
+            local swept = assert(funcs.call(fixtures.retention_id(), {}))
             test.is_true(swept.success)
             db = assert(sql.get("app:db"))
             local rows = assert(db:query("SELECT id FROM mail_library_preview WHERE id=$1", {preview.preview_id}))

@@ -29,8 +29,29 @@ if ! "$postgres"; then
   rm -f .wippy/mail-test.sqlite{,-wal,-shm}
 fi
 
+relay_port=$(python3 - <<'PY'
+import socket
+
+with socket.socket() as listener:
+    listener.bind(("127.0.0.1", 0))
+    print(listener.getsockname()[1])
+PY
+)
+tls=$(mktemp -d .wippy/relay-tls.XXXXXXXX)
+trap 'rm -rf -- "$tls"' EXIT
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost \
+    -addext 'subjectAltName=IP:127.0.0.1' -keyout "$tls/key.pem" -out "$tls/cert.pem" \
+    2>"$tls/openssl.log" || { cat "$tls/openssl.log" >&2; exit 1; }
+{
+    printf 'version: "1.0"\noverride:\n  app.mail_harness:relay_gateway:tls:\n    mode: manual\n    cert: |\n'
+    sed 's/^/      /' "$tls/cert.pem"
+    printf '    key: |\n'
+    sed 's/^/      /' "$tls/key.pem"
+} > "$tls/fixture.yaml"
+
 log="${WIPPY_TEST_LOG:-.wippy/test.log}"
-WIPPY_TEST_REQUIRE_CASES=1 "${WIPPY:-wippy}" test "$@" 2>&1 | tee -- "$log"
+SSL_CERT_FILE="$PWD/$tls/cert.pem" WIPPY_TEST_REQUIRE_CASES=1 "${WIPPY:-wippy}" test \
+    --config .wippy.yaml --config "$tls/fixture.yaml" --set "vars.relay_port=$relay_port" "$@" 2>&1 | tee -- "$log"
 LC_ALL=C sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' "$log" | tr '\r' '\n' | awk '
   /No tests found|No tests match/ { empty = 1 }
   /^[[:space:]]*FAILED([[:space:]]|$)/ { failed = 1 }

@@ -16,6 +16,7 @@ entries:
       component: kickside.component:component
       jobs: kickside.core.jobs:jobs
       jet: kickside.mail.domain:jet
+      database: app:database_fixture
   - name: site_url_storage
     kind: env.storage.static
     values: {PUBLIC_API_URL: "https://example.org"}
@@ -179,6 +180,7 @@ entries:
       asset_lifetime_cases: app.mail_library:asset_lifetime_cases
       asset_content_cases: app.mail_library:asset_content_cases
       asset_delivery_cases: app.mail_library:asset_delivery_cases
+      threads_fixture: app.mail_library:threads_fixture
   - name: asset_race_test
     kind: function.lua
     meta: { type: harness.fixture, suite: mail_asset_race }

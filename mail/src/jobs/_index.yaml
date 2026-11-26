@@ -7,8 +7,8 @@ entries:
     meta: { private: true, type: kickside.retention.owner }
     source: file://owner.lua
     method: run
+    modules: [time]
     imports:
-      time: kickside.mail.command:clock
       retention: kickside.mail.command:retention
       settings: kickside.mail.read:settings
       types: kickside.mail:types

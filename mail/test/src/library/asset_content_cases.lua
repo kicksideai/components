@@ -246,11 +246,10 @@ local function register(support)
         test.eq(msg.name, used_by[1])
         local db = assert(sql.get("app:db"))
         local blocked = "invalid-" .. uuid.v4()
-        local sweep_at = time.now():add(24 * time.HOUR):unix_nano() // 1000000
+        local sweep_at = time.now():unix_nano() // 1000000 - 1000
         assert(db:execute([[INSERT INTO mail_asset_file (upload_id,due_at)
             VALUES ($1,$2)]], {blocked, sweep_at}))
-        local owner = assert(funcs.new():with_context({mail_test_now = sweep_at}))
-        local result = assert(owner:call(fixtures.retention_id(), {}))
+        local result = assert(funcs.call(fixtures.retention_id(), {}))
         assert(db:execute("DELETE FROM mail_asset_file WHERE upload_id=$1", {blocked}))
         assert(db:release())
         test.is_true(result.success, tostring(result.error))
