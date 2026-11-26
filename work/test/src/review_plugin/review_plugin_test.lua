@@ -37,10 +37,12 @@ local function create(h: fixture.Handle, title: string, risk: integer): string
     return steps.create(h, "change", { title = title, risk = risk })
 end
 
-local function settled(h: fixture.Handle, seq: integer, kind: string?)
+local function settled(h: fixture.Handle, seq: integer, kind: string?, ready: boolean?)
     local expected = kind or REGISTER
     steps.wait_for("Change Review " .. expected .. " through " .. seq, function(): boolean
-        local p = active(h).projections[expected]
+        local plugin = active(h)
+        if ready and plugin.lifecycle.state ~= "ready" then return false end
+        local p = plugin.projections[expected]
         return p ~= nil and not p.parked and not p.bootstrapping and p.last_seq >= seq
     end)
 end
@@ -363,7 +365,7 @@ local function define()
             test.eq(call(h, "query", { where = { match = "retained" }, min_seq = seq }).items[1].id, item)
             revise(PLUGIN, function(meta) meta.projections[2].start_seq = floor end)
             assert(h.call("plugin_sync", {}))
-            settled(h, seq, AUDIT)
+            settled(h, seq, AUDIT, true)
             test.eq(active(h).lifecycle.state, "ready")
             test.eq(body(h, AUDIT).created, 1)
         end)
