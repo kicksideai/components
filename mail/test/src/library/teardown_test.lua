@@ -82,7 +82,7 @@ return {run = test.run_cases(function()
                 end
                 expected_due = due
             end
-            test.is_true(storage:exists(upload.storage_path))
+            test.is_true(storage:exists(upload.storage_path), "The bytes await retention")
             local definition = assert(contract.get("kickside.component:component_service"))
             local owner = assert(definition:with_actor(lifecycle):with_scope(lifecycle_scope):open())
             local deletion = assert(owner:delete({component_id = component_id}))
@@ -110,7 +110,7 @@ return {run = test.run_cases(function()
             end, "Component deletion did not purge the library and its thread")
             local swept = assert(funcs.call(fixtures.retention_id(), {}))
             test.is_true(swept.success, tostring(swept.error))
-            test.is_false(storage:exists(upload.storage_path))
+            test.is_false(storage:exists(upload.storage_path), "Mail retention reaps the bytes")
             test.eq(0, #rows("SELECT 1 FROM mail_asset_file WHERE upload_id=$1", {upload.uuid}), "Asset ledger after reaping")
             test.eq(0, #rows("SELECT 1 FROM mail_library_live"), "Live marker after reaping")
             lookup.cleanup(who.actor)
