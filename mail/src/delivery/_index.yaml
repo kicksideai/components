@@ -8,7 +8,7 @@ entries:
     source: file://worker.lua
     method: run
     imports:
-      attachments: kickside.mail.command:attachments
+      content: kickside.mail.read:content
       delivery: kickside.mail.read:delivery
       transports: kickside.mail.read:transports
       config: kickside.mail.domain:config
@@ -38,7 +38,9 @@ entries:
     source: file://read_attachments.lua
     method: read
     imports:
-      attachments: kickside.mail.command:attachments
+      client: kickside.mail:client
+      content: kickside.mail.read:content
+      types: kickside.mail:types
     security:
       policies:
         - kickside.mail.security:attachment_provider

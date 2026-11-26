@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
-local attachments = require("attachments")
+local content = require("content")
 local delivery = require("delivery")
 local transports = require("transports")
 local config = require("config")
@@ -10,9 +10,9 @@ local settings = require("settings")
 local types = require("types")
 
 local function prepare(row: types.MessageRow, driver: types.TransportStatus, deadline: string): (types.TransportRequest?, error?)
-    local content, err = delivery.content(row)
+    local stored, err = delivery.content(row)
     if err then return nil, err end
-    local payload = content :: types.DeliveryContent
+    local payload = stored :: types.DeliveryContent
     local addresses = payload.addresses
     local limit_err = message.recipients_error(addresses, driver.max_recipients)
     if limit_err then return nil, limit_err end
@@ -28,10 +28,13 @@ local function prepare(row: types.MessageRow, driver: types.TransportStatus, dea
         refs = payload.attachments, message_bytes = size, max_message_bytes = driver.max_message_bytes,
     }, {deferred_owner = "kickside.mail.delivery:deliver"})
     if read_err then return nil, read_err :: error end
-    local completed, assets_err = attachments.complete({library_assets = payload.assets, message_bytes = size,
-        max_message_bytes = driver.max_message_bytes}, files :: {types.Attachment})
-    if assets_err then return nil, assets_err end
-    request.attachments = completed
+    request.attachments = files :: {types.Attachment}
+    if payload.assets and #payload.assets > 0 then
+        local completed, assets_err = content.attachments({library_assets = payload.assets, message_bytes = size,
+            max_message_bytes = driver.max_message_bytes}, true, nil, files :: {types.Attachment})
+        if assets_err then return nil, assets_err end
+        request.attachments = completed
+    end
     return request :: types.TransportRequest?, nil
 end
 

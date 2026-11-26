@@ -216,7 +216,7 @@ entries:
       transports: kickside.mail.read:transports
       message: kickside.mail.domain:message
       live_preview: kickside.mail.read:preview
-      attachments: kickside.mail.command:attachments
+      content: kickside.mail.read:content
       recipients: kickside.mail.command:recipients
       canonical_json: kickside.contract:canonical_json
       identity: kickside.execution:execution_identity
@@ -229,14 +229,6 @@ entries:
       resource: kickside.mail.domain:resource
       library: kickside.mail.read:library
       notify: kickside.mail.command:notify
-  - name: attachments
-    kind: library.lua
-    meta: {private: true}
-    source: file://attachments.lua
-    imports:
-      client: kickside.mail:client
-      types: kickside.mail:types
-      content: kickside.mail.read:content
   - name: recipients
     kind: library.lua
     meta: {private: true}

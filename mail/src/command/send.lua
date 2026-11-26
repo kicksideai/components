@@ -20,7 +20,7 @@ local library = require("library")
 local notify = require("notify")
 local message = require("message")
 local live_preview = require("live_preview")
-local attachments = require("attachments")
+local content = require("content")
 local recipients = require("recipients")
 
 local function idempotency_conflict(): error
@@ -196,9 +196,9 @@ local function admit(input: types.SendRequest, rendered: types.Rendered?, resend
         from = from, reply_to = reply_to, to = addresses.to, cc = addresses.cc, bcc = addresses.bcc,
         subject = parts.subject, html = parts.html, text = parts.text,
     })
-    local attachment_err = attachments.validate({
+    local _, attachment_err = content.attachments({
         refs = input.attachments, library_assets = parts.library_assets, message_bytes = bytes, max_message_bytes = driver.max_message_bytes,
-    })
+    }, false)
     if attachment_err then return nil, attachment_err end
 
     local origin: types.Origin? = input.origin
