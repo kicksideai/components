@@ -50,6 +50,10 @@ local function cases(race_only)
                 state.restore_threads()
                 state.restore_threads = nil
             end
+            if state.restore_retention then
+                state.restore_retention()
+                state.retention_owner, state.restore_retention = nil, nil
+            end
             if state.resume_projection then state.resume_projection() end
             fixtures.remove(state.owned)
             if state.configured then settings.settings("", "") end
@@ -92,8 +96,15 @@ local function cases(race_only)
             end, "25s")
         end
 
+        local function retention_owner()
+            if not state.retention_owner then
+                state.retention_owner, state.restore_retention = fixtures.manual_retention()
+            end
+            return state.retention_owner
+        end
+
         local function sweep()
-            local result = assert(funcs.call(fixtures.retention_id(), {}))
+            local result = assert(funcs.call(retention_owner(), {}))
             assert(result.success, tostring(result.error))
             return result
         end
@@ -120,6 +131,7 @@ local function cases(race_only)
             upload = upload,
             gif = gif,
             sweep = sweep,
+            retention_owner = retention_owner,
             prune_through = prune_through,
             terminal = terminal,
             define = define,
@@ -141,6 +153,7 @@ local function cases(race_only)
             local started = time.now():unix_nano() // 1000000
             local call = assert(fixtures.async(writer, "add_asset", {kind = "asset", name = name, upload_id = source}))
             paused()
+            retention_owner()
             local db = assert(sql.get("app:db"))
             local expired = assert(db:execute([[UPDATE mail_asset_file SET reserved_at=$1,due_at=$2
                 WHERE reserved_at>=$3 AND due_at>$3 AND hold_seq IS NULL]],

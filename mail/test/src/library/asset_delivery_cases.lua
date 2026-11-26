@@ -1,7 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local contract = require("contract")
 local security = require("security")
-local funcs = require("funcs")
 local uuid = require("uuid")
 local lookup = require("lookup")
 local settings = require("settings")
@@ -117,8 +116,7 @@ local function register(support)
         assert(fixtures.call(state.editor, "delete", {kind = "message", name = message.name, expected_revision = template.revision}))
         assert(fixtures.call(state.editor, "delete", {kind = "asset", name = image.name, expected_revision = saved.revision}))
         prune_through(saved.seq)
-        local retained = assert(funcs.call(fixtures.retention_id(), {}))
-        test.is_true(retained.success, tostring(retained.error))
+        sweep()
         test.is_true(state.storage:exists(record.storage_path), "The failed delivery keeps the adopted bytes")
         local expired_at = assert(failure.finished_at) - 31 * 24 * 60 * 60 * 1000
         assert(database.with_db(function(db)

@@ -253,15 +253,20 @@ return {
             end)
             test.after_each(function()
                 if state.custom_ceiling then set_ceiling("3s") end
-                if #state.settlement_rows == 0 then return end
-                assert(database.with_tx(function(tx)
-                    for _, row in ipairs(state.settlement_rows) do
-                        local _, mail_err = tx:execute("DELETE FROM mail_message WHERE id=$1", {row.id})
-                        if mail_err then return nil, mail_err end
-                    end
-                    return true, nil
-                end))
-                state.settlement_rows = {}
+                if #state.settlement_rows > 0 then
+                    assert(database.with_tx(function(tx)
+                        for _, row in ipairs(state.settlement_rows) do
+                            local _, mail_err = tx:execute("DELETE FROM mail_message WHERE id=$1", {row.id})
+                            if mail_err then return nil, mail_err end
+                        end
+                        return true, nil
+                    end))
+                    state.settlement_rows = {}
+                end
+                if state.restore_retention then
+                    state.restore_retention()
+                    state.restore_retention = nil
+                end
             end)
 
             local cases = {

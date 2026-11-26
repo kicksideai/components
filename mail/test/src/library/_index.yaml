@@ -251,7 +251,7 @@ entries:
   - name: asset_delivery_cases
     kind: library.lua
     source: file://asset_delivery_cases.lua
-    modules: [contract, funcs, security, uuid]
+    modules: [contract, security, uuid]
     imports:
       fixtures: app.mail_library:fixtures
       upload_types: kickside.uploads:types

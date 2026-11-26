@@ -26,7 +26,14 @@ local function register(support)
     local capture_with = support.capture_with
     local set_ceiling = support.set_ceiling
 
+    local function manual_retention()
+        local owner
+        owner, state.restore_retention = library_fixtures.manual_retention()
+        return owner
+    end
+
     test.it("settles jobs that are cancelled or no longer stored", function()
+        local owner_id = manual_retention()
         local sender, sender_id = actors.sender, actors.sender_id
         local admitted_at = now_ms()
         local recheck_at = admitted_at + policy.RECHECK_MS
@@ -63,7 +70,7 @@ local function register(support)
         end
 
         local function owner(change)
-            local result = assert(funcs.call(library_fixtures.retention_id(), {change = change}))
+            local result = assert(funcs.call(owner_id, {change = change}))
             assert(result.success, tostring(result.error))
             return result
         end
@@ -98,6 +105,7 @@ local function register(support)
     end)
 
     test.it("settles a dead final execution when the lease-release hint is missed", function()
+        local owner_id = manual_retention()
         local sender, sender_id = actors.sender, actors.sender_id
         local id = uuid.v7()
         local job = assert(jobs.enqueue({
@@ -120,7 +128,7 @@ local function register(support)
         end))
 
         local function sweep()
-            local report = assert(funcs.call(library_fixtures.retention_id(), {}))
+            local report = assert(funcs.call(owner_id, {}))
             assert(report.success, tostring(report.error))
         end
         sweep()
@@ -139,6 +147,7 @@ local function register(support)
     end)
 
     test.it("prunes preview rows in pages and schedules the earliest remaining expiry", function()
+        local owner_id = manual_retention()
         local now = now_ms() // 1000
         local due, future = now - 1, now + 120
         local fixture = "retention-preview-" .. uuid.v4()
@@ -155,7 +164,7 @@ local function register(support)
             return query("SELECT COUNT(*) AS n FROM mail_library_preview WHERE actor=$1", {fixture})[1].n
         end
         local function sweep()
-            local report = assert(funcs.call(library_fixtures.retention_id(), {}))
+            local report = assert(funcs.call(owner_id, {}))
             assert(report.success, tostring(report.error))
             return report
         end
