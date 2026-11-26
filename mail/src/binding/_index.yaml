@@ -65,7 +65,6 @@ entries:
     kind: function.lua
     source: &library_source file://library.lua
     method: list
-    modules: &library_modules [funcs]
     imports: &library_imports
       types: kickside.mail:types
       client: kickside.mail:client
@@ -91,28 +90,24 @@ entries:
     kind: function.lua
     source: *library_source
     method: get
-    modules: *library_modules
     imports: *library_imports
     security: *library_read_frame
   - name: library_read_history
     kind: function.lua
     source: *library_source
     method: read_history
-    modules: *library_modules
     imports: *library_imports
     security: *library_read_frame
   - name: library_read_revision
     kind: function.lua
     source: *library_source
     method: read_revision
-    modules: *library_modules
     imports: *library_imports
     security: *library_read_frame
   - name: library_asset_content
     kind: function.lua
     source: *library_source
     method: asset_content
-    modules: *library_modules
     imports: *library_imports
     security: &library_asset_frame
       policies:
@@ -130,13 +125,11 @@ entries:
     kind: function.lua
     source: *library_source
     method: preview
-    modules: *library_modules
     imports: *library_imports
     security: &library_preview_frame
       policies:
         - kickside.mail.security:attachment_provider
         - kickside.mail.security:attachment_methods
-        - kickside.mail.security:library_threads_caller
         - kickside.mail.security:library_component_read
         - kickside.component.security:module_access
         - kickside.mail.security:library_component_registry
@@ -158,7 +151,6 @@ entries:
     kind: function.lua
     source: *library_source
     method: create
-    modules: *library_modules
     imports: *library_imports
     security: &library_write_frame
       policies:
@@ -191,49 +183,42 @@ entries:
     kind: function.lua
     source: *library_source
     method: update
-    modules: *library_modules
     imports: *library_imports
     security: *library_write_frame
   - name: library_save
     kind: function.lua
     source: *library_source
     method: save
-    modules: *library_modules
     imports: *library_imports
     security: *library_write_frame
   - name: library_set_base
     kind: function.lua
     source: *library_source
     method: set_base
-    modules: *library_modules
     imports: *library_imports
     security: *library_write_frame
   - name: library_reset
     kind: function.lua
     source: *library_source
     method: reset
-    modules: *library_modules
     imports: *library_imports
     security: *library_write_frame
   - name: library_restore
     kind: function.lua
     source: *library_source
     method: restore
-    modules: *library_modules
     imports: *library_imports
     security: *library_write_frame
   - name: library_delete
     kind: function.lua
     source: *library_source
     method: delete
-    modules: *library_modules
     imports: *library_imports
     security: *library_write_frame
   - name: library_add_asset
     kind: function.lua
     source: *library_source
     method: add_asset
-    modules: *library_modules
     imports: *library_imports
     security: *library_write_frame
   - name: mailer_send
