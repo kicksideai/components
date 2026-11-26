@@ -10,6 +10,7 @@ local jet = require("jet")
 local references = require("references")
 local test = require("test")
 local threads_fixture = require("threads_fixture")
+local types = require("types")
 
 local OWNER = jet.draft_owner
 local MESSAGE = "workspace-message"
@@ -99,16 +100,26 @@ return {run = test.run_cases(function()
         end
 
         test.it("selects only the draft roots and their transitive template references", function()
-            local message = resource("message", MESSAGE, '{{ include "/part/direct" }}')
-            message.base = "workspace-base"
-            local base = resource("base", message.base, '{{ include "/part/transitive" }}')
-            local direct = resource("part", "direct", '{{ include "/part/transitive" }}')
-            local transitive = resource("part", "transitive", "Shared")
-            local unrelated = resource("part", "unrelated", "Omit")
-            local selected = references.closure({
+            local function stored(kind: string, name: string, body: string): types.Resource
+                return {kind = kind, name = name, title = name, description = "", html = body, text = body,
+                    schema = {type = "object", properties = {}}, samples = {}, state = "created", revision = 1}
+            end
+
+            local body = '{{ block body() }}{{ include "/part/direct" }}{{ end }}'
+            local message: types.ResourceContent = {
+                kind = "message", name = MESSAGE, title = MESSAGE, description = "", base = "workspace-base",
+                html = body, text = body,
+                subject = "Workspace subject", schema = {type = "object", properties = {}}, samples = {},
+            }
+            local base = stored("base", "workspace-base", '{{ include "/part/transitive" }}')
+            local direct = stored("part", "direct", '{{ include "/part/transitive" }}')
+            local transitive = stored("part", "transitive", "Shared")
+            local unrelated = stored("part", "unrelated", "Omit")
+            local items: types.ResourceMap = {
                 ["base/workspace-base"] = base, ["part/direct"] = direct,
                 ["part/transitive"] = transitive, ["part/unrelated"] = unrelated,
-            }, message, {}, {})
+            }
+            local selected = references.closure(items, message, {}, {})
             test.eq(4, #selected)
             test.eq(message.name, selected[1].name)
             test.eq(base.name, selected[2].name)

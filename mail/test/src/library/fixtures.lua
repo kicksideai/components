@@ -135,8 +135,9 @@ end
 
 local function invoke(input)
     local library, err = client.library()
-    if err then return nil, err end
-    return library[input.method](library, input.args)
+    if not library then return nil, err end
+    local method = assert(library[input.method], "Unknown Mail Library method " .. input.method)
+    return method(library, input.args)
 end
 
 local function call(executor, method, args)
@@ -149,8 +150,9 @@ end
 
 local function invoke_mailer(input)
     local mailer, err = client.mailer()
-    if err then return nil, err end
-    return mailer[input.method](mailer, input.args)
+    if not mailer then return nil, err end
+    local method = assert(mailer[input.method], "Unknown Mailer method " .. input.method)
+    return method(mailer, input.args)
 end
 
 local function mailer(executor, method, args)

@@ -88,9 +88,10 @@ local function probe(input)
         return funcs.call("kickside.mail.settings:validate_driver", {value = "app.mail_harness:admitted"})
     end
     local mailer, err = client.mailer()
-    if err then return nil, err end
+    if not mailer then return nil, err end
     if input.operation == "list_templates" then return mailer:list_templates() end
-    return mailer[input.operation](mailer, input.message)
+    local method = assert(mailer[input.operation], "Unknown Mailer operation " .. input.operation)
+    return method(mailer, input.message)
 end
 
 local GROUP_BY_POLICY = {

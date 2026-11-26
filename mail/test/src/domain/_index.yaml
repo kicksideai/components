@@ -14,3 +14,4 @@ entries:
       policy: kickside.mail.domain:policy
       references: kickside.mail.domain:references
       resource: kickside.mail.domain:resource
+      types: kickside.mail:types

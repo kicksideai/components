@@ -173,6 +173,7 @@ entries:
       jet: kickside.mail.domain:jet
       references: kickside.mail.domain:references
       threads_fixture: app.mail_library:threads_fixture
+      types: kickside.mail:types
   - name: assets_test
     kind: function.lua
     meta: { type: test, suite: mail_assets }

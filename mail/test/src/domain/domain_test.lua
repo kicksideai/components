@@ -5,6 +5,7 @@ local policy = require("policy")
 local references = require("references")
 local resource = require("resource")
 local test = require("test")
+local types = require("types")
 
 return {run = test.run_cases(function()
     test.describe("Mail domain", function()
@@ -27,7 +28,9 @@ return {run = test.run_cases(function()
         end)
 
         test.it("collects distinct literal base, part and asset references across the faces", function()
-            local refs = references.refs({
+            local content: types.ResourceContent = {
+                kind = "message", name = "notice", title = "Notice", description = "",
+                schema = {type = "object", properties = {}}, samples = {},
                 base = "standard",
                 html = [[
                     {{- extends "/base/wrapper" }}
@@ -36,7 +39,8 @@ return {run = test.run_cases(function()
                 ]],
                 text = [[{{ include "/part/footer" vars }} {{ assets['logo'] }}]],
                 subject = [[{{ include "/part/header" }}]],
-            })
+            }
+            local refs = references.refs(content)
             test.eq(2, #refs.bases)
             test.eq("standard", refs.bases[1])
             test.eq("wrapper", refs.bases[2])
@@ -58,9 +62,10 @@ return {run = test.run_cases(function()
         end)
 
         test.it("builds Jet faces with a base and a separate subject entry", function()
-            local entries = jet.entries({kind = "message", name = "notice", base = "standard",
-                html = "HTML", text = "Text", subject = "Subject"}, "scratch:", "html-set", "text-set",
-                {html = "original:html"})
+            local message: types.ResourceContent = {kind = "message", name = "notice", base = "standard",
+                title = "Notice", description = "", html = "HTML", text = "Text", subject = "Subject",
+                schema = {type = "object", properties = {}}, samples = {}}
+            local entries = jet.entries(message, "scratch:", "html-set", "text-set", {html = "original:html"})
             test.eq(3, #entries)
             test.eq("original:html", entries[1].id)
             test.eq("message/notice", entries[1].meta.name)
@@ -71,7 +76,9 @@ return {run = test.run_cases(function()
             test.eq("message/notice.subject", entries[3].meta.name)
             test.eq("text-set", entries[3].data.set)
             test.eq("Subject", entries[3].data.source)
-            test.eq(0, #jet.entries({kind = "asset", name = "logo"}, "scratch:", "html-set", "text-set"))
+            local asset: types.ResourceContent = {kind = "asset", name = "logo", title = "Logo",
+                description = "", html = "", text = "", schema = {type = "object", properties = {}}, samples = {}}
+            test.eq(0, #jet.entries(asset, "scratch:", "html-set", "text-set"))
         end)
 
         test.it("uses the kind and stable name as the event subject", function()
