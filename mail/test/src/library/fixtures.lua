@@ -6,14 +6,12 @@ local client = require("client")
 local contract = require("contract")
 local registry = require("registry")
 local time = require("time")
-local channel = require("channel")
-local events = require("events")
-local process = require("process")
 local jobs = require("jobs")
 local json = require("json")
 local api_fixtures = require("api_fixtures")
 local autoinit = require("autoinit")
 local jet = require("jet")
+local retention_fixture = require("retention_fixture")
 
 local function library_component_id()
     return autoinit.component_id(autoinit.SYSTEM_SCOPE_KEY, "kickside.mail.library")
@@ -32,42 +30,6 @@ end
 
 local function retention_id()
     return mail_hook("kickside.retention.owner")
-end
-
-local RETENTION_EVENTS = "mail.fixture.retention"
-
-local function retention_ready()
-    assert(events.send(RETENTION_EVENTS, "ready", true))
-    return {success = true, deleted = 0}
-end
-
-local function start_retention(state)
-    local ready = assert(events.subscribe(RETENTION_EVENTS, "ready"))
-    local lifecycle = process.events()
-    local pid, err = process.spawn_monitored("kickside.core.retention.service:sweeper_process", "app:processes")
-    if not pid then
-        ready:close()
-        error(err)
-    end
-    state.stop_retention = function()
-        local _, cancel_err = process.cancel(pid)
-        if cancel_err and not errors.is(cancel_err, errors.NOT_FOUND) then error(cancel_err) end
-        local deadline = assert(time.after("8s"))
-        repeat
-            local stopped = channel.select({lifecycle:case_receive(), deadline:case_receive()})
-            assert(stopped.channel == lifecycle and stopped.ok, "Core retention did not stop")
-            local event = stopped.value
-            if event.kind == process.event.EXIT and event.from == pid then
-                assert(not (event.result and event.result.error), event.result and event.result.error)
-                return
-            end
-        until false
-    end
-    local inbox = ready:channel()
-    local timeout = assert(time.after("8s"))
-    local started = channel.select({inbox:case_receive(), timeout:case_receive()})
-    ready:close()
-    assert(started.channel == inbox and started.ok, "Core retention did not start")
 end
 
 local function boot(executor)
@@ -212,4 +174,4 @@ end
 return {sync_job = sync_job, await_current_live = await_current_live, await_sync_idle = await_sync_idle, await_live = await_live, await_sync_failure = await_sync_failure, await = await, remove = remove, invoke = invoke, call = call, async = async, editor = editor, foreign_list = foreign_list,
     render = render, mailer = mailer, invoke_mailer = invoke_mailer,
     library_component_id = library_component_id, retention_id = retention_id, boot = boot,
-    retention_ready = retention_ready, start_retention = start_retention}
+    start_retention = retention_fixture.start}
