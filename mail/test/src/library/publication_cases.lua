@@ -39,6 +39,7 @@ local function register(support)
     end
 
     test.it("recovers sends through retention after all three publication attempts fail", function()
+        fixtures.start_retention(state)
         api_fixtures.settings("app.mail_harness:capture", "mail@example.org")
         state.capture_configured = true
         local member = api_fixtures.session("editor_sender")

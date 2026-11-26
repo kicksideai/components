@@ -28,7 +28,7 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail draft workspace", function()
-        local editor, actor, scope, owned, initial, live_html, restore_threads, restore_retention
+        local editor, actor, scope, owned, initial, live_html, restore_threads
 
         local function create(item)
             local draft = {message = item.kind == "message" and item.name or "notice", create = item}
@@ -51,10 +51,6 @@ return {run = test.run_cases(function()
         end)
 
         test.after_each(function()
-            if restore_retention then
-                restore_retention()
-                restore_retention = nil
-            end
             if restore_threads then
                 restore_threads()
                 restore_threads = nil
@@ -154,8 +150,7 @@ return {run = test.run_cases(function()
         end)
 
         test.it("sweeps a preview receipt at its expiry without changing live mail", function()
-            local owner
-            owner, restore_retention = fixtures.manual_retention()
+            local owner = fixtures.retention_id()
             local draft = resource("message", MESSAGE, "Uncommitted preview body")
             draft.expected_revision = initial.revision
             local preview = assert(fixtures.call(editor, "preview", {message = MESSAGE, resources = {draft}}))

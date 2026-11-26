@@ -19,6 +19,8 @@ workspace:
     kickside/users: ../../../kickside/platform/users
     kickside/doc2md: ../../../converters/doc2md
 override:
+  # Cases that assert individual retention pages own each sweep.
+  kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false
   app:dep.driver_example:parameters:
     - {name: "example.mail.relay.security:user_security_scope", value: "app:user"}
     - {name: "example.mail.relay:api_base_url", value: "https://127.0.0.1:${relay_port}/messages"}

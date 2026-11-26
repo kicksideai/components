@@ -30,16 +30,10 @@ end
 
 return {run = test.run_cases(function()
     test.describe("Mail library teardown", function()
-        local lifecycle, lifecycle_scope, restore_retention
+        local lifecycle, lifecycle_scope
         test.before_all(function()
             lifecycle = assert(security.new_actor("system:lifecycle", {system = true, groups = {"system", "lifecycle"}}))
             lifecycle_scope = assert(security.named_scope("wippy.security:process"))
-        end)
-        test.after_each(function()
-            if restore_retention then
-                restore_retention()
-                restore_retention = nil
-            end
         end)
 
         test.it("describes the library through its component status binding", function()
@@ -50,8 +44,6 @@ return {run = test.run_cases(function()
         end)
 
         test.it("clears library state twice and leaves uploaded bytes for retention", function()
-            local mail_owner
-            mail_owner, restore_retention = fixtures.manual_retention()
             local component_id = fixtures.library_component_id()
             local teardown = open("kickside.contract:deletable", component_id)
             local who = api_fixtures.session("upload_editor")
@@ -116,7 +108,7 @@ return {run = test.run_cases(function()
                 if err then assert(errors.is(err, errors.NOT_FOUND), tostring(err)) end
                 return boundary == nil and err ~= nil
             end, "Component deletion did not purge the library and its thread")
-            local swept = assert(funcs.call(mail_owner, {}))
+            local swept = assert(funcs.call(fixtures.retention_id(), {}))
             test.is_true(swept.success, tostring(swept.error))
             test.is_false(storage:exists(upload.storage_path))
             test.eq(0, #rows("SELECT 1 FROM mail_asset_file WHERE upload_id=$1", {upload.uuid}), "Asset ledger after reaping")

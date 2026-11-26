@@ -56,7 +56,7 @@ entries:
   - name: fixtures
     kind: library.lua
     source: &fixtures_source file://fixtures.lua
-    modules: &fixtures_modules [contract, funcs, registry, time, json]
+    modules: &fixtures_modules [channel, contract, events, funcs, process, registry, time, json]
     imports: &fixtures_imports
       database: app:database_fixture
       delivery_wait: app.mail_harness:delivery_wait
@@ -65,6 +65,13 @@ entries:
       api_fixtures: app.mail_api:fixtures
       autoinit: kickside.component:autoinit
       jet: kickside.mail.domain:jet
+  - name: retention_ready
+    kind: function.lua
+    meta: { type: kickside.retention.owner }
+    source: *fixtures_source
+    method: retention_ready
+    modules: *fixtures_modules
+    imports: *fixtures_imports
   - name: invoke
     kind: function.lua
     source: *fixtures_source
@@ -265,12 +272,6 @@ entries:
     method: expiry
     modules: *assets_modules
     imports: *assets_imports
-  - name: retention_gate
-    kind: function.lua
-    meta: { type: kickside.retention.owner }
-    source: file://threads_fixture.lua
-    method: hold_retention
-    modules: [channel, contract, ctx, events, registry, time]
   - name: upload_storage
     kind: library.lua
     source: file://upload_storage.lua

@@ -252,6 +252,10 @@ return {
                 end
             end)
             test.after_each(function()
+                if state.stop_retention then
+                    state.stop_retention()
+                    state.stop_retention = nil
+                end
                 if state.custom_ceiling then set_ceiling("3s") end
                 if #state.settlement_rows > 0 then
                     assert(database.with_tx(function(tx)
@@ -262,10 +266,6 @@ return {
                         return true, nil
                     end))
                     state.settlement_rows = {}
-                end
-                if state.restore_retention then
-                    state.restore_retention()
-                    state.restore_retention = nil
                 end
             end)
 

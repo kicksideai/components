@@ -26,14 +26,8 @@ local function register(support)
     local capture_with = support.capture_with
     local set_ceiling = support.set_ceiling
 
-    local function manual_retention()
-        local owner
-        owner, state.restore_retention = library_fixtures.manual_retention()
-        return owner
-    end
-
     test.it("settles jobs that are cancelled or no longer stored", function()
-        local owner_id = manual_retention()
+        local owner_id = library_fixtures.retention_id()
         local sender, sender_id = actors.sender, actors.sender_id
         local admitted_at = now_ms()
         local recheck_at = admitted_at + policy.RECHECK_MS
@@ -105,7 +99,7 @@ local function register(support)
     end)
 
     test.it("settles a dead final execution when the lease-release hint is missed", function()
-        local owner_id = manual_retention()
+        local owner_id = library_fixtures.retention_id()
         local sender, sender_id = actors.sender, actors.sender_id
         local id = uuid.v7()
         local job = assert(jobs.enqueue({
@@ -147,7 +141,7 @@ local function register(support)
     end)
 
     test.it("prunes preview rows in pages and schedules the earliest remaining expiry", function()
-        local owner_id = manual_retention()
+        local owner_id = library_fixtures.retention_id()
         local now = now_ms() // 1000
         local due, future = now - 1, now + 120
         local fixture = "retention-preview-" .. uuid.v4()
@@ -216,6 +210,7 @@ local function register(support)
     end)
 
     test.it("drains more than one expiry batch after the retention setting changes", function()
+        library_fixtures.start_retention(state)
         local admin, sender = actors.admin, actors.sender
         local now = time.now():unix_nano() // 1000000
         local cutoff = now - 172800000
@@ -244,6 +239,7 @@ local function register(support)
     end)
 
     test.it("settles a delivery killed on the final execution on the lease-release hint", function()
+        library_fixtures.start_retention(state)
         local admin, sender = actors.admin, actors.sender
         set_ceiling("200ms")
         capture_with(admin)

@@ -81,6 +81,10 @@ return {run = test.run_cases(function()
             state.publication_fault = nil
         end
         test.after_each(function()
+            if state.stop_retention then
+                state.stop_retention()
+                state.stop_retention = nil
+            end
             clear_publication_fault()
             if state.resume_projection then state.resume_projection() end
             if state.capture_configured then
