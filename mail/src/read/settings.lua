@@ -1,6 +1,8 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
 local config = require("config")
+local mail_config = require("mail_config")
+local policy = require("policy")
 local env = require("env")
 local funcs = require("funcs")
 local security = require("security")
@@ -15,6 +17,14 @@ end
 function M.mail(): (types.Settings?, error?)
     local values, err = config.settings("kickside.mail")
     return values :: types.Settings?, err
+end
+
+function M.retention_window(): (integer?, error?)
+    local values, err = M.mail()
+    if err then return nil, err end
+    local days = policy.retention_days(values.log_retention_days)
+    if not days then return nil, mail_config.setup_error("Mail delivery log retention days are invalid") end
+    return days * policy.DAY_MS, nil
 end
 
 function M.appearance(): (types.Appearance?, error?)

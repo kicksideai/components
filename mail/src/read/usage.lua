@@ -7,10 +7,8 @@ local library_reader = require("library_reader")
 local reference_repo = require("reference_repo")
 local references = require("references")
 local settings = require("settings")
-local policy = require("policy")
 local time = require("time")
 local messages = require("message_reader")
-local config = require("config")
 
 local M = {}
 local RECENT_SENDER_LIMIT = 100
@@ -63,12 +61,20 @@ function M.referrers(ex: database.Executor, key: types.ResourceKey, originals: t
     return referrers(ex, key, original_referrers(originals))
 end
 
-function M.message_names(keys: {types.ResourceKey}): {string}
+local function message_names(keys: {types.ResourceKey}): {string}
     local names: {string} = {}
     for _, key in ipairs(keys) do
         if key.kind == "message" then names[#names + 1] = key.name end
     end
     return names
+end
+
+function M.require_unused(ex: database.Executor, key: types.ResourceKey, originals: types.OriginalMap): error?
+    local sources, err = M.referrers(ex, key, originals)
+    if err then return err end
+    if #sources == 0 then return nil end
+    return errors.new({kind = errors.CONFLICT, message = "Library resources use this mail resource",
+        details = {code = "mail_resource_in_use", resource = key, messages = message_names(sources), resources = sources}})
 end
 
 function M.summaries(db: database.Executor, items: {types.LibraryListRow}, originals: types.OriginalMap): error?
@@ -77,19 +83,17 @@ function M.summaries(db: database.Executor, items: {types.LibraryListRow}, origi
         if item.kind == "asset" or item.kind == "base" then
             local sources, read_err = referrers(db, item :: types.ResourceKey, packaged)
             if read_err then return read_err end
-            item.used_by = {messages = #M.message_names(sources :: {types.ResourceKey})}
+            item.used_by = {messages = #message_names(sources :: {types.ResourceKey})}
         end
     end
     return nil
 end
 
 local function recent_since(): (integer?, error?)
-    local values, err = settings.mail()
+    local window, err = settings.retention_window()
     if err then return nil, err end
-    local days = policy.retention_days(values.log_retention_days)
-    if not days then return nil, config.setup_error("Mail delivery log retention days are invalid") end
     local now = time.now():unix_nano() // 1000000
-    return now - days * policy.DAY_MS, nil
+    return now - (window :: integer), nil
 end
 
 function M.used_by(item: types.Resource): (types.UsedBy?, error?)
@@ -99,7 +103,7 @@ function M.used_by(item: types.Resource): (types.UsedBy?, error?)
         return database.with_db(function(db: database.DB): (types.UsedBy?, error?)
             local keys, read_err = M.referrers(db, item, declarations :: types.OriginalMap)
             if read_err then return nil, read_err end
-            return {messages = M.message_names(keys :: {types.ResourceKey})}, nil
+            return {messages = message_names(keys :: {types.ResourceKey})}, nil
         end)
     elseif item.kind == "message" then
         local since, since_err = recent_since()

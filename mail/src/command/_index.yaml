@@ -11,7 +11,7 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://library.lua
-    modules: [security, logger, uuid]
+    modules: [logger, uuid]
     imports:
       usage: kickside.mail.read:usage
       time: kickside.mail.command:clock
@@ -134,7 +134,7 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://preview.lua
-    modules: [security, uuid]
+    modules: [uuid]
     imports:
       time: kickside.mail.command:clock
       types: kickside.mail:types

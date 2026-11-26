@@ -236,8 +236,7 @@ local function resend(message_id: string): (types.SendResult?, error?)
     local sender, err = client.log_scope()
     if err then return nil, err end
     if type(message_id) ~= "string" or not uuid.validate(message_id) then
-        return nil, errors.new({kind = errors.INVALID, message = "A message ID is required",
-            retryable = false, details = {code = "invalid_request"}})
+        return nil, client.invalid_request("A message ID is required")
     end
     local saved, read_err = database.with_db(function(ex: database.Executor): (types.ResendSource?, error?)
         local row, row_err = reader.for_resend(ex, message_id, sender)

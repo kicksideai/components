@@ -1,6 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
-local security = require("security")
 local time = require("time")
 local uuid = require("uuid")
 local events = require("events")
@@ -48,13 +47,8 @@ local function asset_event(tx: database.Transaction, operation: string, edit: ty
         change = current and "edited" or "created"}
     local event_type = edit_rules.event_type(operation, key)
     if operation == "delete" then
-        local sources, ref_err = usage_reader.referrers(tx, key, workspace.originals)
-        if ref_err then return nil, ref_err end
-        if #sources > 0 then
-            return nil, errors.new({kind = errors.CONFLICT, message = "Library resources use this mail resource",
-                details = {code = "mail_resource_in_use", resource = key, messages = usage_reader.message_names(sources),
-                    resources = sources}})
-        end
+        local in_use = usage_reader.require_unused(tx, key, workspace.originals)
+        if in_use then return nil, in_use end
         body.change = "deleted"
     else
         local item = candidate :: types.ResourceContent
@@ -85,11 +79,6 @@ local function asset_event(tx: database.Transaction, operation: string, edit: ty
         end
     end
     return events.build(event_type, body)
-end
-
-local function catching_up(head: integer, projected: integer): error
-    return errors.new({kind = errors.CONFLICT, retryable = true, message = "Mail library is catching up",
-        details = {code = "mail_library_catching_up", head = head, projected_seq = projected}})
 end
 
 local function result(threads_api: types.LibraryThreads, operation: string, requested: {types.LibraryEdit},
@@ -161,12 +150,11 @@ local function single(saved: types.LibrarySaveResult): (types.Resource?, error?)
 end
 
 function M.replay_asset(key: types.ResourceKey, operation: string, command_id: string, signature: string): (types.Resource?, error?)
-    local actor, actor_err = security.actor()
+    local author, actor_err = library.author()
     if actor_err then return nil, actor_err end
-    if not actor then return nil, resources.error(errors.PERMISSION_DENIED, "mail_library_denied", "A principal must edit the mail library") end
     local api, open_err = thread_events.open()
     if open_err then return nil, open_err end
-    local seq, err = threads.replay(api :: types.LibraryThreads, actor:id(), operation, command_id, events.ASSET_ADDED, signature, 1)
+    local seq, err = threads.replay(api :: types.LibraryThreads, author :: string, operation, command_id, events.ASSET_ADDED, signature, 1)
     if err or not seq then return nil, err end
     local saved, result_err = result(api :: types.LibraryThreads, operation, {{key = key}}, seq, threads.wait_deadline())
     if result_err then return nil, result_err end
@@ -179,16 +167,15 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
     local deadline = threads.wait_deadline()
     local command_id, id_err = edit_rules.command_id(opts.command_id or uuid.v4())
     if id_err then return nil, id_err end
-    local actor, actor_err = security.actor()
+    local principal, actor_err = library.author()
     if actor_err then return nil, actor_err end
-    if not actor then return nil, resources.error(errors.PERMISSION_DENIED, "mail_library_denied", "A principal must edit the mail library") end
+    local author = principal :: string
     local denied = library.require_write()
     if denied then return nil, denied end
     if operation == "restore" then
         local read_denied = library.require_read()
         if read_denied then return nil, read_denied end
     end
-    local author = actor:id()
     local opened, open_err = thread_events.open()
     if open_err then return nil, open_err end
     local api = opened :: types.LibraryThreads
@@ -219,7 +206,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
     if mark.projected_seq < cursor.event_count then
         local ready, catch_err = threads.catch_up(cursor.event_count, deadline)
         if catch_err and not errors.is(catch_err, errors.CONFLICT) then return nil, catch_err end
-        if not ready then return nil, catching_up(cursor.event_count, mark.projected_seq :: integer) end
+        if not ready then return nil, edit_rules.catching_up(cursor.event_count, mark.projected_seq :: integer) end
     end
     local source: types.Resource?
     if operation == "restore" then
@@ -235,7 +222,7 @@ function M.apply(operation: string, edits: {types.LibraryEdit}, opts: types.Libr
             local checkpoint, lock_err = live_repo.lock(tx, dialect)
             if lock_err then return nil, lock_err end
             if checkpoint.projected_seq ~= cursor.event_count then
-                return nil, catching_up(cursor.event_count, checkpoint.projected_seq :: integer)
+                return nil, edit_rules.catching_up(cursor.event_count, checkpoint.projected_seq :: integer)
             end
             local event, event_err = asset_event(tx, operation, edit, author, signature :: string, source,
                 cursor.event_count, token, command_id :: string, versions :: {[string]: integer})

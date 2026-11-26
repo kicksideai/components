@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local database = require("database")
 local types = require("types")
+local resources = require("resource")
 local json = require("json")
 local sql = require("sql")
 local canonical = require("canonical_json")
@@ -13,10 +14,10 @@ local function asset_resource(row: types.LibraryRow): types.Resource
         asset = {source = "upload", upload_id = row.asset_upload_id, filename = row.filename,
             content_type = row.content_type, size = row.size_bytes}
     end
-    return {kind = "asset", name = row.name, title = row.title, description = row.description,
-        html = "", text = "", schema = {type = "object", properties = {}}, samples = {}, asset = asset,
-        state = row.state, origin = row.origin, origin_label = row.origin_label, revision = row.revision, author = row.author,
-        created_at = row.created_at, updated_at = row.updated_at, seq = row.last_seq}
+    local item = resources.asset_content(row.name, row.title, row.description, asset) :: types.Resource
+    item.state, item.origin, item.origin_label, item.revision, item.author = row.state, row.origin, row.origin_label, row.revision, row.author
+    item.created_at, item.updated_at, item.seq = row.created_at, row.updated_at, row.last_seq
+    return item
 end
 
 local function resource(row: types.LibraryRow): (types.Resource?, error?)

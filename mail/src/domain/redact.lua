@@ -5,9 +5,9 @@ local types = require("types")
 
 local M = {}
 
-local function content_type_header(headers: {[string]: string | {string}}): string?
+function M.header(headers: {[string]: string | {string}}, key: string): string?
     for name, value in pairs(headers) do
-        if name:lower() == "content-type" then
+        if name:lower() == key then
             if type(value) == "string" then return value end
             return value[1]
         end
@@ -53,7 +53,7 @@ local function redact(value: string, secret: string): string
 end
 
 function M.response_detail(response: types.HttpResponse, credential: string, basic_user: string?): (string?, error?)
-    local content_type = content_type_header(response.headers) or ""
+    local content_type = M.header(response.headers, "content-type") or ""
     local value
     local decoded, decode_err = json.decode(response.body)
     if not decode_err and type(decoded) == "table" then

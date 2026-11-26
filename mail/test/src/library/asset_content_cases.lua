@@ -86,6 +86,20 @@ local function register(support)
         test.eq(first.revision + 1, second.revision)
     end)
 
+    test.it("checks asset names and notes before looking up an upload", function()
+        local input = {kind = "asset", name = string.rep("a", 129), note = string.rep("n", 501), upload_id = uuid.v4()}
+        local added, err = fixtures.call(state.editor, "add_asset", input)
+        test.is_nil(added)
+        test.eq(errors.INVALID, err:kind())
+        test.eq("invalid_mail_resource", err:details().code)
+
+        input.name = "invalid-note-asset"
+        added, err = fixtures.call(state.editor, "add_asset", input)
+        test.is_nil(added)
+        test.eq(errors.INVALID, err:kind())
+        test.eq("invalid_revision_note", err:details().code)
+    end)
+
     test.it("delivers personal uploads for the scoped sender without harness method grants", function()
         state.configured = true
         settings.settings("app.mail_harness:capture", "mail@example.org")

@@ -6,11 +6,9 @@ local types = require("types")
 local http_errors = require("http_errors")
 local canonical = require("canonical_json")
 
-local M = {}
+local client = require("client")
 
-function M.invalid(message: string): error
-    return errors.new({kind = errors.INVALID, message = message, retryable = false, details = {code = "invalid_request"}})
-end
+local M = {invalid = client.invalid_request}
 
 local function fail(res: http.Response, err: error, status: integer?)
     local body = http_errors.response(err)

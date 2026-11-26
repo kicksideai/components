@@ -260,8 +260,7 @@ function M.plan(ex: database.Executor, operation: string, edits: {types.LibraryE
     local mark, state_err = live_repo.get(ex)
     if state_err then return nil, state_err end
     if mark.projected_seq < head then
-        return nil, errors.new({kind = errors.CONFLICT, retryable = true, message = "Mail library is catching up",
-            details = {code = "mail_library_catching_up"}})
+        return nil, edit_rules.catching_up()
     end
 
     local loaded, err = M.workspace(ex, versions)
@@ -311,13 +310,8 @@ function M.plan(ex: database.Executor, operation: string, edits: {types.LibraryE
         if digest_value ~= binding.digest then return nil, mismatch() end
     end
     if operation == "delete" and key.kind ~= "message" then
-        local sources, ref_err = usage_reader.referrers(ex, key, originals)
-        if ref_err then return nil, ref_err end
-        if #sources > 0 then
-            return nil, errors.new({kind = errors.CONFLICT, message = "Library resources use this mail resource",
-                details = {code = "mail_resource_in_use", resource = {kind = key.kind, name = key.name},
-                    messages = usage_reader.message_names(sources), resources = sources}})
-        end
+        local in_use = usage_reader.require_unused(ex, {kind = key.kind, name = key.name}, originals)
+        if in_use then return nil, in_use end
     end
     if operation ~= "delete" or key.kind ~= "message" then
         local validation_err = validate_templates(workspace, keys, candidates, changed)

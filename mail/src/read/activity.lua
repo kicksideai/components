@@ -8,9 +8,7 @@ local time = require("time")
 local types = require("types")
 local uuid = require("uuid")
 
-local function invalid(message: string): error
-    return errors.new({kind = errors.INVALID, message = message, retryable = false, details = {code = "invalid_request"}})
-end
+local invalid = client.invalid_request
 
 local function message(row: types.MessageRow, admin: boolean): (types.LogMessage?, error?)
     local content, err = reader.content(row)

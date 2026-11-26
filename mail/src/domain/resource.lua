@@ -115,6 +115,11 @@ function M.check_content(input: types.ResourceContent): error?
     return nil
 end
 
+function M.asset_content(name: string, title: string, description: string, asset: types.Asset): types.ResourceContent
+    return {kind = "asset", name = name, title = title, description = description, asset = asset,
+        html = "", text = "", schema = {type = "object", properties = {}}, samples = {}}
+end
+
 function M.normalize(key: types.ResourceContent): (types.ResourceContent?, error?)
     local invalid = M.check_key(key)
     if invalid then return nil, invalid end
@@ -122,8 +127,7 @@ function M.normalize(key: types.ResourceContent): (types.ResourceContent?, error
         if type(key.title) ~= "string" or not key.title:find("%S") or type(key.description) ~= "string" or not key.asset then
             return nil, M.error(errors.INVALID, "invalid_mail_asset", "A library asset needs an image source", key)
         end
-        return {kind = key.kind, name = key.name, title = key.title, description = key.description,
-            html = "", text = "", schema = {type = "object", properties = {}}, samples = {}, asset = key.asset}, nil
+        return M.asset_content(key.name, key.title, key.description, key.asset), nil
     end
     if type(key.title) ~= "string" or not key.title:find("%S") or type(key.description) ~= "string"
         or type(key.html) ~= "string" or key.html == "" or type(key.text) ~= "string" or key.text == "" then

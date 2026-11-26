@@ -9,8 +9,6 @@ entries:
     method: run
     imports:
       time: kickside.mail.command:clock
-      config: kickside.mail.domain:config
-      policy: kickside.mail.domain:policy
       retention: kickside.mail.command:retention
       settings: kickside.mail.read:settings
       types: kickside.mail:types

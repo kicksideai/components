@@ -21,15 +21,10 @@ function M.add(input: types.AssetWrite): (types.Resource?, error?)
     local key = {kind = "asset", name = input.name}
     local expected = input.expected_revision
     local operation = expected == nil and "create" or "update"
-    local bad = expected == nil and resources.check_input_key(key) or resources.check_key(key)
-    if bad then return nil, bad end
-    local note_err = resources.check_note(input.note)
-    if note_err then return nil, note_err end
-    if expected ~= nil and (type(expected) ~= "number" or math.tointeger(expected) == nil or expected < 0) then
-        return nil, resources.error(errors.INVALID, "invalid_mail_revision", "Provide an expected revision", key)
-    end
-    local content_err = resources.check_content((input :: unknown) :: types.ResourceContent)
-    if content_err then return nil, content_err end
+    local edit: types.LibraryEdit = {key = key, expected = expected, note = input.note,
+        content = (input :: unknown) :: types.ResourceContent}
+    local invalid = edit_rules.validate({edit}, operation)
+    if invalid then return nil, invalid end
     if type(input.upload_id) ~= "string" or not uuid.validate(input.upload_id)
         or (input.title ~= nil and (type(input.title) ~= "string" or not input.title:find("%S")))
         or (input.description ~= nil and type(input.description) ~= "string") then
@@ -79,11 +74,10 @@ function M.add(input: types.AssetWrite): (types.Resource?, error?)
     if (adopted :: {upload_id: string}).upload_id ~= version then
         return nil, resources.error(errors.INTERNAL, "invalid_mail_asset", "Uploads returns an unexpected asset version", key)
     end
-    local candidate: types.ResourceContent = {kind = key.kind, name = input.name, title = input.title or (current and current.title) or input.name,
-        description = input.description or (current and current.description) or "", html = "", text = "",
-        schema = {type = "object", properties = {}}, samples = {}, asset = asset}
-    return writer.one({key = key, content = candidate, expected = expected, note = input.note,
-        asset_deadline = deadline}, operation, {command_id = input.command_id, identity_op = identity, command_hash = signature})
+    edit.content = resources.asset_content(input.name, input.title or (current and current.title) or input.name,
+        input.description or (current and current.description) or "", asset)
+    edit.asset_deadline = deadline
+    return writer.one(edit, operation, {command_id = input.command_id, identity_op = identity, command_hash = signature})
 end
 
 

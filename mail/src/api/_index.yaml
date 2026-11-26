@@ -8,6 +8,7 @@ entries:
     modules: [http, json, security]
     imports:
       types: kickside.mail:types
+      client: kickside.mail:client
       http_errors: kickside.contract:http_errors
       canonical_json: kickside.contract:canonical_json
   - name: principals

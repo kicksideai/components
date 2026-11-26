@@ -15,6 +15,11 @@ function M.conflict(key: types.ResourceKey, revision: integer): error
         details = {code = "mail_revision_conflict", resource = {kind = key.kind, name = key.name}, revision = revision}})
 end
 
+function M.catching_up(head: integer?, projected: integer?): error
+    return errors.new({kind = errors.CONFLICT, retryable = true, message = "Mail library is catching up",
+        details = {code = "mail_library_catching_up", head = head, projected_seq = projected}})
+end
+
 function M.base_exists(items: types.ResourceMap, resource: types.ResourceContent): error?
     if resource.base and not items[resources.subject({kind = "base", name = resource.base})] then
         return resources.error(errors.INVALID, "mail_base_not_found", "The selected base does not exist", resource)
@@ -39,13 +44,16 @@ function M.validate(edits: {types.LibraryEdit}, operation: string): error?
     local changed: {[string]: boolean} = {}
     for _, edit in ipairs(edits) do
         local key = edit.key
-        local bad_key = resources.check_key(key)
+        local asset_create = operation == "create" and type(key) == "table" and key.kind == "asset"
+        local bad_key = (asset_create and resources.check_input_key or resources.check_key)(key)
         if bad_key then return bad_key end
         local note_err = resources.check_note(edit.note)
         if note_err then return note_err end
         if operation == "create" then
-            local name_err = resources.check_input_key(key)
-            if name_err then return name_err end
+            if not asset_create then
+                local name_err = resources.check_input_key(key)
+                if name_err then return name_err end
+            end
             if edit.from ~= nil then
                 local from_err = resources.check_key(edit.from)
                 if from_err then return from_err end

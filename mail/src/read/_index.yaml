@@ -9,6 +9,8 @@ entries:
     modules: [env, funcs, security]
     imports:
       config: kickside.mail.driver:config
+      mail_config: kickside.mail.domain:config
+      policy: kickside.mail.domain:policy
       types: kickside.mail:types
   - name: driver_selection
     kind: function.lua
@@ -73,7 +75,7 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://library.lua
-    modules: [contract]
+    modules: [contract, security]
     imports:
       live: kickside.mail.render:live
       live_repo: kickside.mail.persist:live_repo
@@ -106,8 +108,6 @@ entries:
       library_reader: kickside.mail.persist:library_reader
       message_reader: kickside.mail.persist:message_reader
       reference_repo: kickside.mail.persist:reference_repo
-      config: kickside.mail.domain:config
-      policy: kickside.mail.domain:policy
       references: kickside.mail.domain:references
       settings: kickside.mail.read:settings
   - name: activity

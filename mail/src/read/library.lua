@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
 local types = require("types")
+local security = require("security")
 local client = require("client")
 local database = require("database")
 local resource = require("resource")
@@ -178,6 +179,15 @@ end
 
 function M.require_read(): error?
     return require_access(component_types.ACCESS.READ, "read")
+end
+
+function M.author(): (string?, error?)
+    local actor, err = security.actor()
+    if err then return nil, err end
+    if not actor then
+        return nil, resource.error(errors.PERMISSION_DENIED, "mail_library_denied", "A principal must edit the mail library")
+    end
+    return actor:id(), nil
 end
 
 function M.require_write(): error?

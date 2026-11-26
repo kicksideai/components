@@ -20,16 +20,6 @@ function M.response_detail(response: types.HttpResponse, credential: string, bas
     return detail
 end
 
-local function header(headers: {[string]: string | {string}}, key: string): string?
-    for name, value in pairs(headers) do
-        if name:lower() == key then
-            if type(value) == "string" then return value end
-            return value[1]
-        end
-    end
-    return nil
-end
-
 local function number_header(raw: string?): number?
     if not raw or not raw:match("^%s*%d+%s*$") then return nil end
     local value = tonumber(raw)
@@ -38,7 +28,7 @@ local function number_header(raw: string?): number?
 end
 
 function M.retry_hint(response: types.HttpResponse, reset: string, units: string): number?
-    local raw = header(response.headers, "retry-after")
+    local raw = redact.header(response.headers, "retry-after")
     local seconds = number_header(raw)
     if seconds then return math.min(seconds, math.maxinteger // 1000) * 1000 end
     local now = time.now():unix_nano() // 1000000
@@ -47,7 +37,7 @@ function M.retry_hint(response: types.HttpResponse, reset: string, units: string
         if not parse_err then return math.max(0, target:unix_nano() // 1000000 - now) end
     end
     if response.status_code ~= 429 and response.status_code ~= 420 then return nil end
-    local value = number_header(header(response.headers, reset))
+    local value = number_header(redact.header(response.headers, reset))
     if not value then return nil end
     if units == "seconds" then return math.min(value, math.maxinteger // 1000) * 1000 end
     if units == "epoch_seconds" then value = value * 1000.0 end

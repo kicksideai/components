@@ -18,6 +18,10 @@ function M.capabilities(): types.Capabilities
     }
 end
 
+function M.invalid_request(message: string): error
+    return errors.new({kind = errors.INVALID, message = message, retryable = false, details = {code = "invalid_request"}})
+end
+
 function M.require_send(): error?
     if not security.can("access", MAILER) then
         return errors.new({kind = errors.PERMISSION_DENIED, message = "Mail send access is required",

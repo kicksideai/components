@@ -42,6 +42,7 @@ entries:
       database: kickside.mail.persist:db
       types: kickside.mail:types
       canonical_json: kickside.contract:canonical_json
+      resource: kickside.mail.domain:resource
   - name: reference_repo
     kind: library.lua
     meta: { private: true }

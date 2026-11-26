@@ -21,15 +21,11 @@ local function invalid_status(id: string, field: string): error
         details = {code = "invalid_transport_status", field = field}})
 end
 
-local function nonempty(value: unknown): boolean
-    return type(value) == "string" and value:find("%S") ~= nil
-end
-
 function M.transport_status_error(status: unknown, id: string): error?
     if type(status) ~= "table" then return invalid_status(id, "status") end
     local fields = status :: types.Record
     for _, field in ipairs({"title", "icon", "description", "settings_ns"}) do
-        if not nonempty(fields[field]) then return invalid_status(id, field) end
+        if not message.nonempty(fields[field]) then return invalid_status(id, field) end
     end
     for _, field in ipairs({"ready", "idempotent"}) do
         if type(fields[field]) ~= "boolean" then return invalid_status(id, field) end
@@ -44,7 +40,7 @@ function M.transport_status_error(status: unknown, id: string): error?
     if code ~= nil and (type(code) ~= "string" or not code:match("^[a-z][a-z0-9_]*$")) then
         return invalid_status(id, "code")
     end
-    if fields.reason ~= nil and not nonempty(fields.reason) then return invalid_status(id, "reason") end
+    if fields.reason ~= nil and not message.nonempty(fields.reason) then return invalid_status(id, "reason") end
     return nil
 end
 

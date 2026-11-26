@@ -17,7 +17,6 @@ local preview_repo = require("preview_repo")
 local digest = require("digest")
 local notify = require("notify")
 local scratch = require("scratch")
-local security = require("security")
 local time = require("time")
 local uuid = require("uuid")
 local renderer = require("render")
@@ -68,10 +67,9 @@ local function preview(input: types.EditPreview, bind: boolean): (types.Rendered
         batch, operation = proposed :: {types.LibraryEdit}, op
         local invalid = edit_rules.validate(batch, operation :: string)
         if invalid then return nil, invalid end
-        local actor, actor_err = security.actor()
+        local actor_err
+        author, actor_err = library.author()
         if actor_err then return nil, actor_err end
-        if not actor then return nil, resources.error(errors.PERMISSION_DENIED, "mail_library_denied", "A principal must edit the mail library") end
-        author = actor:id()
         local write_denied = library.require_write()
         if write_denied then return nil, write_denied end
         if operation == "restore" then

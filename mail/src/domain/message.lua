@@ -20,7 +20,7 @@ local REQUEST_FIELDS = {
     origin = true, sink_op = true,
 }
 
-local function nonempty(value: unknown): boolean
+function M.nonempty(value: unknown): boolean
     return type(value) == "string" and value:find("%S") ~= nil
 end
 
@@ -82,7 +82,7 @@ function M.from_name_issue(value: unknown): string?
 end
 
 function M.subject_error(value: unknown): error?
-    if not nonempty(value) then return invalid("subject_required", "A subject is required") end
+    if not M.nonempty(value) then return invalid("subject_required", "A subject is required") end
     local length, issue = M.header_length(value)
     if issue then return invalid("invalid_subject", "Subject " .. issue:message()) end
     if length > M.MAX_SUBJECT_CHARACTERS then
@@ -194,7 +194,7 @@ function M.attachments_error(attachments: unknown): error?
     end
     local content_ids = {}
     for _, ref in ipairs(attachments) do
-        if type(ref) ~= "table" or not nonempty(ref.upload_id)
+        if type(ref) ~= "table" or not M.nonempty(ref.upload_id)
             or (ref.filename ~= nil and type(ref.filename) ~= "string")
             or (ref.disposition ~= nil and ref.disposition ~= "attachment" and ref.disposition ~= "inline") then
             return invalid("invalid_attachment", "Each attachment must reference an upload and have valid metadata")
@@ -220,7 +220,7 @@ function M.attachments_error(attachments: unknown): error?
 end
 
 local function user_recipient(value: unknown): boolean
-    if type(value) ~= "table" or not nonempty(value.user_id) then return false end
+    if type(value) ~= "table" or not M.nonempty(value.user_id) then return false end
     for key in pairs(value) do
         if key ~= "user_id" then return false end
     end
@@ -282,7 +282,7 @@ function M.validate(raw: unknown): (types.SendRequest?, error?)
         return nil, invalid("invalid_body", "Text and HTML bodies must be strings")
     end
     if input.template ~= nil then
-        if not nonempty(input.template) then
+        if not M.nonempty(input.template) then
             return nil, invalid("invalid_template", "A mail template name is required")
         end
         if input.subject ~= nil or input.html ~= nil or input.text ~= nil then
@@ -294,15 +294,15 @@ function M.validate(raw: unknown): (types.SendRequest?, error?)
         end
         local err = M.subject_error(input.subject) or M.body_error(input.text :: string?, input.html :: string?)
         if err then return nil, err end
-        if not nonempty(input.text) and not nonempty(input.html) then
+        if not M.nonempty(input.text) and not M.nonempty(input.html) then
             return nil, invalid("body_required", "An HTML or text body is required")
         end
     end
     if input.idempotency_key ~= nil
-        and (not nonempty(input.idempotency_key) or #input.idempotency_key > M.MAX_KEY_BYTES or input.idempotency_key:find("%c")) then
+        and (not M.nonempty(input.idempotency_key) or #input.idempotency_key > M.MAX_KEY_BYTES or input.idempotency_key:find("%c")) then
         return nil, invalid("invalid_idempotency_key", "Idempotency key must be non-empty, contain no control characters, and be at most 2048 bytes")
     end
-    if input.identity_key ~= nil and (not input.sink_op or not nonempty(input.identity_key)) then
+    if input.identity_key ~= nil and (not input.sink_op or not M.nonempty(input.identity_key)) then
         return nil, invalid("invalid_identity_key", "A stable identity key requires an automation write")
     end
     if input.attachments ~= nil then
