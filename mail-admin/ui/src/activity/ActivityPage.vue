@@ -147,7 +147,7 @@ function closeMessage() {
       <Select v-model="period" :options="periods" option-label="label" option-value="value" append-to="self" aria-label="Period" class="mail-filter" />
       <IconField class="mail-search">
         <InputIcon><Icon icon="tabler:search" aria-hidden="true" /></InputIcon>
-        <InputText v-model="query" type="search" maxlength="256" aria-label="Search subject or recipient" placeholder="Search subject or recipient…" />
+        <InputText v-model="query" fluid type="search" maxlength="256" aria-label="Search subject or recipient" placeholder="Search subject or recipient…" />
       </IconField>
       <span v-if="loaded" class="mail-count" role="status">{{ countLabel }}</span>
     </div>

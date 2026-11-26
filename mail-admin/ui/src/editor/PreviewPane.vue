@@ -101,12 +101,12 @@ const from = computed(() => {
     <div class="mail-preview-bar">
       <SelectButton v-model="mode" :options="modes" option-label="label" option-value="value" :allow-empty="false" aria-label="Preview format" />
       <SelectButton v-if="mode === 'email'" v-model="width" :options="widths" option-label="label" option-value="value" :allow-empty="false" aria-label="Preview width">
-        <template #option="{ option }"><Icon :icon="option.icon" aria-hidden="true" />{{ option.label }}</template>
+        <template #option="{ option }"><Icon class="mail-preview-format-icon" :icon="option.icon" aria-hidden="true" />{{ option.label }}</template>
       </SelectButton>
     </div>
     <div v-if="draft.kind !== 'message'" class="mail-preview-with">
       <label :for="ids.message">Preview with</label>
-      <ResourcePicker v-model="chosen" kind="message" label="Preview with" :input-id="ids.message" :names="messages" placeholder="Choose a message…" />
+      <ResourcePicker class="mail-preview-picker" v-model="chosen" kind="message" label="Preview with" :input-id="ids.message" :names="messages" placeholder="Choose a message…" />
       <small v-if="choicesError" class="kx-err inline" role="alert">{{ choicesError }}</small>
       <small v-else-if="chosenNote" class="mail-field-hint">{{ chosenNote }}</small>
     </div>

@@ -1,7 +1,7 @@
 import "vue";
 import "./wc-runtime-UUwuoPn6.js";
 import "pinia";
-import { e as o } from "./element-lUbWx5OY.js";
+import { e as o } from "./element-y3HJ4Nny.js";
 import { define as r } from "@wippy-fe/proxy";
 const e = o(
   () => import("./mount-StceIgBS.js").then((t) => t.config),

@@ -123,7 +123,7 @@ function open(row: LibraryRow) { go({ name: 'library', section: 'assets', asset:
     <div class="mail-toolbar">
       <IconField class="mail-search">
         <InputIcon><Icon icon="tabler:search" aria-hidden="true" /></InputIcon>
-        <InputText v-model="query" type="search" aria-label="Search images" placeholder="Search images…" />
+        <InputText v-model="query" fluid type="search" aria-label="Search images" placeholder="Search images…" />
       </IconField>
       <span class="mail-count" role="status">{{ countLabel }}</span>
     </div>

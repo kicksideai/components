@@ -160,7 +160,7 @@ const gallery = ref(false)
       <SelectButton v-model="state" :options="states" option-label="label" option-value="value" :allow-empty="false" aria-label="Show resources" />
       <IconField class="mail-search">
         <InputIcon><Icon :icon="loading ? 'tabler:loader-2' : 'tabler:search'" :class="{ spin: loading }" aria-hidden="true" /></InputIcon>
-        <InputText v-model="query" type="search" maxlength="1024" :aria-label="'Search ' + head.title.toLowerCase()" placeholder="Search names and content…" />
+        <InputText v-model="query" fluid type="search" maxlength="1024" :aria-label="'Search ' + head.title.toLowerCase()" placeholder="Search names and content…" />
       </IconField>
       <span class="mail-count" role="status">{{ countLabel }}</span>
     </div>

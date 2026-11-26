@@ -595,6 +595,7 @@ const ct = {
         r.value.length ? (l(), i("div", mt, [
           t("span", null, b(j.value), 1),
           s(a(jl), {
+            class: "mail-gallery-bar",
             value: Math.round(ee.value / (v.value ?? r.value.length) * 100),
             "show-value": !1,
             "aria-hidden": "true"
@@ -909,6 +910,7 @@ const ct = {
               s(a(ue), {
                 modelValue: v.value,
                 "onUpdate:modelValue": E[6] || (E[6] = (R) => v.value = R),
+                fluid: "",
                 type: "search",
                 maxlength: "1024",
                 "aria-label": "Search " + H.value.title.toLowerCase(),
@@ -1385,6 +1387,7 @@ const as = "{{ block body() }}{{ end }}", ls = { class: "mail-picker-search" }, 
         }, {
           option: I(({ option: ae }) => [
             s(a(O), {
+              class: "mail-preview-format-icon",
               icon: ae.icon,
               "aria-hidden": "true"
             }, null, 8, ["icon"]),
@@ -1398,6 +1401,7 @@ const as = "{{ block body() }}{{ end }}", ls = { class: "mail-picker-search" }, 
           for: x.message
         }, "Preview with", 8, ds),
         s(Ye, {
+          class: "mail-preview-picker",
           modelValue: h.value,
           "onUpdate:modelValue": L[2] || (L[2] = (ae) => h.value = ae),
           kind: "message",
@@ -4375,6 +4379,7 @@ const Dn = { class: "kx-modal-head-icon" }, qn = { class: "kx-modal-head-text" }
               s(a(ue), {
                 modelValue: f.value,
                 "onUpdate:modelValue": j[4] || (j[4] = ($) => f.value = $),
+                fluid: "",
                 type: "search",
                 "aria-label": "Search images",
                 placeholder: "Search images…"
@@ -5242,6 +5247,7 @@ const Dn = { class: "kx-modal-head-icon" }, qn = { class: "kx-modal-head-text" }
               s(a(ue), {
                 modelValue: v.value,
                 "onUpdate:modelValue": M[4] || (M[4] = (W) => v.value = W),
+                fluid: "",
                 type: "search",
                 maxlength: "256",
                 "aria-label": "Search subject or recipient",

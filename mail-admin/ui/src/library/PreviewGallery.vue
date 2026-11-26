@@ -150,7 +150,7 @@ const dialogPt = { header: { class: 'mail-dialog-header' }, content: { class: 'm
     </template>
     <div v-if="tiles.length" class="mail-gallery-progress" role="status">
       <span>{{ progress }}</span>
-      <ProgressBar :value="Math.round(done / (total ?? tiles.length) * 100)" :show-value="false" aria-hidden="true" />
+      <ProgressBar class="mail-gallery-bar" :value="Math.round(done / (total ?? tiles.length) * 100)" :show-value="false" aria-hidden="true" />
     </div>
     <p v-if="listing && !tiles.length" class="kx-loading" role="status"><Icon icon="tabler:loader-2" class="spin" aria-hidden="true" />Listing messages…</p>
     <p v-else-if="!listing && !listError && !tiles.length" class="mail-muted">There are no messages yet.</p>
