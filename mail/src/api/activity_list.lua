@@ -9,7 +9,9 @@ local function handler()
         if limit_err then return nil, limit_err end
         local since, since_err = request.query_integer(req, "since")
         if since_err then return nil, since_err end
-        return principals.page("sender", client.list_messages({limit = limit or 50, since = since, status = req:query("status") :: string?,
+        local mailer, open_err = client.mailer()
+        if not mailer then return nil, open_err end
+        return principals.page("sender", mailer:list_messages({limit = limit or 50, since = since, status = req:query("status") :: string?,
             q = req:query("q") :: string?, template = req:query("message") :: string?, cursor = req:query("cursor") :: string?}))
     end)
 end

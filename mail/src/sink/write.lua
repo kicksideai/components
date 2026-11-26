@@ -33,7 +33,9 @@ local function write(request: types.SinkRequest): types.SinkResult | types.SinkF
     input.identity_key = request.identity_key
     input.sink_op = operation
     input.origin = {kind = "automation", id = origin, label = origin}
-    local sent, err = client.send(input :: types.SendRequest)
+    local mailer, err = client.mailer()
+    local sent: types.SendResult?
+    if mailer then sent, err = mailer:send(input :: types.SendRequest) end
     if err then
         local details = err:details() or {}
         if details.code == "invalid_config" then

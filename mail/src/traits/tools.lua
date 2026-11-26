@@ -4,7 +4,9 @@ local client = require("client")
 local ctx = require("ctx")
 
 local function list_templates(): (types.ToolTemplateList?, error?)
-    local result, list_err = client.list_templates()
+    local mailer, err = client.mailer()
+    if not mailer then return nil, err end
+    local result, list_err = mailer:list_templates()
     if list_err then return nil, list_err end
     local rows = {}
     for i, template in ipairs(result.templates) do
@@ -20,7 +22,21 @@ local function send(input: types.SendRequest): (types.SendResult?, error?)
         local title = type(ref) == "table" and ref.title or nil
         input.origin = {kind = "workflow", id = run.run_id, label = types.origin_text(title) and title :: string or ""}
     end
-    return client.send(input)
+    local mailer, err = client.mailer()
+    if not mailer then return nil, err end
+    return mailer:send(input)
 end
 
-return {send = send, list_templates = list_templates, get_template = client.get_template, preview = client.preview}
+local function get_template(input: types.TemplateRequest): (types.Template?, error?)
+    local mailer, err = client.mailer()
+    if not mailer then return nil, err end
+    return mailer:get_template(input)
+end
+
+local function preview(input: types.PreviewRequest): (types.PreviewResult?, error?)
+    local mailer, err = client.mailer()
+    if not mailer then return nil, err end
+    return mailer:preview(input)
+end
+
+return {send = send, list_templates = list_templates, get_template = get_template, preview = preview}

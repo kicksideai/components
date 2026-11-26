@@ -3,6 +3,7 @@ local delivery_wait = require("delivery_wait")
 local test = require("test")
 local security = require("security")
 local contract = require("contract")
+local client = require("client")
 local funcs = require("funcs")
 local blocks = require("blocks")
 local compiler = require("compiler")
@@ -86,7 +87,7 @@ local function probe(input)
     if input.operation == "driver_validation" then
         return funcs.call("kickside.mail.settings:validate_driver", {value = "app.mail_harness:admitted"})
     end
-    local mailer, err = open("kickside.mail:mailer")
+    local mailer, err = client.mailer()
     if err then return nil, err end
     if input.operation == "list_templates" then return mailer:list_templates() end
     return mailer[input.operation](mailer, input.message)

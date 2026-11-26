@@ -138,6 +138,7 @@ entries:
       settings_cases: app.mail_harness:settings_cases
       template_cases: app.mail_harness:template_cases
       driver_example_cases: app.mail_harness:driver_example_cases
+      client: kickside.mail:client
   - name: admission_cases
     kind: library.lua
     source: file://admission_cases.lua
@@ -291,6 +292,7 @@ entries:
       settings_cases: app.mail_harness:settings_cases
       template_cases: app.mail_harness:template_cases
       driver_example_cases: app.mail_harness:driver_example_cases
+      client: kickside.mail:client
   - name: port_declaration_test
     kind: function.lua
     meta: { type: test, suite: mailer }

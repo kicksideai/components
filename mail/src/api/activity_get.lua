@@ -5,7 +5,9 @@ local principals = require("principals")
 
 local function handler()
     return request.handle(client.require_admin, function(req)
-        return principals.item("sender", client.get_message((req:param("id") :: string?) or ""))
+        local mailer, open_err = client.mailer()
+        if not mailer then return nil, open_err end
+        return principals.item("sender", mailer:get_message((req:param("id") :: string?) or ""))
     end)
 end
 

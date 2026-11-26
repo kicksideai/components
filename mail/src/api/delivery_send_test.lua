@@ -7,7 +7,9 @@ local function handler()
     return request.handle(client.require_admin, function(req)
         local body, err = request.body(req, true)
         if err then return nil, err end
-        return client.send_delivery_test((body :: unknown) :: types.DeliveryTestRequest)
+        local mailer, open_err = client.mailer()
+        if not mailer then return nil, open_err end
+        return mailer:send_delivery_test((body :: unknown) :: types.DeliveryTestRequest)
     end, 202)
 end
 
