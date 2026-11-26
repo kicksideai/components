@@ -7,6 +7,7 @@ local lookup = require("lookup")
 local settings = require("settings")
 local upload_types = require("upload_types")
 local fixtures = require("fixtures")
+local database = require("database")
 
 local function register(support)
     local test = support.test
@@ -119,12 +120,16 @@ local function register(support)
         local retained = assert(funcs.call(fixtures.retention_id(), {}))
         test.is_true(retained.success, tostring(retained.error))
         test.is_true(state.storage:exists(record.storage_path), "The failed delivery keeps the adopted bytes")
-        local expires = assert(failure.finished_at) + 30 * 24 * 60 * 60 * 1000 + 1
-        sweep(expires)
+        local expired_at = assert(failure.finished_at) - 31 * 24 * 60 * 60 * 1000
+        assert(database.with_db(function(db)
+            return db:execute("UPDATE mail_message SET created_at=$1,finished_at=$1 WHERE id=$2",
+                {expired_at, denied.message_id})
+        end))
+        sweep()
         local expired, expired_err = fixtures.mailer(sender, "get_message", denied.message_id)
         test.is_nil(expired)
         test.eq("message_not_found", assert(expired_err):details().code)
-        sweep(expires)
+        sweep()
         test.is_false(state.storage:exists(record.storage_path))
         test.is_nil(lookup.get(version))
     end)

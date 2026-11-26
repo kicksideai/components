@@ -168,7 +168,7 @@ entries:
     meta: { type: test, suite: mail_assets }
     source: &assets_source file://assets_test.lua
     method: run
-    modules: &assets_modules [contract, fs, funcs, security, sql, uuid, base64, time, json]
+    modules: &assets_modules [contract, fs, funcs, security, sql, uuid, base64, time, json, registry]
     imports: &assets_imports
       delivery_wait: app.mail_harness:delivery_wait
       test: wippy.test:test
@@ -258,6 +258,7 @@ entries:
       upload_types: kickside.uploads:types
       lookup: app.mail_library:upload_fixture
       settings: app.mail_api:fixtures
+      database: app:database_fixture
   - name: asset_expiry_test
     kind: function.lua
     meta: { type: test, suite: mail_asset_expiry }

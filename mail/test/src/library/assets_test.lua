@@ -10,6 +10,7 @@ local base64 = require("base64")
 local contract = require("contract")
 local time = require("time")
 local json = require("json")
+local registry = require("registry")
 local lookup = require("lookup")
 local settings = require("settings")
 local fixtures = require("fixtures")
@@ -169,6 +170,23 @@ end
 
 local expiry = test.run_cases(function()
     test.describe("Mail asset expiry", function()
+        local owner
+        test.before_each(function()
+            local id = fixtures.retention_id()
+            owner = assert(registry.get(id))
+            local manual = assert(registry.get(id))
+            -- Manual sweeps own these fixture rows.
+            manual.meta.type = "harness.fixture"
+            local changes = assert(registry.snapshot()):changes()
+            assert(changes:update(manual))
+            assert(changes:apply())
+        end)
+        test.after_each(function()
+            local changes = assert(registry.snapshot()):changes()
+            assert(changes:update(owner))
+            assert(changes:apply())
+        end)
+
         test.it("reports blocked assets while expiring messages and progressing beyond a failed batch", function()
             local db = assert(sql.get("app:db"))
             local day = 86400000
@@ -190,7 +208,7 @@ local expiry = test.run_cases(function()
             assert(tx:commit())
 
             local function sweep()
-                return assert(funcs.call(fixtures.retention_id(), {}))
+                return assert(funcs.call(owner.id, {}))
             end
             local first = sweep()
             local second = sweep()
@@ -205,12 +223,12 @@ local expiry = test.run_cases(function()
 
             test.eq(0, #messages, "Asset failures cannot prevent delivery log expiry")
             test.eq(batch, #assets, "The collectable row beyond the failed page is removed")
-            test.is_true(first.needs_continue)
+            test.is_true(first.needs_continue, "The first page leaves a due asset for the next sweep")
             test.eq(batch, #first.blocked)
             test.eq("invalid_asset_request", first.blocked[1].error:details().code)
             test.is_false(second.needs_continue)
             test.eq(0, #second.blocked)
-            test.is_true(second.deadline_ms > now)
+            test.is_true(second.deadline_ms > now, "Retries are scheduled in the future")
             test.eq(second.deadline_ms, assets[1].due_at)
             test.eq(batch, #at_deadline.blocked)
         end)
@@ -242,7 +260,7 @@ local expiry = test.run_cases(function()
                 local lock = assert(db:begin())
                 local blocker = assert(lock:query("SELECT pg_backend_pid() AS pid"))[1].pid
                 assert(lock:query("SELECT message_id FROM mail_message_asset WHERE message_id=$1 FOR UPDATE", {first}))
-                local sweep = assert(exec:async(fixtures.retention_id(), {}))
+                local sweep = assert(exec:async(owner.id, {}))
                 local deadline = time.now():add(25 * time.SECOND):unix_nano()
                 local waiting = {}
                 repeat
@@ -260,7 +278,7 @@ local expiry = test.run_cases(function()
                 report = assert(assert(sweep:result()):data())
                 test.eq(1, #waiting, "The expiry unlink waits on the first message")
             else
-                report = assert(exec:call(fixtures.retention_id(), {}))
+                report = assert(exec:call(owner.id, {}))
                 assert(db:execute("UPDATE mail_message SET finished_at=$1 WHERE id=$2", {cutoff, late}))
             end
             local refs = assert(db:query("SELECT message_id FROM mail_message_asset WHERE upload_id=$1", {version}))
@@ -271,7 +289,7 @@ local expiry = test.run_cases(function()
             test.eq(late, refs[1].message_id)
             test.eq("held", held[1].state)
             if postgres then test.is_true(report.needs_continue) end
-            local next_report = assert(exec:call(fixtures.retention_id(), {}))
+            local next_report = assert(exec:call(owner.id, {}))
             test.is_true(next_report.success, tostring(next_report.error))
             fixtures.await(function()
                 local check = assert(sql.get("app:db"))
