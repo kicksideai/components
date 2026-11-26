@@ -10,7 +10,7 @@ local policy = require("policy")
 local preview_repo = require("preview_repo")
 local repo = require("message_repo")
 local scratch = require("scratch")
-local uploads = require("uploads")
+local funcs = require("funcs")
 local upload_refs = require("upload_ref_repo")
 local history = require("history_repo")
 local live = require("live")
@@ -59,7 +59,7 @@ local function collect(now_ms: integer, boundary: integer, limit: integer, retry
     local blocked: {types.BlockedAsset} = {}
     for _, row in ipairs(claimed) do
         local id = row.upload_id :: string
-        local err = uploads.reap(id)
+        local _, err = funcs.call("kickside.mail.command:reap_asset", id)
         if err then
             blocked[#blocked + 1] = {component_id = component_id, error = err}
         else

@@ -93,25 +93,19 @@ entries:
     kind: library.lua
     meta: {private: true}
     source: file://assets.lua
-    modules: [time, uuid]
+    modules: [time, uuid, funcs]
     imports:
       types: kickside.mail:types
       resource: kickside.mail.domain:resource
       edit: kickside.mail.domain:edit
       asset_refs: kickside.mail.domain:assets
       writer: kickside.mail.command:library
-      uploads: kickside.mail.command:uploads
       notify: kickside.mail.command:notify
       library: kickside.mail.read:library
       content: kickside.mail.read:content
       canonical_json: kickside.contract:canonical_json
       database: kickside.mail.persist:db
       asset_file_repo: kickside.mail.persist:asset_file_repo
-  - name: uploads
-    kind: library.lua
-    meta: {private: true}
-    source: file://uploads.lua
-    modules: [funcs]
   - name: reap_asset
     kind: function.lua
     meta: {private: true, comment: Reap one claimed version from the Mail library.}
@@ -165,7 +159,7 @@ entries:
     kind: library.lua
     meta: { private: true }
     source: file://retention.lua
-    modules: [json]
+    modules: [json, funcs]
     imports:
       types: kickside.mail:types
       asset_file_repo: kickside.mail.persist:asset_file_repo
@@ -184,7 +178,6 @@ entries:
       jobs: kickside.core.jobs:jobs
       policy: kickside.mail.domain:policy
       outbox: kickside.mail.command:outbox
-      uploads: kickside.mail.command:uploads
   - name: outbox
     kind: library.lua
     meta: { private: true }

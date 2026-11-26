@@ -10,7 +10,7 @@ local content = require("content")
 local asset_refs = require("asset_refs")
 local asset_file_repo = require("asset_file_repo")
 local database = require("database")
-local uploads = require("uploads")
+local funcs = require("funcs")
 local notify = require("notify")
 local canonical = require("canonical_json")
 
@@ -69,7 +69,10 @@ function M.add(input: types.AssetWrite): (types.Resource?, error?)
     end)
     if reserve_err then return nil, reserve_err end
     notify.retention()
-    local adopted, adopt_err = uploads.adopt(content.library_component_id(), input.upload_id, version, lease:format(time.RFC3339))
+    local adopted, adopt_err = funcs.call("kickside.uploads:adopt_component_upload", {
+        component_id = content.library_component_id(), upload_id = input.upload_id, version_id = version,
+        lease_until = lease:format(time.RFC3339),
+    })
     if adopt_err then return nil, adopt_err end
     if (adopted :: {upload_id: string}).upload_id ~= version then
         return nil, resources.error(errors.INTERNAL, "invalid_mail_asset", "Uploads returns an unexpected asset version", key)
