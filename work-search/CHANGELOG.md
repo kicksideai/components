@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/kicksideai/components/compare/work-search-v0.1.6...work-search-v0.1.7) (2026-11-26)
+
+
+### Bug Fixes
+
+* exclude test entries from Work plugin packages ([#461](https://github.com/kicksideai/components/issues/461)) ([ac5f5a3](https://github.com/kicksideai/components/commit/ac5f5a384ce9904b064201b99bb3ced22b28ee8b))
+
 ## [0.1.6](https://github.com/kicksideai/components/compare/work-search-v0.1.5...work-search-v0.1.6) (2026-11-24)
 
 

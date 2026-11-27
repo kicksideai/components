@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.20](https://github.com/kicksideai/components/compare/docscout-v0.1.19...docscout-v0.1.20) (2026-11-26)
+
+
+### Bug Fixes
+
+* **docscout:** rebuild stale frontend assets ([#462](https://github.com/kicksideai/components/issues/462)) ([cb74f4b](https://github.com/kicksideai/components/commit/cb74f4b3d1299d7ad2bd328d37028547d087fda5))
+
 ## [0.1.19](https://github.com/kicksideai/components/compare/docscout-v0.1.18...docscout-v0.1.19) (2026-11-24)
 
 
