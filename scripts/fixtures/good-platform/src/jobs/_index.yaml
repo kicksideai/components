@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.consumer.jobs
+
+entries:
+  - name: worker
+    kind: function.lua
+    source: file://worker.lua
+    method: run
+    security:
+      policies:
+        - kplat.jobs.security:module_access
+        - kplat.jobs.security:producer_access
+    imports:
+      jobs: kplat.jobs:jobs

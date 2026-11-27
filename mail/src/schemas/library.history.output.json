@@ -1,0 +1,78 @@
+{
+  "type": "object",
+  "required": [
+    "items",
+    "library_seq"
+  ],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "seq",
+          "version",
+          "action",
+          "author",
+          "created_at"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "message",
+              "base",
+              "part",
+              "asset"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "action": {
+            "enum": [
+              "created",
+              "edited",
+              "base_changed",
+              "reset",
+              "restored",
+              "archived",
+              "deleted"
+            ]
+          },
+          "restored_from": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "author": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "integer"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "next_cursor": {
+      "type": "string"
+    },
+    "library_seq": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

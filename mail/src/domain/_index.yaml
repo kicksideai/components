@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.domain
+entries:
+  - name: message
+    kind: library.lua
+    source: file://message.lua
+    imports: { types: kickside.mail:types }
+  - name: config
+    kind: library.lua
+    source: file://config.lua
+    imports:
+      types: kickside.mail:types
+      message: kickside.mail.domain:message
+  - name: policy
+    kind: library.lua
+    source: file://policy.lua
+  - name: failure
+    kind: library.lua
+    source: file://failure.lua
+    imports: { types: kickside.mail:types }
+  - name: redact
+    kind: library.lua
+    source: file://redact.lua
+    modules: [json, base64]
+    imports: { types: kickside.mail:types }
+  - name: resource
+    kind: library.lua
+    source: file://resource.lua
+    imports:
+      types: kickside.mail:types
+      canonical_json: kickside.contract:canonical_json
+  - name: vars
+    kind: library.lua
+    source: file://vars.lua
+    modules: [json]
+    imports:
+      types: kickside.mail:types
+      canonical_json: kickside.contract:canonical_json
+      error_envelope: kickside.contract:error_envelope
+      resource: kickside.mail.domain:resource
+  - name: assets
+    kind: library.lua
+    source: file://assets.lua
+    imports: { types: kickside.mail:types }
+  - name: references
+    kind: library.lua
+    source: file://references.lua
+    imports: { types: kickside.mail:types }
+  - name: jet
+    kind: library.lua
+    source: file://jet.lua
+    imports: { types: kickside.mail:types }
+  - name: edit
+    kind: library.lua
+    source: file://edit.lua
+    modules: [uuid]
+    imports: {events: kickside.mail.domain:events, types: kickside.mail:types, resource: kickside.mail.domain:resource,
+      error_envelope: kickside.contract:error_envelope, canonical_json: kickside.contract:canonical_json}
+  - name: events
+    kind: library.lua
+    meta: {private: true}
+    source: file://events.lua
+    imports:
+      types: kickside.mail:types
+      resource: kickside.mail.domain:resource
+  - name: fold
+    kind: library.lua
+    meta: {private: true}
+    source: file://fold.lua
+    imports:
+      types: kickside.mail:types
+      events: kickside.mail.domain:events
+      references: kickside.mail.domain:references
+      resource: kickside.mail.domain:resource

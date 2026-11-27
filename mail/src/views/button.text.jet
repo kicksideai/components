@@ -1,0 +1,2 @@
+{{ if isset(.action_label) }}{{ .action_label }}{{ else }}Open{{ end }}
+{{ .action_url -}}

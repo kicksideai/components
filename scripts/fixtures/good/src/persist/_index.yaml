@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.good.persist
+
+entries:
+  - name: repo
+    kind: library.lua
+    source: file://repo.lua
+    modules: [sql]
+    imports:
+      rules: acme.good.domain:rules
+
+  - name: projection
+    kind: function.lua
+    meta: { type: projection.worker }
+    source: file://projection.lua
+    method: fold
+    modules: [sql, funcs]
+    imports:
+      repo: acme.good.persist:repo
+
+  - name: publish_meta
+    kind: function.lua
+    meta: { private: true }
+    source: file://publish_meta.lua
+    method: run
+    security:
+      policies:
+        - acme.good.security:projection_public_meta

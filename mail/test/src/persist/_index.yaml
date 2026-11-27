@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.mail_persist
+entries:
+  - name: db_test
+    kind: function.lua
+    meta: { type: test, suite: mail_persist }
+    source: file://db_test.lua
+    method: run
+    modules: [funcs, registry]
+    imports:
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      database: app:database_fixture
+      delivery_wait: app.mail_harness:delivery_wait
+  - name: message_test
+    kind: function.lua
+    meta: { type: test, suite: mail_persist }
+    source: file://message_test.lua
+    method: run
+    modules: [funcs, uuid]
+    imports:
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      delivery_wait: app.mail_harness:delivery_wait

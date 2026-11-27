@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kplat.jobs.security
+
+entries:
+  - name: module_access
+    kind: security.policy
+    meta: { intent: module_access, includes: [kplat.jobs.security:module_runtime] }
+    groups: []
+    policy:
+      resources: ["kplat.jobs:*"]
+      actions: [registry.get, registry.find]
+      effect: allow
+
+  - name: module_runtime
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources: ["kplat.jobs:*"]
+      actions: [contract.call]
+      effect: allow
+
+  - name: producer_access
+    kind: security.policy
+    policy:
+      resources: kplat.jobs:api_binding
+      actions: contract.call
+      effect: allow
+
+  - name: worker_only
+    kind: security.policy
+    meta: { service_only: true }
+    policy:
+      resources: kplat.jobs:secret_fn
+      actions: funcs.call
+      effect: allow

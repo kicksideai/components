@@ -50,6 +50,8 @@ jobs:
       run: make -C work-admin ui-kit
     - name: Materialize locked Work Kanban UI Kit for license provenance
       run: make -C work-kanban ui-kit
+    - name: Materialize locked Mail admin UI Kit for license provenance
+      run: make -C mail-admin ui-kit
     - uses: kicksideai/.github/actions/legal-check@e1186b6a3f9aac84125b7d5300077b7b23a70804
       with:
         base: ${{ github.event.pull_request.base.sha }}
@@ -61,6 +63,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
+        - module: mail
+          wippy_version: 0.3.70a
+          engine: sqlite
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/mail/test/.wippy/tmp"
+            mkdir -p "$TMPDIR"
+            make -C mail verify
+            version=$(jq -er '.["mail"] // "0.1.0"' .release-please-manifest.json)
+            wippy publish --config mail --version "$version" --dry-run --create --module-visibility public --module-type plugin
+        - module: mail
+          wippy_version: 0.3.70a
+          engine: postgres
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/mail/test/.wippy/tmp"
+            mkdir -p "$TMPDIR"
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_mail"
+            createdb "$database"
+            trap 'dropdb "$database"' EXIT
+            db_args="--set vars.pg_host=$PGHOST --set vars.pg_port=$PGPORT --set vars.pg_database=$database"
+            make -C mail lockrefresh
+            make -C mail lint typecheck WIPPY_ARGS="--profile postgres $db_args"
+            make -C mail check-module test-pg WIPPY_ARGS="$db_args"
         - module: dashboard
           engine: sqlite
           commands: |
@@ -429,6 +455,29 @@ jobs:
             make -C work-admin test-published WIPPY_ARGS="--profile postgres --set vars.pg_database=$published --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
             make -C work-admin test-scope WIPPY_ARGS="--profile postgres --set vars.pg_database=$custom_scope --set vars.pg_host=127.0.0.1 --set vars.pg_port=$PGPORT"
             make -C work-admin pack
+        - module: mail-admin
+          wippy_version: 0.3.70a
+          engine: sqlite
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/.scratch"
+            mkdir -p "$TMPDIR"
+            make -C mail-admin setup build typecheck ui-test lint strict check
+            make -C mail-admin test
+            make -C mail-admin pack
+        - module: mail-admin
+          wippy_version: 0.3.70a
+          engine: postgres
+          commands: |
+            set -euo pipefail
+            export TMPDIR="$PWD/.scratch"
+            mkdir -p "$TMPDIR"
+            make -C mail-admin setup build typecheck ui-test lint strict check
+            database="ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_mail_admin"
+            createdb "$database"
+            trap 'dropdb "$database"' EXIT
+            make -C mail-admin test-pg MAIL_ADMIN_PG_PORT="$PGPORT" WIPPY_ARGS="--set vars.pg_database=$database --set vars.pg_host=127.0.0.1"
+            make -C mail-admin pack
         - module: storage-s3
           engine: sqlite
           commands: |
@@ -499,7 +548,7 @@ jobs:
         node-version: '22'
     - uses: kicksideai/.github/actions/setup-wippy@5401fa65bed7d8648125957520e94206ed1ffd0b
       with:
-        version: 0.3.66a
+        version: ${{ matrix.wippy_version || '0.3.66a' }}
         hub-url: https://hub.wippy.ai
     - name: Check out converters module sources
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -525,6 +574,11 @@ jobs:
         path: providers
         token: ${{ secrets.SOURCE_READ_TOKEN || github.token }}
         persist-credentials: false
+    - name: Test the Mail structure gate
+      if: ${{ matrix.module == 'mail' && matrix.engine == 'sqlite' }}
+      run: |
+        python3 -B scripts/test_check_structure.py
+        make structure-mail-platform
     - name: Build, lint and Lua module tests
       env:
         PGPORT: '5433'

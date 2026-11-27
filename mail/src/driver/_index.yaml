@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.driver
+entries:
+  - name: http
+    kind: library.lua
+    source: file://http.lua
+    modules: [http_client, json, base64, time, logger]
+    imports:
+      redact: kickside.mail.domain:redact
+      types: kickside.mail:types
+      error_envelope: kickside.contract:error_envelope
+  - name: config
+    kind: library.lua
+    source: file://config.lua
+    modules: [contract, registry]
+    imports:
+      config: kickside.mail.domain:config
+      message: kickside.mail.domain:message
+      types: kickside.mail:types

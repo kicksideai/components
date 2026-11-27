@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.settings
+entries:
+  - name: setting_driver
+    kind: registry.entry
+    meta:
+      type: "kickside.settings:definition"
+      comment: Chosen from Mail's admitted transports in the Mail settings block, so the generic form never shows it as a typed ID.
+    namespace: kickside.mail
+    key: driver
+    title: Delivery driver
+    description: Exact transport binding ID of the admitted driver.
+    scope: global
+    value_type: string
+    default: ""
+    order: 10
+    visible: false
+    read_access: admin
+    validate_func: kickside.mail.settings:validate_driver
+  - name: setting_from_address
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.mail
+    key: from_address
+    title: From address
+    scope: global
+    value_type: string
+    default: ""
+    order: 20
+    validate_func: kickside.mail.settings:validate_address
+  - name: setting_from_name
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.mail
+    key: from_name
+    title: From name
+    scope: global
+    value_type: string
+    default: ""
+    order: 30
+    validate_func: kickside.mail.settings:validate_from_name
+  - name: setting_reply_to
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.mail
+    key: reply_to
+    title: Reply-to address
+    scope: global
+    value_type: string
+    default: ""
+    order: 40
+    validate_func: kickside.mail.settings:validate_address
+  - name: setting_log_retention_days
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.mail
+    key: log_retention_days
+    title: Delivery log retention days
+    description: Number of days to keep a completed or failed delivery.
+    scope: global
+    value_type: int
+    default: 30
+    order: 50
+    validate_func: kickside.mail.settings:validate_retention
+  - name: validate_address
+    kind: function.lua
+    source: file://validate.lua
+    method: address
+    imports: &validation_imports
+      types: kickside.mail:types
+      message: kickside.mail.domain:message
+      transports: kickside.mail.read:transports
+      policy: kickside.mail.domain:policy
+  - name: validate_from_name
+    kind: function.lua
+    source: file://validate.lua
+    method: from_name
+    imports: *validation_imports
+  - name: validate_driver
+    kind: function.lua
+    source: file://validate.lua
+    method: driver
+    imports: *validation_imports
+    security:
+      policies: [kickside.mail.security:transport_calls]
+      groups: [kickside.mail.security:transports]
+  - name: validate_retention
+    kind: function.lua
+    source: file://validate.lua
+    method: retention
+    imports: *validation_imports

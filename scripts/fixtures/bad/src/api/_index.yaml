@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.bad.api
+
+entries:
+  - name: list
+    kind: function.lua
+    source: file://list.lua
+    method: handler
+    modules: [http, sql]
+    imports:
+      foreign: acme.other.persist:repo
+      reader: acme.bad.read:reader
+
+  - name: list.endpoint
+    kind: http.endpoint
+    method: GET
+    path: /bad/items
+    func: acme.bad.api:list

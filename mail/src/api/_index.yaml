@@ -1,0 +1,294 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.api
+entries:
+  - name: request
+    kind: library.lua
+    source: file://request.lua
+    modules: [http, json, security]
+    imports:
+      types: kickside.mail:types
+      client: kickside.mail:client
+      http_errors: kickside.contract:http_errors
+      canonical_json: kickside.contract:canonical_json
+  - name: principals
+    kind: library.lua
+    source: file://principals.lua
+    modules: [contract]
+    imports:
+      identity: kickside.execution:execution_identity
+      types: kickside.mail:types
+  - name: capabilities
+    kind: function.lua
+    source: file://capabilities.lua
+    method: handler
+    imports:
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: capabilities.endpoint
+    kind: http.endpoint
+    meta: {comment: Read the caller’s Mail capabilities.}
+    method: GET
+    func: capabilities
+    path: /mail/capabilities
+  - name: library_list
+    kind: function.lua
+    source: file://library_list.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      principals: kickside.mail.api:principals
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+    security: &principal_labels
+      policies:
+        - kickside.mail.security:principal_directory_get
+        - kickside.mail.security:principal_directory_open
+        - kickside.mail.security:principal_directory_resolve
+  - name: library_list.endpoint
+    kind: http.endpoint
+    meta: {comment: List a page of library resources.}
+    method: GET
+    func: library_list
+    path: /mail/library
+  - name: library_get
+    kind: function.lua
+    source: file://library_get.lua
+    method: handler
+    imports:
+      principals: kickside.mail.api:principals
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+    security: *principal_labels
+  - name: library_get.endpoint
+    kind: http.endpoint
+    meta: {comment: Read the selected library resource.}
+    method: GET
+    func: library_get
+    path: /mail/library/{kind}/{name}
+  - name: library_asset_content
+    kind: function.lua
+    source: file://library_asset_content.lua
+    method: handler
+    modules: [hash, http]
+    imports:
+      client: kickside.mail:client
+      request: kickside.mail.api:request
+      types: kickside.mail:types
+  - name: library_asset_content.endpoint
+    kind: http.endpoint
+    meta: {comment: Read the bytes of an image revision.}
+    method: GET
+    func: library_asset_content
+    path: /mail/library/asset/{name}/content
+  - name: library_create
+    kind: function.lua
+    source: file://library_create.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: library_create.endpoint
+    kind: http.endpoint
+    meta: {comment: Create a library resource.}
+    method: POST
+    func: library_create
+    path: /mail/library
+  - name: library_update
+    kind: function.lua
+    source: file://library_update.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: library_update.endpoint
+    kind: http.endpoint
+    meta: {comment: Update a library resource.}
+    method: PUT
+    func: library_update
+    path: /mail/library/{kind}/{name}
+  - name: library_save
+    kind: function.lua
+    source: file://library_save.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: library_save.endpoint
+    kind: http.endpoint
+    meta: {comment: Save a reviewed batch of template edits.}
+    method: POST
+    func: library_save
+    path: /mail/library/save
+  - name: library_set_base
+    kind: function.lua
+    source: file://library_set_base.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: library_set_base.endpoint
+    kind: http.endpoint
+    meta: {comment: Change a message’s layout.}
+    method: POST
+    func: library_set_base
+    path: /mail/library/message/{name}/base
+  - name: library_reset
+    kind: function.lua
+    source: file://library_reset.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: library_reset.endpoint
+    kind: http.endpoint
+    meta: {comment: Reset a resource to its packaged version.}
+    method: POST
+    func: library_reset
+    path: /mail/library/{kind}/{name}/reset
+  - name: library_delete
+    kind: function.lua
+    source: file://library_delete.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: library_delete.endpoint
+    kind: http.endpoint
+    meta: {comment: Delete or archive a library resource.}
+    method: DELETE
+    func: library_delete
+    path: /mail/library/{kind}/{name}
+  - name: library_history
+    kind: function.lua
+    source: file://library_history.lua
+    method: handler
+    imports:
+      principals: kickside.mail.api:principals
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+    security: *principal_labels
+  - name: library_history.endpoint
+    kind: http.endpoint
+    meta: {comment: Read a history page or revision.}
+    method: GET
+    func: library_history
+    path: /mail/library/{kind}/{name}/history
+  - name: library_restore
+    kind: function.lua
+    source: file://library_restore.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: library_restore.endpoint
+    kind: http.endpoint
+    meta: {comment: Restore a saved revision.}
+    method: POST
+    func: library_restore
+    path: /mail/library/{kind}/{name}/restore
+  - name: library_preview
+    kind: function.lua
+    source: file://library_preview.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: library_preview.endpoint
+    kind: http.endpoint
+    meta: {comment: Render a saved message or reviewed draft.}
+    method: POST
+    func: library_preview
+    path: /mail/library/preview
+  - name: library_send_test
+    kind: function.lua
+    source: file://library_send_test.lua
+    method: handler
+    imports:
+      types: kickside.mail:types
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: library_send_test.endpoint
+    kind: http.endpoint
+    meta: {comment: Queue a test of a library message.}
+    method: POST
+    func: library_send_test
+    path: /mail/library/send-test
+  - name: activity_list
+    kind: function.lua
+    source: file://activity_list.lua
+    method: handler
+    imports:
+      principals: kickside.mail.api:principals
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+    security: *principal_labels
+  - name: activity_list.endpoint
+    kind: http.endpoint
+    meta: {comment: List delivery log entries.}
+    method: GET
+    func: activity_list
+    path: /mail/activity
+  - name: activity_get
+    kind: function.lua
+    source: file://activity_get.lua
+    method: handler
+    imports:
+      principals: kickside.mail.api:principals
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+    security: *principal_labels
+  - name: activity_get.endpoint
+    kind: http.endpoint
+    meta: {comment: Read a delivery log entry.}
+    method: GET
+    func: activity_get
+    path: /mail/activity/{id}
+  - name: activity_resend
+    kind: function.lua
+    source: file://activity_resend.lua
+    method: handler
+    imports:
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: activity_resend.endpoint
+    kind: http.endpoint
+    meta: {comment: Queue another delivery of a failed message.}
+    method: POST
+    func: activity_resend
+    path: /mail/activity/{id}/resend
+  - name: delivery_status
+    kind: function.lua
+    source: file://delivery_status.lua
+    method: handler
+    imports:
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+  - name: delivery_status.endpoint
+    kind: http.endpoint
+    meta: {comment: Read delivery configuration and readiness.}
+    method: GET
+    func: delivery_status
+    path: /mail/delivery
+  - name: delivery_send_test
+    kind: function.lua
+    source: file://delivery_send_test.lua
+    method: handler
+    imports:
+      request: kickside.mail.api:request
+      client: kickside.mail:client
+      types: kickside.mail:types
+  - name: delivery_send_test.endpoint
+    kind: http.endpoint
+    meta: {comment: Queue a delivery configuration test.}
+    method: POST
+    func: delivery_send_test
+    path: /mail/delivery/send-test

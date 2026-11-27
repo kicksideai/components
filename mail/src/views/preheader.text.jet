@@ -1,0 +1,1 @@
+{{ if isset(.preheader) }}{{ .preheader }}{{ else }}{{ message.preheader }}{{ end -}}

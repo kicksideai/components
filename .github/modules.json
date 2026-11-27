@@ -2,6 +2,29 @@
   "repository": "components",
   "checks": [],
   "modules": {
+    "mail": {
+      "path": "mail",
+      "organization": "kickside",
+      "module": "mail",
+      "type": "plugin",
+      "visibility": "public",
+      "embed": [],
+      "targets": [
+        "lockrefresh",
+        "lint",
+        "typecheck",
+        "check-module",
+        "test",
+        "verify",
+        "publish"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_mail",
+      "extra_tests": []
+    },
     "dashboard": {
       "path": "dashboard",
       "organization": "kickside",
@@ -384,6 +407,48 @@
         "postgres"
       ],
       "pg_database": "kickside_test_work_admin",
+      "extra_tests": [
+        [
+          "make",
+          "ui-test"
+        ],
+        [
+          "make",
+          "typecheck"
+        ],
+        [
+          "make",
+          "check"
+        ]
+      ]
+    },
+    "mail-admin": {
+      "path": "mail-admin",
+      "organization": "kickside",
+      "module": "mail-admin",
+      "type": "plugin",
+      "visibility": "private",
+      "embed": [
+        "kickside.mail.admin:ui_fs"
+      ],
+      "targets": [
+        "setup",
+        "build",
+        "typecheck",
+        "ui-test",
+        "lint",
+        "strict",
+        "check",
+        "test",
+        "test-pg",
+        "pack",
+        "verify"
+      ],
+      "harness": "test",
+      "profiles": [
+        "postgres"
+      ],
+      "pg_database": "kickside_test_mail_admin",
       "extra_tests": [
         [
           "make",

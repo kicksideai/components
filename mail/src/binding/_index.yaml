@@ -1,0 +1,339 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.binding
+entries:
+  - name: library
+    kind: contract.binding
+    meta:
+      title: Mail library
+      icon: tabler:mail
+      class: [kickside.mail.library]
+      thread: {class: kickside.mail.library}
+      provision:
+        scope: system
+        grants:
+          - {subject_id: "system:kickside.mail.retention", subject_type: user, access_mask: 1}
+      retention: {event_days: 365}
+      events:
+        input:
+          - {type: kickside.mail.events:resource.created}
+          - {type: kickside.mail.events:resource.updated}
+          - {type: kickside.mail.events:resource.base_set}
+          - {type: kickside.mail.events:resource.reset}
+          - {type: kickside.mail.events:resource.restored}
+          - {type: kickside.mail.events:resource.archived}
+          - {type: kickside.mail.events:resource.deleted}
+          - {type: kickside.mail.events:asset.added}
+          - {type: kickside.mail.events:asset.restored}
+          - {type: kickside.mail.events:asset.removed}
+        output: []
+      projections:
+        - kind: kickside.mail:library_tables
+          worker_ref: func://kickside.mail.persist:library_projection
+          input_mode: prefetch_events
+    contracts:
+      - contract: kickside.contract:component
+        methods:
+          get_status: kickside.mail.binding:status
+      - contract: kickside.contract:deletable
+        context_required: [component_id]
+        methods:
+          delete: kickside.mail.binding:teardown
+  - name: status
+    kind: function.lua
+    meta: {private: true}
+    source: file://status.lua
+    method: get_status
+  - name: teardown
+    kind: function.lua
+    meta: {private: true}
+    source: file://teardown.lua
+    method: delete
+    modules: [ctx]
+    imports:
+      writer: kickside.mail.command:library
+    security:
+      policies:
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.mail.security:live_sets
+        - kickside.mail.security:live_entries
+        - kickside.mail.security:live_marker_delete
+        - kickside.mail.security:overlay_originals
+        - kickside.core.retention:notify_access
+  - name: library_list
+    kind: function.lua
+    source: &library_source file://library.lua
+    method: list
+    imports: &library_imports
+      types: kickside.mail:types
+      client: kickside.mail:client
+      library: kickside.mail.read:library
+      history: kickside.mail.read:history
+      writer: kickside.mail.command:library
+      edits: kickside.mail.command:library_edits
+      assets: kickside.mail.command:assets
+      preview: kickside.mail.command:preview
+    security: &library_read_frame
+      policies:
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_component_registry
+        - kickside.mail.security:library_history_threads
+        - kickside.mail.security:library_threads_caller
+        - kickside.core.security:module_access
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:settings_read
+  - name: library_get
+    kind: function.lua
+    source: *library_source
+    method: get
+    imports: *library_imports
+    security: *library_read_frame
+  - name: library_read_history
+    kind: function.lua
+    source: *library_source
+    method: read_history
+    imports: *library_imports
+    security: *library_read_frame
+  - name: library_read_revision
+    kind: function.lua
+    source: *library_source
+    method: read_revision
+    imports: *library_imports
+    security: *library_read_frame
+  - name: library_asset_content
+    kind: function.lua
+    source: *library_source
+    method: asset_content
+    imports: *library_imports
+    security: &library_asset_frame
+      policies:
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_component_registry
+        - kickside.mail.security:library_history_threads
+        - kickside.mail.security:library_threads_caller
+        - kickside.core.security:module_access
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:asset_bytes
+  - name: library_preview
+    kind: function.lua
+    source: *library_source
+    method: preview
+    imports: *library_imports
+    security: &library_preview_frame
+      policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_component_registry
+        - kickside.mail.security:library_history_threads
+        - kickside.mail.security:library_threads_caller
+        - kickside.core.security:module_access
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:live_marker_read
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:scratch_sets
+        - kickside.mail.security:overlay_originals
+        - kickside.mail.security:scratch_entries
+        - kickside.mail.security:asset_bytes
+        - kickside.core.retention:notify_access
+  - name: library_create
+    kind: function.lua
+    source: *library_source
+    method: create
+    imports: *library_imports
+    security: &library_write_frame
+      policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_component_registry
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_binding_open
+        - kickside.mail.security:realtime_topics
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:scratch_sets
+        - kickside.mail.security:library_threads
+        - kickside.mail.security:library_threads_caller
+        - kickside.mail.security:job_notify
+        - kickside.core.security:module_access
+        - kickside.mail.security:library_projection_wait
+        - kickside.mail.security:overlay_originals
+        - kickside.mail.security:scratch_entries
+        - kickside.mail.security:asset_adoption
+        - kickside.mail.security:asset_adoption_action
+        - kickside.core.retention:notify_access
+      groups: [kickside.mail.security:jobs_consumer]
+  - name: library_update
+    kind: function.lua
+    source: *library_source
+    method: update
+    imports: *library_imports
+    security: *library_write_frame
+  - name: library_save
+    kind: function.lua
+    source: *library_source
+    method: save
+    imports: *library_imports
+    security: *library_write_frame
+  - name: library_set_base
+    kind: function.lua
+    source: *library_source
+    method: set_base
+    imports: *library_imports
+    security: *library_write_frame
+  - name: library_reset
+    kind: function.lua
+    source: *library_source
+    method: reset
+    imports: *library_imports
+    security: *library_write_frame
+  - name: library_restore
+    kind: function.lua
+    source: *library_source
+    method: restore
+    imports: *library_imports
+    security: *library_write_frame
+  - name: library_delete
+    kind: function.lua
+    source: *library_source
+    method: delete
+    imports: *library_imports
+    security: *library_write_frame
+  - name: library_add_asset
+    kind: function.lua
+    source: *library_source
+    method: add_asset
+    imports: *library_imports
+    security: *library_write_frame
+  - name: mailer_send
+    kind: function.lua
+    source: &mailer_source file://mailer.lua
+    method: send
+    imports: &mailer_imports
+      send: kickside.mail.command:send
+      activity: kickside.mail.read:activity
+      catalog: kickside.mail.read:catalog
+      preview: kickside.mail.read:preview
+      delivery: kickside.mail.read:delivery
+    security: &mailer_send_frame
+      policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_threads_caller
+        - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_binding_open
+        - kickside.mail.security:realtime_topics
+        - kickside.mail.security:site_url
+        - kickside.mail.security:template_access
+        - kickside.mail.security:live_marker_read
+        - kickside.mail.security:asset_bytes
+        - kickside.mail.security:transport_calls
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:driver_selection_call
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.mail.security:deferred_delivery
+        - kickside.mail.security:job_notify
+        - kickside.core.jobs.security:module_access
+        - kickside.core.retention:notify_access
+      groups: [kickside.mail.security:transports]
+  - name: mailer_resend
+    kind: function.lua
+    source: *mailer_source
+    method: resend
+    imports: *mailer_imports
+    security: *mailer_send_frame
+  - name: mailer_get_message
+    kind: function.lua
+    source: *mailer_source
+    method: get_message
+    imports: *mailer_imports
+    security: &mailer_activity_frame
+      policies: [kickside.mail.security:mail_db, kickside.mail.security:mail_config]
+  - name: mailer_list_messages
+    kind: function.lua
+    source: *mailer_source
+    method: list_messages
+    imports: *mailer_imports
+    security: *mailer_activity_frame
+  - name: mailer_list_templates
+    kind: function.lua
+    source: *mailer_source
+    method: list_templates
+    imports: *mailer_imports
+    security: &mailer_catalog_frame
+      policies:
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_component_registry
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:live_marker_read
+  - name: mailer_get_template
+    kind: function.lua
+    source: *mailer_source
+    method: get_template
+    imports: *mailer_imports
+    security: *mailer_catalog_frame
+  - name: mailer_preview
+    kind: function.lua
+    source: *mailer_source
+    method: preview
+    imports: *mailer_imports
+    security:
+      policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
+        - kickside.mail.security:library_threads_caller
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_component_registry
+        - kickside.mail.security:site_url
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.mail.security:template_access
+        - kickside.mail.security:live_marker_read
+        - kickside.mail.security:asset_bytes
+  - name: mailer_delivery_status
+    kind: function.lua
+    source: *mailer_source
+    method: delivery_status
+    imports: *mailer_imports
+    security:
+      policies:
+        - kickside.mail.security:settings_read
+        - kickside.mail.security:driver_selection_call
+        - kickside.mail.security:transport_calls
+      groups: [kickside.mail.security:transports]
+  - name: mailer_send_delivery_test
+    kind: function.lua
+    source: *mailer_source
+    method: send_delivery_test
+    imports: *mailer_imports
+    security: *mailer_send_frame
+  - name: library_send_test
+    kind: function.lua
+    source: *mailer_source
+    method: library_send_test
+    imports: *mailer_imports
+    security: *mailer_send_frame

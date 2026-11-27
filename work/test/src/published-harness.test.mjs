@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
-import { parseYamlDocuments } from '../../scripts/module-rules.mjs'
+import { parseYamlDocuments } from '../../../scripts/module-rules.mjs'
 
 test('Work harness replaces only modules in this repository', async () => {
   const config = await readFile(new URL('../.wippy.yaml', import.meta.url), 'utf8')

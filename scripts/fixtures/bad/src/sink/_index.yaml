@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.bad.sink
+
+entries:
+  - name: write
+    kind: function.lua
+    source: file://write.lua
+    method: write
+    imports:
+      repo: acme.bad.persist:repo

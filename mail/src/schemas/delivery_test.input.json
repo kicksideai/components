@@ -1,0 +1,5 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "description": "Queue a test message to the acting administrator's email address."
+}

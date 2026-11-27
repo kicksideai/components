@@ -1,0 +1,6 @@
+{{ linked := isset(.url) && (hasPrefix(.url, "https://") || hasPrefix(.url, "http://")) -}}
+<div style="margin:20px 0 0;">
+  {{ if linked }}<a href="{{ .url }}" style="color:#ba321f;text-decoration:underline;">{{ end -}}
+  <img src="{{ .src }}" alt="{{ .alt }}" width="{{ .width }}"{{ if isset(.height) }} height="{{ .height }}"{{ end }} style="display:block;width:{{ .width }}px;max-width:100%;height:auto;border:0;color:#1f2328;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;">
+  {{- if linked }}</a>{{ end }}
+</div>

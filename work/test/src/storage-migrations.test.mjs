@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
-import { parseYamlDocuments, run } from '../../scripts/module-rules.mjs'
+import { parseYamlDocuments, run } from '../../../scripts/module-rules.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const capture = `
@@ -731,7 +731,7 @@ print(json.dumps(metrics))
 // deterministic platform clients; refuse stale generated source in that fixture.
 test('round 8 plugin probe executes the current production callback source', async () => {
   const {readFile}=await import('node:fs/promises')
-  const {parseYamlDocuments}=await import('../../scripts/module-rules.mjs')
+  const {parseYamlDocuments}=await import('../../../scripts/module-rules.mjs')
   const [fixture]=await parseYamlDocuments([await readFile(resolve(root,'test/src/suites/round8.yaml'),'utf8')])
   const source=await readFile(resolve(root,'src/extensions/plugin_projections.lua'),'utf8')
   assert.equal(fixture.entries.find(e=>e.name==='round8_plugin_batch').source,'file://../round8_plugin_batch.lua')

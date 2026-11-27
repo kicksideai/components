@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.sink
+entries:
+  - name: write
+    kind: function.lua
+    source: file://write.lua
+    method: write
+    imports:
+      types: kickside.mail:types
+      client: kickside.mail:client
+      writable_sink: kickside.data:writable_sink
+  - name: writable
+    kind: contract.binding
+    meta: { title: Send email, delivery: at_least_once, input_shape: record }
+    contracts:
+      - contract: kickside.data:writable
+        methods: { write: "kickside.mail.sink:write" }
+
+  - name: send_email
+    kind: registry.entry
+    meta: { type: kickside.automation.port, title: Send email, comment: Deliver each input record as one message. }
+    binding: kickside.mail.sink:writable
+    operations: { upsert: {}, delete: {} }
+    input_schema: |
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["to"],
+        "$defs": {
+          "recipient": {
+            "oneOf": [
+              {"type": "string"},
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["user_id"],
+                "properties": {"user_id": {"type": "string", "minLength": 1}}
+              }
+            ]
+          }
+        },
+        "properties": {
+          "to": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},
+          "cc": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},
+          "bcc": {"type": "array", "items": {"$ref": "#/$defs/recipient"}},
+          "reply_to": {"type": "string"},
+          "subject": {"type": "string"},
+          "text": {"type": "string"},
+          "html": {"type": "string"},
+          "template": {"type": "string"},
+          "vars": {"type": "object"},
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "upload_id": {"type": "string"},
+                "filename": {"type": "string"},
+                "disposition": {"enum": ["attachment", "inline"]},
+                "content_id": {"type": "string"}
+              },
+              "required": ["upload_id"]
+            }
+          }
+        }
+      }
+    config_schema: {}

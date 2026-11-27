@@ -1,0 +1,2 @@
+{{ range index, row := .details }}{{ if index > 0 }}
+{{ end }}{{ row.key }}: {{ row.value }}{{ end -}}

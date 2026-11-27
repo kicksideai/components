@@ -1,0 +1,348 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail
+entries:
+  - name: definition
+    kind: ns.definition
+    readme: file://README.md
+    meta: { title: Mail }
+  - name: dep.component
+    kind: ns.dependency
+    version: "*"
+    component: kickside/component
+  - name: dep.core
+    kind: ns.dependency
+    version: "*"
+    component: kickside/core
+  - name: dep.views
+    kind: ns.dependency
+    version: "*"
+    component: wippy/views
+  - name: dep.settings
+    kind: ns.dependency
+    version: "*"
+    component: kickside/settings
+  - name: dep.contract
+    kind: ns.dependency
+    version: "*"
+    component: kickside/contract
+  - name: dep.uploads
+    kind: ns.dependency
+    version: "*"
+    component: kickside/uploads
+  - name: dep.jobs
+    kind: ns.dependency
+    version: "*"
+    component: kickside/jobs
+  - name: dep.execution
+    kind: ns.dependency
+    version: "*"
+    component: kickside/execution
+  - name: dep.users
+    kind: ns.dependency
+    version: "*"
+    component: kickside/users
+  - name: target_db
+    kind: ns.requirement
+    meta: { value_kind: db.sql, comment: The SQL database configured for Jobs. }
+    targets:
+      - { entry: kickside.mail:db_config, path: ".meta.db_id" }
+      - { entry: kickside.mail.migrations:01_mail, path: ".meta.target_db" }
+      - { entry: kickside.mail.security:mail_db, path: ".policy.resources" }
+      - { entry: kickside.mail.security:projection_db, path: ".policy.resources" }
+  - name: library_editor_grant
+    kind: ns.requirement
+    meta:
+      value_type: object
+      comment: Structured component READ and WRITE grant for the host's Mail library editors.
+    targets:
+      - {entry: kickside.mail.binding:library, path: ".meta.provision.grants +="}
+  - name: realtime_binding
+    kind: ns.requirement
+    default: kickside.realtime:realtime_binding
+    meta: {value_type: string, description: ID of the app's default realtime contract binding.}
+    targets:
+      - {entry: kickside.mail.security:realtime_binding_open, path: .policy.resources}
+  - name: api_router
+    kind: ns.requirement
+    meta: { value_kind: http.router, comment: Authenticated router for the Mail administration API. }
+    targets:
+      - { entry: kickside.mail.api:capabilities.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_list.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_get.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_asset_content.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_create.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_update.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_save.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_set_base.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_reset.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_delete.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_history.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_restore.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_preview.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:library_send_test.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:activity_list.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:activity_get.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:activity_resend.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:delivery_status.endpoint, path: ".meta.router" }
+      - { entry: kickside.mail.api:delivery_send_test.endpoint, path: ".meta.router" }
+  - name: db_config
+    kind: registry.entry
+    meta: { private: true, db_id: "" }
+  - name: types
+    kind: library.lua
+    source: file://types.lua
+  - name: client
+    kind: library.lua
+    source: file://client.lua
+    modules: [contract, security]
+    imports:
+      types: kickside.mail:types
+      identity: kickside.execution:execution_identity
+  - name: mailer
+    kind: contract.definition
+    meta: { title: Mailer }
+    methods:
+      - name: send
+        description: Queue delivery from the installation's configured address using a named template or a supplied body.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.output.json
+      - name: resend
+        description: Queue a new delivery from the retained content of a visible failed message.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_message.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.output.json
+      - name: get_message
+        description: Read one visible delivery log entry. Provider fields require mail.log.admin.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_message.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_message.output.json
+      - name: list_messages
+        description: List visible delivery log entries in descending creation order. Provider fields require mail.log.admin.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/list_messages.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/list_messages.output.json
+      - name: list_templates
+        description: List mail library messages and their variable schemas.
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/list_templates.output.json
+      - name: get_template
+        description: Read a mail library message's description, variable schema, samples, and Jet names.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_template.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/get_template.output.json
+      - name: preview
+        description: Render a mail library message without delivering it.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/preview.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/preview.output.json
+      - name: delivery_status
+        description: Read delivery readiness and admitted services as a delivery administrator.
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/delivery_status.output.json
+      - name: send_delivery_test
+        description: Queue a test email to the acting administrator's address.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/delivery_test.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.output.json
+  - name: mailer_binding
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:mailer
+        default: true
+        methods:
+          send: kickside.mail.binding:mailer_send
+          resend: kickside.mail.binding:mailer_resend
+          get_message: kickside.mail.binding:mailer_get_message
+          list_messages: kickside.mail.binding:mailer_list_messages
+          list_templates: kickside.mail.binding:mailer_list_templates
+          get_template: kickside.mail.binding:mailer_get_template
+          preview: kickside.mail.binding:mailer_preview
+          delivery_status: kickside.mail.binding:mailer_delivery_status
+          send_delivery_test: kickside.mail.binding:mailer_send_delivery_test
+  - name: library
+    kind: contract.definition
+    meta: { title: Mail library }
+    methods:
+      - name: list
+        description: List a page of library resources.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.list.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.page.output.json
+      - name: get
+        description: Read a library resource and its editable source.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.key.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: read_history
+        description: List a page of revisions for a resource, latest first.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.history.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.history.output.json
+      - name: read_revision
+        description: Read the content and metadata of one saved revision.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.revision.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.revision.output.json
+      - name: asset_content
+        description: Read the bytes and content type for an image revision.
+        input_schemas:
+          - format: application/schema+json
+            definition: '{"type":"object","required":["name"],"properties":{"name":{"type":"string"},"revision":{"type":"integer","minimum":0}}}'
+        output_schemas:
+          - format: application/schema+json
+            definition: '{"type":"object","required":["content_type","bytes","revision"],"properties":{"content_type":{"type":"string"},"bytes":{"type":"string"},"revision":{"type":"integer","minimum":0}}}'
+      - name: preview
+        description: Render a message and review proposed edits before saving.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.preview.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.preview.output.json
+      - name: create
+        description: Create a library resource from new content or a copy.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: update
+        description: Save a reviewed change to an existing library resource.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: save
+        description: Save reviewed changes to several library resources together.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.save.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.output.json
+      - name: set_base
+        description: Set the base of a reviewed message.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.base.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: reset
+        description: Reset a resource to its packaged source.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: restore
+        description: Restore a reviewed revision of a library resource.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.restore.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: delete
+        description: Delete a library resource at its expected revision.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.write.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: '{"type":"boolean"}'
+      - name: add_asset
+        description: Adopt a completed image upload into the library.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.asset.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.resource.output.json
+      - name: send_test
+        description: Queue a library message to the acting person.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/library.send_test.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/send.output.json
+  - name: library_binding
+    kind: contract.binding
+    contracts:
+      - contract: kickside.mail:library
+        default: true
+        methods:
+          list: kickside.mail.binding:library_list
+          get: kickside.mail.binding:library_get
+          read_history: kickside.mail.binding:library_read_history
+          read_revision: kickside.mail.binding:library_read_revision
+          asset_content: kickside.mail.binding:library_asset_content
+          preview: kickside.mail.binding:library_preview
+          create: kickside.mail.binding:library_create
+          update: kickside.mail.binding:library_update
+          save: kickside.mail.binding:library_save
+          set_base: kickside.mail.binding:library_set_base
+          reset: kickside.mail.binding:library_reset
+          restore: kickside.mail.binding:library_restore
+          delete: kickside.mail.binding:library_delete
+          add_asset: kickside.mail.binding:library_add_asset
+          send_test: kickside.mail.binding:library_send_test
+  - name: transport
+    kind: contract.definition
+    meta: { comment: Delivery protocol for admitted mail drivers. }
+    methods:
+      - name: send
+        description: Deliver one rendered message with the configured sender identity.
+        input_schemas:
+          - format: application/schema+json
+            definition: file://schemas/transport.input.json
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/transport.output.json
+      - name: status
+        description: Report display data, delivery limits and readiness without contacting the mail service.
+        output_schemas:
+          - format: application/schema+json
+            definition: file://schemas/transport.status.output.json

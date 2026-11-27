@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.render
+entries:
+  - name: globals
+    kind: library.lua
+    meta: { private: true, comment: Builds Jet globals from supplied site and sender values. }
+    source: file://globals.lua
+    imports: { types: kickside.mail:types }
+  - name: render
+    kind: library.lua
+    meta: { private: true, comment: Renders template faces and direct message bodies. }
+    source: file://render.lua
+    modules: [templates, html]
+    imports:
+      error_envelope: kickside.contract:error_envelope
+      types: kickside.mail:types
+      globals: kickside.mail.render:globals
+      vars: kickside.mail.domain:vars
+      message: kickside.mail.domain:message
+      jet: kickside.mail.domain:jet
+      asset_refs: kickside.mail.domain:assets
+  - name: scratch
+    kind: library.lua
+    meta: { private: true, comment: Stages and removes Jet sets for a single draft. }
+    source: file://scratch.lua
+    modules: [registry, uuid]
+    imports:
+      types: kickside.mail:types
+      render: kickside.mail.render:render
+      globals: kickside.mail.render:globals
+      jet: kickside.mail.domain:jet
+      resource: kickside.mail.domain:resource
+      references: kickside.mail.domain:references
+      vars: kickside.mail.domain:vars
+      asset_refs: kickside.mail.domain:assets
+      error_envelope: kickside.contract:error_envelope
+  - name: live
+    kind: library.lua
+    meta: { private: true, comment: Publishes live Jet entries from supplied library rows. }
+    source: file://live.lua
+    modules: [registry, security]
+    imports:
+      types: kickside.mail:types
+      resource: kickside.mail.domain:resource
+      jet: kickside.mail.domain:jet
+  - name: originals
+    kind: library.lua
+    meta: { private: true, comment: Reads packaged Mail template declarations. }
+    source: file://originals.lua
+    modules: [registry]
+    imports:
+      types: kickside.mail:types
+      resource: kickside.mail.domain:resource
+      jet: kickside.mail.domain:jet

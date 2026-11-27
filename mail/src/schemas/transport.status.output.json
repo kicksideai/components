@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "icon", "description", "settings_ns", "idempotent", "ready"],
+  "properties": {
+    "title": {"type": "string", "pattern": "\\S"},
+    "icon": {"type": "string", "pattern": "\\S"},
+    "description": {"type": "string", "pattern": "\\S"},
+    "settings_ns": {"type": "string", "pattern": "\\S"},
+    "max_recipients": {"type": "integer", "minimum": 1},
+    "max_message_bytes": {"type": "integer", "minimum": 1},
+    "idempotent": {"type": "boolean"},
+    "ready": {"type": "boolean"},
+    "code": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "reason": {"type": "string", "pattern": "\\S"}
+  }
+}

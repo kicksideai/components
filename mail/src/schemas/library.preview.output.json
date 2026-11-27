@@ -1,0 +1,164 @@
+{
+  "type": "object",
+  "anyOf": [
+    {
+      "required": [
+        "subject",
+        "html",
+        "text",
+        "errors",
+        "dependent_messages",
+        "preview_id"
+      ]
+    },
+    {
+      "required": [
+        "success",
+        "code",
+        "error"
+      ]
+    }
+  ],
+  "properties": {
+    "subject": {
+      "type": "string"
+    },
+    "html": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "inline_assets": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "bytes",
+          "threshold_bytes"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "threshold_bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "preview_id": {
+      "type": "string",
+      "description": "Short-lived proof of a clean preview of these exact changes."
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "resource",
+          "face"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "engine_message": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "name"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "message",
+                  "base",
+                  "part",
+                  "asset"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9_-]*$"
+              }
+            }
+          },
+          "face": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dependent_messages": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]*$"
+      }
+    },
+    "success": {
+      "type": "boolean",
+      "const": false
+    },
+    "code": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "name"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "message",
+            "base",
+            "part",
+            "asset"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]*$"
+        }
+      }
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

@@ -1,0 +1,656 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.traits
+entries:
+  - name: mail
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      public: true
+      title: Mail
+      comment: Send email and, with Edit mail library, inspect or preview message templates.
+    prompt: Use MailListTemplates to find template names and MailGetTemplate to read the available variable names. MailSend queues delivery.
+    tools:
+      - kickside.mail.traits:mail_send
+      - kickside.mail.traits:mail_list_templates
+      - kickside.mail.traits:mail_get_template
+      - kickside.mail.traits:mail_preview
+  - name: mail_readonly
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      public: true
+      title: Mail Templates
+      comment: Inspect and preview message templates with Edit mail library.
+    prompt: Use MailListTemplates to find template names and MailGetTemplate to read the available variable names. MailPreview renders the template without delivery and requires Edit mail library.
+    tools:
+      - kickside.mail.traits:mail_list_templates
+      - kickside.mail.traits:mail_get_template
+      - kickside.mail.traits:mail_preview
+  - name: mail_send
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.write]}
+      public: true
+      title: Send Mail
+      llm_alias: MailSend
+      llm_description: >-
+        Queue an email for delivery and return its message ID. Use a template name from MailListTemplates with vars from
+        MailGetTemplate, or provide a subject and a text or HTML body. Recipients are email addresses
+        or user IDs you have permission to resolve. Attachments reference uploaded files by upload ID.
+      input_schema: file://../schemas/send.input.json
+      output_schema: file://../schemas/send.output.json
+    modules: &tool_modules [ctx]
+    source: &tool_source file://tools.lua
+    method: send
+    imports: &tool_imports
+      types: kickside.mail:types
+      client: kickside.mail:client
+  - name: mail_list_templates
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.read]}
+      public: true
+      title: List Mail Templates
+      llm_alias: MailListTemplates
+      llm_description: List names, titles, and descriptions of mail library messages. Edit mail library is required. Call MailGetTemplate with that name for its variables and sample.
+      input_schema: file://../schemas/list_templates.tool.input.json
+      output_schema: file://../schemas/list_templates.tool.output.json
+    modules: *tool_modules
+    source: *tool_source
+    method: list_templates
+    imports: *tool_imports
+  - name: mail_get_template
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.read]}
+      public: true
+      title: Get Mail Template
+      llm_alias: MailGetTemplate
+      llm_description: Get a mail library message by its name from MailListTemplates. Edit mail library is required. The variable schema gives the names, types, and required variables for MailSend and MailPreview.
+      input_schema: file://../schemas/get_template.input.json
+      output_schema: file://../schemas/get_template.output.json
+    modules: *tool_modules
+    source: *tool_source
+    method: get_template
+    imports: *tool_imports
+  - name: mail_preview
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.read]}
+      public: true
+      title: Preview Mail Template
+      llm_alias: MailPreview
+      llm_description: Render the subject, HTML, and text without delivery. Use a message name from MailListTemplates and variable names from MailGetTemplate. Edit mail library is required.
+      input_schema: file://../schemas/preview.input.json
+      output_schema: file://../schemas/preview.output.json
+    modules: *tool_modules
+    source: *tool_source
+    method: preview
+    imports: *tool_imports
+  - name: email_design
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      public: true
+      title: Email design
+      comment: Design and test messages, base templates, reusable parts and images.
+    prompt: >-
+      A message is a subject and two Jet bodies, with variables and samples. A base template provides the shared
+      frame around a message's body block. A part is a reusable snippet with named inputs. Use MailLibraryList
+      and MailLibraryRead to learn the library. Preview every proposed edit or new resource with MailLibraryPreview.
+      Fix the returned face errors and broken dependent messages, then pass the clean preview_id with the same
+      content to MailLibrarySave or MailLibraryCreate. Saves apply directly and record a revision. Use History,
+      Reset or Restore to revisit earlier versions. Use MailAssetAdd with an upload from the acting person to
+      add or replace an image. In an HTML face, <img src="{{ assets.logo }}" alt=""> places the logo.
+      MailSendTest sends sample content to the acting person.
+      These tools require Edit mail library. Test delivery also requires Send mail.
+    tools:
+      - kickside.mail.traits:library_list
+      - kickside.mail.traits:library_read
+      - kickside.mail.traits:library_preview
+      - kickside.mail.traits:library_save
+      - kickside.mail.traits:library_create
+      - kickside.mail.traits:asset_add
+      - kickside.mail.traits:library_reset
+      - kickside.mail.traits:library_history
+      - kickside.mail.traits:library_restore
+      - kickside.mail.traits:send_test
+  - name: library_list
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.read]}
+      public: true
+      title: List Mail Library
+      llm_alias: MailLibraryList
+      llm_description: >-
+        Find messages, shared base frames, reusable parts and images by kind, state, and text in their metadata or source. Returns compact
+        rows with the stable name, revision and known usage counts. Pass next_cursor as cursor with the same
+        filters for the next page. Read a row with MailLibraryRead. Invalid filters and denied access are tool errors.
+      input_schema:
+        type: object
+        additionalProperties: false
+        properties:
+          kind: &resource_kind {type: string, enum: [message, base, part, asset]}
+          q: {type: string, description: "Case-insensitive substring of the stable name, title, description, subject, or body source."}
+          state: &resource_state {type: string, enum: [original, customized, created]}
+          limit: {type: integer, minimum: 1, maximum: 100, default: 25}
+          cursor: {type: string}
+      output_schema:
+        type: object
+        required: [items]
+        properties:
+          items:
+            type: array
+            items: &resource_summary
+              type: object
+              required: [kind, name, state, revision]
+              properties: &summary_fields
+                kind: *resource_kind
+                name: &resource_name {type: string, pattern: '^[a-z0-9][a-z0-9_-]*$'}
+                state: *resource_state
+                title: {type: string}
+                description: {type: string}
+                origin: {type: string}
+                origin_label: {type: string}
+                base: {type: string}
+                author: {type: string}
+                updated_at: {type: integer}
+                revision: &resource_revision {type: integer, minimum: 0}
+                used_by:
+                  type: object
+                  properties:
+                    messages: {type: integer, minimum: 0}
+                    recent_sources: {type: integer, minimum: 0, description: Number of observed sender and origin combinations.}
+          next_cursor: {type: string}
+          library_seq: {type: integer, minimum: 0}
+    source: &design_source file://design.lua
+    method: list
+    imports: &design_imports
+      client: kickside.mail:client
+      types: kickside.mail:types
+      tool_result: kickside.contract:tool_result
+  - name: library_read
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.read]}
+      public: true
+      title: Read Mail Library Resource
+      llm_alias: MailLibraryRead
+      llm_description: >-
+        Read a resource by kind and stable name from MailLibraryList. Returns both editable Jet faces, the
+        subject and selected base for a message, declared variables or part inputs with samples, revision,
+        state and known usage. The base wraps a message's body block. Include parts with their declared inputs.
+        Missing resources and denied access are tool errors.
+      input_schema: &resource_key
+        type: object
+        additionalProperties: false
+        required: [kind, name]
+        properties:
+          kind: *resource_kind
+          name: *resource_name
+      output_schema:
+        type: object
+        required: [kind, name, title, description, html, text, schema, samples, state, revision]
+        properties:
+          kind: *resource_kind
+          name: *resource_name
+          title: &title {type: string, minLength: 1}
+          description: &text {type: string}
+          html: *text
+          text: *text
+          subject: &face {type: string, minLength: 1}
+          asset: &asset_content
+            type: object
+            required: [source]
+            properties:
+              source: {type: string, enum: [original, upload]}
+              upload_id: {type: string}
+              filename: *text
+              content_type: *text
+              size: {type: integer, minimum: 1}
+          base: *resource_name
+          schema: &variable_schema
+            type: object
+            required: [type, properties]
+            properties:
+              type: {type: string, const: object}
+              properties: {type: object}
+              required: {type: array, items: {type: string}}
+          samples: &samples {type: object}
+          state: *resource_state
+          revision: *resource_revision
+          origin: *text
+          author: *text
+          created_at: {type: integer}
+          updated_at: {type: integer}
+          used_by:
+            type: object
+            properties:
+              messages: &message_names {type: array, items: *resource_name}
+              recent_senders:
+                type: array
+                items:
+                  type: object
+                  required: [sender, count]
+                  properties:
+                    sender: *text
+                    count: {type: integer, minimum: 1}
+                    origin:
+                      type: object
+                      required: [kind, id, label]
+                      properties: {kind: *text, id: *text, label: *text}
+    source: *design_source
+    method: read
+    imports: *design_imports
+  - name: library_preview
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.read]}
+      public: true
+      title: Preview Mail Library Draft
+      llm_alias: MailLibraryPreview
+      llm_description: >-
+        Preview edited resources using resources, a new resource using create, or a revision operation using reset or restore.
+        Choose a message by stable name. For a new message choose its proposed name. For a new base or part choose
+        an existing message. Message bodies define a Jet body block, the base field selects its frame, and parts
+        can be included with a map of their inputs. Optional vars replace the chosen message's samples for the
+        displayed render. Save validation always checks samples and affected messages. Read errors for the
+        resource, face and optional engine_message, and dependent_messages for affected messages. A clean preview returns
+        a preview_id to use with the same operation and revisions. Non-asset writes require that ID.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [message]
+        oneOf:
+          - {required: [resources]}
+          - {required: [create]}
+          - {required: [reset]}
+          - {required: [restore]}
+        properties:
+          message: *resource_name
+          resources:
+            type: array
+            minItems: 1
+            items: &resource_edit
+              type: object
+              additionalProperties: false
+              required: [kind, name, title, description, html, text, schema, samples, expected_revision]
+              properties: &edit_fields
+                kind: &template_kind {type: string, enum: [message, base, part]}
+                name: *resource_name
+                title: *title
+                description: *text
+                html: *face
+                text: *face
+                schema: *variable_schema
+                samples: *samples
+                subject: *face
+                base: *resource_name
+                expected_revision: *resource_revision
+                note: *text
+          create:
+            type: object
+            additionalProperties: false
+            required: [kind, name]
+            properties: &create_fields
+              kind: *template_kind
+              name: *resource_name
+              from: *resource_key
+              title: *title
+              description: *text
+              html: *face
+              text: *face
+              schema: *variable_schema
+              samples: *samples
+              subject: *face
+              base: *resource_name
+              note: *text
+          reset:
+            type: object
+            additionalProperties: false
+            required: [kind, name, expected_revision]
+            properties: &review_revision
+              kind: *resource_kind
+              name: *resource_name
+              expected_revision: *resource_revision
+              note: *text
+          restore:
+            type: object
+            additionalProperties: false
+            required: [kind, name, expected_revision, seq]
+            properties:
+              <<: *review_revision
+              seq: {type: integer, minimum: 1}
+          vars: *samples
+          attachments:
+            type: array
+            items:
+              type: object
+              required: [upload_id, disposition, content_id]
+              properties:
+                upload_id: {type: string}
+                filename: *text
+                disposition: {type: string, const: inline}
+                content_id: *text
+      output_schema:
+        type: object
+        anyOf:
+          - {required: [subject, html, text, errors, dependent_messages, preview_id]}
+          - &refusal_required {required: [success, code, error]}
+        properties:
+          subject: *text
+          html: *text
+          text: *text
+          inline_assets: {type: object, additionalProperties: *text}
+          warnings:
+            type: array
+            items:
+              type: object
+              required: [code, message, bytes, threshold_bytes]
+              properties:
+                code: *text
+                message: *text
+                bytes: {type: integer, minimum: 0}
+                threshold_bytes: {type: integer, minimum: 0}
+          preview_id: &preview_id {type: string, description: Short-lived proof of a clean preview of these exact changes.}
+          errors: &draft_errors
+            type: array
+            items:
+              type: object
+              required: [code, message, resource, face]
+              properties:
+                code: *text
+                message: *text
+                engine_message: *text
+                resource: *resource_key
+                face: *text
+          dependent_messages: *message_names
+          success: &refused {type: boolean, const: false}
+          code: *text
+          error: *text
+          resource: *resource_key
+          revision: *resource_revision
+    source: *design_source
+    method: preview
+    imports: *design_imports
+  - name: library_save
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.write]}
+      public: true
+      title: Save Mail Library Edits
+      llm_alias: MailLibrarySave
+      llm_description: >-
+        Save all edited resources together. Pass the same content and order from a clean MailLibraryPreview,
+        the revision last read for each resource as expected_revision, the returned preview_id and an optional
+        history note. For an exact retry, reuse command_id and the same inputs. A receipt with projected=false confirms the write. A refusal has success=false, code and error. For a revision conflict read the current
+        revision and reconcile your edits. For a draft error use resource, face, errors and dependent_messages
+        to repair the content, then preview again. For a missing, expired or mismatched preview, preview again.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [resources, preview_id]
+        properties:
+          command_id: {type: string, format: uuid}
+          resources:
+            type: array
+            minItems: 1
+            items:
+              <<: *resource_edit
+              required: [kind, name, title, description, html, text, schema, samples, expected_revision]
+          preview_id: *preview_id
+          note: *text
+      output_schema:
+        type: object
+        anyOf:
+          - {required: [items]}
+          - &write_receipt {required: [seq, committed, projected]}
+          - *refusal_required
+        properties:
+          seq: &write_seq {type: integer, minimum: 1}
+          committed: &write_committed {const: true}
+          projected: &write_projected {type: boolean}
+          items: {type: array, items: *resource_summary}
+          success: *refused
+          code: *text
+          error: *text
+          resource: *resource_key
+          revision: *resource_revision
+          face: *text
+          engine_message: *text
+          errors: *draft_errors
+          dependent_messages: *message_names
+    source: *design_source
+    method: save
+    imports: *design_imports
+  - name: library_create
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.write]}
+      public: true
+      title: Create Mail Library Resource
+      llm_alias: MailLibraryCreate
+      llm_description: >-
+        Create a message, base template or part under a new stable name. Provide title, description, both
+        Jet faces, schema and samples, plus subject and base for a message. To inherit fields provide from
+        with a same-kind source key and override the fields you want to change. First pass those same fields
+        as create to MailLibraryPreview and fix any errors. Pass its clean preview_id here. A refusal returns
+        success=false, code and error, plus resource, face or revision when available.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [kind, name, preview_id]
+        properties:
+          command_id: {type: string, format: uuid}
+          <<: *create_fields
+          preview_id: *preview_id
+      output_schema: &revision_output
+        type: object
+        anyOf:
+          - {required: [kind, name, state, revision]}
+          - *write_receipt
+          - *refusal_required
+        properties:
+          seq: *write_seq
+          committed: *write_committed
+          projected: *write_projected
+          <<: *summary_fields
+          success: *refused
+          code: *text
+          error: *text
+          resource: *resource_key
+          face: *text
+          engine_message: *text
+          errors: *draft_errors
+          dependent_messages: *message_names
+    source: *design_source
+    method: create
+    imports: *design_imports
+  - name: asset_add
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.write]}
+      public: true
+      title: Add Mail Library Image
+      llm_alias: MailAssetAdd
+      llm_description: >-
+        Adopt a PNG, JPEG or GIF upload of up to 1 MiB from the acting person. Use a new name to add
+        an image or an existing name to replace it. To require a specific current revision, pass
+        expected_revision. Returns the resource revision and the sampled messages that use the image.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [name, upload_id]
+        properties:
+          name: *resource_name
+          upload_id: {type: string, format: uuid}
+          expected_revision: *resource_revision
+          command_id: {type: string, format: uuid}
+          title: *title
+          description: *text
+          note: *text
+      output_schema:
+        type: object
+        anyOf:
+          - {required: [kind, name, state, revision, messages]}
+          - {required: [seq, committed, projected]}
+          - *refusal_required
+        properties:
+          <<: *summary_fields
+          messages: *message_names
+          success: *refused
+          code: *text
+          error: *text
+          resource: *resource_key
+    source: *design_source
+    method: asset_add
+    imports: *design_imports
+  - name: library_reset
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.write]}
+      public: true
+      title: Reset Mail Library Resource
+      llm_alias: MailLibraryReset
+      llm_description: >-
+        Reset a customized shipped resource to its original content. Use the revision from MailLibraryRead
+        as expected_revision. For a non-asset reset, pass the preview_id returned by MailLibraryPreview.
+        The library checks affected messages and keeps history. A refusal contains
+        success=false, code and error, with the current revision or draft diagnostics when applicable.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [kind, name, expected_revision]
+        anyOf: &asset_or_preview
+          - properties:
+              kind: {const: asset}
+          - required: [preview_id]
+        properties: &revision_request
+          command_id: {type: string, format: uuid}
+          kind: *resource_kind
+          name: *resource_name
+          expected_revision: *resource_revision
+          note: *text
+          preview_id: *preview_id
+      output_schema: *revision_output
+    source: *design_source
+    method: reset
+    imports: *design_imports
+  - name: library_history
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.read]}
+      public: true
+      title: Read Mail Library History
+      llm_alias: MailLibraryHistory
+      llm_description: >-
+        Read retained events for one resource, newest first. Use next_cursor for the next page.
+        Pass an event sequence as seq to read its content or to select it for MailLibraryRestore.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [kind, name]
+        properties:
+          kind: *resource_kind
+          name: *resource_name
+          limit: {type: integer, minimum: 1, maximum: 100}
+          cursor: *text
+          seq: &event_seq {type: integer, minimum: 1}
+      output_schema:
+        type: object
+        anyOf:
+          - required: [items, library_seq]
+          - required: [kind, name, seq, version, action, author, created_at]
+        properties:
+          library_seq: {type: integer, minimum: 0}
+          next_cursor: *text
+          items:
+            type: array
+            items:
+              type: object
+              required: [kind, name, seq, version, action, author, created_at]
+              properties: &history_fields
+                kind: *resource_kind
+                name: *resource_name
+                seq: *event_seq
+                version: {type: integer, minimum: 1}
+                action: {enum: [created, edited, base_changed, reset, restored, archived, deleted]}
+                restored_from: {type: integer, minimum: 1}
+                author: *text
+                note: *text
+                created_at: {type: integer}
+          <<: *history_fields
+          state: *resource_state
+          origin: *text
+          content:
+            type: object
+            required: [kind, name, title, description, html, text, schema, samples]
+            properties:
+              <<: *edit_fields
+              kind: *resource_kind
+              html: *text
+              text: *text
+              asset: *asset_content
+    source: *design_source
+    method: history
+    imports: *design_imports
+  - name: library_restore
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.write]}
+      public: true
+      title: Restore Mail Library Revision
+      llm_alias: MailLibraryRestore
+      llm_description: >-
+        Restore content from MailLibraryHistory as a new revision. Pass the selected event sequence as seq and use the
+        current revision from MailLibraryRead as expected_revision. For a non-asset restore, pass the
+        preview_id returned by MailLibraryPreview. The library validates content and affected messages. A refusal returns success=false, code and error, with the current revision
+        or draft diagnostics when applicable.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [kind, name, seq, expected_revision]
+        anyOf: *asset_or_preview
+        properties:
+          <<: *revision_request
+          seq: *event_seq
+      output_schema: *revision_output
+    source: *design_source
+    method: restore
+    imports: *design_imports
+  - name: send_test
+    kind: function.lua
+    meta:
+      type: tool
+      mcp: {required_scopes: [state.write]}
+      public: true
+      title: Send Mail Test
+      llm_alias: MailSendTest
+      llm_description: >-
+        Queue a test of a saved library message using its samples. The recipient is the acting person's
+        own account email address. Pass the message's stable name from MailLibraryList. Returns the
+        queued message ID and status. Missing access, email address or delivery configuration is a tool error.
+      input_schema:
+        type: object
+        additionalProperties: false
+        required: [message]
+        properties:
+          message: *resource_name
+      output_schema: file://../schemas/send.output.json
+    source: *design_source
+    method: send_test
+    imports: *design_imports

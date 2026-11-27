@@ -1,0 +1,212 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app
+entries:
+  - name: definition
+    kind: ns.definition
+    meta: { title: KickSide }
+  - name: db
+    kind: db.sql.sqlite
+    meta: { comment: The postgres profile replaces this database entry. }
+    file: ./.wippy/mail-test.sqlite
+    foreign_keys: true
+    pool: { max_open: 1, max_idle: 1 }
+  - name: env_storage
+    kind: env.storage.file
+    meta: { type: envstorage }
+    file_path: ./.wippy/test.env
+    auto_create: true
+  - name: uploads
+    kind: fs.directory
+    directory: ./.wippy/uploads
+    auto_init: true
+  - name: uploads_storage_access
+    kind: security.policy
+    policy:
+      resources: [app:uploads]
+      actions: [fs.get, fs.read, fs.stat]
+      effect: allow
+  - name: processes
+    kind: process.host
+    lifecycle: { auto_start: true }
+  - name: gateway
+    kind: http.service
+    addr: "127.0.0.1:0"
+    lifecycle: { auto_start: true }
+  - name: api
+    kind: http.router
+    meta: { server: app:gateway }
+    prefix: /api
+    middleware: [token_auth]
+    post_middleware: [endpoint_firewall]
+    options: { token_store: kickside.users.security:tokens }
+  - name: public
+    kind: http.router
+    meta: { server: app:gateway }
+    prefix: /public
+  - name: user
+    kind: security.scope
+  - name: member_database
+    kind: security.policy
+    groups: [app:user]
+    policy:
+      resources: [app:db]
+      actions: [db.get]
+      effect: allow
+  - name: database_fixture
+    kind: library.lua
+    source: file://database_fixture.lua
+    modules: [sql]
+  - name: mail_senders
+    kind: security.scope
+  - name: mail_senders_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app:mail_senders
+    policies: [kickside.mail.security:send_access]
+  - name: mail_editors
+    kind: security.scope
+  - name: mail_editors_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app:mail_editors
+    policies: []
+  - name: dep.test
+    kind: ns.dependency
+    component: wippy/test
+    version: "*"
+  - name: dep.bootloader
+    kind: ns.dependency
+    component: wippy/bootloader
+    version: "*"
+    parameters:
+      - { name: wippy.bootloader:application_host, value: "app:processes" }
+      - { name: wippy.bootloader:env_storage, value: "app:env_storage" }
+  - name: dep.migration
+    kind: ns.dependency
+    component: wippy/migration
+    version: "*"
+    parameters:
+      - { name: wippy.migration:app_db, value: "app:db" }
+  - name: dep.uploads
+    kind: ns.dependency
+    component: kickside/uploads
+    version: "*"
+    parameters:
+      - { name: "kickside.uploads:database_resource", value: "app:db" }
+      - { name: "kickside.uploads:storage_id", value: "app:uploads" }
+      - { name: "kickside.uploads:storage_runtime_policy", value: "app:uploads_storage_access" }
+      - { name: "kickside.uploads:env_storage", value: "app:env_storage" }
+      - { name: "kickside.uploads:api_router", value: "app:api" }
+      - { name: "kickside.uploads:ui_server", value: "app:gateway" }
+      - { name: "kickside.uploads.security:user_security_scope", value: "app:user" }
+      - { name: "kickside.component:target_db", value: "app:db" }
+      - { name: "kickside.component:api_router", value: "app:api" }
+      - { name: "kickside.core:target_db", value: "app:db" }
+      - { name: "kickside.core.lifecycle:process_host", value: "app:processes" }
+      - { name: "kickside.core.lifecycle:user_lifecycle_grant", value: { subject_id: "app:user", subject_type: group, access_mask: 2 } }
+      - { name: "kickside.core.lifecycle:admin_lifecycle_grant", value: { subject_id: "app.mail_api:users_admin", subject_type: group, access_mask: 3 } }
+      - { name: "kickside.core.retention:process_host", value: "app:processes" }
+      - { name: "kickside.core.threads:process_host", value: "app:processes" }
+      - { name: "kickside.core.retention:api_router", value: "app:api" }
+      - { name: "kickside.core.threads:api_router", value: "app:api" }
+      - { name: "kickside.core.projections:api_router", value: "app:api" }
+      - { name: "kickside.core.jobs:target_db", value: "app:db" }
+      - { name: "kickside.core.jobs:process_host", value: "app:processes" }
+  - name: dep.users
+    kind: ns.dependency
+    component: kickside/users
+    version: "*"
+    parameters:
+      - { name: "kickside.users:env_storage", value: "app:env_storage" }
+      - { name: "kickside.users:public_router", value: "app:public" }
+      - { name: "kickside.users:api_router", value: "app:api" }
+      - { name: "kickside.users:ui_server", value: "app:gateway" }
+      - { name: "kickside.users:target_db", value: "app:db" }
+      - { name: "kickside.users:user_security_scope", value: "app:user" }
+      - { name: "kickside.users:admin_security_scope", value: "app.mail_api:users_admin" }
+      - { name: "kickside.users:login_role_resource", value: ["app:user", "app:mail_senders", "app:mail_editors", "app.mail_api:users_admin"] }
+      - { name: "kickside.security:target_db", value: "app:db" }
+      - { name: "kickside.security:process_host", value: "app:processes" }
+      - { name: "kickside.security:api_router", value: "app:api" }
+      - { name: "kickside.security:ui_server", value: "app:gateway" }
+      - { name: "kickside.settings:target_db", value: "app:db" }
+      - { name: "kickside.settings:api_router", value: "app:api" }
+      - { name: "kickside.settings:ui_server", value: "app:gateway" }
+  - name: dep.views
+    kind: ns.dependency
+    component: wippy/views
+    version: "*"
+    parameters:
+      - { name: api_router, value: "app:public" }
+      - { name: env_storage, value: "app:env_storage" }
+  - name: dep.session
+    kind: ns.dependency
+    component: wippy/session
+    version: "*"
+    parameters:
+      - { name: api_router, value: "app:api" }
+      - { name: database_resource, value: "app:db" }
+      - { name: default_host, value: "app:processes" }
+      - { name: env_storage, value: "app:env_storage" }
+      - { name: delegation_func_id, value: "userspace.dataflow.session:delegate" }
+  - name: uploads_binding_test
+    kind: function.lua
+    meta: { type: test, suite: mail_uploads }
+    source: file://uploads_binding_test.lua
+    method: run
+    modules: [contract]
+    imports:
+      test: wippy.test:test
+  - name: schema_migration_test
+    kind: function.lua
+    meta: { type: test, suite: mail_schema }
+    source: file://schema_migration_test.lua
+    method: run
+    modules: [registry, sql]
+    imports: { test: wippy.test:test }
+  - name: message_test
+    kind: function.lua
+    meta: { type: test, suite: mail }
+    source: file://message_test.lua
+    method: run
+    modules: [funcs, json, security, templates]
+    imports:
+      test: wippy.test:test
+      message: kickside.mail.domain:message
+      api_fixtures: app.mail_api:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
+      failure: kickside.mail.domain:failure
+      library_fixtures: app.mail_library:fixtures
+  - name: dep.blocks
+    kind: ns.dependency
+    component: kickside/blocks
+    version: "*"
+    parameters:
+      - { name: "kickside.blocks:process_host", value: "app:processes" }
+  - name: dep.mail
+    kind: ns.dependency
+    component: kickside/mail
+    version: "*"
+    parameters:
+      - { name: "kickside.mail.security:user_security_scope", value: "app:user" }
+      - { name: "kickside.mail:target_db", value: "app:db" }
+      - { name: "kickside.mail:api_router", value: "app:api" }
+      - { name: "kickside.mail:library_editor_grant", value: {subject_id: "app:mail_editors", subject_type: group, access_mask: 3} }
+      - { name: "kickside.mail:realtime_binding", value: "app.mail_realtime:realtime_binding" }
+  - name: dep.driver_example
+    kind: ns.dependency
+    component: example/mail-relay
+    version: "*"
+  - name: dep.workflows
+    kind: ns.dependency
+    component: kickside/workflows
+    version: "*"
+    parameters:
+      - { name: "kickside.workflows:target_db", value: "app:db" }
+      - { name: "kickside.workflows:api_router", value: "app:api" }
+      - { name: "kickside.workflows:ui_server", value: "app:gateway" }
+      - { name: "kickside.workflows:process_host", value: "app:processes" }
+      - { name: "kickside.automation:target_db", value: "app:db" }
+      - { name: "kickside.automation:api_router", value: "app:api" }
+      - { name: "kickside.automation:ui_server", value: "app:gateway" }

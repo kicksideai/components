@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.settings.api
+
+entries:
+  - name: list_settings
+    kind: function.lua
+    source: file://list_settings.lua
+    method: handler
+
+  - name: list_settings.endpoint
+    kind: http.endpoint
+    method: GET
+    path: /settings
+    func: kickside.settings.api:list_settings

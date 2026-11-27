@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.bad.command
+
+entries:
+  - name: extra
+    kind: registry.entry
+    meta: { comment: Entry file beside the index }

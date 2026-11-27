@@ -1,0 +1,348 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.mail_library
+entries:
+  - name: teardown_test
+    kind: function.lua
+    meta: {type: test, suite: teardown}
+    source: file://teardown_test.lua
+    method: run
+    modules: [contract, fs, funcs, registry, security, sql, time]
+    imports:
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
+      lookup: app.mail_library:upload_fixture
+      api_fixtures: app.mail_api:fixtures
+      component: kickside.component:component
+      jobs: kickside.core.jobs:jobs
+      jet: kickside.mail.domain:jet
+  - name: site_url_storage
+    kind: env.storage.static
+    values: {PUBLIC_API_URL: "https://example.org"}
+  - name: upload_fixture
+    kind: library.lua
+    source: &upload_fixture_source file://upload_fixture.lua
+    modules: &upload_fixture_modules [funcs, http_client, json, registry, security, system, uuid]
+    imports: &upload_fixture_imports
+      uploads: kickside.uploads:uploads
+      api_fixtures: app.mail_api:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
+      database: app:database_fixture
+  - name: purge_fixture_uploads
+    kind: function.lua
+    source: *upload_fixture_source
+    method: purge
+    modules: *upload_fixture_modules
+    imports: *upload_fixture_imports
+  - name: empty_upload_info
+    kind: function.lua
+    source: *upload_fixture_source
+    method: empty_info
+    modules: *upload_fixture_modules
+    imports: *upload_fixture_imports
+  - name: site_url
+    kind: env.variable
+    variable: PUBLIC_API_URL
+    storage: app.mail_library:site_url_storage
+  - name: site_title
+    kind: registry.entry
+    meta: { type: "kickside.settings:definition" }
+    namespace: kickside.ui
+    key: title
+    title: Site title
+    scope: global
+    value_type: string
+    default: KickSide
+  - name: fixtures
+    kind: library.lua
+    source: &fixtures_source file://fixtures.lua
+    modules: &fixtures_modules [contract, funcs, registry, time, json]
+    imports: &fixtures_imports
+      database: app:database_fixture
+      delivery_wait: app.mail_harness:delivery_wait
+      jobs: kickside.core.jobs:jobs
+      client: kickside.mail:client
+      api_fixtures: app.mail_api:fixtures
+      autoinit: kickside.component:autoinit
+      jet: kickside.mail.domain:jet
+      retention_fixture: app.mail_library:retention_fixture
+  - name: retention_fixture
+    kind: library.lua
+    source: &retention_source file://retention_fixture.lua
+    modules: &retention_modules [channel, events, process, time]
+  - name: retention_ready
+    kind: function.lua
+    meta: { type: kickside.retention.owner }
+    source: *retention_source
+    method: ready
+    modules: *retention_modules
+  - name: invoke
+    kind: function.lua
+    source: *fixtures_source
+    method: invoke
+    modules: *fixtures_modules
+    imports: *fixtures_imports
+  - name: foreign_list
+    kind: function.lua
+    source: *fixtures_source
+    method: foreign_list
+    modules: *fixtures_modules
+    imports: *fixtures_imports
+  - name: invoke_mailer
+    kind: function.lua
+    source: *fixtures_source
+    method: invoke_mailer
+    modules: *fixtures_modules
+    imports: *fixtures_imports
+  - name: invoke_access
+    kind: security.policy
+    groups: [app.mail_api:editor, app.mail_api:editor_sender, app.mail_api:sender, app.mail_api:upload_sender,
+      app.mail_api:library_capability_only, app.mail_api:driver_only, app.mail_api:delivery_sender, app.mail_api:log_reader]
+    policy:
+      resources: [app.mail_library:invoke, app.mail_library:foreign_list, app.mail_library:invoke_mailer]
+      actions: [funcs.call]
+      effect: allow
+  - name: library_test
+    kind: function.lua
+    meta: { type: test, suite: mail_library }
+    source: file://library_test.lua
+    method: run
+    modules: [registry, templates]
+    imports:
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
+      jet: kickside.mail.domain:jet
+      api_fixtures: app.mail_api:fixtures
+      autoinit: kickside.component:autoinit
+      publication_cases: app.mail_library:publication_cases
+      resource_cases: app.mail_library:resource_cases
+      history_cases: app.mail_library:history_cases
+  - name: publication_cases
+    kind: library.lua
+    source: file://publication_cases.lua
+    modules: [contract, funcs, registry, security, uuid]
+    imports:
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      autoinit: kickside.component:autoinit
+  - name: deny_marker_read
+    kind: security.policy
+    policy:
+      resources: [kickside.mail.projection:marker]
+      actions: [registry.get]
+      effect: deny
+  - name: deny_library_wait
+    kind: security.policy
+    policy:
+      resources: [catch_up_projection]
+      actions: [contract.call]
+      effect: deny
+  - name: deny_library_append
+    kind: security.policy
+    policy:
+      resources: [append_events]
+      actions: [contract.call]
+      effect: deny
+  - name: resource_cases
+    kind: library.lua
+    source: file://resource_cases.lua
+    modules: [funcs, registry, security]
+    imports:
+      fixtures: app.mail_library:fixtures
+      jet: kickside.mail.domain:jet
+      api_fixtures: app.mail_api:fixtures
+  - name: history_cases
+    kind: library.lua
+    source: file://history_cases.lua
+    modules: [contract, funcs, security, sql]
+    imports:
+      fixtures: app.mail_library:fixtures
+      prune: kickside.core.retention:prune
+      api_fixtures: app.mail_api:fixtures
+  - name: draft_workspace_test
+    kind: function.lua
+    meta: { type: test, suite: mail_draft_workspace }
+    source: file://draft_workspace_test.lua
+    method: run
+    modules: [funcs, registry, security, time, uuid]
+    imports:
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      database: app:database_fixture
+      jet: kickside.mail.domain:jet
+      references: kickside.mail.domain:references
+      threads_fixture: app.mail_library:threads_fixture
+      types: kickside.mail:types
+  - name: assets_test
+    kind: function.lua
+    meta: { type: test, suite: mail_assets }
+    source: &assets_source file://assets_test.lua
+    method: run
+    modules: &assets_modules [contract, fs, funcs, security, sql, uuid, base64, time, json]
+    imports: &assets_imports
+      delivery_wait: app.mail_harness:delivery_wait
+      test: wippy.test:test
+      fixtures: app.mail_library:fixtures
+      upload_types: kickside.uploads:types
+      lookup: app.mail_library:upload_fixture
+      settings: app.mail_api:fixtures
+      prune: kickside.core.retention:prune
+      asset_lifetime_cases: app.mail_library:asset_lifetime_cases
+      asset_content_cases: app.mail_library:asset_content_cases
+      asset_delivery_cases: app.mail_library:asset_delivery_cases
+      threads_fixture: app.mail_library:threads_fixture
+  - name: asset_race_test
+    kind: function.lua
+    meta: { type: harness.fixture, suite: mail_asset_race }
+    source: *assets_source
+    method: race
+    modules: *assets_modules
+    imports: *assets_imports
+  - name: threads_fixture
+    kind: library.lua
+    source: &threads_fixture_source file://threads_fixture.lua
+    modules: &threads_fixture_modules [channel, contract, ctx, events, registry, time]
+  - name: threads_fixture_append
+    kind: function.lua
+    source: *threads_fixture_source
+    modules: *threads_fixture_modules
+    method: append
+    security: &threads_fixture_security
+      policies: [app.mail_library:threads_fixture_dispatch, app.mail_library:threads_fixture_events]
+  - name: threads_fixture_list
+    kind: function.lua
+    source: *threads_fixture_source
+    modules: *threads_fixture_modules
+    method: list
+    security: *threads_fixture_security
+  - name: threads_fixture_find
+    kind: function.lua
+    source: *threads_fixture_source
+    modules: *threads_fixture_modules
+    method: find
+    security: *threads_fixture_security
+  - name: threads_fixture_boundary
+    kind: function.lua
+    source: *threads_fixture_source
+    modules: *threads_fixture_modules
+    method: boundary
+    security: *threads_fixture_security
+  - name: threads_fixture_dispatch
+    kind: security.policy
+    policy:
+      resources: [app.mail_library:threads_fault_binding, kickside.core:threads_binding]
+      actions: [registry.get, contract.open]
+      effect: allow
+  - name: threads_fixture_events
+    kind: security.policy
+    policy:
+      resources: [mail.fixture.threads]
+      actions: [events.send, events.subscribe]
+      effect: allow
+  - name: asset_lifetime_cases
+    kind: library.lua
+    source: file://asset_lifetime_cases.lua
+    modules: [contract, funcs, security, sql, uuid, base64, time]
+    imports:
+      fixtures: app.mail_library:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
+      jobs: kickside.core.jobs:jobs
+      lookup: app.mail_library:upload_fixture
+      settings: app.mail_api:fixtures
+      threads_fixture: app.mail_library:threads_fixture
+  - name: asset_content_cases
+    kind: library.lua
+    source: file://asset_content_cases.lua
+    modules: [contract, fs, funcs, security, sql, uuid, base64, time, json]
+    imports:
+      fixtures: app.mail_library:fixtures
+      upload_types: kickside.uploads:types
+      lookup: app.mail_library:upload_fixture
+      settings: app.mail_api:fixtures
+  - name: asset_delivery_cases
+    kind: library.lua
+    source: file://asset_delivery_cases.lua
+    modules: [contract, security, uuid]
+    imports:
+      fixtures: app.mail_library:fixtures
+      upload_types: kickside.uploads:types
+      lookup: app.mail_library:upload_fixture
+      settings: app.mail_api:fixtures
+      database: app:database_fixture
+  - name: asset_expiry_test
+    kind: function.lua
+    meta: { type: test, suite: mail_asset_expiry }
+    source: *assets_source
+    method: expiry
+    modules: *assets_modules
+    imports: *assets_imports
+  - name: upload_storage
+    kind: library.lua
+    source: file://upload_storage.lua
+    modules: [fs, ctx]
+    imports:
+      threads_fixture: app.mail_library:threads_fixture
+  - name: acl_test
+    kind: function.lua
+    meta: { type: test, suite: mail_library_acl }
+    source: file://acl_test.lua
+    method: run
+    modules: [contract, funcs, security, uuid]
+    imports:
+      autoinit: kickside.component:autoinit
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      test: wippy.test:test
+  - name: projection_test
+    kind: function.lua
+    meta: {type: test, suite: mail_library_projection}
+    source: file://projection_test.lua
+    method: run
+    modules: [contract, funcs, json, registry, security, sql, time, uuid]
+    imports:
+      events: kickside.mail.domain:events
+      jobs: kickside.core.jobs:jobs
+      resource: kickside.mail.domain:resource
+      fixtures: app.mail_library:fixtures
+      api_fixtures: app.mail_api:fixtures
+      autoinit: kickside.component:autoinit
+      test: wippy.test:test
+  - name: projection_fixture
+    kind: security.scope
+  - name: projection_fixture_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_library:projection_fixture
+    policies:
+      - kickside.core.security:module_access
+      - kickside.core.jobs.security:module_access
+      - kickside.component.security:module_access
+      - app.mail_library:fixture_threads
+      - app.mail_harness:fixture_db
+      - app.mail_library:fixture_projection_context
+  - name: fixture_projection_context
+    kind: security.policy
+    policy:
+      resources: [security]
+      actions: [contract.security, funcs.security]
+      effect: allow
+  - name: fixture_threads
+    kind: security.policy
+    policy:
+      resources: [kickside.core:threads, kickside.core:threads_binding, find, append_events, catch_up_projection,
+        pause_projection, resume_projection, find_event_by_external, list_events, get_access_context]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
+  - name: binding_declaration_test
+    kind: function.lua
+    meta: {type: test, suite: mail_library_projection_wiring}
+    source: file://binding_declaration_test.lua
+    method: run
+    modules: [registry]
+    imports:
+      test: wippy.test:test
+      resource: kickside.mail.domain:resource
+      fixtures: app.mail_library:fixtures
+      jet: kickside.mail.domain:jet
+      client: kickside.mail:client

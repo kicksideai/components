@@ -1,0 +1,344 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.views
+entries:
+  - name: asset_files
+    kind: fs.directory
+    directory: ./assets
+  - name: logo_asset
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: asset
+      name: logo
+      title: Mail logo
+      description: Shows the logo next to your site name at the top of an email.
+      asset:
+        source: original
+        filesystem: kickside.mail.views:asset_files
+        path: logo.png
+        filename: logo.png
+        content_type: image/png
+        width: 32
+        height: 32
+        size: 435
+  - name: templates
+    kind: template.set
+    engine: { escape: html }
+  - name: text_templates
+    kind: template.set
+    engine: { escape: none }
+  - name: layout
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "base/standard" }
+    source: &standard_html file://layout.jet
+  - name: layout.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "base/standard" }
+    source: &standard_text file://layout.text.jet
+  - name: plain
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "base/plain" }
+    source: &plain_html file://plain.jet
+  - name: plain.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "base/plain" }
+    source: &plain_text file://plain.text.jet
+  - name: header
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/header" }
+    source: &header_html file://header.jet
+  - name: header.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/header" }
+    source: &header_text file://header.text.jet
+  - name: footer
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/footer" }
+    source: &footer_html file://footer.jet
+  - name: footer.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/footer" }
+    source: &footer_text file://footer.text.jet
+  - name: preheader
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/preheader" }
+    source: &preheader_html file://preheader.jet
+  - name: preheader.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/preheader" }
+    source: &preheader_text file://preheader.text.jet
+  - name: button
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/button" }
+    source: &button_html file://button.jet
+  - name: button.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/button" }
+    source: &button_text file://button.text.jet
+  - name: details
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/details" }
+    source: &details_html file://details.jet
+  - name: details.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/details" }
+    source: &details_text file://details.text.jet
+  - name: image
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/image" }
+    source: &image_html file://image.jet
+  - name: image.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/image" }
+    source: &image_text file://image.text.jet
+  - name: signature
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "part/signature" }
+    source: &signature_html file://signature.jet
+  - name: signature.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "part/signature" }
+    source: &signature_text file://signature.text.jet
+  - name: notice
+    kind: template.jet
+    set: kickside.mail.views:templates
+    meta: { name: "message/notice" }
+    source: &notice_html file://notice.jet
+  - name: notice.subject
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "message/notice.subject" }
+    source: &notice_subject |-
+      {{ subject }}
+  - name: notice.text
+    kind: template.jet
+    set: kickside.mail.views:text_templates
+    meta: { name: "message/notice" }
+    source: &notice_text file://notice.text.jet
+  - name: notice_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: message
+      name: notice
+      title: Notice
+      description: Share an update with optional details, a link, and an image.
+      base: standard
+      html: *notice_html
+      text: *notice_text
+      subject: *notice_subject
+      entries: { html: "kickside.mail.views:notice", text: "kickside.mail.views:notice.text", subject: "kickside.mail.views:notice.subject" }
+      variable_schema:
+        type: object
+        additionalProperties: false
+        required: [subject]
+        properties:
+          subject: { type: string, description: Email subject. }
+          preheader: { type: string, description: Text shown in an inbox preview. }
+          heading: { type: string, description: Heading in the message body. }
+          message: { type: string, description: Opening message. }
+          paragraphs:
+            type: array
+            description: Additional paragraphs.
+            items: { type: string }
+          action_url: { type: string, description: HTTP or HTTPS address for the action link. }
+          action_label: { type: string, description: Text for the action link. }
+          inline_content_id: { type: string, description: The attached picture to display in the email. }
+          image_alt: { type: string, description: Alternative text for the inline image. }
+          details:
+            type: array
+            description: Labeled details to include in the message.
+            items:
+              type: object
+              additionalProperties: false
+              required: [key, value]
+              properties:
+                key: { type: string, description: Label. }
+                value: { type: string, description: Detail to display. }
+      sample:
+        subject: Activity report ready
+        preheader: The report is available.
+        message: Your activity report is ready to review.
+        action_url: https://example.org/report
+        action_label: Read the report
+        details: [{key: Status, value: Ready}]
+  - name: standard_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: base
+      name: standard
+      title: Standard layout
+      description: Places the email in a card with your site name above and below it.
+      html: *standard_html
+      text: *standard_text
+      entries: { html: "kickside.mail.views:layout", text: "kickside.mail.views:layout.text" }
+  - name: plain_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: base
+      name: plain
+      title: Plain layout
+      description: Keeps the focus on the message, such as a sign-in or security alert.
+      html: *plain_html
+      text: *plain_text
+      entries: { html: "kickside.mail.views:plain", text: "kickside.mail.views:plain.text" }
+  - name: header_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: part
+      name: header
+      title: Email header
+      description: Shows your site name and logo at the top of the email.
+      html: *header_html
+      text: *header_text
+      entries: { html: "kickside.mail.views:header", text: "kickside.mail.views:header.text" }
+      input_schema: { type: object, properties: {} }
+      sample: {}
+  - name: footer_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: part
+      name: footer
+      title: Email footer
+      description: Shows your site name at the end of the email.
+      html: *footer_html
+      text: *footer_text
+      entries: { html: "kickside.mail.views:footer", text: "kickside.mail.views:footer.text" }
+      input_schema: { type: object, properties: {} }
+      sample: {}
+  - name: preheader_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: part
+      name: preheader
+      title: Inbox preview
+      description: Adds the short preview readers see beside the subject in their inbox.
+      html: *preheader_html
+      text: *preheader_text
+      entries: { html: "kickside.mail.views:preheader", text: "kickside.mail.views:preheader.text" }
+      input_schema:
+        type: object
+        properties:
+          preheader: { type: string, description: Inbox preview text. }
+      sample: { preheader: Your report is ready to review. }
+  - name: button_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: part
+      name: button
+      title: Link button
+      description: Adds a button readers can use to open a web page.
+      html: *button_html
+      text: *button_text
+      entries: { html: "kickside.mail.views:button", text: "kickside.mail.views:button.text" }
+      input_schema:
+        type: object
+        required: [action_url]
+        properties:
+          action_url: { type: string, description: Destination address. }
+          action_label: { type: string, default: Open, description: Text that describes the destination. }
+      sample: { action_url: "https://example.org/report", action_label: Read the report }
+  - name: details_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: part
+      name: details
+      title: Details list
+      description: Shows information such as dates and locations next to their labels.
+      html: *details_html
+      text: *details_text
+      entries: { html: "kickside.mail.views:details", text: "kickside.mail.views:details.text" }
+      input_schema:
+        type: object
+        required: [details]
+        properties:
+          details:
+            type: array
+            items:
+              type: object
+              required: [key, value]
+              properties:
+                key: { type: string }
+                value: { type: string }
+      sample: { details: [{key: State, value: Ready}] }
+  - name: image_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: part
+      name: image
+      title: Image
+      description: Adds a picture and includes its description in the plain-text email.
+      html: *image_html
+      text: *image_text
+      entries: { html: "kickside.mail.views:image", text: "kickside.mail.views:image.text" }
+      input_schema:
+        type: object
+        required: [src, alt, width]
+        properties:
+          src: { type: string, minLength: 1, description: The address of the picture to display. }
+          alt: { type: string, minLength: 1, description: Text that conveys the content of the image. }
+          width: { type: integer, minimum: 1, description: Display width in pixels. }
+          height: { type: integer, minimum: 1, description: Display height in pixels when known. }
+          url: { type: string, description: Optional web page to open when a reader selects the picture. }
+      sample:
+        src: "cid:activity-chart"
+        alt: Weekly activity chart
+        width: 320
+        height: 160
+        url: https://example.org/report
+  - name: signature_template
+    kind: registry.entry
+    meta: { type: "kickside.mail:template" }
+    template:
+      origin_label: Mail
+      kind: part
+      name: signature
+      title: Sender signature
+      description: Signs off with the sender’s name and optional role.
+      html: *signature_html
+      text: *signature_text
+      entries: { html: "kickside.mail.views:signature", text: "kickside.mail.views:signature.text" }
+      input_schema:
+        type: object
+        required: [name]
+        properties:
+          name: { type: string, minLength: 1, description: Sender name. }
+          role: { type: string, description: Sender role. }
+      sample: { name: Reporting team, role: Workspace operations }

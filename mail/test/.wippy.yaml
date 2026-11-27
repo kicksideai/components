@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+workspace:
+  replacements:
+    kickside/mail: ..
+    example/mail-relay: ./driver-example
+    kickside/automation: ../../../kickside/platform/automation
+    kickside/workflows: ../../../kickside/platform/workflows
+    kickside/blocks: ../../../kickside/platform/blocks
+    kickside/component: ../../../kickside/core/component
+    kickside/contract: ../../../kickside/core/contract
+    kickside/core: ../../../kickside/core/core
+    kickside/execution: ../../../kickside/core/execution
+    kickside/jobs: ../../../kickside/core/jobs
+    kickside/realtime-dispatch: ../../../kickside/core/realtime-dispatch
+    kickside/security: ../../../kickside/platform/security
+    kickside/settings: ../../../kickside/platform/settings
+    kickside/uploads: ../../../kickside/platform/uploads
+    kickside/users: ../../../kickside/platform/users
+    kickside/doc2md: ../../../converters/doc2md
+override:
+  # Cases that assert individual retention pages own each sweep.
+  kickside.core.retention.service:sweeper.service:lifecycle.auto_start: false
+  app:dep.driver_example:parameters:
+    - {name: "example.mail.relay.security:user_security_scope", value: "app:user"}
+    - {name: "example.mail.relay:api_base_url", value: "https://127.0.0.1:${relay_port}/messages"}
+  app.mail_harness:relay_gateway:addr: "127.0.0.1:${relay_port}"
+  example.mail.relay.transport:send:security.policies:
+    - example.mail.relay.security:settings_read
+    - example.mail.relay.security:settings_admin_read
+    - example.mail.relay.security:provider_reads
+    - example.mail.relay.security:http_access
+    - app.mail_harness:relay_loopback
+vars:
+  relay_port: 0
+  pg_host: localhost
+  pg_port: 5433
+  pg_database: kickside_test_mail
+  pg_username: kickside
+  pg_password: kickside
+profiles:
+  upload-race:
+    override:
+      kickside.uploads:storage_adapter:default: app.mail_library:upload_storage
+      app.mail_library:asset_race_test:meta.type: test
+  postgres:
+    override:
+      app:db:kind: db.sql.postgres
+      app:db:host: ${pg_host}
+      app:db:port: ${pg_port}
+      app:db:database: ${pg_database}
+      app:db:username: ${pg_username}
+      app:db:password: ${pg_password}
+      app:db:options.sslmode: disable
+      app:db:pool.max_open: 16
+      app:db:pool.max_idle: 8
+registry:
+  dispatch_internal_kinds:
+    - registry.entry
+    - ns.requirement
+    - ns.dependency
+    - ns.definition
+    - security.scope

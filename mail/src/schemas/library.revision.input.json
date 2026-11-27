@@ -1,0 +1,28 @@
+{
+  "type": "object",
+  "required": [
+    "kind",
+    "name",
+    "seq"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "message",
+        "base",
+        "part",
+        "asset"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false
+}

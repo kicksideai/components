@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kplat.jobs.api
+
+entries:
+  - name: status
+    kind: function.lua
+    source: file://status.lua
+    method: handler
+
+  - name: status.endpoint
+    kind: http.endpoint
+    method: GET
+    path: /jobs/status
+    func: kplat.jobs.api:status

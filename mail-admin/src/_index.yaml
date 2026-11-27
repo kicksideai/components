@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: '1.0'
+namespace: kickside.mail.admin
+entries:
+- name: definition
+  kind: ns.definition
+  meta:
+    title: KickSide Mail administration
+    description: The mail template library and delivery activity on the platform System surface.
+- name: dep.kickside.mail
+  version: '*'
+  kind: ns.dependency
+  meta:
+    description: The mail library, activity and delivery endpoints this administration reads and changes.
+  component: kickside/mail
+- name: ui_server
+  kind: ns.requirement
+  meta:
+    value_kind: http.service
+    comment: HTTP service that serves the Mail administration bundle.
+  targets:
+  - entry: kickside.mail.admin:ui_static
+    path: .meta.server
+- name: ui_fs
+  kind: fs.directory
+  meta:
+    comment: Built administration component from ui/.
+  directory: ./static
+  auto_init: true
+- name: ui_static
+  kind: http.static
+  meta:
+    comment: Serves the administration bundle at /kickside-mail-admin.
+  path: /kickside-mail-admin
+  fs: kickside.mail.admin:ui_fs
+  options:
+    mime_types:
+      .js: application/javascript
+      .css: text/css
+- name: admin
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Mail administration
+    announced: true
+    auto_register: true
+    tag_name: kickside-mail-admin
+    base_path: kickside-mail-admin
+    entry_point: admin.js
+    icon: tabler:mail
+    description: Open the mail template library and delivery activity. Library editors
+      review messages, base templates and parts, reset customized resources and restore
+      earlier versions. Delivery administrators review sent and failed messages and send
+      a failed message again.
+  props:
+    type: object
+    properties:
+      route:
+        type: string
+        default: ''
+        description: System location relative to this tab, with a library kind, resource name
+          and section, or an activity message ID.
+  events:
+    navigate:
+      type: object
+      properties:
+        route:
+          type: string
+        path:
+          type: string
+      oneOf:
+        - required: [route]
+        - required: [path]
+    dirty-change:
+      type: object
+      properties:
+        dirty:
+          type: boolean
+      required: [dirty]
+- name: settings_tab
+  kind: registry.entry
+  meta:
+    type: ui.settings_tab
+    comment: Mail library and activity on the System page.
+  key: mail
+  label: Mail
+  icon: tabler:mail
+  order: 42
+  render: component
+  component_tag: kickside-mail-admin
+  access: kickside.mail.api:library_list.endpoint
+- name: delivery
+  kind: registry.entry
+  meta:
+    type: view.component
+    title: Mail delivery settings
+    announced: true
+    auto_register: false
+    tag_name: kickside-mail-delivery
+    base_path: kickside-mail-admin
+    entry_point: delivery.js
+    icon: tabler:send
+    description: Delivery settings for Mail in System Settings. Delivery administrators choose one of the
+      services Mail admits, see whether it is ready, edit the settings of each installed service and Mail's
+      sender settings through the platform settings card, and send a test email to themselves.
+  props:
+    type: object
+    properties:
+      config:
+        type: object
+        description: Settings block configuration from the Settings page.
+  events:
+    navigate:
+      type: object
+      properties:
+        path:
+          type: string
+      required: [path]
+- name: delivery_block
+  kind: registry.entry
+  meta:
+    type: kickside.settings:block
+    comment: The one Mail block in System Settings. It claims Mail's namespace and the first-party driver namespaces,
+      whose settings it shows inside the delivery section.
+  key: mail
+  title: Mail
+  icon: tabler:mail
+  group: Integrations
+  order: 30
+  component_tag: kickside-mail-delivery
+  namespaces:
+  - kickside.mail
+  - kickside.mail.resend
+  - kickside.mail.sendgrid
+  - kickside.mail.mailgun
+  config:
+    namespaces:
+    - kickside.mail
+    - kickside.mail.resend
+    - kickside.mail.sendgrid
+    - kickside.mail.mailgun

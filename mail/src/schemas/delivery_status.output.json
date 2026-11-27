@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["configured", "ready", "transports", "driver_revision"],
+  "properties": {
+    "configured": {"type": "boolean"},
+    "ready": {"type": "boolean"},
+    "driver": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {"id": {"type": "string"}, "label": {"type": "string"}}
+    },
+    "from": {
+      "type": "object",
+      "required": ["address"],
+      "properties": {"address": {"type": "string"}, "name": {"type": "string"}}
+    },
+    "reply_to": {"type": "string"},
+    "code": {"type": "string"},
+    "reason": {"type": "string"},
+    "driver_revision": {"type": "integer", "minimum": 0, "description": "Revision of the stored kickside.mail driver override; 0 while it holds its default."},
+    "transports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "icon", "description", "settings_ns", "ready", "idempotent"],
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "icon": {"type": "string"},
+          "description": {"type": "string"},
+          "settings_ns": {"type": "string"},
+          "ready": {"type": "boolean"},
+          "code": {"type": "string"},
+          "reason": {"type": "string"},
+          "max_recipients": {"type": "integer", "minimum": 1},
+          "max_message_bytes": {"type": "integer", "minimum": 1},
+          "idempotent": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

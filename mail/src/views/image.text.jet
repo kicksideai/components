@@ -1,0 +1,2 @@
+{{ .alt }}{{ if isset(.url) && (hasPrefix(.url, "https://") || hasPrefix(.url, "http://")) }}
+{{ .url }}{{ end -}}

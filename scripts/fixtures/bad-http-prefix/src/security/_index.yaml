@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.badhttp.security
+entries:
+  - name: http_access
+    kind: security.policy
+    policy:
+      resources: [https://api.example.org/v3/*]
+      actions: [http_client.request]
+      effect: allow
+  - name: registry_access
+    kind: security.policy
+    policy:
+      resources: []
+      actions: [registry.get]
+      effect: allow
+  - name: mixed_access
+    kind: security.policy
+    policy:
+      resources: []
+      actions: [http_client.request, registry.get]
+      effect: allow

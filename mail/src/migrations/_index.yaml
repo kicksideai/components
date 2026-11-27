@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.migrations
+entries:
+  - name: 01_mail
+    kind: function.lua
+    meta: { type: migration, timestamp: '2026-11-23T00:00:00Z' }
+    source: file://01_mail.lua
+    method: migrate
+    modules: [sql]
+    imports:
+      migration: wippy.migration:migration

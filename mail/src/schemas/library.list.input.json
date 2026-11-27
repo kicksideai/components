@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "message",
+        "base",
+        "part",
+        "asset"
+      ]
+    },
+    "q": {
+      "type": "string",
+      "description": "Case-insensitive substring of the stable name, title, description, subject, or body source."
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "original",
+        "customized",
+        "created"
+      ]
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 25
+    },
+    "cursor": {
+      "type": "string"
+    },
+    "base": {
+      "type": "string"
+    },
+    "names": {
+      "type": "array",
+      "description": "Exact resource names to look up; at most 100.",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {"type": "string"}
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.mail_realtime
+entries:
+  - name: realtime_binding
+    kind: contract.binding
+    contracts:
+      - contract: kickside.contract:realtime
+        default: true
+        methods: {broadcast: app.mail_realtime:broadcast, notify: app.mail_realtime:notify}
+  - name: fixture_migration
+    kind: function.lua
+    meta: { type: migration, timestamp: '2026-11-23T23:00:00Z', target_db: app:db }
+    source: file://fixture_migration.lua
+    method: migrate
+    imports: { migration: wippy.migration:migration }
+  - name: broadcast
+    kind: function.lua
+    source: file://broadcast.lua
+    method: broadcast
+    modules: [json, security, sql]
+    imports: { signal: app.mail_realtime:signal }
+    security:
+      policies: [app.mail_harness:fixture_db, app.mail_realtime:fixture_activity_signal]
+  - name: fixture_activity_signal
+    kind: security.policy
+    policy:
+      resources: [app.mail_realtime:signals, mail.fixture.waiters]
+      actions: [pg.open, pg.broadcast_local]
+      effect: allow
+  - name: signals
+    kind: pg.scope
+    lifecycle: {auto_start: true}
+  - name: signal
+    kind: library.lua
+    source: file://signal.lua
+    modules: [pg, process]
+  - name: notify
+    kind: function.lua
+    source: file://notify.lua
+    method: notify
+    modules: [security]
+    imports: { signal: app.mail_realtime:signal }
+    security:
+      policies: [app.mail_realtime:fixture_activity_signal]
+  - name: notify_test
+    kind: function.lua
+    meta: {type: test, suite: mail_realtime}
+    source: file://notify_test.lua
+    method: run
+    modules: [funcs, registry, sql]
+    imports:
+      test: wippy.test:test
+      api_fixtures: app.mail_api:fixtures
+      delivery_wait: app.mail_harness:delivery_wait
+      library_fixtures: app.mail_library:fixtures

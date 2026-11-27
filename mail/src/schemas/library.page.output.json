@@ -1,0 +1,122 @@
+{
+  "type": "object",
+  "required": [
+    "items",
+    "total"
+  ],
+  "properties": {
+    "library_seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "state",
+          "revision"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "message",
+              "base",
+              "part",
+              "asset"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "original",
+              "customized",
+              "created"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "origin_label": {
+            "type": "string"
+          },
+          "base": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "used_by": {
+            "type": "object",
+            "properties": {
+              "messages": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "recent_sources": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Number of observed sender and origin combinations."
+              }
+            }
+          },
+          "asset": {
+            "type": "object",
+            "required": [
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "original",
+                  "upload"
+                ]
+              },
+              "upload_id": {
+                "type": "string"
+              },
+              "filename": {
+                "type": "string"
+              },
+              "content_type": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "next_cursor": {
+      "type": "string"
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

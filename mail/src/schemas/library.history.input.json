@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "required": [
+    "kind",
+    "name"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "message",
+        "base",
+        "part",
+        "asset"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "cursor": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

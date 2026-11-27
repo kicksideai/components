@@ -1,0 +1,168 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.read
+entries:
+  - name: settings
+    kind: library.lua
+    meta: {private: true}
+    source: file://settings.lua
+    modules: [env, funcs, security]
+    imports:
+      config: kickside.mail.driver:config
+      mail_config: kickside.mail.domain:config
+      policy: kickside.mail.domain:policy
+      types: kickside.mail:types
+  - name: driver_selection
+    kind: function.lua
+    meta: {private: true}
+    source: file://driver_selection.lua
+    method: read
+    modules: [contract]
+    imports: {types: kickside.mail:types}
+    security:
+      actor: {id: "system:kickside.mail.driver_selection"}
+      policies:
+        - kickside.mail.security:settings_driver_read
+        - kickside.mail.security:settings_admin_read
+  - name: content
+    kind: library.lua
+    meta: {private: true}
+    source: &content_source file://content.lua
+    modules: &content_modules [contract, fs, funcs, registry]
+    imports: &content_imports
+      types: kickside.mail:types
+      autoinit: kickside.component:autoinit
+      message: kickside.mail.domain:message
+      asset_refs: kickside.mail.domain:assets
+  - name: read_asset_file
+    kind: function.lua
+    meta: {private: true}
+    source: *content_source
+    method: read_asset_file
+    modules: *content_modules
+    imports: *content_imports
+    security:
+      actor: {id: system:kickside.mail.retention}
+      groups: [kickside.mail.security:asset_service]
+      policies:
+        - kickside.mail.security:packaged_assets
+        - kickside.mail.security:asset_provider_calls
+        - kickside.mail.security:mail_db
+  - name: thread_events
+    kind: library.lua
+    meta: {private: true}
+    source: file://thread_events.lua
+    modules: [contract, security, json]
+    imports:
+      content: kickside.mail.read:content
+      types: kickside.mail:types
+      events: kickside.mail.domain:events
+      canonical_json: kickside.contract:canonical_json
+      resource: kickside.mail.domain:resource
+  - name: history
+    kind: library.lua
+    meta: {private: true}
+    source: file://history.lua
+    imports:
+      database: kickside.mail.persist:db
+      history_repo: kickside.mail.persist:history_repo
+      keyset: kickside.contract:keyset
+      live_repo: kickside.mail.persist:live_repo
+      resource: kickside.mail.domain:resource
+      thread_events: kickside.mail.read:thread_events
+      types: kickside.mail:types
+  - name: library
+    kind: library.lua
+    meta: {private: true}
+    source: file://library.lua
+    modules: [contract, security]
+    imports:
+      live: kickside.mail.render:live
+      live_repo: kickside.mail.persist:live_repo
+      types: kickside.mail:types
+      client: kickside.mail:client
+      component_types: kickside.component:types
+      component_envelope: kickside.component:envelope
+      error_envelope: kickside.contract:error_envelope
+      database: kickside.mail.persist:db
+      library_reader: kickside.mail.persist:library_reader
+      history_repo: kickside.mail.persist:history_repo
+      history: kickside.mail.read:history
+      thread_events: kickside.mail.read:thread_events
+      originals: kickside.mail.render:originals
+      resource: kickside.mail.domain:resource
+      asset_refs: kickside.mail.domain:assets
+      content: kickside.mail.read:content
+      keyset: kickside.contract:keyset
+      usage: kickside.mail.read:usage
+  - name: usage
+    kind: library.lua
+    meta: {private: true}
+    source: file://usage.lua
+    modules: [time]
+    imports:
+      types: kickside.mail:types
+      database: kickside.mail.persist:db
+      resource: kickside.mail.domain:resource
+      originals: kickside.mail.render:originals
+      library_reader: kickside.mail.persist:library_reader
+      message_reader: kickside.mail.persist:message_reader
+      reference_repo: kickside.mail.persist:reference_repo
+      references: kickside.mail.domain:references
+      settings: kickside.mail.read:settings
+  - name: activity
+    kind: library.lua
+    meta: {private: true}
+    source: file://activity.lua
+    modules: [time, uuid]
+    imports:
+      types: kickside.mail:types
+      database: kickside.mail.persist:db
+      message_reader: kickside.mail.persist:message_reader
+      failure: kickside.mail.domain:failure
+      policy: kickside.mail.domain:policy
+      client: kickside.mail:client
+  - name: catalog
+    kind: library.lua
+    meta: {private: true}
+    source: file://catalog.lua
+    imports:
+      types: kickside.mail:types
+      library: kickside.mail.read:library
+      jet: kickside.mail.domain:jet
+  - name: preview
+    kind: library.lua
+    meta: {private: true}
+    source: file://preview.lua
+    modules: [base64]
+    imports:
+      types: kickside.mail:types
+      content: kickside.mail.read:content
+      library: kickside.mail.read:library
+      settings: kickside.mail.read:settings
+      message: kickside.mail.domain:message
+      vars: kickside.mail.domain:vars
+      jet: kickside.mail.domain:jet
+      render: kickside.mail.render:render
+      globals: kickside.mail.render:globals
+  - name: transports
+    kind: library.lua
+    meta: {private: true}
+    source: file://transports.lua
+    modules: [contract]
+    imports:
+      types: kickside.mail:types
+      config: kickside.mail.domain:config
+  - name: delivery
+    kind: library.lua
+    meta: {private: true}
+    source: file://delivery.lua
+    imports:
+      types: kickside.mail:types
+      database: kickside.mail.persist:db
+      message_reader: kickside.mail.persist:message_reader
+      asset_file_repo: kickside.mail.persist:asset_file_repo
+      settings: kickside.mail.read:settings
+      transports: kickside.mail.read:transports
+      config: kickside.mail.domain:config
+      client: kickside.mail:client

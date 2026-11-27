@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.bad.security
+
+entries:
+  - name: module_access
+    kind: security.policy
+    meta:
+      intent: module_access
+      includes: [acme.bad.security:module_runtime]
+    groups: []
+    policy:
+      resources: [acme.bad:*]
+      actions: [contract.call]
+      effect: allow
+
+  - name: module_runtime
+    kind: security.policy
+    groups: []
+    policy:
+      resources: [acme.bad.api:*]
+      actions: [funcs.call]
+      effect: allow
+
+  - name: meta_write
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: "*"
+      actions: component.runtime_meta.write
+      effect: allow
+      conditions:
+        - field: meta.impl_id
+          operator: regex
+          value: "acme\\.bad\\..*"
+
+  - name: plugin_host
+    kind: security.policy
+    meta: { private: true }
+    groups: [acme.bad.security:plugins]
+    policy:
+      resources: [acme.bad.api:list]
+      actions: [funcs.call]
+      effect: allow

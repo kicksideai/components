@@ -1,0 +1,212 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "resend_of": {"type": "string", "format": "uuid"},
+          "can_resend": {"type": "boolean"},
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "sent",
+              "failed"
+            ]
+          },
+          "origin": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id",
+              "label"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "workflow",
+                  "automation",
+                  "agent",
+                  "module",
+                  "test",
+                  "resend"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 256
+              }
+            }
+          },
+          "sender": {
+            "type": "string",
+            "minLength": 1
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "next_attempt_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sent_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "finished_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "template": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1
+          },
+          "to": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "cc": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "bcc": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "reply_to": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "upload_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "filename": {
+                  "type": "string",
+                  "description": "Caller-supplied filename. An empty value uses the default name for delivery."
+                },
+                "disposition": {
+                  "enum": [
+                    "attachment",
+                    "inline"
+                  ]
+                },
+                "content_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "upload_id"
+              ]
+            }
+          },
+          "driver_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Active driver used for the last delivery attempt. Available only to delivery log administrators."
+          },
+          "provider_message_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Message ID returned by the provider on acceptance. Available only to delivery log administrators."
+          },
+          "last_error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provider_detail": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "description": "Sanitized provider response text, up to 512 bytes. Available only to delivery log administrators."
+              }
+            },
+            "required": [
+              "kind",
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "message_id",
+          "status",
+          "sender",
+          "created_at",
+          "attempts",
+          "subject",
+          "to",
+          "attachments"
+        ]
+      }
+    },
+    "total": {"type": "integer", "minimum": 0, "description": "Visible messages matching the filters, or a lower bound when total_is_lower_bound is true."},
+    "total_is_lower_bound": {"type": "boolean", "description": "The count or search reaches its retained-message window."},
+    "failed_today": {"type": "integer", "minimum": 0, "description": "Visible messages that failed today in UTC across all filters."},
+    "has_more": {
+      "type": "boolean"
+    },
+    "next_cursor": {
+      "type": "string",
+      "pattern": "^[0-9]+:[0-9a-fA-F-]{36}$"
+    }
+  },
+  "required": [
+    "items",
+    "has_more"
+  ]
+}

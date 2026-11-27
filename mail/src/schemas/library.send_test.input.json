@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "required": [
+    "message"
+  ],
+  "properties": {
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "vars": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

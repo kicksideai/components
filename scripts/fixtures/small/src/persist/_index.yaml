@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: acme.small.persist
+
+entries:
+  - name: repo
+    kind: library.lua
+    source: file://repo.lua

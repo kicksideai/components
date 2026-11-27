@@ -14,6 +14,7 @@ Independently installable modules for the KickSide application:
 | [agent-onboarding](agent-onboarding) | `kickside/agent-onboarding` | Creates a user's first agent and selects its capabilities. |
 | [sso](sso) | `kickside/sso` | Provides OAuth2/OIDC sign-in, account linking, and provisioning. |
 | [docscout](docscout) | `kickside/docscout` | Extracts verified, cited fields from uploaded documents for people, agents, evaluations and Workflows. |
+| [mail](mail) | `kickside/mail` | Queues installation email and exposes delivery status, agent tools, and an automation destination. |
 | [work](work) | `kickside/work` | Runs boards of typed items with process transitions, queries, history, views and agent tools. |
 | [pim](pim) | `kickside/pim` | Manages product catalogs, contextual values, variants, schema evolution, readiness, releases and channel publications. |
 | [pim-admin](pim-admin) | `kickside/pim-admin` | Configures catalog schemas, vocabularies, plugins and policy on System/settings. |

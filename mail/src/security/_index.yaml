@@ -1,0 +1,622 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.security
+entries:
+  - name: module_access
+    kind: security.policy
+    meta:
+      title: Mail
+      surface: kickside.mail
+      intent: module_access
+      includes: [kickside.mail.security:module_runtime, kickside.mail.security:member_endpoints]
+    groups: []
+    policy:
+      resources: [kickside.mail.sink:send_email]
+      actions: [registry.get, registry.find]
+      effect: allow
+  - name: module_runtime
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources:
+        - kickside.mail:mailer
+        - kickside.mail:mailer_binding
+        - kickside.data:writable
+        - send
+        - resend
+        - get_message
+        - list_messages
+        - list_templates
+        - get_template
+        - preview
+        - delivery_status
+        - send_delivery_test
+        - write
+        - kickside.mail.sink:writable
+        - kickside.mail.sink:write
+      actions: [registry.get, registry.find, contract.get, contract.open, contract.call, contract.implementations, contract.security, funcs.call, funcs.security]
+      effect: allow
+  - name: send_access
+    kind: security.policy
+    meta:
+      title: Send mail
+      surface: kickside.mail
+      intent: tool_access
+      includes: [kickside.mail.security:module_runtime, kickside.mail.security:send_runtime]
+    groups: []
+    policy:
+      resources: [kickside.mail:mailer]
+      actions: [access]
+      effect: allow
+  - name: send_runtime
+    kind: security.policy
+    meta: {private: true}
+    groups: []
+    policy:
+      resources:
+        - kickside.mail.traits:mail
+        - kickside.mail.traits:mail_readonly
+        - kickside.mail.traits:mail_send
+        - kickside.mail.traits:mail_list_templates
+        - kickside.mail.traits:mail_get_template
+        - kickside.mail.traits:mail_preview
+      actions: [registry.get, registry.find, funcs.call]
+      effect: allow
+  - name: log_admin
+    kind: security.policy
+    meta:
+      title: Read all mail delivery logs
+      surface: kickside.mail
+      intent: module_management
+      includes: [kickside.mail.security:module_runtime]
+    groups: []
+    policy:
+      resources: [kickside.mail:mailer]
+      actions: [mail.log.admin]
+      effect: allow
+  - name: mail_db
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail:db_config]
+      actions: [db.get]
+      effect: allow
+  - name: projection_db
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: []
+      actions: [db.get]
+      effect: allow
+  - name: projection_sync
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.mail.jobs:library_sync]
+      actions: [kickside.execution.defer]
+      effect: allow
+  - name: projection_config
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.mail:db_config, kickside.core.jobs:policy, kickside.mail.jobs:library_sync]
+      actions: [registry.get]
+      effect: allow
+  - name: library_threads
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.core:threads, kickside.core:threads_binding, find, find_event_by_external, append_events,
+        list_events, catch_up_projection]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
+  - name: library_history_threads
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.core:threads, kickside.core:threads_binding, find, list_events]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
+  - name: library_retention_threads
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.core:threads, kickside.core:threads_binding, find_event_by_external, prune_boundary]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
+  - name: library_threads_read
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.mail.library]
+      actions: [threads.prune_boundary.read]
+      effect: allow
+  - name: library_threads_caller
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [security]
+      actions: [contract.security]
+      effect: allow
+  - name: mail_config
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail:db_config, kickside.mail.delivery:deliver]
+      actions: [registry.get]
+      effect: allow
+  - name: job_notify
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.core.jobs:nudge_workers]
+      actions: [funcs.call]
+      effect: allow
+  - name: jobs_consumer
+    kind: security.scope
+  - name: jobs_consumer_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: kickside.mail.security:jobs_consumer
+    policies: [kickside.core.jobs.security:module_access]
+  - name: library_projection_wait
+    kind: security.policy
+    meta: {private: true}
+    groups: []
+    policy:
+      resources: [kickside.mail.command:catch_up]
+      actions: [funcs.call]
+      effect: allow
+  - name: core_consumer
+    kind: security.scope
+  - name: core_consumer_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: kickside.mail.security:core_consumer
+    policies: [kickside.core.security:module_access]
+  - name: deferred_delivery
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail.delivery:deliver]
+      actions: [kickside.execution.defer]
+      effect: allow
+  - name: driver_admin
+    kind: security.policy
+    meta:
+      title: Administer mail delivery
+      surface: kickside.mail
+      intent: module_management
+      includes: [kickside.mail.security:log_admin, kickside.mail.security:delivery_endpoints]
+    groups: []
+    policy:
+      resources:
+        - kickside.mail.settings:setting_driver
+        - kickside.mail.settings:setting_from_address
+        - kickside.mail.settings:setting_from_name
+        - kickside.mail.settings:setting_reply_to
+        - kickside.mail.settings:setting_log_retention_days
+        - kickside.mail.settings:validate_retention
+        - kickside.mail.settings:validate_driver
+        - kickside.mail.settings:validate_address
+        - kickside.mail.settings:validate_from_name
+      actions: [registry.get, registry.find, funcs.call]
+      effect: allow
+  - name: transports_base
+    kind: security.policy
+    meta: { private: true }
+    groups: [kickside.mail.security:transports]
+    policy:
+      resources: [kickside.mail:transport]
+      actions: [contract.get, contract.implementations]
+      effect: allow
+  - name: transport_calls
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail:transport, send, status]
+      actions: [contract.get, contract.implementations, contract.call]
+      effect: allow
+  - name: settings_read
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.settings:settings, kickside.settings:settings_binding, get_namespace]
+      actions: [registry.get, contract.get, contract.open, contract.call]
+      effect: allow
+  - name: settings_driver_read
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.settings:settings, kickside.settings:settings_binding, get]
+      actions: [registry.get, contract.get, contract.open, contract.call]
+      effect: allow
+  - name: settings_admin_read
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.settings.api:list_settings.endpoint]
+      actions: [access]
+      effect: allow
+  - name: driver_selection_call
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.mail.read:driver_selection]
+      actions: [funcs.call]
+      effect: allow
+  - name: template_access
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources:
+        - kickside.mail.views:templates
+        - kickside.mail.views:layout
+        - kickside.mail.views:text_templates
+        - kickside.mail:definition
+        - kickside.mail.views:notice_template
+        - kickside.mail.views:standard_template
+        - kickside.mail.views:plain_template
+        - kickside.mail.views:header_template
+        - kickside.mail.views:footer_template
+        - kickside.mail.views:preheader_template
+        - kickside.mail.views:button_template
+        - kickside.mail.views:details_template
+        - kickside.mail.views:image_template
+        - kickside.mail.views:signature_template
+        - kickside.mail.views:logo_asset
+      actions: [template.get, registry.get, registry.find]
+      effect: allow
+  - name: user_security_scope
+    kind: ns.requirement
+    default: kickside.security.groups:members
+    meta: {value_kind: security.scope, description: Application group with member access to Mail.}
+    targets:
+      - { entry: "kickside.mail.security:module_access", path: ".groups +=" }
+      - { entry: "kickside.mail.security:module_runtime", path: ".groups +=" }
+      - { entry: "kickside.mail.security:member_endpoints", path: ".groups +=" }
+  - name: asset_adoption
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.uploads:adopt_component_upload]
+      actions: [funcs.call]
+      effect: allow
+  - name: asset_adoption_action
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.uploads]
+      actions: [uploads.asset.adopt]
+      effect: allow
+  - name: asset_reaper
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    groups: []
+    policy:
+      resources: [kickside.mail.command:reap_asset]
+      actions: [funcs.call]
+      effect: allow
+  - name: asset_reap_call
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.uploads:reap_component_upload]
+      actions: [funcs.call]
+      effect: allow
+  - name: asset_reap_action
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: '*'
+      actions: [uploads.asset.reap]
+      effect: allow
+      conditions:
+        - {field: meta.impl_id, operator: eq, value: "kickside.mail.binding:library"}
+  - name: asset_service
+    kind: security.scope
+  - name: asset_service_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: kickside.mail.security:asset_service
+    policies:
+      - kickside.contract.security:module_access
+      - kickside.component.security:module_access
+      - kickside.uploads.security:module_access
+  - name: asset_provider_calls
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources:
+        - kickside.mail.binding:library
+        - kickside.execution:maintenance_actor
+        - get_access_context
+        - get_info
+        - get_content
+        - security
+      actions: [registry.get, contract.call, contract.security, funcs.call, funcs.security]
+      effect: allow
+  - name: attachment_provider
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    groups: []
+    policy:
+      resources: [kickside.contract:content_provider, kickside.uploads:content_provider]
+      actions: [contract.get, contract.open]
+      effect: allow
+  - name: attachment_methods
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    groups: []
+    policy:
+      resources: [get_info, get_content]
+      actions: [contract.call]
+      effect: allow
+  - name: mail_retention_actor
+    kind: registry.entry
+    meta:
+      type: kickside.execution.maintenance_actor
+      actor_id: system:kickside.mail.retention
+  - name: packaged_assets
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail.views:logo_asset, kickside.mail.views:asset_files]
+      actions: [registry.get, fs.get, fs.read, fs.stat]
+      effect: allow
+  - name: asset_bytes
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail.read:read_asset_file]
+      actions: [funcs.call]
+      effect: allow
+  - name: site_url
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [PUBLIC_API_URL]
+      actions: [env.get]
+      effect: allow
+  - name: library_component_read
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources:
+        - kickside.component:component_service
+        - kickside.component.binding:component_service_impl
+        - get_access_context
+      actions: [contract.get, contract.open, contract.call, contract.implementations]
+      effect: allow
+  - name: library_component_registry
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.mail.binding:library]
+      actions: [registry.get]
+      effect: allow
+  - name: library_access
+    kind: security.policy
+    meta:
+      title: Edit mail library
+      surface: kickside.mail
+      intent: module_management
+      includes: [kickside.mail.security:library_runtime, kickside.mail.security:library_tools, kickside.mail.security:library_endpoints]
+    groups: []
+    policy:
+      resources: [kickside.mail:library]
+      actions: [access]
+      effect: allow
+  - name: library_runtime
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources:
+        - kickside.mail:library
+        - kickside.mail:library_binding
+        - list
+        - get
+        - read_history
+        - read_revision
+        - asset_content
+        - preview
+        - create
+        - update
+        - save
+        - set_base
+        - reset
+        - restore
+        - delete
+        - add_asset
+        - send_test
+      actions: [registry.get, contract.get, contract.open, contract.call]
+      effect: allow
+  - name: library_tools
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources:
+        - kickside.mail.traits:email_design
+        - kickside.mail.traits:mail_readonly
+        - kickside.mail.traits:mail_list_templates
+        - kickside.mail.traits:mail_get_template
+        - kickside.mail.traits:mail_preview
+        - kickside.mail.traits:library_list
+        - kickside.mail.traits:library_read
+        - kickside.mail.traits:library_preview
+        - kickside.mail.traits:library_save
+        - kickside.mail.traits:library_create
+        - kickside.mail.traits:asset_add
+        - kickside.mail.traits:library_reset
+        - kickside.mail.traits:library_history
+        - kickside.mail.traits:library_restore
+        - kickside.mail.traits:send_test
+      actions: [registry.get, registry.find, funcs.call]
+      effect: allow
+  - name: scratch_sets
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.mail.render:scratch]
+      actions: [registry.overlay.get, registry.overlay.apply]
+      effect: allow
+  - name: live_sets
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.mail.render:live]
+      actions: [registry.overlay.get, registry.overlay.apply]
+      effect: allow
+  - name: live_entries
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      # Mail owns the generated live template IDs.
+      resources: ["kickside.mail.projection:*"]
+      actions: [registry.overlay.create.template.jet, registry.overlay.update.template.jet, registry.overlay.delete.template.jet]
+      effect: allow
+  - name: live_marker_write
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.mail.projection:marker]
+      actions: [registry.overlay.create.registry.entry, registry.overlay.update.registry.entry]
+      effect: allow
+  - name: live_marker_read
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: [kickside.mail.projection:marker]
+      actions: [registry.get]
+      effect: allow
+  - name: live_marker_delete
+    kind: security.policy
+    meta: {private: true, service_only: true}
+    policy:
+      resources: [kickside.mail.projection:marker]
+      actions: [registry.overlay.delete.registry.entry]
+      effect: allow
+  - name: overlay_originals
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources:
+        - kickside.mail.views:layout
+        - kickside.mail.views:layout.text
+        - kickside.mail.views:plain
+        - kickside.mail.views:plain.text
+        - kickside.mail.views:header
+        - kickside.mail.views:header.text
+        - kickside.mail.views:footer
+        - kickside.mail.views:footer.text
+        - kickside.mail.views:preheader
+        - kickside.mail.views:preheader.text
+        - kickside.mail.views:button
+        - kickside.mail.views:button.text
+        - kickside.mail.views:details
+        - kickside.mail.views:details.text
+        - kickside.mail.views:image
+        - kickside.mail.views:image.text
+        - kickside.mail.views:signature
+        - kickside.mail.views:signature.text
+        - kickside.mail.views:notice
+        - kickside.mail.views:notice.text
+        - kickside.mail.views:notice.subject
+      actions: [registry.overlay.shadow, registry.overlay.update.template.jet, registry.overlay.delete.template.jet]
+      effect: allow
+  - name: scratch_entries
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: ["kickside.mail.draft:*"]
+      # Jet checks template.get on each generated scratch set ID.
+      actions: [registry.overlay.create.template.jet, registry.overlay.delete.template.jet, registry.overlay.create.template.set, registry.overlay.delete.template.set, template.get]
+      effect: allow
+  - name: principal_directory_get
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [kickside.contract:directory]
+      actions: [contract.get]
+      effect: allow
+  - name: principal_directory_open
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [kickside.users.directory:directory_binding]
+      actions: [contract.open]
+      effect: allow
+  - name: principal_directory_resolve
+    kind: security.policy
+    meta: { private: true, service_only: true }
+    policy:
+      resources: [resolve]
+      actions: [contract.call]
+      effect: allow
+  - name: member_endpoints
+    kind: security.policy
+    meta: {private: true}
+    groups: []
+    policy:
+      resources: [kickside.mail.api:capabilities.endpoint]
+      actions: [access]
+      effect: allow
+  - name: library_endpoints
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources:
+        - kickside.mail.api:library_list.endpoint
+        - kickside.mail.api:library_get.endpoint
+        - kickside.mail.api:library_asset_content.endpoint
+        - kickside.mail.api:library_create.endpoint
+        - kickside.mail.api:library_update.endpoint
+        - kickside.mail.api:library_save.endpoint
+        - kickside.mail.api:library_set_base.endpoint
+        - kickside.mail.api:library_reset.endpoint
+        - kickside.mail.api:library_delete.endpoint
+        - kickside.mail.api:library_history.endpoint
+        - kickside.mail.api:library_restore.endpoint
+        - kickside.mail.api:library_preview.endpoint
+        - kickside.mail.api:library_send_test.endpoint
+      actions: [access]
+      effect: allow
+  - name: delivery_endpoints
+    kind: security.policy
+    meta: { private: true }
+    groups: []
+    policy:
+      resources:
+        - kickside.mail.api:activity_list.endpoint
+        - kickside.mail.api:activity_get.endpoint
+        - kickside.mail.api:activity_resend.endpoint
+        - kickside.mail.api:delivery_status.endpoint
+        - kickside.mail.api:delivery_send_test.endpoint
+      actions: [access]
+      effect: allow
+  - name: realtime_calls
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.contract:realtime, broadcast]
+      actions: [registry.get, contract.get, contract.open, contract.call]
+      effect: allow
+  - name: realtime_binding_open
+    kind: security.policy
+    meta: {private: true}
+    policy:
+      resources: kickside.realtime:realtime_binding
+      actions: [registry.get, contract.open]
+      effect: allow
+  - name: realtime_topics
+    kind: security.policy
+    meta: { private: true }
+    policy:
+      resources: [kickside.realtime:mail.library, kickside.realtime:mail.activity]
+      actions: [realtime.broadcast]
+      effect: allow

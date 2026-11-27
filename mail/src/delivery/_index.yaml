@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: kickside.mail.delivery
+entries:
+  - name: deliver
+    kind: function.lua
+    meta: { private: true, type: kickside.core.jobs.worker }
+    source: file://worker.lua
+    method: run
+    imports:
+      content: kickside.mail.read:content
+      delivery: kickside.mail.read:delivery
+      transports: kickside.mail.read:transports
+      config: kickside.mail.domain:config
+      identity: kickside.execution:execution_identity
+      message: kickside.mail.domain:message
+      outbox: kickside.mail.command:outbox
+      settings: kickside.mail.read:settings
+      types: kickside.mail:types
+    security:
+      actor: { id: "system:kickside.mail.delivery" }
+      policies:
+        - kickside.mail.security:realtime_calls
+        - kickside.mail.security:realtime_binding_open
+        - kickside.mail.security:realtime_topics
+        - kickside.mail.security:deferred_delivery
+        - kickside.mail.security:asset_bytes
+        - kickside.mail.security:transport_calls
+        - kickside.mail.security:driver_selection_call
+        - kickside.mail.security:mail_db
+        - kickside.mail.security:mail_config
+        - kickside.core.jobs.security:module_access
+        - kickside.mail.security:job_notify
+      groups: [kickside.mail.security:transports]
+  - name: read_attachments
+    kind: function.lua
+    meta: { private: true }
+    source: file://read_attachments.lua
+    method: read
+    imports:
+      client: kickside.mail:client
+      content: kickside.mail.read:content
+      types: kickside.mail:types
+    security:
+      policies:
+        - kickside.mail.security:attachment_provider
+        - kickside.mail.security:attachment_methods
+        - kickside.mail.security:library_component_read
+        - kickside.component.security:module_access
+        - kickside.mail.security:library_threads_caller

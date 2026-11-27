@@ -1,0 +1,249 @@
+# SPDX-License-Identifier: LicenseRef-KickSide-Community-1.0
+version: "1.0"
+namespace: app.mail_api
+entries:
+  - name: fixtures
+    kind: library.lua
+    source: file://fixtures.lua
+    modules: [contract, funcs, http_client, json, security, system, uuid]
+    imports:
+      identity: kickside.execution:execution_identity
+      reconcile: kickside.security:trigger_reconcile
+  - name: api_test
+    kind: function.lua
+    meta: { type: test, suite: mail_api }
+    source: file://api_test.lua
+    method: run
+    modules: [http_client, json, sql, system, time, uuid]
+    imports:
+      delivery_wait: app.mail_harness:delivery_wait
+      test: wippy.test:test
+      library_fixtures: app.mail_library:fixtures
+      fixtures: app.mail_api:fixtures
+      access_cases: app.mail_api:access_cases
+      library_cases: app.mail_api:library_cases
+      image_cases: app.mail_api:image_cases
+      draft_cases: app.mail_api:draft_cases
+      delivery_cases: app.mail_api:delivery_cases
+  - name: access_cases
+    kind: library.lua
+    source: file://access_cases.lua
+    modules: [contract, funcs, http_client, registry]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+  - name: library_cases
+    kind: library.lua
+    source: file://library_cases.lua
+    modules: [funcs, json, registry, security, sql, time, uuid]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+  - name: image_cases
+    kind: library.lua
+    source: file://image_cases.lua
+    modules: [funcs, json, registry]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+      jet: kickside.mail.domain:jet
+  - name: draft_cases
+    kind: library.lua
+    source: file://draft_cases.lua
+    modules: [contract, funcs, http_client, security, sql, time, uuid]
+    imports:
+      library_fixtures: app.mail_library:fixtures
+      autoinit: kickside.component:autoinit
+      api_fixtures: app.mail_api:fixtures
+  - name: delivery_cases
+    kind: library.lua
+    source: file://delivery_cases.lua
+    modules: [json, sql]
+    imports:
+      delivery_wait: app.mail_harness:delivery_wait
+  - name: sender
+    kind: security.scope
+  - name: module_only
+    kind: security.scope
+  - name: module_only_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:module_only
+    policies: [kickside.mail.security:module_access]
+  - name: outside
+    kind: security.scope
+  - name: outside_policy
+    kind: security.policy
+    groups: [app.mail_api:outside]
+    policy:
+      resources: [app.mail_api:outside]
+      actions: [registry.get]
+      effect: allow
+  - name: sender_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:sender
+    policies:
+      - kickside.mail.security:send_access
+  - name: upload_sender
+    kind: security.scope
+  - name: upload_sender_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:upload_sender
+    groups: [app.mail_api:sender]
+    policies: &upload_policies
+      - kickside.uploads.security:module_access
+      - kickside.component.security:module_access
+      - kickside.core.security:module_access
+      - kickside.core.jobs.security:module_access
+      - app.mail_api:upload_events
+      - app.mail_api:upload_event_context
+      - app.mail_api:upload_realtime
+  - name: upload_editor
+    kind: security.scope
+  - name: upload_editor_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:upload_editor
+    groups: [app.mail_api:editor]
+    policies: *upload_policies
+  - name: upload_events
+    kind: security.policy
+    policy:
+      resources: [kickside.core:threads, kickside.core:threads_binding, emit, upsert, register, get_access_context, set_meta]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
+  - name: upload_event_context
+    kind: security.policy
+    policy:
+      resources: [security]
+      actions: [contract.security]
+      effect: allow
+  - name: upload_realtime
+    kind: security.policy
+    policy:
+      resources: [kickside.contract:realtime, app.mail_realtime:realtime_binding, notify]
+      actions: [contract.get, contract.open, contract.call]
+      effect: allow
+  - name: upload_editor_sender
+    kind: security.scope
+  - name: upload_editor_sender_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:upload_editor_sender
+    groups: [app.mail_api:upload_editor, app.mail_api:editor_sender]
+    policies: [app.mail_api:delete_owned_upload]
+  - name: delete_owned_upload
+    kind: security.policy
+    policy:
+      resources: [kickside.uploads:delete_owned]
+      actions: [funcs.call]
+      effect: allow
+  - name: bundled_template_catalog
+    kind: security.policy
+    policy:
+      resources: [app.templates:reminder_template]
+      actions: [registry.get, registry.find]
+      effect: allow
+  - name: editor
+    kind: security.scope
+  - name: editor_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:editor
+    policies:
+      - app.mail_api:bundled_template_catalog
+      - kickside.mail.security:library_access
+  - name: editor_sender
+    kind: security.scope
+  - name: editor_sender_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:editor_sender
+    policies:
+      - kickside.mail.security:library_access
+      - kickside.mail.security:send_access
+  - name: log_reader
+    kind: security.scope
+  - name: log_reader_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:log_reader
+    policies: [kickside.mail.security:log_admin]
+  - name: library_capability_only
+    kind: security.scope
+  - name: library_capability_only_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:library_capability_only
+    policies: [kickside.mail.security:library_access]
+  - name: driver_only
+    kind: security.scope
+  - name: driver_only_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:driver_only
+    policies: [kickside.mail.security:driver_admin]
+  - name: delivery
+    kind: security.scope
+  - name: delivery_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:delivery
+    policies:
+      - kickside.mail.security:driver_admin
+      - kickside.mail.security:log_admin
+  - name: delivery_sender
+    kind: security.scope
+  - name: delivery_sender_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:delivery_sender
+    policies:
+      - kickside.mail.security:driver_admin
+      - kickside.mail.security:log_admin
+      - kickside.mail.security:send_access
+  - name: settings_admin
+    kind: security.scope
+  - name: users_admin
+    kind: security.scope
+  - name: users_admin_composition
+    kind: registry.entry
+    meta: {type: kickside.security.group_composition}
+    group_id: app.mail_api:users_admin
+    policies:
+      - app:member_database
+      - kickside.users.security:module_access
+      - kickside.security.security:module_access
+      - app.mail_api:users_scope_catalog
+      - app.mail_api:users_scope_context
+  - name: users_scope_catalog
+    kind: security.policy
+    policy:
+      resources: [kickside.contract:security_scopes, kickside.security.api:security_scopes_binding, list]
+      actions: [registry.get, contract.get, contract.open, contract.call]
+      effect: allow
+  - name: users_scope_context
+    kind: security.policy
+    policy:
+      resources: [security]
+      actions: [contract.security]
+      effect: allow
+  - name: settings_admin_composition
+    kind: registry.entry
+    meta: { type: kickside.security.group_composition }
+    group_id: app.mail_api:settings_admin
+    policies:
+      - app.mail_api:settings_admin_access
+      - app.mail_api:settings_list_call
+      - kickside.settings.security:module_access
+  - name: settings_list_call
+    kind: security.policy
+    policy:
+      resources: [list]
+      actions: [contract.call]
+      effect: allow
+  - name: settings_admin_access
+    kind: security.policy
+    policy:
+      resources: [kickside.settings.api:list_blocks.endpoint, kickside.settings.api:list_settings.endpoint]
+      actions: [access]
+      effect: allow
