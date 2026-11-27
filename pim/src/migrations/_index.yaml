@@ -14,15 +14,3 @@ entries:
     imports:
       migration: wippy.migration:migration
     method: migrate
-
-  - name: 02_assets
-    kind: function.lua
-    meta:
-      type: migration
-      tags: [pim, catalog]
-      comment: Durable ledger and retention indexes for catalog-owned assets.
-      timestamp: "2026-11-21T00:00:02Z"
-    source: file://02_assets.lua
-    imports:
-      migration: wippy.migration:migration
-    method: migrate

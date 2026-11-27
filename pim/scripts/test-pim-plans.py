@@ -12,8 +12,7 @@ class QueryPlans(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(":memory:")
         migration = (ROOT / "src/migrations/01_catalog.lua").read_text().split("local POSTGRES = {", 1)[1].split("local SQLITE", 1)[0]
-        assets = (ROOT / "src/migrations/02_assets.lua").read_text()
-        for statement in re.findall(r"\[\[(.*?)\]\]", migration + assets, re.S):
+        for statement in re.findall(r"\[\[(.*?)\]\]", migration, re.S):
             self.db.execute(statement)
         self.db.executemany("INSERT INTO kickside_pim_publication VALUES('catalog','web',?,?,'published',1,'2000')", [(f"{n:05}", f"{n:05}") for n in range(4000)])
     def tearDown(self):

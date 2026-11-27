@@ -4,16 +4,14 @@ local registry = require("registry")
 local store = require("store")
 local function define()
     test.describe("initial catalog schema", function()
-        test.it("registers the catalog and asset ledger migrations", function()
+        test.it("registers only the initial catalog migration", function()
             local entries = assert(registry.find({ ["meta.type"] = "migration" }))
             local ids = {}
             for _, entry in ipairs(entries) do
                 if tostring(entry.id):match("^kickside.pim.migrations:") then ids[#ids + 1] = tostring(entry.id) end
             end
-            table.sort(ids)
-            test.eq(#ids, 2)
+            test.eq(#ids, 1)
             test.eq(ids[1], "kickside.pim.migrations:01_catalog")
-            test.eq(ids[2], "kickside.pim.migrations:02_assets")
         end)
         test.it("creates durable tables and retention state", function()
             local db = assert(store.open())
